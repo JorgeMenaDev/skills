@@ -38,6 +38,24 @@ Use this skill when:
 
 Do not use this for one-off TODOs that fit in the current chat. Do not use memory as a backlog.
 
+## Relationship to Built-In Planning Skills
+
+This skill decides **where work should live and how it should be tracked**. It should deliberately leverage Hermes' built-in planning skills instead of duplicating them:
+
+- Use `writing-plans` when the work needs an implementation-ready plan with exact files, bite-sized tasks, commands, tests, and verification steps.
+- Use `plan` when Jorge explicitly wants plan-mode: inspect context, write a markdown plan under `.hermes/plans/`, and do not execute implementation.
+- Use this `work-tracking` skill after or alongside those skills to decide whether the result should remain in `.hermes/plans/`, be promoted to `docs/plans/` or `roadmap/`, become GitHub Issues, or get a compact memory pointer.
+
+Default composition:
+
+```text
+writing-plans = how to write the implementation plan
+plan = no-exec mode and .hermes/plans/ destination
+work-tracking = durable tracking policy across repo markdown, GitHub Issues, Linear, and memory
+```
+
+If a plan starts in `.hermes/plans/` but becomes strategic, architectural, or multi-session canonical work, promote or copy it into the repo's public/internal docs path (`roadmap/` or `docs/plans/`) and leave a pointer rather than treating `.hermes/plans/` as the only source of truth.
+
 ## Default Tracking Model
 
 ### 1. Canonical plan in the relevant repo
