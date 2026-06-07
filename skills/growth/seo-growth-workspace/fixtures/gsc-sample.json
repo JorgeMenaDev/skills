@@ -1,0 +1,18 @@
+{
+  "rows": [
+    {
+      "keys": ["seo automation", "https://example.com/seo-automation"],
+      "clicks": 5,
+      "impressions": 500,
+      "ctr": 0.01,
+      "position": 12.4
+    },
+    {
+      "keys": ["content seo", "https://example.com/content-seo"],
+      "clicks": 1,
+      "impressions": 300,
+      "ctr": 0.003,
+      "position": 4.2
+    }
+  ]
+}

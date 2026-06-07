@@ -1,35 +1,30 @@
 ---
 name: work-tracking
-description: "Use when Jorge and Hermes create a multi-step plan across any repo and need to decide how to track it: repo markdown, GitHub Issues, Linear, memory, or a mix."
+description: "Use when a multi-step plan needs durable tracking across a repo: markdown plans, GitHub Issues, Linear, memory, or a mix. Helps decide where work should live, when to promote tasks to issues, and how future agents should find the current state."
 version: 1.0.0
-author: Hermes Agent
 license: MIT
-metadata:
-  hermes:
-    tags: [planning, backlog, github-issues, roadmap, execution-tracking, memory]
-    related_skills: [writing-plans, github-issues, linear]
 ---
 
-# Work Tracking Between Jorge and Hermes
+# Work Tracking
 
 ## Overview
 
-Use this skill when Jorge and Hermes create a multi-step plan and need a durable way to track it across sessions, repositories, agents, PRs, and implementation work.
+Use this skill when a multi-step plan needs a durable way to be tracked across sessions, repositories, agents, PRs, and implementation work.
 
 The default operating model is:
 
 - **Repo markdown = canonical strategy/spec.**
 - **GitHub Issues = execution queue for implementation-ready tasks.**
 - **Memory = compact convention/pointer only, never the backlog itself.**
-- **Linear = optional product/company planning layer, only when Jorge explicitly wants that visibility.**
+- **Linear = optional product/company planning layer, only when the user explicitly wants that visibility.**
 
-This is intentionally cross-repo and not MAS-specific. It applies to any Jorge + Hermes collaboration where work starts as a conversation and needs to become durable, discoverable, and executable.
+This is intentionally cross-repo. It applies when work starts as a conversation and needs to become durable, discoverable, and executable.
 
 ## When to Use
 
 Use this skill when:
 
-- Jorge asks how to track a plan, audit findings, backlog, roadmap, or initiative;
+- the user asks how to track a plan, audit findings, backlog, roadmap, or initiative;
 - an agent or external tool produces several implementation gaps;
 - a chat decision needs to become repo-visible work;
 - deciding whether to use markdown, GitHub Issues, Linear, memory, or all of them;
@@ -40,21 +35,21 @@ Do not use this for one-off TODOs that fit in the current chat. Do not use memor
 
 ## Relationship to Built-In Planning Skills
 
-This skill decides **where work should live and how it should be tracked**. It should deliberately leverage Hermes' built-in planning skills instead of duplicating them:
+This skill decides **where work should live and how it should be tracked**. It should deliberately leverage any installed planning skills instead of duplicating them:
 
-- Use `writing-plans` when the work needs an implementation-ready plan with exact files, bite-sized tasks, commands, tests, and verification steps.
-- Use `plan` when Jorge explicitly wants plan-mode: inspect context, write a markdown plan under `.hermes/plans/`, and do not execute implementation.
-- Use this `work-tracking` skill after or alongside those skills to decide whether the result should remain in `.hermes/plans/`, be promoted to `docs/plans/` or `roadmap/`, become GitHub Issues, or get a compact memory pointer.
+- Use the target agent's planning skill when the work needs an implementation-ready plan with exact files, bite-sized tasks, commands, tests, and verification steps.
+- Use a no-execution planning mode when the user explicitly wants planning only: inspect context, write a markdown plan, and do not execute implementation.
+- Use this `work-tracking` skill after or alongside those skills to decide whether the result should remain in an agent-local plan path, be promoted to `docs/plans/` or `roadmap/`, become GitHub Issues, or get a compact memory pointer.
 
 Default composition:
 
 ```text
-writing-plans = how to write the implementation plan
-plan = no-exec mode and .hermes/plans/ destination
+planning skill = how to write the implementation plan
+plan/no-exec mode = planning without implementation
 work-tracking = durable tracking policy across repo markdown, GitHub Issues, Linear, and memory
 ```
 
-If a plan starts in `.hermes/plans/` but becomes strategic, architectural, or multi-session canonical work, promote or copy it into the repo's public/internal docs path (`roadmap/` or `docs/plans/`) and leave a pointer rather than treating `.hermes/plans/` as the only source of truth.
+If a plan starts in an agent-local path but becomes strategic, architectural, or multi-session canonical work, promote or copy it into the repo's public/internal docs path (`roadmap/` or `docs/plans/`) and leave a pointer rather than treating the agent-local path as the only source of truth.
 
 ## Default Tracking Model
 
@@ -67,14 +62,14 @@ Preferred locations, in order:
 ```text
 roadmap/YYYY-MM-DD-short-topic.md
 docs/plans/YYYY-MM-DD-short-topic.md
-.hermes/plans/YYYY-MM-DD-short-topic.md
+.agents/plans/YYYY-MM-DD-short-topic.md
 ```
 
 Choose based on repo conventions:
 
 - use `roadmap/` for product/architecture direction or multi-phase initiatives;
 - use `docs/plans/` for implementation plans;
-- use `.hermes/plans/` for agent-local plans that should stay out of public docs but remain repo-local.
+- use `.agents/plans/` or the target agent's local plan path for plans that should stay out of public docs but remain repo-local.
 
 The markdown plan should include:
 
@@ -141,7 +136,7 @@ Add readiness smoke test
 Memory can record compact durable facts, for example:
 
 ```text
-For Jorge/Hermes work tracking, canonical multi-phase plans live as repo markdown; execution-ready tasks are promoted to GitHub Issues; memory stores only pointers/conventions.
+For work tracking, canonical multi-phase plans live as repo markdown; execution-ready tasks are promoted to GitHub Issues; memory stores only pointers/conventions.
 ```
 
 Memory must not store the backlog itself, issue bodies, status checklists, or detailed task progress.
@@ -150,7 +145,7 @@ Memory must not store the backlog itself, issue bodies, status checklists, or de
 
 Use Linear when:
 
-- Jorge explicitly wants company/team/product planning visibility;
+- the user explicitly wants company/team/product planning visibility;
 - the work belongs in a broader product roadmap outside GitHub;
 - team members expect to manage it in Linear;
 - credentials are configured and the target team/project is known.
@@ -235,9 +230,9 @@ Keep status high-level in markdown. Detailed task chatter belongs in GitHub Issu
 
 5. **Forgetting future-agent discoverability.** Add a pointer from a repo index when the plan is current work.
 
-6. **Making the convention project-specific.** This workflow is for Jorge + Hermes across repos. Project-specific details belong in that project's own plan or skills. If Jorge says "between us" or "different repos," create or update a cross-repo/user-level skill, not a repo-owned `.agents/skills/` entry.
+6. **Making the convention project-specific.** This workflow is for cross-repo tracking. Project-specific details belong in that project's own plan or skills. If the user says "between us" or "different repos," create or update a cross-repo/user-level skill, not a repo-owned `.agents/skills/` entry.
 
-7. **Assuming default-profile skills apply to every named profile.** If this work-tracking convention should guide Dante, Santi, or another named profile, verify `hermes -p <profile> skills list` and explicitly symlink/copy the skill into that profile if needed.
+7. **Assuming one agent profile sees every skill.** If this work-tracking convention should guide another named profile or client, verify that the skill is installed there.
 
 ## Verification Checklist
 
@@ -246,4 +241,4 @@ Keep status high-level in markdown. Detailed task chatter belongs in GitHub Issu
 - [ ] GitHub Issues exist only for execution-ready tasks.
 - [ ] Issues link back to the roadmap/plan file or section.
 - [ ] Memory contains only a compact convention/pointer, not backlog details.
-- [ ] Linear is only used if Jorge explicitly wants company/product planning visibility.
+- [ ] Linear is only used if the user explicitly wants company/product planning visibility.

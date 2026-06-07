@@ -1,0 +1,17 @@
+{
+  "scheduled": 12,
+  "published": 2,
+  "overdue": 0,
+  "next": [
+    {
+      "keyword": "automatizar blog con ia",
+      "date": "2026-05-03",
+      "status": "scheduled"
+    },
+    {
+      "keyword": "calendario editorial seo",
+      "date": "2026-05-06",
+      "status": "scheduled"
+    }
+  ]
+}

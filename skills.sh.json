@@ -1,0 +1,16 @@
+{
+  "$schema": "https://skills.sh/schemas/skills.sh.schema.json",
+  "notGrouped": "bottom",
+  "groupings": [
+    {
+      "title": "Growth",
+      "description": "Skills for SEO, content operations, conversion, and organic growth work that needs evidence and verification.",
+      "skills": ["seo-growth-workspace"]
+    },
+    {
+      "title": "Software Development",
+      "description": "Skills for planning, tracking, and shipping multi-step work across repos.",
+      "skills": ["work-tracking"]
+    }
+  ]
+}
