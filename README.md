@@ -1,12 +1,12 @@
-# Skills for Real Growth Work
+# Skills for Real Growth and Agent Operations
 
 [![skills.sh](https://skills.sh/b/JorgeMenaDev/skills)](https://skills.sh/JorgeMenaDev/skills)
 
-Agent skills by Jorge Mena for SEO, growth, product marketing, and revenue work that needs evidence, execution, verification, and memory.
+Agent skills by Jorge Mena for SEO, growth, product marketing, revenue, and agent-operations work that needs evidence, execution, verification, and memory.
 
 Most AI growth work fails in boring ways. The agent gives generic advice. It optimizes pages without understanding the business. It creates SEO plans that never become tickets, code, content, or live proof. Then the next session forgets what happened.
 
-These skills are designed to push against that. They are small, portable, and built around real operating loops: understand the business, inspect reality, pick one high-leverage action, verify it, and leave the next agent a clean handoff.
+These skills are designed to push against that. They are small, portable, and built around real operating loops: understand the context, inspect reality, pick one high-leverage action, verify it, and leave the next agent a clean handoff.
 
 ## Quickstart
 
@@ -69,6 +69,10 @@ Growth agents love opening five lanes at once. This repo prefers one current foc
 ### Software Development
 
 - **[work-tracking](./skills/software-development/work-tracking/SKILL.md)** — Decide where multi-step work should live: repo markdown, GitHub Issues, Linear, memory, or a mix.
+
+### DevOps
+
+- **[shiploop](./skills/devops/shiploop/SKILL.md)** — Execute plans, fixes, and features through durable GitHub issue phases, branch gates, review evidence, and optional worker adapters.
 
 ## Layout
 

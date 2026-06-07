@@ -11,6 +11,11 @@
       "title": "Software Development",
       "description": "Skills for planning, tracking, and shipping multi-step work across repos.",
       "skills": ["work-tracking"]
+    },
+    {
+      "title": "DevOps",
+      "description": "Skills for durable agent operations, release trains, webhooks, and execution supervision.",
+      "skills": ["shiploop"]
     }
   ]
 }
