@@ -13,9 +13,51 @@ Default labels:
 
 Adapters and repos may map aliases in `.shiploop/config.yaml`.
 
-## Parent Issue Body
+## Canonical Metadata Block
 
-Keep stable machine-editable blocks in the issue body and use comments as the timeline.
+Every parent and phase issue must include a human-readable `## Shiploop` block. The status board parses this block.
+
+Parent issue:
+
+```md
+## Shiploop
+Run: <run-slug>
+Phase: parent
+Parent: none
+Next: #<first-phase-issue>
+Adapter: <adapter-name>
+Task:
+Worker: <agent-or-worker>
+Train branch: shiploop/<run-slug>
+Target branch: main
+Review gate: autoreview
+Execution: <worker-runtime>
+Status: planned | running | blocked | human-review | done
+```
+
+Phase issue:
+
+```md
+## Shiploop
+Run: <run-slug>
+Phase: <number>
+Parent: #<parent-issue>
+Next: #<next-phase-issue or none>
+Adapter: <adapter-name>
+Task: <task-id or blank>
+Worker: <agent-or-worker>
+Train branch: shiploop/<run-slug>
+Phase branch: shiploop/<run-slug>-phase-<n>
+Target branch: main
+Review gate: autoreview
+Execution: <worker-runtime>
+PR: <pr-number or blank>
+Status: parked | ready | running | blocked | done
+```
+
+## Optional Stable Blocks
+
+Use optional HTML comment blocks for safe machine updates when useful. They are secondary to the canonical `## Shiploop` block.
 
 ```md
 <!-- shiploop:run -->
@@ -26,34 +68,29 @@ Final PR:
 <!-- /shiploop:run -->
 
 <!-- shiploop:phases -->
-- [ ] Phase 1: #123 - branch: shiploop/bcr-landing-signup-cta/phase-1 - PR:
-- [ ] Phase 2: #124 - branch: shiploop/bcr-landing-signup-cta/phase-2 - PR:
+- [ ] Phase 1: #123 - branch: shiploop/bcr-landing-signup-cta-phase-1 - PR:
+- [ ] Phase 2: #124 - branch: shiploop/bcr-landing-signup-cta-phase-2 - PR:
 <!-- /shiploop:phases -->
 ```
 
 The parent issue receives `shiploop-human-review` when the final PR is ready for human review.
 
-## Phase Issue Body
+## Label Lifecycle
 
-Each phase issue also gets a stable block plus timeline comments:
+At issue creation:
 
-```md
-<!-- shiploop:phase -->
-Run: bcr-landing-signup-cta
-Phase: 1
-Status: running
-Parent: #122
-Next: #124
-Train branch: shiploop/bcr-landing-signup-cta
-Phase branch: shiploop/bcr-landing-signup-cta/phase-1
-Phase PR:
-Task:
-Worker:
-Review gate:
-<!-- /shiploop:phase -->
-```
+- parent issue: `shiploop`;
+- all phase issues: `shiploop`;
+- phase 1 only: `shiploop-ready`;
+- later phases: no ready label until the previous phase PR is merged and evidence is recorded.
 
-Also include the public metadata block from `SKILL.md` when the issue body needs a human-readable summary.
+During execution:
+
+- blocked phase: add `shiploop-blocked`, remove `shiploop-ready`;
+- unblocked phase: remove `shiploop-blocked`, add `shiploop-ready` only when it is the next executable phase;
+- completed phase: close issue, remove `shiploop-ready` and `shiploop-blocked`;
+- promoted phase: add `shiploop-ready` to exactly one next child issue;
+- final PR ready: add `shiploop-human-review` only to the parent issue.
 
 ## Timeline Comments
 

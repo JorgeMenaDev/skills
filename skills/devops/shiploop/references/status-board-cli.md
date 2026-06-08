@@ -66,11 +66,12 @@ Adapter: <adapter-name>
 Task: task-example
 Worker: worker-a
 Train branch: shiploop/example-train
-Phase branch: shiploop/example-train/phase-1
+Phase branch: shiploop/example-train-phase-1
 Target branch: main
 Review gate: autoreview
 Execution: <worker-runtime>
 PR: #123
+Status: ready
 ```
 
 ## What It Reports

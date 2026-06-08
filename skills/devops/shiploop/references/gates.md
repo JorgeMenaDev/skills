@@ -20,17 +20,19 @@ Command discovery priority:
 4. known Bun and Convex defaults
 5. ask the human if ambiguous
 
-First real run writes discovered defaults into `.shiploop/config.yaml`.
+Creating or editing `.shiploop/config.yaml` is a repo mutation. Before kickoff approval, only draft the intended config in the run plan. After approval, create or update it on the train branch unless the human explicitly requests no config file. Record whether it was committed in the parent issue timeline.
 
 ## Final Gate
 
 Open the final PR as draft. Repo-local `autoreview` is mandatory.
 
-If missing, install it:
+If repo-local `autoreview` is missing, install it automatically:
 
 ```sh
 npx skills add https://github.com/steipete/clawdis --skill autoreview
 ```
+
+After installation, record the command, resulting files, and whether they are committed to the train branch.
 
 Run `autoreview`, fix accepted findings on the train branch, and rerun until clean or blocked. Then mark the PR ready and label the parent issue `shiploop-human-review`.
 

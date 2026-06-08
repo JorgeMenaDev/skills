@@ -2,13 +2,15 @@
 
 Use this reference when Shiploop should execute phases through Hermes Kanban. The public core stays generic; this adapter owns Hermes setup, task fields, dispatch, logs, retries, and status recovery.
 
+If Shiploop is invoked from Hermes, Hermes CLI, or a Hermes/Kanban worker, this is the default adapter. Use `Adapter: hermes-kanban` and `Execution: Hermes Kanban` in parent and phase issues. Do not replace the adapter with a local profile name.
+
 ## Requirements
 
 - `hermes` CLI installed and authenticated.
 - `gh` CLI authenticated for the target GitHub repository.
 - A Hermes Kanban board for the project or run.
 - A worker profile that can operate in the target repo.
-- A chosen workspace strategy: `dir:<repo-path>`, `worktree`, or `scratch`.
+- The real target repo checkout, declared as `dir:<repo-path>`.
 - A phase gate and final review gate.
 
 ## First-Run Setup
@@ -29,7 +31,9 @@ If Kanban is not initialized, run:
 hermes kanban init
 ```
 
-Then discover or create the board, choose the worker profile, workspace strategy, branch strategy, gates, retry limit, runtime limit, and tenant. Do not create tasks, branches, webhooks, or external state until Shiploop kickoff is approved.
+Then discover or create a dedicated board, choose the worker profile, real repo path, branch strategy, gates, retry limit, runtime limit, and tenant. Do not create tasks, branches, webhooks, or external state until Shiploop kickoff is approved.
+
+Never use Hermes `--worktree`, git worktrees, scratch workspaces, or copied checkouts for Shiploop execution. If the real repo checkout is not on clean, up-to-date `main`, block before dispatch.
 
 Recommended `.shiploop/config.yaml` adapter keys:
 
@@ -44,6 +48,18 @@ max_runtime: 2h
 max_retries: 2
 tenant: <namespace>
 ```
+
+Hermes `dispatch` has no task-id selector. Prefer a dedicated board for the repo or run so unrelated ready tasks cannot be spawned by accident:
+
+```sh
+hermes kanban boards create bcr-shiploop \
+  --name "BCR Shiploop" \
+  --description "Shiploop phases for BCR" \
+  --default-workdir /Users/jorge/dev/code/bcr \
+  --switch
+```
+
+If a shared board is used, Shiploop may dispatch only when the dry-run names the intended task and exactly one phase is ready.
 
 ## Metadata
 
@@ -68,7 +84,7 @@ Hermes fields may extend the block or appear in adapter comments:
 
 ```md
 Board: <hermes-board>
-Workspace: dir:<repo-path> | worktree | scratch
+Workspace: dir:<repo-path>
 Hermes profile: <profile>
 Hermes skills: shiploop, <other-skill>
 Max runtime: 2h
@@ -91,13 +107,14 @@ hermes kanban create "<phase title>" \
   --body "<phase body and issue URL>" \
   --assignee "<profile>" \
   --workspace "dir:<repo-path>" \
-  --branch "shiploop/<run-slug>/phase-<n>" \
   --tenant "<namespace>" \
   --skill shiploop \
   --idempotency-key "shiploop:github:OWNER/REPO#123:phase:1" \
   --max-runtime 2h \
   --max-retries 2
 ```
+
+Do not pass `--branch` with `dir:<repo-path>` workspaces; Hermes only accepts `--branch` for worktree tasks, and Shiploop forbids worktrees. Put the phase branch in the task body and issue metadata instead.
 
 Link dependencies when the board needs parent/child context:
 
@@ -113,11 +130,15 @@ Dry-run before spawning work:
 hermes kanban dispatch --dry-run
 ```
 
-Dispatch only the intended phase:
+Dispatch only when dry-run names the intended task:
 
 ```sh
+hermes kanban show <task-id>
+hermes kanban dispatch --dry-run
 hermes kanban dispatch --max 1
 ```
+
+Before dispatch, verify the task ID, board, workspace `dir:<repo-path>`, branch `shiploop/<run-slug>-phase-<n>`, and that only the intended phase has `shiploop-ready`. Hermes dispatch does not currently expose a task-id selector, so require a dedicated board or the single-ready-task invariant before real dispatch.
 
 Inspect state:
 
