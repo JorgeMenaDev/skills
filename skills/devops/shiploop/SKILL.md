@@ -64,7 +64,7 @@ Use default labels `shiploop`, `shiploop-ready`, `shiploop-blocked`, and `shiplo
 
 ## Gates
 
-For phase gates, follow the target repo's `AGENTS.md` and local docs first. Default to TypeScript checks, lint, and Convex strict TypeScript checks when Convex exists. Resolve gate-command ambiguity at kickoff and record the commands in `.shiploop/config.yaml`; a worker that still hits ambiguity blocks, it never asks. Workers record exact commands and results before merging a phase PR. A red GitHub check that is provably pre-existing and unrelated to the diff may be waived by the phase worker itself for phase PRs only, under the waiver rules in `references/gates.md` - never on the final PR.
+For phase gates, follow the target repo's agent-instructions file (`AGENTS`) and local docs first. Default to TypeScript checks, lint, and Convex strict TypeScript checks when Convex exists. Resolve gate-command ambiguity at kickoff and record the commands in `.shiploop/config.yaml`; a worker that still hits ambiguity blocks, it never asks. Workers record exact commands and results before merging a phase PR. A red GitHub check that is provably pre-existing and unrelated to the diff may be waived by the phase worker itself for phase PRs only, under the waiver rules in `references/gates.md` - never on the final PR.
 
 For the final gate, `autoreview` is mandatory and run by the closeout worker. If the target repo lacks it, the kickoff plan must include a standing pre-approval to install it; without that pre-approval a closeout worker that finds it missing blocks and waits.
 

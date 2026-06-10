@@ -4,7 +4,7 @@ Use this reference when deciding whether a phase or final PR can move forward. P
 
 ## Phase Gate
 
-Follow the target repo's `AGENTS.md` and local docs first. Default baseline:
+Follow the target repo's agent-instructions file (`AGENTS`) and local docs first. Default baseline:
 
 - TypeScript checks.
 - Lint.
@@ -15,7 +15,7 @@ Do not invent broad test suites unless the repo requires them. Record exact comm
 Command discovery priority:
 
 1. `.shiploop/config.yaml`
-2. `AGENTS.md` and repo docs
+2. the repo's agent-instructions file (`AGENTS`) and repo docs
 3. package scripts
 4. known Bun and Convex defaults
 
