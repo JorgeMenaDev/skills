@@ -1,10 +1,10 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 
 import { readFile, writeFile } from "node:fs/promises";
 
 function usage() {
   return `Usage:
-  node gsc-to-backlog.mjs --input gsc-response.json [--output backlog.md] [--start-id 20]
+  bun gsc-to-backlog.mjs --input gsc-response.json [--output backlog.md] [--start-id 20]
 
 Converts Search Console query+page rows into draft .seo/backlog.md Ready rows.
 Use this as a review draft, not an automatic prioritization decision.`;

@@ -1,10 +1,10 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 
 import { readFile, writeFile } from "node:fs/promises";
 
 function usage() {
   return `Usage:
-  node monthly-report.mjs --input monthly-report.json [--output report.md]
+  bun monthly-report.mjs --input monthly-report.json [--output report.md]
 
 Builds a one-page SEO report from exported monthly state:
 GSC current/previous rows, backlog counts, keyword tier counts, and content calendar snapshot.`;

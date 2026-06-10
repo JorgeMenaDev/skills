@@ -65,6 +65,15 @@ Manual URL Inspection requests are an exception, not a discovery strategy. Use t
 
 Do not turn this into a recurring manual submission habit. Scalable discovery should come from sitemap, internal links, and content quality.
 
+## No-Mutation Validation
+
+For `release-dogfood` or read-only runs:
+
+- Use existing `.seo` GSC reports, public sitemap/robots/status checks, and repo evidence.
+- Do not configure OAuth, request exports, inspect private GSC pages, click URL Inspection, or request indexing.
+- Mark query/page opportunity work as `partial` when no current GSC rows are already available.
+- Record the exact missing evidence and the safe follow-up owner.
+
 ## Repeatable API Auth Setup
 
 Use this only when the user already has Google Cloud/Search Console access and agrees to configure API auth. Never print credential values.
@@ -78,7 +87,7 @@ Use this only when the user already has Google Cloud/Search Console access and a
 4. Run:
 
 ```bash
-node scripts/gsc-fetch.mjs --site https://example.com/ --start 2026-01-01 --end 2026-03-31 --output .seo/reports/gsc-2026-03-31.json
+bun scripts/gsc-fetch.mjs --site https://example.com/ --start 2026-01-01 --end 2026-03-31 --output .seo/reports/gsc-2026-03-31.json
 ```
 
 If the OAuth refresh fails, report only the HTTP status and the likely setup issue. Do not paste token endpoint response bodies into chat, reports, commits, or issues.
@@ -88,13 +97,13 @@ If the OAuth refresh fails, report only the HTTP status and the likely setup iss
 When a Google OAuth client already exists, use the helper instead of manually pasting token responses:
 
 ```bash
-GSC_CLIENT_ID=<client-id> node scripts/gsc-oauth.mjs --print-auth-url
+GSC_CLIENT_ID=<client-id> bun scripts/gsc-oauth.mjs --print-auth-url
 ```
 
 Open the URL, grant Search Console read-only access, then copy only the `code` query parameter from the redirect URL. Exchange it into an ignored env file:
 
 ```bash
-GSC_CLIENT_ID=<client-id> GSC_CLIENT_SECRET=<client-secret> node scripts/gsc-oauth.mjs --code <returned-code> --output .env.local
+GSC_CLIENT_ID=<client-id> GSC_CLIENT_SECRET=<client-secret> bun scripts/gsc-oauth.mjs --code <returned-code> --output .env.local
 ```
 
 The helper writes `GSC_CLIENT_ID`, `GSC_CLIENT_SECRET`, and `GSC_REFRESH_TOKEN` to the output file and prints only the file path. Use `--force` only when intentionally replacing a previous local token file.

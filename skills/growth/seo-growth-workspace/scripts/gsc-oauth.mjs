@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 
 import { writeFile } from "node:fs/promises";
 
@@ -7,10 +7,10 @@ const scope = "https://www.googleapis.com/auth/webmasters.readonly";
 function usage() {
   return `Usage:
   # 1. Generate a Google OAuth consent URL.
-  GSC_CLIENT_ID=... node gsc-oauth.mjs --print-auth-url [--redirect-uri http://localhost:8080/oauth2callback]
+  GSC_CLIENT_ID=... bun gsc-oauth.mjs --print-auth-url [--redirect-uri http://localhost:8080/oauth2callback]
 
   # 2. Exchange the returned code into a local env file.
-  GSC_CLIENT_ID=... GSC_CLIENT_SECRET=... node gsc-oauth.mjs --code 4/... --output .env.local [--redirect-uri http://localhost:8080/oauth2callback] [--force]
+  GSC_CLIENT_ID=... GSC_CLIENT_SECRET=... bun gsc-oauth.mjs --code <returned-code> --output .env.local [--redirect-uri http://localhost:8080/oauth2callback] [--force]
 
 This helper never prints credential values or token response bodies. Use the output file with gsc-fetch.mjs.`;
 }

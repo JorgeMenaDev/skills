@@ -41,6 +41,15 @@ If the monthly report state has not been assembled yet, use `scripts/monthly-sta
 
 If the target has a content engine, export keyword-tier and calendar snapshots through its established CLI, API, or admin export path. Record the command or source in the report without exposing secrets.
 
+## No-Mutation Validation
+
+In `release-dogfood`, do not force a monthly report when current/previous GSC, analytics, or content-engine exports are unavailable. Instead:
+
+- Record which data sources were not checked by constraint.
+- Use repo/public evidence and existing `.seo/reports/*` as historical context.
+- Mark monthly reporting as `partial` if no fresh comparable data exists.
+- Write the dogfood report, not a monthly performance report.
+
 ## Rules
 
 - Prioritize calls, leads, qualified traffic, indexed pages, and money-page movement over vanity metrics.

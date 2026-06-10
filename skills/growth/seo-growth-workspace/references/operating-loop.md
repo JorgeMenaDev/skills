@@ -24,9 +24,9 @@ Read current state before choosing work:
 4. `.seo/strategy.md` for durable decisions, tooling, market, language, and production paths.
 5. Latest relevant `.seo/reports/*` for dated GSC, analytics, content, pSEO, backlink, local SEO, validation, or admin evidence.
 6. `.seo/backlinks/work-log.md` for pending outreach, submissions, and live-link states.
-7. `.seo/context.md` for business context, ICP, competitors, conversion paths, and constraints.
+7. `.seo/context.md` for business context, ICP, competitors, conversion paths, and constraints. If missing in a mature workspace, use `.seo/strategy.md`, `.seo/audit.md`, `.seo/README.md`, and `.agents/product-marketing.md` for the current run and record workspace drift.
 
-If `.seo/` is missing, run `bootstrap` first. If a required file is missing in an existing workspace, create only that missing file and preserve existing notes.
+If `.seo/` is missing, run `bootstrap` first. If a required file is missing in an existing workspace, create only that missing file and preserve existing notes unless the run is no-write or `release-dogfood`; in those modes, report the drift instead of writing.
 
 ## Target Boundary
 

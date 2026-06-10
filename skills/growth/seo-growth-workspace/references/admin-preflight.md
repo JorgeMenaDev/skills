@@ -19,3 +19,12 @@ Run this before changing authenticated production surfaces. Save results in `.se
 - Record exact dates for fresh states such as new GSC properties or just-submitted sitemaps.
 - Treat `Couldn't fetch` immediately after sitemap submission as a retry state if live `curl`/browser fetch succeeds; log a follow-up instead of over-fixing.
 - If the admin UI and CLI/API disagree, stop that lane and log the mismatch before scheduling or publishing more work.
+
+## No-Mutation Validation
+
+Use this path for `release-dogfood`, read-only audits, or runs where authenticated/admin changes are out of scope.
+
+- Use repo, public URLs, existing `.seo` reports, and already-available screenshots/exports.
+- Mark GSC, analytics, hosting dashboards, GBP, CMS, or billing/admin surfaces as `not checked by constraint` when access would require auth, export setup, or mutation.
+- Do not ask for OAuth setup, dashboard exports, indexing requests, admin toggles, or provider writes during release validation.
+- Record what proof would be needed for a real operation run.

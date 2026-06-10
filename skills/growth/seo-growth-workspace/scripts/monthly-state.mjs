@@ -1,10 +1,10 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 
 import { readFile, writeFile } from "node:fs/promises";
 
 function usage() {
   return `Usage:
-  node monthly-state.mjs --target "Demo SaaS" --date-range "2026-04-01 to 2026-04-30" --comparison-range "2026-03-01 to 2026-03-31" --gsc-current current.json --gsc-previous previous.json --backlog .seo/backlog.md [--keyword-tiers tiers.json] [--calendar calendar.json] [--output monthly-state.json]
+  bun monthly-state.mjs --target "Demo SaaS" --date-range "2026-04-01 to 2026-04-30" --comparison-range "2026-03-01 to 2026-03-31" --gsc-current current.json --gsc-previous previous.json --backlog .seo/backlog.md [--keyword-tiers tiers.json] [--calendar calendar.json] [--output monthly-state.json]
 
 Builds the input JSON for monthly-report.mjs from exported GSC rows and local SEO/content-engine state.
 Do not include secrets in any input file.`;

@@ -6,10 +6,10 @@ Use for schema audits, JSON-LD implementation, and rich-results validation.
 
 | Site/page type          | Preferred schema                                                               |
 | ----------------------- | ------------------------------------------------------------------------------ |
-| SaaS/product homepage   | `Organization`, `WebSite`, `SoftwareApplication`, `FAQPage` if real FAQs exist |
-| Local business homepage | `LocalBusiness` subtype, `WebSite`, `FAQPage` if real FAQs exist               |
+| SaaS/product homepage   | `Organization`, `WebSite`, `SoftwareApplication`; `FAQPage` only if visible FAQs need semantic markup |
+| Local business homepage | `LocalBusiness` subtype, `WebSite`; `FAQPage` only if visible FAQs need semantic markup |
 | Blog post/article       | `Article` or `BlogPosting`, `BreadcrumbList` if breadcrumbs exist              |
-| pSEO comparison         | `WebPage`, `BreadcrumbList`, `FAQPage` only with visible FAQs                  |
+| pSEO comparison         | `WebPage`, `BreadcrumbList`; `FAQPage` only with visible page-specific FAQs    |
 | Pricing                 | `Product`/`Offer` only when pricing is visible and accurate                    |
 
 ## Guardrails
@@ -19,6 +19,7 @@ Use for schema audits, JSON-LD implementation, and rich-results validation.
 - Use absolute canonical URLs.
 - Keep IDs stable with `@id` anchors.
 - Prefer one graph per page over scattered duplicate snippets.
+- FAQ rich results are no longer appearing in Google Search as of 2026-05-07, and Search Console API support for the FAQ appearance is being deprecated in August 2026. Use `FAQPage` only when visible FAQs genuinely help users; do not treat it as a Google rich-result growth lever.
 
 ## Audit Matrix
 
@@ -31,9 +32,9 @@ Schema is not a site-level yes/no. Sample at least one representative URL per pu
 
 | Route family | Expected schema | Rendered types/counts | Visible-content match? | Leakage? | Validation guard? |
 | --- | --- | --- | --- | --- | --- |
-| Homepage | `Organization`, `WebSite`, product/local type, real homepage FAQ if present | | | | |
+| Homepage | `Organization`, `WebSite`, product/local type, visible homepage FAQ only when useful | | | | |
 | Blog/article | `Article` or `BlogPosting`, `BreadcrumbList` when breadcrumbs exist | | | | |
-| Published pSEO | `WebPage`, `BreadcrumbList`, page-specific `FAQPage` only with visible FAQs | | | | |
+| Published pSEO | `WebPage`, `BreadcrumbList`, page-specific `FAQPage` only when visible FAQs add real value | | | | |
 | Planned/noindex pSEO | Site identity only unless the page is intentionally indexable | | | | |
 | Resource/tool | `TechArticle`, `HowTo`, `SoftwareApplication`, or `WebPage` only when visible content supports it | | | | |
 | Pricing | `Product`/`Offer` only when pricing and terms are visible and accurate | | | | |

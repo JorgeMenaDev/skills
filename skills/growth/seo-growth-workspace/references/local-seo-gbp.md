@@ -2,6 +2,8 @@
 
 Use only when the business has local intent, service areas, a storefront, GBP, map-pack competitors, reviews, or citations.
 
+If those signals are absent, exit the phase as `not applicable` and record the evidence. Do not create a local SEO action for SaaS, publisher, or product sites without local intent.
+
 ## Operating Pattern
 
 1. Load business context: NAP, GBP URL, services, service areas, competitors, top keywords.

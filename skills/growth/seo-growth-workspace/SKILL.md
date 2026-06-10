@@ -7,7 +7,7 @@ description: "Use when starting, auditing, or operating SEO, Search Console, sch
 
 Run a durable SEO operating workspace for a product or local-business website. The goal is not generic advice; it is evidence, prioritization, implementation, verification, and continuity.
 
-Use this skill as a mode router. Load only the reference needed for the selected mode.
+Use this skill as a mode router. Load only the reference needed for the selected mode or phase.
 
 ## Ground Rules
 
@@ -46,7 +46,7 @@ Use repo-local `.seo/` by default. Use another durable workspace root only when 
 
 ## Choose A Mode
 
-Pick the narrowest mode that satisfies the request. If no narrower mode is requested, use `operate`: read existing `.seo/` state, choose the next evidence-backed action, do one useful step, verify it, and log the handoff. If the user asks for a full first run, start with `bootstrap`, then continue in `operate`.
+Pick the narrowest mode that satisfies the request. If no narrower mode is requested, use `operate`: read existing `.seo/` state, choose the next evidence-backed action, do one useful step, verify it, and log the handoff. If the user asks for a full first run, load `references/phase-architecture.md`, start with `bootstrap`, then continue in `operate`.
 
 | Mode | Use when | Exit criteria |
 | --- | --- | --- |
@@ -57,14 +57,17 @@ Pick the narrowest mode that satisfies the request. If no narrower mode is reque
 | `pseo-planning` | Creating pSEO page types, data, or publish gates | `.seo/pseo/plan.md` and data/specs exist; publish/no-publish decision is explicit |
 | `local-seo` | GBP/local-map intent, service areas, citations, reviews, local competitors | Competitor/GBP matrix and prioritized local action plan are produced |
 | `monthly-report` | Reporting performance or deciding next-month SEO actions | One-page report with wins, problems, metric deltas, and the single next action |
+| `release-dogfood` | Validating this skill inside a real repo before publishing it | Phase coverage, skill frictions, and limitations are reported without production mutation |
 
 ## Progressive References
 
 Load only the file needed for the mode or ticket:
 
+- First-run phase architecture: `references/phase-architecture.md`
 - Operating loop and handoff: `references/operating-loop.md`
 - Business context intake: `references/business-context.md`
 - Admin/auth evidence: `references/admin-preflight.md`
+- Local adapters and repo-specific bridges: `references/adapters.md`
 - Technical SEO checks/fixes: `references/technical-seo.md`
 - Search Console opportunity analysis: `references/search-console.md`
 - Keywords/blog/content-engine operations: `references/content-ops.md`
@@ -77,6 +80,8 @@ Load only the file needed for the mode or ticket:
 - Local SEO/GBP/citations: `references/local-seo-gbp.md`
 - Backlinks/entity authority: `references/backlinks-entity.md`
 - Monthly reporting: `references/monthly-reporting.md`
+- Release validation before publishing the skill: `references/release-checklist.md`
+- Dogfood this skill in a real repo: `references/skill-release-validation.md`
 
 Use templates from `templates/` for report shape. Use scripts when deterministic scaffolding or analysis is useful:
 
@@ -89,24 +94,32 @@ Use templates from `templates/` for report shape. Use scripts when deterministic
 - `scripts/monthly-state.mjs` builds monthly reporting state from exported GSC rows, backlog, keyword tiers, and calendar snapshots.
 - `scripts/monthly-report.mjs` builds a one-page monthly SEO report from exported GSC, backlog, keyword, and calendar state.
 - `scripts/validate-skill.mjs` checks references/templates/scripts and smoke-tests helpers.
+- `scripts/evaluate-release.mjs` scores release readiness before publishing the skill.
+- `scripts/export-clean-skill.mjs` installs the portable package into another repo without copying release-run artifacts.
 
 Use `fixtures/` only when validating or editing bundled scripts.
 
 ## Core Workflow
 
 1. State assumptions, target root, live URL, market, language, and success criteria.
-2. Choose the mode and load only its reference file. For `operate`, load `references/operating-loop.md`, then load the narrow reference required by the chosen ticket.
-3. Create or update `.seo/context.md` using `references/business-context.md`. Mark unknowns plainly.
-4. Capture admin/auth evidence with `references/admin-preflight.md` before changing production or authenticated surfaces.
-5. Load `references/ticket-architecture.md` before writing or changing `.seo/backlog.md`.
-6. Audit production and code: robots, sitemap, canonicals, metadata, status codes, redirects, mobile rendering, schema, internal links, noindex, HTTPS, performance, conversion paths, analytics, Search Console, backlink state.
-7. Write `.seo/audit.md` with evidence and link each finding to a backlog ID.
-8. Seed `.seo/backlog.md` in priority order: P0 indexability/Search Console/sitemap, P1 CTR/conversion/analytics, P2 CWV/schema, P3 content/internal links/pSEO, P4 backlinks/regional/monitoring.
-9. Implement the top accessible Ready ticket.
-10. Run checks/build with the target repo's package manager.
-11. Deploy through the target repo's established production path when access exists.
-12. Verify live production metadata, robots/sitemap/schema/analytics/UI. Use at least one mobile viewport for UI/CTA work.
-13. Update `.seo/backlog.md`, `.seo/log.md`, `.seo/audit.md`, `.seo/strategy.md`, and `.seo/backlinks/work-log.md` only where facts changed.
+2. Classify the site type and next phase with `references/phase-architecture.md` when the request is broad, first-run, or ambiguous.
+3. Choose the mode and load only its reference file. For `operate`, load `references/operating-loop.md`, then load the narrow reference required by the chosen ticket.
+4. Create or update `.seo/context.md` using `references/business-context.md`. In no-write or `release-dogfood` mode, use existing context from `.seo/strategy.md`, `.seo/audit.md`, `.seo/README.md`, and `.agents/product-marketing.md` if `.seo/context.md` is missing, then record workspace drift instead of forcing a write.
+5. Capture admin/auth evidence with `references/admin-preflight.md` before changing production or authenticated surfaces.
+6. Load `references/adapters.md` when the repo has a content engine, CMS, publisher bot, local skill customizations, or `.seo/adapters/` notes.
+7. Load `references/ticket-architecture.md` before writing or changing `.seo/backlog.md`.
+8. Audit production and code in phase order: crawl/index foundations, metadata, schema, measurement, conversion paths, content/pSEO readiness, local/authority signals, and reporting.
+9. Write `.seo/audit.md` with evidence and link each finding to a backlog ID.
+10. Seed `.seo/backlog.md` in priority order: P0 indexability/Search Console/sitemap, P1 CTR/conversion/analytics, P2 CWV/schema, P3 content/internal links/pSEO, P4 backlinks/regional/monitoring.
+11. Implement the top accessible Ready ticket.
+12. Run checks/build with the target repo's package manager.
+13. Deploy through the target repo's established production path when access exists and the user has approved it.
+14. Verify live production metadata, robots/sitemap/schema/analytics/UI. Use at least one mobile viewport for UI/CTA work.
+15. Update `.seo/backlog.md`, `.seo/log.md`, `.seo/audit.md`, `.seo/strategy.md`, and `.seo/backlinks/work-log.md` only where facts changed.
+
+## Optional Expert Lenses
+
+When installed, use adjacent marketing skills as lenses, not dependencies: `product-marketing` for ICP/positioning/proof, `customer-research` for pains and objections, `content-strategy` for clusters, `copywriting` or `copy-editing` for landing-page/snippet copy, `cro` for conversion paths, `analytics` for measurement proof, `schema` for structured data, `seo-audit` for a broad technical cross-check, `ai-seo` for AI search visibility without hacks, `site-architecture` for navigation/internal links, and `programmatic-seo` for pSEO planning. If they are unavailable, continue with this skill's references.
 
 ## Content And pSEO Gates
 

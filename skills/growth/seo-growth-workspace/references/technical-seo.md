@@ -8,7 +8,7 @@ Use for `technical-seo-fix` mode and for the first bootstrap audit.
 | --------------- | ---------------------------------------------------------------------------------------- | ---------------------------------- |
 | Indexability    | `robots.txt`, `sitemap.xml`, no accidental `noindex`, status codes, redirects            | URLs, status codes, file paths     |
 | Metadata        | title, description, canonical, Open Graph/Twitter, `metadataBase` for Next.js            | rendered head or source            |
-| Schema          | Organization/WebSite/SoftwareApplication/Product/LocalBusiness/FAQ/Article as applicable | JSON-LD types and validation notes |
+| Schema          | Organization/WebSite/SoftwareApplication/Product/LocalBusiness/Article as applicable; FAQ only for visible FAQs | JSON-LD types and validation notes |
 | Internal links  | homepage to money pages, blog hub, pSEO hubs, CTA paths                                  | source route and target route      |
 | Performance     | mobile render, CWV/PageSpeed/Lighthouse when requested or available                      | score/report link                  |
 | Analytics       | installed SDK/tag, live event/pageview proof, conversion path                            | provider and screenshot/log note   |

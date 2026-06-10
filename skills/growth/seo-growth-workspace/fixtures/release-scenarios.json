@@ -1,0 +1,46 @@
+{
+  "profiles": [
+    {
+      "id": "product-content-engine",
+      "siteType": "software-product",
+      "signals": ["software product", "content engine", "existing SEO workspace"],
+      "expectedModes": ["operate", "content-ops", "pseo-planning"],
+      "expectedPhases": ["classification", "measurement", "content", "pseo", "reporting"]
+    },
+    {
+      "id": "spanish-marketing-site",
+      "siteType": "marketing-site",
+      "signals": ["single public marketing site", "Spanish copy", "schema and analytics"],
+      "expectedModes": ["bootstrap", "technical-seo-fix"],
+      "expectedPhases": ["technical", "metadata", "schema", "measurement", "conversion"]
+    },
+    {
+      "id": "compliance-heavy-business-site",
+      "siteType": "regulated-service",
+      "signals": ["business service", "trust proof", "compliance content"],
+      "expectedModes": ["bootstrap", "content-ops"],
+      "expectedPhases": ["classification", "technical", "metadata", "content", "authority"]
+    },
+    {
+      "id": "authenticated-saas",
+      "siteType": "saas",
+      "signals": ["app repository", "authenticated admin surfaces", "conversion paths"],
+      "expectedModes": ["bootstrap", "technical-seo-fix"],
+      "expectedPhases": ["classification", "technical", "measurement", "conversion", "reporting"]
+    },
+    {
+      "id": "legal-local-service",
+      "siteType": "local-service",
+      "signals": ["legal service", "local market", "content guidance"],
+      "expectedModes": ["bootstrap", "local-seo", "content-ops"],
+      "expectedPhases": ["classification", "technical", "metadata", "local", "content", "authority"]
+    },
+    {
+      "id": "local-business",
+      "siteType": "local-business",
+      "signals": ["GBP", "NAP consistency", "reviews", "service areas", "citations"],
+      "expectedModes": ["bootstrap", "local-seo"],
+      "expectedPhases": ["classification", "technical", "metadata", "local", "authority", "reporting"]
+    }
+  ]
+}

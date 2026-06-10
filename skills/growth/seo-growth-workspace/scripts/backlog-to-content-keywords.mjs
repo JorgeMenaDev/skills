@@ -3,7 +3,7 @@ import path from "node:path";
 
 function usage() {
   return `Usage:
-  node backlog-to-content-keywords.mjs --backlog .seo/backlog.md --project slug --locale en --output keywords-draft.json
+  bun backlog-to-content-keywords.mjs --backlog .seo/backlog.md --project slug --locale en --output keywords-draft.json
 
 Extracts Ready/In progress content tickets into a reviewable content keyword draft. Review and enrich the result before import.`;
 }

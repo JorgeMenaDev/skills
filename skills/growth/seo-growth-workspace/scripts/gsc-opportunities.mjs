@@ -1,10 +1,10 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 
 import { readFile, writeFile } from "node:fs/promises";
 
 function usage() {
   return `Usage:
-  node gsc-opportunities.mjs --input gsc-response.json [--output report.md]
+  bun gsc-opportunities.mjs --input gsc-response.json [--output report.md]
 
 Input can be either:
   - Google Search Console searchanalytics.query JSON with rows[]

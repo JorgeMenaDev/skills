@@ -9,6 +9,7 @@ Use for `content-ops` mode: keywords, clusters, blog calendars, briefs, article 
 3. Blog renderer or publishing destination exists before scheduling content.
 4. Sitemap generation includes blog hub and generated posts.
 5. Production backend/CLI and authenticated UI agree on project/calendar state.
+6. Content-engine or publisher-bot repos have a local adapter in `.seo/adapters/` or equivalent strategy notes that map project, keyword, calendar, article, publish, and reconciliation proof commands.
 
 If any gate fails, create a blocker or technical ticket before importing/scheduling content.
 
@@ -54,6 +55,7 @@ Use `templates/content-plan.md`. Include:
 
 When the target uses a content engine:
 
+- Load `references/adapters.md` and the repo's local adapter before creating/importing/scheduling content work.
 - Store durable project config and keyword batches in the target repo's established content-engine paths.
 - Prefer a small import script for repeatability.
 - Use the repo's CLI/status commands to verify tiers/calendar/status.

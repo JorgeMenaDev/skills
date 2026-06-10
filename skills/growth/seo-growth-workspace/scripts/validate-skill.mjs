@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -10,9 +10,12 @@ const skillRoot = path.resolve(scriptDir, "..");
 
 const requiredFiles = [
   "SKILL.md",
+  "references/phase-architecture.md",
   "references/operating-loop.md",
   "references/business-context.md",
   "references/admin-preflight.md",
+  "references/adapters.md",
+  "references/skill-release-validation.md",
   "references/technical-seo.md",
   "references/search-console.md",
   "references/content-ops.md",
@@ -25,6 +28,7 @@ const requiredFiles = [
   "references/local-seo-gbp.md",
   "references/backlinks-entity.md",
   "references/monthly-reporting.md",
+  "references/release-checklist.md",
   "templates/admin-setup.md",
   "templates/gsc-opportunity.md",
   "templates/content-plan.md",
@@ -33,6 +37,7 @@ const requiredFiles = [
   "templates/monthly-report.md",
   "templates/pseo-plan.md",
   "templates/taxonomy.md",
+  "templates/skill-dogfood-report.md",
   "scripts/bootstrap-seo-workspace.mjs",
   "scripts/gsc-fetch.mjs",
   "scripts/gsc-oauth.mjs",
@@ -41,11 +46,14 @@ const requiredFiles = [
   "scripts/backlog-to-content-keywords.mjs",
   "scripts/monthly-state.mjs",
   "scripts/monthly-report.mjs",
+  "scripts/evaluate-release.mjs",
+  "scripts/export-clean-skill.mjs",
   "fixtures/gsc-sample.json",
   "fixtures/backlog-sample.md",
   "fixtures/monthly-calendar-sample.json",
   "fixtures/monthly-keyword-tiers-sample.json",
   "fixtures/monthly-report-sample.json",
+  "fixtures/release-scenarios.json",
 ];
 
 function run(command, args) {
@@ -80,7 +88,7 @@ for (const file of requiredFiles.filter((file) =>
 
 const bootstrapRoot = mkdtempSync(path.join(tmpdir(), "seo-skill-"));
 try {
-  run("node", ["scripts/bootstrap-seo-workspace.mjs", bootstrapRoot]);
+  run("bun", ["scripts/bootstrap-seo-workspace.mjs", bootstrapRoot]);
   assert(
     existsSync(path.join(bootstrapRoot, ".seo/taxonomy.md")),
     "Bootstrap did not create taxonomy",
@@ -97,7 +105,7 @@ try {
   rmSync(bootstrapRoot, { recursive: true, force: true });
 }
 
-const gscOutput = run("node", [
+const gscOutput = run("bun", [
   "scripts/gsc-opportunities.mjs",
   "--input",
   "fixtures/gsc-sample.json",
@@ -115,19 +123,19 @@ assert(
   "GSC output missing expected CTR query",
 );
 
-const gscFetchHelp = run("node", ["scripts/gsc-fetch.mjs", "--help"]);
+const gscFetchHelp = run("bun", ["scripts/gsc-fetch.mjs", "--help"]);
 assert(
   gscFetchHelp.includes("GSC_ACCESS_TOKEN"),
   "GSC fetch help should document token auth",
 );
 
-const gscOAuthHelp = run("node", ["scripts/gsc-oauth.mjs", "--help"]);
+const gscOAuthHelp = run("bun", ["scripts/gsc-oauth.mjs", "--help"]);
 assert(
   gscOAuthHelp.includes("--print-auth-url"),
   "GSC OAuth help should document auth URL generation",
 );
 
-const gscAuthUrl = run("node", [
+const gscAuthUrl = run("bun", [
   "scripts/gsc-oauth.mjs",
   "--client-id",
   "demo-client-id",
@@ -140,7 +148,7 @@ assert(
 
 const keywordDraft = path.join(tmpdir(), `seo-keywords-${Date.now()}.json`);
 try {
-  run("node", [
+  run("bun", [
     "scripts/backlog-to-content-keywords.mjs",
     "--backlog",
     "fixtures/backlog-sample.md",
@@ -170,7 +178,7 @@ const gscKeywordDraft = path.join(
   `seo-gsc-keywords-${Date.now()}.json`,
 );
 try {
-  run("node", [
+  run("bun", [
     "scripts/gsc-to-backlog.mjs",
     "--input",
     "fixtures/gsc-sample.json",
@@ -179,7 +187,7 @@ try {
     "--start-id",
     "40",
   ]);
-  run("node", [
+  run("bun", [
     "scripts/backlog-to-content-keywords.mjs",
     "--backlog",
     gscBacklogDraft,
@@ -204,7 +212,7 @@ try {
   rmSync(gscKeywordDraft, { force: true });
 }
 
-const monthlyReport = run("node", [
+const monthlyReport = run("bun", [
   "scripts/monthly-report.mjs",
   "--input",
   "fixtures/monthly-report-sample.json",
@@ -217,6 +225,73 @@ assert(
   monthlyReport.includes("Keyword tiers"),
   "Monthly report missing keyword tier metric",
 );
+
+const exportTarget = mkdtempSync(path.join(tmpdir(), "seo-export-"));
+try {
+  const dryRun = run("bun", [
+    "scripts/export-clean-skill.mjs",
+    "--target",
+    exportTarget,
+    "--dry-run",
+  ]);
+  assert(dryRun.includes('"dryRun": true'), "Exporter dry-run should report dryRun true");
+  assert(
+    !existsSync(path.join(exportTarget, ".agents/skills/seo-growth-workspace/SKILL.md")),
+    "Exporter dry-run should not install files",
+  );
+
+  run("bun", [
+    "scripts/export-clean-skill.mjs",
+    "--target",
+    exportTarget,
+  ]);
+  assert(
+    existsSync(path.join(exportTarget, ".agents/skills/seo-growth-workspace/SKILL.md")),
+    "Clean export did not install SKILL.md",
+  );
+  assert(
+    !existsSync(
+      path.join(
+        exportTarget,
+        ".agents/skills/seo-growth-workspace/SEO_GROWTH_WORKSPACE_AUDIT.md",
+      ),
+    ),
+    "Clean export should exclude release audit artifacts by default",
+  );
+  const extraFile = path.join(
+    exportTarget,
+    ".agents/skills/seo-growth-workspace/references/local-adapter.md",
+  );
+  const modifiedFile = path.join(
+    exportTarget,
+    ".agents/skills/seo-growth-workspace/SKILL.md",
+  );
+  writeFileSync(extraFile, "# local adapter\n");
+  writeFileSync(modifiedFile, `${readFileSync(modifiedFile, "utf-8")}\n<!-- local edit -->\n`);
+  const blocked = spawnSync(
+    "bun",
+    ["scripts/export-clean-skill.mjs", "--target", exportTarget],
+    {
+      cwd: skillRoot,
+      encoding: "utf-8",
+    },
+  );
+  assert(blocked.status !== 0, "Exporter should refuse risky replacement without --force");
+  assert(blocked.stdout.includes("local-adapter.md"), "Exporter should report local-only files");
+  assert(blocked.stdout.includes("SKILL.md"), "Exporter should report modified same-path files");
+  run("bun", [
+    "scripts/export-clean-skill.mjs",
+    "--target",
+    exportTarget,
+    "--force",
+  ]);
+  assert(
+    !existsSync(path.join(exportTarget, ".seo/reports/seo-growth-workspace-install-notes.md")),
+    "Exporter should not write install notes unless requested",
+  );
+} finally {
+  rmSync(exportTarget, { recursive: true, force: true });
+}
 assert(
   monthlyReport.includes("Content calendar"),
   "Monthly report missing content calendar metric",
@@ -235,7 +310,7 @@ const monthlyStateReport = path.join(
   `seo-monthly-report-${Date.now()}.md`,
 );
 try {
-  run("node", [
+  run("bun", [
     "scripts/monthly-state.mjs",
     "--target",
     "Demo SaaS",
@@ -256,7 +331,7 @@ try {
     "--output",
     monthlyState,
   ]);
-  run("node", [
+  run("bun", [
     "scripts/monthly-report.mjs",
     "--input",
     monthlyState,
