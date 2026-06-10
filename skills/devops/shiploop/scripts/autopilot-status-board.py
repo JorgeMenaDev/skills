@@ -114,6 +114,20 @@ def first_pr_ref(*texts: str | None) -> str | None:
     return None
 
 
+def latest_comment_pr(repo: str, number: int) -> str | None:
+    """Fallback: workers often record PR numbers in timeline comments, not the body block."""
+    try:
+        data = run_gh(["issue", "view", str(number), "--repo", repo, "--json", "comments"])
+    except SystemExit:
+        return None
+    comments = (data or {}).get("comments") or []
+    for comment in reversed(comments):
+        ref = first_pr_ref(comment.get("body"))
+        if ref:
+            return ref
+    return None
+
+
 def connect_state_db(db_path: str | None) -> sqlite3.Connection | None:
     if not db_path:
         return None
@@ -211,11 +225,14 @@ def derive_status(
     task: TaskState | None,
     ready_label: str,
     blocked_label: str,
+    human_review_label: str,
 ) -> str:
     issue_closed = issue.get("state", "").upper() == "CLOSED"
     task_status = (task.status or "").lower() if task else ""
     if blocked_label in labels or task_status == "blocked":
         return "blocked"
+    if human_review_label in labels and not issue_closed:
+        return "human-review"
     if issue_closed or task_status == "done":
         return "done"
     if task_status == "running" or (task and (task.worker_pid or task.current_run_id) and not task.completed_at):
@@ -230,6 +247,8 @@ def derive_status(
 def infer_next_action(status: str, task: TaskState | None, labels: list[str], ready_label: str) -> str:
     if status == "blocked":
         return "inspect blocker and unblock only after the condition is verified"
+    if status == "human-review":
+        return "human: review and merge the final PR"
     if status == "running":
         return "wait for worker completion, then verify gates"
     if status == "ready":
@@ -268,11 +287,11 @@ def build_rows(args: argparse.Namespace) -> list[BoardRow]:
         meta = parse_metadata_block(body)
         task_id = meta.get("task") or meta.get("kanban") or first_task_id(body)
         task = load_task(conn, task_id)
-        pr = meta.get("pr") or first_pr_ref(body)
+        pr = meta.get("pr") or first_pr_ref(body) or latest_comment_pr(args.repo, int(issue["number"]))
         phase = meta.get("phase")
         target_branch = meta.get("phase_branch") or meta.get("train_branch") or meta.get("target_branch")
         assignee = meta.get("worker") or meta.get("assignee") or (task.assignee if task else None)
-        status = derive_status(issue, labels, task, args.ready_label, args.blocked_label)
+        status = derive_status(issue, labels, task, args.ready_label, args.blocked_label, args.human_review_label)
 
         if issue.get("state", "").upper() == "OPEN" and args.ready_label in labels:
             ready_open_count += 1
@@ -342,7 +361,7 @@ def print_text(rows: list[BoardRow], args: argparse.Namespace) -> None:
         phase = f"Phase {row.phase}" if row.phase else f"Issue #{row.issue}"
         task = row.task
         heartbeat = human_age(age_seconds((task.last_heartbeat_at if task else None) or (task.run_started_at if task else None), int(time.time()))) if task else "n/a"
-        run = task.current_run_id or ("" if not task else None)
+        run = task.current_run_id if task else None
         print(f"{phase} - {row.board_status.upper()} - {row.title}")
         print(f"  Issue: #{row.issue} {row.issue_state.lower()} | Risk: {row.risk}")
         if row.task_id or task:
@@ -416,6 +435,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--label", default="shiploop", help="Issue label used to select Shiploop phases. Default: shiploop.")
     parser.add_argument("--ready-label", default="shiploop-ready", help="Ready label. Default: shiploop-ready.")
     parser.add_argument("--blocked-label", default="shiploop-blocked", help="Blocked label. Default: shiploop-blocked.")
+    parser.add_argument("--human-review-label", default="shiploop-human-review", help="Human-review label. Default: shiploop-human-review.")
     parser.add_argument("--state-db", dest="state_db", default=os.environ.get("AUTOPILOT_STATE_DB"), help="Optional task-state SQLite DB path. Default: $AUTOPILOT_STATE_DB.")
     parser.add_argument("--kanban-db", dest="state_db", help=argparse.SUPPRESS)
     parser.add_argument("--stale-seconds", type=int, default=15 * 60, help="Running task heartbeat age considered stale. Default: 900.")

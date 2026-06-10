@@ -1,6 +1,6 @@
 # Branching And PRs
 
-Use this reference when creating or resuming branches and pull requests.
+Use this reference for branch and PR mechanics. Actors matter: the kickoff agent creates only the train branch; every phase branch and phase PR belongs to the phase worker that owns it; the final PR belongs to the closeout worker.
 
 ## Branch Names
 
@@ -13,22 +13,30 @@ Derive `<run-slug>` from the parent issue title or plan title. Let the human or 
 
 ## Flow
 
-0. Use the real repo checkout only. Reject if the checkout is not on clean, up-to-date `main` before kickoff.
-1. Create or update the train branch from `main`, unless the human chose another target branch.
-2. Before each phase starts, update the train branch locally/remotely.
-3. Create the phase branch from the current train branch head.
-4. Worker opens the phase PR into the train branch.
-5. Worker runs the phase gate, records evidence on the child issue, waits for green checks, then merges its own phase PR into the train branch.
-6. After all phase PRs are merged, open the final PR from the train branch to `main` as draft.
-7. Run the final gate, fix findings on the train branch, mark the final PR ready, and label only the parent issue `shiploop-human-review`.
-8. Check out `main` again and leave the repo clean for the next run.
+Kickoff agent:
 
-Kickoff approval authorizes Shiploop to merge phase PRs into the train branch only after the phase gate passes, GitHub checks are green or explicitly waived by the human, no protected/default branch is being merged into, and evidence is posted to the child issue.
+1. Use the real repo checkout only. Reject if the checkout is not on clean, up-to-date `main` before kickoff.
+2. Create the train branch from `main` (unless the human chose another target branch), commit `.shiploop/config.yaml` on it, push it.
 
-Final PR merge into `main` is human-owned.
+Each phase worker, when the daemon spawns it:
 
-If checking out `main` after handoff would lose local work or leave the repo dirty, block and record the exact cleanup condition instead of hiding it.
+3. Self-preflight per `references/worker-contract.md`, then sync the train branch from origin.
+4. Create (or idempotently reuse) its phase branch from the current train head.
+5. Open (or reuse) the phase PR into the train branch.
+6. Run the phase gate, record evidence on its issue, verify checks are green or self-waive per `references/gates.md`, then merge its own phase PR into the train branch (squash).
+
+Closeout worker, when the last phase task completes:
+
+7. Open the final PR from the train branch to `main` as draft.
+8. Run the final gate, fix findings on the train branch, mark the final PR ready, label only the parent issue `shiploop-human-review`.
+9. Check out `main` and leave the repo clean for the next run. If that would lose local work, block with the exact cleanup condition instead of hiding it.
+
+## Merge Authority
+
+Kickoff approval grants every phase worker standing authority to merge its own phase PR into the train branch - no further human or supervisor confirmation exists - whenever all of these hold: the phase gate passed with recorded evidence, GitHub checks are green or self-waived under the rules in `references/gates.md`, the merge target is the train branch (never a protected or default branch), and the evidence is posted on the child issue before merging.
+
+Final PR merge into `main` is always human-owned.
 
 ## Conflicts
 
-If a phase PR conflicts with the train branch, the phase worker resolves the conflict, reruns the phase gate, updates evidence, and proceeds. Block only for product, architecture, safety, credential, or ambiguous conflict decisions.
+If a phase PR conflicts with the train branch, the phase worker resolves the conflict, reruns the phase gate, updates evidence, and proceeds. It blocks only for product, architecture, safety, credential, or ambiguous conflict decisions.

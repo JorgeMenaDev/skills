@@ -1,6 +1,6 @@
 # Status Board CLI
 
-Use `scripts/autopilot-status-board.py` for read-only inspection of a Shiploop run. It reads GitHub phase issues and can optionally join them with a task-state SQLite database for worker status, runs, heartbeat age, and drift warnings.
+Use `scripts/autopilot-status-board.py` for read-only inspection of a Shiploop run. It is a human observability tool for peeking at an unattended run - it never mutates anything and nothing in the run depends on it. It reads GitHub phase issues and can optionally join them with a task-state SQLite database for worker status, runs, heartbeat age, and drift warnings.
 
 ## Requirements
 
@@ -15,7 +15,7 @@ No repository names, labels, milestones, task-state paths, or worker names are h
 ```sh
 python3 scripts/autopilot-status-board.py \
   --repo OWNER/REPO \
-  --milestone "Example Release Train"
+  --label shiploop
 ```
 
 JSON output:
@@ -23,9 +23,11 @@ JSON output:
 ```sh
 python3 scripts/autopilot-status-board.py \
   --repo OWNER/REPO \
-  --milestone "Example Release Train" \
+  --label shiploop \
   --format json
 ```
+
+`--milestone "<title>"` is an optional extra filter for repos that assign run issues to a milestone (kickoff does not create one by default).
 
 Custom labels:
 
@@ -95,4 +97,4 @@ The board flags common mismatches:
 - multiple open phases are ready in the same run;
 - running task heartbeat is stale.
 
-The board never mutates anything. Treat drift as input to a supervisor or operator.
+The board never mutates anything, and drift never gates the run - exceptions surface only as blocked adapter tasks plus `shiploop-blocked` labels, which wait for a human. Note that with the full task graph created at kickoff, later phases existing as pending/parent-gated tasks from day one is normal, not drift.
