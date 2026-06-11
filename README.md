@@ -73,6 +73,7 @@ Growth agents love opening five lanes at once. This repo prefers one current foc
 ### DevOps
 
 - **[shiploop](./skills/devops/shiploop/SKILL.md)** — Execute plans, fixes, and features through durable GitHub issue phases, branch gates, review evidence, and optional worker adapters.
+- **[fixloop](./skills/devops/fixloop/SKILL.md)** — Production incident loop: triage alerts, investigate read-only, ledger every incident in GitHub issues, fix only on evidence, verify, ship, close.
 
 ## Layout
 
