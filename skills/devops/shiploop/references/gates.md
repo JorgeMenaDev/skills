@@ -28,6 +28,7 @@ gates:
   phase:
     - bun run check
   final: autoreview
+implementer: codex exec -C <repo-path> -s workspace-write   # command prefix; worker appends the prompt
 labels:            # optional aliases
   ready: shiploop-ready
 ```
@@ -83,7 +84,9 @@ If repo-local `autoreview` is missing, the closeout worker installs it unattende
 npx skills add https://github.com/steipete/clawdis --skill autoreview
 ```
 
-After installation it records the command, resulting files, and whether they are committed to the train branch, on the parent issue. Without that pre-approval, a closeout worker that finds `autoreview` missing blocks and waits. Kickoff preflight must confirm the worker profile can invoke `autoreview` (the helper is repo-local, so any worker with shell access to the checkout can).
+After installation it records the command, resulting files, and whether they are committed to the train branch, on the parent issue. Without that pre-approval, a closeout worker that finds `autoreview` missing blocks and waits.
+
+The helper file being repo-local is NOT enough: its review engine (and the implementer CLI) authenticate from credential files under the worker's `$HOME`, which adapters often isolate per profile. Kickoff preflight must EXECUTE both the implementer and the review engine in the worker's environment with a trivial call - see the adapter reference. A 401 mid-closeout is a preflightable failure.
 
 Then the closeout worker marks the PR ready, labels the parent issue `shiploop-human-review`, completes its task, and leaves the checkout clean on the target branch.
 

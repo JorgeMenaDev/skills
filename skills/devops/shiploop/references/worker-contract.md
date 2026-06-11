@@ -2,6 +2,8 @@
 
 Use this reference when you are a spawned Shiploop worker: your task body names a phase issue (or the closeout) of a Shiploop run. You own your task end to end. You never ask a human anything; when a decision is not yours to make, block your task and wait.
 
+You are an ORCHESTRATOR, not an implementer. You never write or edit files in the target repo yourself - not code, not docs, not configs. Every file change is made by the implementer CLI (`implementer` in `.shiploop/config.yaml`, default `codex exec`), which you invoke with a small prompt plus the GitHub issue URL. The issue carries the full plan and acceptance criteria; do not restate them in the prompt. You own everything around the change: git, PRs, gates, evidence, labels, ledger.
+
 Authority rule: the issue's `## Shiploop` block is authoritative for branches, gates, and targets. Your task body carries the run slug, phase number, and issue URL. On any mismatch between task body and issue block, block quoting both values - never pick one. `<target branch>` below always means the issue block's `Target branch:` value (usually `main`).
 
 Your task ID comes from your spawn context and is mirrored in your issue's `Task:` field - read it from there if your runtime does not surface it.
@@ -21,9 +23,16 @@ Then execute:
 
 5. Sync the train branch: `git fetch origin`, then fast-forward your local train branch. If local and remote train have diverged, block - do not repair the train. Verify every prior phase issue is closed with a merged PR (walk the parent issue's phase list); if one is not, block.
 6. Create your phase branch from the train head - or reuse it if a prior attempt already pushed it. If the train moved since, merge the train branch into your phase branch and push normally; never rebase or force-push a pushed phase branch (the squash merge at step 12 keeps train history clean).
-7. Do the phase work. Stay inside the phase's acceptance criteria. Read gate commands from `.shiploop/config.yaml` (committed on the train branch, so present on your phase branch; readable early via `git show origin/shiploop/<run-slug>:.shiploop/config.yaml`).
+7. Delegate the implementation. From the phase branch, invoke the implementer CLI with a minimal prompt - for the default implementer:
+
+   ```sh
+   codex exec -C <repo-path> -s workspace-write \
+     "Implement GitHub issue <issue-url> exactly as specified there. Only change files within the issue's acceptance criteria. Leave all changes uncommitted in the working tree. Do not run git commit/push/branch commands."
+   ```
+
+   Then review the diff yourself: every changed file must be within the phase's acceptance criteria. Out-of-scope changes: revert them and re-invoke the implementer with a corrective one-liner; if it persists, block. In-scope diff: commit it on the phase branch with a descriptive message. (Gate commands and the implementer come from `.shiploop/config.yaml`, committed on the train branch - readable early via `git show origin/shiploop/<run-slug>:.shiploop/config.yaml`.)
 8. Push and open the phase PR into the train branch (never `<target branch>`) - or reuse the open PR from a prior attempt.
-9. Run the phase gate per `references/gates.md`. If gate commands are ambiguous, block.
+9. Run the phase gate per `references/gates.md`. If gate commands are ambiguous, block. If the gate fails, re-invoke the implementer with the failing command and its output (up to two fix rounds, committing and rerunning the gate each time); still failing, block.
 10. Post gate evidence on your phase issue using the template in `references/gates.md`, and set the `PR:` field in the issue's `## Shiploop` block.
 11. Judge PR checks per the dispositions in `references/gates.md`: none reported = proceed on gate evidence; green = proceed; pending past the deadline = block; red but provably pre-existing = self-applied waiver, recorded before merging; red because of your diff = fix, or block if you cannot.
 12. Merge your own phase PR into the train branch (squash, delete remote branch). Kickoff approval is your standing authority for this merge; no one confirms it.
@@ -37,7 +46,7 @@ Self-preflight: steps 1-3 above, verifying run slug, train branch, and `<target 
 Then execute:
 
 4. Open the final PR from the train branch to `<target branch>` as draft - or reuse it if it exists. Note in the PR body that `.shiploop/config.yaml` ships with the run intentionally.
-5. Run the final review gate (`autoreview`) per the invocation in `references/gates.md`. Fix accepted findings on the train branch, rerun until clean or blocked. If `autoreview` is missing and its install was not pre-approved at kickoff, block.
+5. Run the final review gate (`autoreview`) per the invocation in `references/gates.md`. Fix accepted findings via the implementer CLI (findings + file paths in the prompt), commit on the train branch, rerun until clean or blocked. If `autoreview` is missing and its install was not pre-approved at kickoff, block.
 6. Post final gate evidence on the parent issue and the final PR.
 7. Mark the final PR ready for review.
 8. Label the parent issue `shiploop-human-review` and set its ledger block `Status: human-review` and `Final PR:` fields.

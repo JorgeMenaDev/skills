@@ -1,7 +1,7 @@
 ---
 name: shiploop
 description: Turn a plan, fix, or feature into a fully autonomous shipping run - GitHub issue ledger, dependency-gated worker tasks, gated phase PRs, and a reviewed final PR waiting for the human.
-version: 2.0.0
+version: 2.1.0
 license: MIT
 ---
 
@@ -17,7 +17,8 @@ If you were spawned by a daemon with a task naming a phase or closeout of an exi
 
 - Kickoff agent: the interactive agent reading this now. Normalizes the plan, gets one human approval, creates the ledger, branches, and the entire task graph. Then its job is over.
 - Dispatch daemon: the adapter runtime (e.g. Hermes gateway) that spawns each task once its parent's completion has promoted it. It is the only thing that schedules work after kickoff.
-- Phase worker: a spawned agent that owns one phase end to end, including merging its own phase PR. Contract: `references/worker-contract.md`.
+- Phase worker: a spawned agent that ORCHESTRATES one phase end to end - branches, PRs, gates, evidence, ledger, merging its own phase PR. It never writes code itself. Contract: `references/worker-contract.md`.
+- Implementer CLI: a coding agent CLI (default: `codex exec`) that makes every file change in the target repo. The phase worker hands it a small prompt plus the GitHub issue URL; the issue carries the full plan and acceptance criteria.
 - Closeout worker: the last task in the graph. Opens the final PR, runs the review gate, marks it ready, labels the parent issue for human review.
 - Human: approves kickoff, resolves blocked tasks, reviews and merges the final PR. Nothing else.
 
@@ -47,7 +48,7 @@ Normalize every run into the fewest sensible vertical phases. Every run has one 
 3. Draft the run plan: parent ledger, phases, gates, train branch, adapter, full task graph including the closeout task, and safety boundaries.
 4. Get one kickoff approval. That approval covers everything workers do afterward: branches, phase PRs, self-merges of phase PRs into the train branch, issue/label updates, the final draft PR, and the review gate. Workers never ask mid-run; when in doubt they block and wait.
 5. Create the parent issue, all child phase issues, train branch `shiploop/<run-slug>`, and the entire adapter task graph behind a sentinel kickoff task: one task per phase chained with parent dependency links, plus a closeout task linked to the last phase. Set up the exception notification channel. Complete the sentinel as the literal last act - that releases the run. End the interactive session.
-6. The daemon runs the phases sequentially. Each phase worker branches from the train head, opens a PR into the train branch, runs the gate, records evidence, merges its own PR, updates the ledger, and completes its task - which releases the next one.
+6. The daemon runs the phases sequentially. Each phase worker branches from the train head, delegates the implementation to the implementer CLI (small prompt + issue URL), reviews the resulting diff, opens a PR into the train branch, runs the gate, records evidence, merges its own PR, updates the ledger, and completes its task - which releases the next one.
 7. The closeout worker opens the final PR from the train branch to `main` as draft, runs `autoreview`, fixes findings, marks it ready, labels the parent issue `shiploop-human-review`, and leaves the checkout clean on `main`.
 
 ## Adapter Selection

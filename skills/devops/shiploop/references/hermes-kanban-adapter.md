@@ -29,8 +29,9 @@ Consequences for Shiploop:
 - A dedicated Hermes Kanban board for the repo. Dedicated is mandatory for autopilot: after kickoff nothing supervises what the daemon promotes, so unrelated ready tasks on a shared board are a real hazard.
 - A worker profile that exists and can operate in the target repo.
 - The shiploop skill installed in the WORKER PROFILE, not only the default profile. Skills are profile-scoped; a task created with `--skill shiploop` crashes the worker on spawn (`Unknown skill(s): shiploop`) when the profile lacks it.
+- The implementer CLI and the review engine authenticated in the WORKER ENVIRONMENT. Hermes isolates worker subprocess `HOME` to `{HERMES_HOME}/home/` when that directory exists, so CLI credential files must live under it - e.g. `~/.hermes/profiles/<profile>/home/.codex/auth.json` for `codex` (a symlink to the real `~/.codex/auth.json` keeps one token-refresh chain). Hermes' own LLM provider auth is separate and does not help these CLIs.
 - The real target repo checkout, declared as `dir:<repo-path>`.
-- A phase gate and final review gate resolved at kickoff.
+- A phase gate, final review gate, and implementer resolved at kickoff.
 
 ## Kickoff Preflight
 
@@ -45,7 +46,13 @@ hermes kanban diagnostics
 hermes kanban list                              # no active task may target this workspace
 hermes -p <worker-profile> skills list          # must show every skill the tasks will name
 gh api repos/OWNER/REPO/branches/<target-branch>/protection 2>&1 | head -5   # and rulesets
+
+# EXECUTE the implementer and review engine as the worker will see them
+# (worker subprocess HOME is {HERMES_HOME}/home/ when it exists):
+HOME=<hermes-home>/home codex exec --skip-git-repo-check -s read-only "Reply with exactly: OK"
 ```
+
+A 401/auth failure here is a kickoff blocker - fix the credential files under the worker home before creating anything.
 
 Verify:
 
@@ -78,6 +85,7 @@ gates:
   phase:
     - bun run check
   final: autoreview
+implementer: codex exec -C <repo-path> -s workspace-write
 ```
 
 ## Task Graph Creation
