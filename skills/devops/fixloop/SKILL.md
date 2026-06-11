@@ -33,6 +33,8 @@ Also read the host repo's agent instructions (`AGENTS.md`, `CLAUDE.md`). Repo po
 - **Alert-driven**: "run the Sentry loop", error spike, regression alert → run the full loop from step 2.
 - **Report-driven**: a customer or user reports a production bug with no alert in hand → skip alert discovery, start the evidence pass, search the alerting surface for a matching grouping anyway, and still record the incident in the ledger.
 
+Invoked with no specific incident → alert-driven full loop.
+
 ## The Loop
 
 1. **Start clean.** Confirm branch, remote, and dirty state. Never disturb unrelated work.
