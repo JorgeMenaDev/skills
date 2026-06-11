@@ -52,11 +52,15 @@ On reopen:
 
 ## Close Comment
 
+After a fix:
+
 - Root cause
 - Fix commit hash
 - Verification commands and results
 - Deploy status
 - Alert resolution reference
+
+Do-not-fix branch: root cause, why no repo action is needed (stale on current code, noise, operational), the evidence basis, and the alert resolution reference. Omit fix/deploy fields.
 
 ## Alert Side
 
