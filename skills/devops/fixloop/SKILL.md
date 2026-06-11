@@ -36,7 +36,7 @@ Also read the host repo's agent instructions (`AGENTS.md`, `CLAUDE.md`). Repo po
 ## The Loop
 
 1. **Start clean.** Confirm branch, remote, and dirty state. Never disturb unrelated work.
-2. **Inspect the alerting surface.** Unresolved and recently regressed production issues. Capture IDs, first/last seen, event count, release, environment, culprit, URL, request/replay IDs. Inspect the latest event — never decide impact from the title alone.
+2. **Inspect the alerting surface.** Unresolved and recently regressed production issues. Prioritize by last-seen recency, user impact, and proximity to recent deploys. Capture IDs, first/last seen, event count, release, environment, culprit, URL, request/replay IDs when available. Inspect the latest event — never decide impact from the title alone. When several groupings are one user journey, merge them into one incident and list every alert ID.
 3. **Classify.** Search the ledger for the grouping IDs before creating anything. Open match → fresh evidence comment. Closed match with a newer event → reopen as regression. No match → new ledger issue. Templates: [references/ledger.md](references/ledger.md).
 4. **Evidence pass** (read-only): [references/evidence.md](references/evidence.md). Comment findings, root cause confidence, and recommendation on the ledger issue.
 5. **Decide.**
@@ -56,7 +56,7 @@ Repeat from step 2 while actionable alerts remain or until the user stops the lo
 - One ledger issue per incident grouping; reopen instead of duplicating.
 - If the alerting CLI or token is missing or unauthorized, report the blocker and stop — do not guess from code.
 - Do not stage or overwrite unrelated dirty work; stop and report the conflict.
-- New gotcha discovered (hanging command, secret-leaking flag, unsupported subcommand) → append it to the handles doc.
+- New gotcha discovered (hanging command, secret-leaking flag, unsupported subcommand) → append it to the handles doc. Include the handles-doc change in the fix commit; if no fix ships, commit the doc change alone.
 
 ## Done
 
