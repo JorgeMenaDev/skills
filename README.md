@@ -2,83 +2,89 @@
 
 [![skills.sh](https://skills.sh/b/JorgeMenaDev/skills)](https://skills.sh/JorgeMenaDev/skills)
 
-Agent skills by Jorge Mena for SEO, growth, product marketing, revenue, and agent-operations work that needs evidence, execution, verification, and memory.
+Agent skills I use for SEO, growth, and agent-operations work that needs evidence, execution, verification, and memory — not one-shot audits or slide-deck recommendations.
 
-Most AI growth work fails in boring ways. The agent gives generic advice. It optimizes pages without understanding the business. It creates SEO plans that never become tickets, code, content, or live proof. Then the next session forgets what happened.
+Real growth work is hard. One-shot prompts produce generic checklists. Framework-heavy workflows try to own the process, but they often bury the business context and make it hard to tell what actually shipped. These skills stay small, composable, and adaptable. They work with any model. Hack around with them. Make them your own.
 
-These skills are designed to push against that. They are small, portable, and built around real operating loops: understand the context, inspect reality, pick one high-leverage action, verify it, and leave the next agent a clean handoff.
+## Quickstart (30-second setup)
 
-## Quickstart
-
-Install the flagship skill:
-
-```bash
-npx skills@latest add JorgeMenaDev/skills --skill seo-growth-workspace
-```
-
-Install for Codex explicitly:
-
-```bash
-npx skills@latest add JorgeMenaDev/skills --skill seo-growth-workspace -a codex
-```
-
-Or browse the repo interactively:
+1. Run the skills.sh installer:
 
 ```bash
 npx skills@latest add JorgeMenaDev/skills
 ```
 
-## Start Here
+2. Pick the skills you want and which coding agents to install them on.
 
-### `seo-growth-workspace`
+3. Open a session in a target repo and invoke the skill that matches the work — for example, start SEO work with `seo-growth-workspace`.
 
-A durable SEO operating workspace for agents. It bootstraps `.seo/`, captures business context, audits live/code/admin evidence, creates a prioritized backlog, implements one high-leverage action, verifies the live result, and logs the handoff.
-
-Use it when SEO work needs to become real work: technical fixes, Search Console opportunities, schema, local SEO, content operations, internal links, backlinks, pSEO planning, conversion paths, or monthly reporting.
+Most people begin with **`seo-growth-workspace`**. For unattended multi-phase shipping, add **`shiploop`**. For production incidents, add **`fixloop`**. When the question is where a plan should live, use **`work-tracking`**.
 
 ## Why These Skills Exist
 
-### 1. Generic Advice Is Cheap
+I built these skills to fix failure modes I keep seeing in AI growth and agent-ops work.
 
-The internet already has enough SEO checklists. The useful work is deciding what matters for this business, this repo, this market, and this moment.
+### #1: The Agent Gave Generic SEO Advice
 
-`seo-growth-workspace` forces the agent to gather context, inspect evidence, and turn findings into a backlog instead of stopping at recommendations.
+> "No-one knows exactly what they want."
+>
+> David Thomas & Andrew Hunt, [The Pragmatic Programmer](https://www.amazon.com/Pragmatic-Programmer-Your-Journey-Mastery/dp/0135957052)
 
-### 2. Growth Work Needs Memory
+**The problem.** The internet already has enough SEO checklists. The useful work is deciding what matters for *this* business, *this* repo, *this* market, and *this* moment. Most agents skip that and optimize pages without understanding the business.
 
-SEO compounds only when the next pass can trust the previous one. Without durable notes, agents re-audit the same surfaces, forget blockers, and repeat work that already failed.
+**The fix** is **[`seo-growth-workspace`](./skills/growth/seo-growth-workspace/SKILL.md)** — gather context, inspect live and code evidence, and turn findings into a prioritized backlog instead of stopping at recommendations.
 
-The `.seo/` workspace keeps context, backlog, audit evidence, reports, backlinks, decisions, and handoffs in predictable files.
+<details>
+<summary>Example: recommendation vs ticket</summary>
 
-### 3. Plans Should Become Proof
+- **Before:** "Improve meta descriptions across the blog."
+- **After:** A `.seo/backlog.md` ticket — target URL, rendered title/description evidence, business intent, one verification step, and a handoff note in `.seo/log.md`.
 
-A content plan is not done because the calendar looks nice. A technical fix is not done because code changed. A backlink is not live because it was submitted.
+</details>
 
-The operating loop pushes every action toward verification: live URLs, rendered metadata, sitemap state, Search Console evidence, analytics proof, UI checks, or public links.
+### #2: The Next Session Forgot Everything
 
-### 4. One Focus Beats Ten Half-Steps
+**The problem.** SEO compounds only when the next pass can trust the previous one. Without durable notes, agents re-audit the same surfaces, forget blockers, and repeat work that already failed.
 
-Growth agents love opening five lanes at once. This repo prefers one current focus ticket, clear done criteria, and a handoff that makes the next move obvious.
+**The fix** is a predictable workspace. **`seo-growth-workspace`** bootstraps `.seo/` — context, backlog, audit evidence, reports, backlinks, decisions, and handoffs in files the next agent can find. **`work-tracking`** applies the same idea when the question is broader: repo markdown, GitHub Issues, Linear, or memory.
+
+### #3: "Done" Meant a Doc, Not Live Proof
+
+> "Always take small, deliberate steps. The rate of feedback is your speed limit."
+>
+> David Thomas & Andrew Hunt, [The Pragmatic Programmer](https://www.amazon.com/Pragmatic-Programmer-Your-Journey-Mastery/dp/0135957052)
+
+**The problem.** A content plan is not done because the calendar looks nice. A technical fix is not done because code changed. A backlink is not live because it was submitted.
+
+**The fix** is verification built into the loop: live URLs, rendered metadata, sitemap state, Search Console evidence, analytics proof, UI checks, or public links. Every action pushes toward proof, not paperwork.
+
+### #4: Five Lanes Open, Nothing Shipped
+
+**The problem.** Growth agents love opening five lanes at once — audit, content, schema, backlinks, reporting — and finishing none of them. Unattended runs die when context resets. Incidents get "fixed" without a durable record.
+
+**The fix** is one current focus ticket, clear done criteria, and skills for the heavy lifts:
+
+- **`seo-growth-workspace`** — one high-leverage SEO action per pass, with handoff.
+- **`shiploop`** — multi-phase shipping through GitHub issue ledgers, gated PRs, and worker adapters when the run must survive context loss.
+- **`fixloop`** — production incidents: triage, read-only evidence, ledger in GitHub issues, fix only on proof, verify, ship, close.
+
+### Summary
+
+Growth fundamentals matter more than ever: context before advice, memory between sessions, proof before "done," and one focus at a time. These skills condense that into repeatable operating loops for SEO work, plan tracking, autonomous shipping, and production incidents.
 
 ## Reference
 
+All skills below are **model-invoked** — the agent can reach for them when the task fits, or you can invoke them directly.
+
 ### Growth
 
-- **[seo-growth-workspace](./skills/growth/seo-growth-workspace/SKILL.md)** — Durable SEO operating workspace for product and local-business sites: context, audit, backlog, implementation, verification, reports, and handoffs.
+- **[seo-growth-workspace](./skills/growth/seo-growth-workspace/SKILL.md)** — Durable SEO operating workspace: bootstrap `.seo/`, capture business context, audit evidence, prioritize backlog, implement one action, verify live, log handoff. Technical SEO, Search Console, schema, local SEO, content ops, internal links, backlinks, pSEO, conversion paths, monthly reporting.
 
 ### Software Development
 
-- **[work-tracking](./skills/software-development/work-tracking/SKILL.md)** — Decide where multi-step work should live: repo markdown, GitHub Issues, Linear, memory, or a mix.
+- **[work-tracking](./skills/software-development/work-tracking/SKILL.md)** — Decide where multi-step work should live: repo markdown, GitHub Issues, Linear, memory, or a mix. When to promote tasks to issues and how future agents find current state.
 
 ### DevOps
 
-- **[shiploop](./skills/devops/shiploop/SKILL.md)** — Execute plans, fixes, and features through durable GitHub issue phases, branch gates, review evidence, and optional worker adapters.
-- **[fixloop](./skills/devops/fixloop/SKILL.md)** — Production incident loop: triage alerts, investigate read-only, ledger every incident in GitHub issues, fix only on evidence, verify, ship, close.
-
-## Layout
-
-```text
-skills/<category>/<skill-name>/SKILL.md
-```
-
-Each skill follows the Agent Skills format: a `SKILL.md` file with YAML frontmatter, optional `references/`, optional `templates/`, optional `scripts/`, and no project-specific secrets.
+- **[shiploop](./skills/devops/shiploop/SKILL.md)** — Turn a plan, fix, or feature into an unattended shipping run: GitHub issue ledger, dependency-gated phases, gated PRs, review evidence, optional worker adapters.
+- **[fixloop](./skills/devops/fixloop/SKILL.md)** — Production incident loop: triage alerts (default Sentry), investigate read-only, ledger every incident in GitHub issues, fix only on evidence, verify, ship, close.
