@@ -20,6 +20,16 @@ npx skills@latest add JorgeMenaDev/skills
 
 Most people begin with **`seo-growth-workspace`**. For unattended multi-phase shipping, add **`shiploop`**. For production incidents, add **`fixloop`**. When the question is where a plan should live, use **`work-tracking`**.
 
+### `operator-handoff`
+
+A job-file handoff protocol between a requesting agent and the Operator — a human-supervised computer-use agent on a real desktop/browser. Jobs, reports, and evidence live in `.agents/operator/`; a per-repo `HOST.md` carries the machine-, account-, and repo-specific facts so the skill itself stays portable.
+
+Use it when a task needs real clicks or credentials the agent doesn't hold: desktop app setup, third-party dashboards, OAuth consents, captchas, 2FA, Gherkin QA runs, or delegated implementation of fully-designed code slices.
+
+```bash
+npx skills@latest add JorgeMenaDev/skills --skill operator-handoff
+```
+
 ## Why These Skills Exist
 
 I built these skills to fix failure modes I keep seeing in AI growth and agent-ops work.
@@ -79,6 +89,10 @@ All skills below are **model-invoked** — the agent can reach for them when the
 ### Growth
 
 - **[seo-growth-workspace](./skills/growth/seo-growth-workspace/SKILL.md)** — Durable SEO operating workspace: bootstrap `.seo/`, capture business context, audit evidence, prioritize backlog, implement one action, verify live, log handoff. Technical SEO, Search Console, schema, local SEO, content ops, internal links, backlinks, pSEO, conversion paths, monthly reporting.
+
+### Agent Operations
+
+- **[operator-handoff](./skills/agent-operations/operator-handoff/SKILL.md)** — Job-file handoff between a requesting agent and a human-supervised computer-use Operator: jobs, reports, evidence trails, and a per-repo `HOST.md` host profile.
 
 ### Software Development
 
