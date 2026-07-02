@@ -1,0 +1,25 @@
+{
+  "rows": [
+    {
+      "keys": ["seo automation", "https://example.com/seo-automation"],
+      "clicks": 3,
+      "impressions": 420,
+      "ctr": 0.0071,
+      "position": 13.9
+    },
+    {
+      "keys": ["content seo", "https://example.com/content-seo"],
+      "clicks": 2,
+      "impressions": 280,
+      "ctr": 0.0071,
+      "position": 4.4
+    },
+    {
+      "keys": ["legacy feature guide", "https://example.com/legacy-feature"],
+      "clicks": 9,
+      "impressions": 240,
+      "ctr": 0.0375,
+      "position": 5.0
+    }
+  ]
+}
