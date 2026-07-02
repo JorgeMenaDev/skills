@@ -1,7 +1,7 @@
 ---
 name: seo-growth-workspace
 description: "Use when starting, auditing, or operating SEO or organic growth for a product or local-business website — technical SEO, Search Console, keyword/content ops, schema, pSEO, local SEO/GBP, backlinks, AI-search visibility, conversion, and monthly reporting. Triggers: \"set up SEO\", \"audit my site\", \"my traffic dropped\", \"why am I not ranking\", \"Search Console opportunities\", \"monthly SEO report\", \"how do we show up in ChatGPT/AI search\". Creates a durable .seo workspace, captures business context, audits live/code/admin evidence, prioritizes a backlog, implements one high-leverage action, verifies reality, and logs handoff notes. For standalone copywriting, paid channels, or email, use a dedicated skill."
-version: 2.0.0
+version: 2.1.0
 license: MIT
 mutating: true
 writes_to: [.seo/]
@@ -75,7 +75,7 @@ Load only the file needed for the mode or ticket:
 - International/multilingual (hreflang): `references/international-seo.md`
 - Search Console opportunity analysis (CLI pipeline, banded CTR, cannibalization): `references/search-console.md`
 - Keywords/blog/content-engine operations (research method, scoring, E-E-A-T): `references/content-ops.md`
-- Content-engine webhook publishing (receive, verify, deploy): `references/content-engine-webhooks.md`
+- Content-engine webhook publishing (receive, verify, deploy; headless CLI config for SuperaSEO): `references/content-engine-webhooks.md`
 - pSEO publish gates and playbook chooser: `references/pseo-gates.md`
 - Ticket taxonomy, work selection, statuses, and done criteria: `references/ticket-architecture.md`
 - Internal linking audits: `references/internal-linking.md`
