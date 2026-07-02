@@ -12,9 +12,9 @@ report, and evidence paths below are relative to that root.
 ## 1. Pick the job
 
 - If the human gave you a job ID, run `.agents/operator/jobs/<NNN>-*.md`.
-- Otherwise find the **pending** job: the highest-numbered file in `.agents/operator/jobs/`
-  that has no file with the same `NNN` prefix in `.agents/operator/reports/`. If several are
-  pending, run the lowest-numbered one first unless told otherwise.
+- Otherwise run the preamble and use its `PENDING:` lines (a job is pending when its latest
+  requested run has no report). If several are pending, run the lowest-numbered one first
+  unless told otherwise.
 - If nothing is pending, say so and stop.
 
 ## 2. Execute
@@ -51,9 +51,23 @@ report, and evidence paths below are relative to that root.
   named `<slug>-<step>.<ext>`. Minimum: one artifact per fail/blocked scenario at the moment
   of divergence, and one final-state artifact proving a `generic`/`config` job's end state.
 
+## Runs (re-executions of the same job)
+
+If the preamble echoed `RUN: <N>` with N >= 2, you are executing a **re-run**:
+
+- Read every `PRIOR_REPORT:` file first — what already happened, what's DONE, what blocked.
+- Execute the job's **highest `## Run <N>` section** (the run brief). Base steps and earlier run
+  sections are context only. **STOP-GATE: re-executing base steps the brief marks DONE
+  (re-paying, re-submitting, re-granting) is the failure this section exists to prevent.**
+- Evidence still goes to `.agents/operator/evidence/<NNN>/`; prefix new files `run-<N>-` so they
+  don't overwrite earlier runs' artifacts.
+- Write your report to the exact `REPORT_FILE_EXPECTED` path the preamble echoed
+  (`<NNN>-<slug>.run-<N>.md`). Never edit or overwrite a prior run's report.
+
 ## 3. Report
 
-Write `.agents/operator/reports/<NNN>-<same-slug>.md` from the matching report template in
+Write the report at the preamble's `REPORT_FILE_EXPECTED` path (`<NNN>-<same-slug>.md` for run 1,
+`<NNN>-<slug>.run-<N>.md` for later runs) from the matching report template in
 [job-templates.md](job-templates.md). First line after the title is the status line:
 `**Status:** DONE | DONE_WITH_CONCERNS | BLOCKED | ABANDONED` + one sentence of evidence
 (concerns/blockers detailed below it). The secrets rule (SKILL.md) binds every line and every

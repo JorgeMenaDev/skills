@@ -28,6 +28,19 @@ context window; every line must earn its place. Paths are relative to the repo r
 - Report to `.agents/operator/reports/<NNN>-<slug>.md`.
 ```
 
+## Run brief (appended to an existing job for a re-run — never a new file)
+
+```markdown
+## Run <N> (<YYYY-MM-DD>)
+
+**Why:** <one line — what blocked or what's left from run <N-1>>
+**Already DONE (do not redo):** <steps/results that stand — e.g. "step 1 invoice check; keep its verdict">
+**Changed since:** <new facts, fixed access, new permissions>
+
+1. <what THIS run does — exact actions, same rigor as base steps>
+2. ...
+```
+
 ## `config` job
 
 ```markdown
