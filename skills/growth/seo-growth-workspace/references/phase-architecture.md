@@ -19,7 +19,7 @@ Classify the target before planning work. Mark uncertainty plainly.
 | Programmatic site | Data-driven page types, templates, index/noindex states | `pseo-planning`, `technical-seo-fix` |
 | Multilingual / multi-region | Locale routes, hreflang, regional canonicals | `bootstrap`, `technical-seo-fix`, `content-ops` |
 
-If a target fits multiple types, choose the type that best explains the current growth bottleneck.
+If a target fits multiple types, choose the type that best explains the current growth bottleneck. Multilingual / multi-region targets also load `references/international-seo.md` during the `technical` phase.
 
 ## First-Run Phase Ladder
 
@@ -37,7 +37,10 @@ Do not jump to content, backlinks, or pSEO until earlier blocking phases are che
 | `pseo` | Is a page type ready for small-batch programmatic expansion? | `pseo-gates.md`, `schema-rich-results.md`, `internal-linking.md` | Normal content path is proven; page type has data, unique value, links, and publish/no-publish status |
 | `local` | Are GBP, NAP, service areas, reviews, photos, citations, and local competitors relevant? | `local-seo-gbp.md`, `backlinks-entity.md` | Applicability is checked; if relevant, local matrix/action exists; if not, mark `not applicable` with evidence |
 | `authority` | Does the site have credible entity and link signals? | `backlinks-entity.md` | Prospects, submissions, and live links are tracked without invented business facts |
+| `ai-visibility` | Can AI crawlers access the site, and do assistants cite it for money queries? | `ai-search-visibility.md`, `technical-seo.md` | AI-crawler allow/block decision is recorded in `.seo/strategy.md`; citation spot-check matrix and assistant-referral tracking exist |
 | `reporting` | What changed, what did it prove, and what is the single next action? | `monthly-reporting.md`, `operating-loop.md` | Report/log/backlog reflect current evidence |
+
+When a phase needs third-party keyword/backlink data or competitor evidence, load `references/data-tools.md` or `references/competitor-profiling.md`.
 
 ## Scenario Routing
 
@@ -53,7 +56,6 @@ Use the classifier to route the first useful mode:
 | Programmatic page idea | `pseo-planning` | pSEO must pass quality, data, links, and noindex/sitemap gates before publishing |
 | GBP or local-map intent | `local-seo` | Local surfaces have separate evidence and ownership |
 | Month-end review | `monthly-report` | Summarize deltas and choose one next action |
-| Skill release dogfood | `release-dogfood` | Exercise every phase without mutating production, admin, external, or app-code state |
 
 ## Marketing Skill Bridge
 
@@ -79,6 +81,6 @@ If a bridge skill is not installed, use the phase ladder and existing references
 
 ## AI Search Note
 
-For Google Search, treat generative AI and AI search work as SEO, not as a separate hack track. Focus on crawlable helpful content, clear entities, useful media, visible proof, and normal technical eligibility.
+Treat AI/LLM visibility as a default part of organic growth, not an opt-in experiment. Check AI-crawler access during the `technical` phase and run the `ai-visibility` phase (citation spot-checks, assistant-referral tracking) with `references/ai-search-visibility.md`.
 
-Do not make `llms.txt`, chunking, synthetic mentions, or "AEO/GEO" tricks a required Google Search gate. Record them only when the user explicitly wants broader AI visibility experiments outside core Google SEO.
+For Google Search, this is still SEO, not a separate hack track: crawlable helpful content, clear entities, useful media, visible proof, and normal technical eligibility. Do not make `llms.txt`, chunking, synthetic mentions, or "AEO/GEO" tricks a required Google Search gate; label unproven tactics honestly.

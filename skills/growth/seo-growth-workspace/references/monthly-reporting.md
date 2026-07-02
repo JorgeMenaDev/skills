@@ -6,6 +6,7 @@ Use for `monthly-report` mode.
 
 - Last 30 days vs previous 30 days for performance deltas.
 - Last 90 days for context when GSC data is sparse or volatile.
+- Year-over-year (same month last year) when 13+ months of data exist; 30d-vs-30d alone is seasonality-naive.
 - Record exact dates, property names, and data source limitations.
 
 ## Data Sources
@@ -25,34 +26,35 @@ Use `templates/monthly-report.md`. Include:
 - 3 wins.
 - 3 problems.
 - Top query/page movers.
+- Branded vs non-branded clicks/impressions split.
+- Indexed-page-count trend.
+- Core-update annotation: note any Google core update inside the window before attributing deltas.
 - Content published or scheduled.
 - Indexing/sitemap state.
 - GBP/local state if applicable.
 - The single most important action for next month.
 
-When exported state is available, use `scripts/monthly-report.mjs` to build the first draft from:
+When exports are available, draft it in one command:
 
-- GSC current and previous rows.
-- `.seo/backlog.md` counts.
-- Keyword tier counts from the content engine.
-- Content calendar scheduled/published/overdue counts.
+```bash
+node scripts/monthly-report.mjs --gsc-current <rows.json> --gsc-previous <rows.json> \
+  --backlog .seo/backlog.md --keyword-tiers <file> --calendar <file> --output <report.md>
+```
 
-If the monthly report state has not been assembled yet, use `scripts/monthly-state.mjs` first. It accepts current/previous GSC exports, `.seo/backlog.md`, keyword tier counts, and calendar snapshots, then writes the JSON input consumed by `monthly-report.mjs`.
-
-If the target has a content engine, export keyword-tier and calendar snapshots through its established CLI, API, or admin export path. Record the command or source in the report without exposing secrets.
+Missing inputs become recorded gaps, not fabricated numbers. If the target has a content engine, export keyword-tier and calendar snapshots through its established CLI, API, or admin export path. Record the command or source in the report without exposing secrets.
 
 ## No-Mutation Validation
 
-In `release-dogfood`, do not force a monthly report when current/previous GSC, analytics, or content-engine exports are unavailable. Instead:
+In read-only or no-access runs, do not force a monthly report when current/previous GSC, analytics, or content-engine exports are unavailable. Instead:
 
 - Record which data sources were not checked by constraint.
 - Use repo/public evidence and existing `.seo/reports/*` as historical context.
 - Mark monthly reporting as `partial` if no fresh comparable data exists.
-- Write the dogfood report, not a monthly performance report.
 
 ## Rules
 
 - Prioritize calls, leads, qualified traffic, indexed pages, and money-page movement over vanity metrics.
+- Impressions can grow while clicks fall when AI Overviews/SERP features absorb clicks. Say why before calling it a loss — zero-click visibility is not automatically a failure.
 - If conversion tracking is missing, make it a P1 backlog item.
 - Do not over-interpret tiny datasets; label them as baseline or directional.
 - A generated monthly report is a decision draft. Review wins, problems, and the single next action before sharing externally.

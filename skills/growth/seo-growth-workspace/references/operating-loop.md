@@ -12,7 +12,7 @@ The skill should always answer:
 - If nothing is ready, what should be checked next?
 - What is the next smallest evidence-backed improvement?
 
-Do not conclude SEO is done because the visible backlog is empty. An empty queue means the operator should run a lightweight checkpoint, create one evidence-backed ticket if needed, or log why the next useful review is later. If the user's goal is explicitly finite, such as exhausting all unblocked repo-owned work, the checkpoint may end with "no immediate action remains" instead of inventing a recheck ticket.
+Do not conclude SEO is done because the visible backlog is empty. Apply the Empty Backlog Rule in `references/ticket-architecture.md`; when the user wants all unblocked work exhausted, use the Final Checkpoint below.
 
 ## State Read Order
 
@@ -24,9 +24,9 @@ Read current state before choosing work:
 4. `.seo/strategy.md` for durable decisions, tooling, market, language, and production paths.
 5. Latest relevant `.seo/reports/*` for dated GSC, analytics, content, pSEO, backlink, local SEO, validation, or admin evidence.
 6. `.seo/backlinks/work-log.md` for pending outreach, submissions, and live-link states.
-7. `.seo/context.md` for business context, ICP, competitors, conversion paths, and constraints. If missing in a mature workspace, use `.seo/strategy.md`, `.seo/audit.md`, `.seo/README.md`, and `.agents/product-marketing.md` for the current run and record workspace drift.
+7. `.seo/context.md` for business context, ICP, competitors, conversion paths, and constraints. If missing in a mature workspace, use `.seo/strategy.md`, `.seo/audit.md`, `.seo/README.md`, and any product/positioning doc the repo keeps (for example `.agents/product-marketing.md`) for the current run and record workspace drift.
 
-If `.seo/` is missing, run `bootstrap` first. If a required file is missing in an existing workspace, create only that missing file and preserve existing notes unless the run is no-write or `release-dogfood`; in those modes, report the drift instead of writing.
+If `.seo/` is missing, run `bootstrap` first. If a required file is missing in an existing workspace, create only that missing file and preserve existing notes unless the run is no-write; then report the drift instead of writing.
 
 ## Target Boundary
 
@@ -42,15 +42,7 @@ Label reports with the target surface at the top. When parking a side monitor, r
 
 ## Work Selection Order
 
-Choose work in this order:
-
-1. `Current focus` in `.seo/backlog.md` when it points to a real ticket and still belongs to the requested target surface.
-2. First real row in `In progress`.
-3. Top Ready ticket by priority and table order.
-4. Blocked ticket that has become unblockable because access, data, ownership, deployment, or product state changed.
-5. New evidence-backed ticket from stale notes, expired recheck dates, missing reports, or checkpoint findings.
-
-Avoid duplicate tickets. If a log entry, report, audit row, or backlog note already points to a ticket, continue that ticket instead of creating another one.
+Choose work using the Work Selection order in `references/ticket-architecture.md` (current focus → in progress → top Ready → newly unblockable Blocked → new evidence-backed ticket). That file owns the order, duplicate rules, and done criteria; do not restate them here or in the workspace.
 
 ## Lightweight Checkpoints
 
@@ -66,8 +58,9 @@ When no current, in-progress, or Ready ticket exists, do not rerun every audit. 
 | Internal links | orphan pages, blog-to-money-page links, pSEO hub links, repeated exact-match anchors | `internal-links` |
 | pSEO | planned vs published state, sitemap/noindex policy, batch QA, stale generated pages | `pseo` |
 | Schema | rendered JSON-LD, visible-content match, missing page-type schema | `schema` |
-| Performance | recent Lighthouse/CWV, public pages loading app/auth code, image/font regressions | `performance` |
+| Performance | CWV field data (CrUX/PSI or the GSC CWV report), public pages loading app/auth code, image/font regressions | `performance` |
 | Authority | backlink work-log states, staged prospects, live-link verification, entity/profile gaps | `backlinks` or `entity` |
+| AI visibility | AI-crawler access state, assistant citations for money queries, assistant referral traffic | `ai-visibility` |
 | Local | GBP, reviews, citations, service-area pages, local competitor changes | `local-seo` |
 | Reporting | missing monthly report, stale metrics, no single next action | `reporting` |
 

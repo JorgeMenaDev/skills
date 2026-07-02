@@ -1,18 +1,52 @@
-#!/usr/bin/env bun
+#!/usr/bin/env node
 
 import { readFile, writeFile } from "node:fs/promises";
 
+// Keep in sync with gsc-opportunities.mjs: position-banded expected-CTR baselines.
+const CTR_BANDS = [
+  { label: "1-3", min: 1, max: 3, baseline: 0.1 },
+  { label: "4-6", min: 4, max: 6, baseline: 0.04 },
+  { label: "7-10", min: 7, max: 10, baseline: 0.015 },
+];
+const CTR_FLAG_RATIO = 0.5;
+
 function usage() {
   return `Usage:
-  bun monthly-report.mjs --input monthly-report.json [--output report.md]
+  node monthly-report.mjs --target "Example SaaS" \\
+      --date-range "2026-04-01 to 2026-04-30" --comparison-range "2026-03-01 to 2026-03-31" \\
+      --gsc-current current.json --gsc-previous previous.json --backlog .seo/backlog.md \\
+      [--keyword-tiers tiers.json] [--calendar calendar.json] [--output report.md]
 
-Builds a one-page SEO report from exported monthly state:
-GSC current/previous rows, backlog counts, keyword tier counts, and content calendar snapshot.`;
+Builds a one-page SEO report directly from exported GSC rows and local SEO/content-engine state:
+metric deltas, query/page movers (including disappeared queries), wins/problems, and a single
+next action.
+
+Inputs:
+  --gsc-current / --gsc-previous  GSC searchAnalytics.query JSON exports (rows[]).
+  --backlog                       .seo/backlog.md (Ready/In progress/Blocked/Done tables).
+  --keyword-tiers                 Optional JSON: { "p1": n, "p2": n, "p3": n } or { "tiers": {...} }.
+  --calendar                      Optional JSON: entries[] with status fields, or precomputed counts.
+
+Do not include secrets in any input file.`;
 }
 
 function argValue(name) {
   const index = process.argv.indexOf(name);
-  return index === -1 ? null : process.argv[index + 1];
+  if (index === -1) return null;
+  const value = process.argv[index + 1];
+  if (value === undefined || value.startsWith("--")) {
+    throw new Error(`Missing value for ${name}\n\n${usage()}`);
+  }
+  return value;
+}
+
+async function readJsonFile(filePath) {
+  const text = await readFile(filePath, "utf-8");
+  try {
+    return JSON.parse(text);
+  } catch (error) {
+    throw new Error(`Invalid JSON in ${filePath}: ${error.message}`);
+  }
 }
 
 function normalizeRows(payload) {
@@ -54,16 +88,33 @@ function signedNumber(value, decimals = 0) {
   return value > 0 ? `+${fixed}` : fixed;
 }
 
-function metricChange(current, previous, formatter = String) {
-  return formatter(current - previous);
+function signedPercent(value) {
+  const fixed = `${(value * 100).toFixed(2)}%`;
+  return value > 0 ? `+${fixed}` : fixed;
+}
+
+function escapeCell(value) {
+  return String(value).replace(/\|/g, "\\|").replace(/\r?\n/g, " ");
 }
 
 function markdownTable(headers, rows) {
   return [
-    `| ${headers.join(" | ")} |`,
+    `| ${headers.map(escapeCell).join(" | ")} |`,
     `| ${headers.map(() => "---").join(" | ")} |`,
-    ...rows.map((row) => `| ${row.join(" | ")} |`),
+    ...rows.map((row) => `| ${row.map(escapeCell).join(" | ")} |`),
   ].join("\n");
+}
+
+function bandFor(position) {
+  const rounded = Math.max(1, Math.round(position));
+  return CTR_BANDS.find((band) => rounded >= band.min && rounded <= band.max) ?? null;
+}
+
+function isLowCtr(row) {
+  const band = bandFor(row.position);
+  return (
+    row.impressions >= 100 && band !== null && row.ctr < band.baseline * CTR_FLAG_RATIO
+  );
 }
 
 function rowKey(row) {
@@ -71,25 +122,58 @@ function rowKey(row) {
 }
 
 function compareRows(currentRows, previousRows) {
+  const currentKeys = new Set(currentRows.map((row) => rowKey(row)));
   const previous = new Map(previousRows.map((row) => [rowKey(row), row]));
 
-  return currentRows
-    .map((current) => {
-      const prior = previous.get(rowKey(current));
-      return {
-        ...current,
-        previousClicks: prior?.clicks ?? 0,
-        previousPosition: prior?.position ?? null,
-        clickDelta: current.clicks - (prior?.clicks ?? 0),
-        positionDelta:
-          prior?.position == null ? null : prior.position - current.position,
-      };
-    })
-    .sort((a, b) => Math.abs(b.clickDelta) - Math.abs(a.clickDelta));
+  const movers = currentRows.map((current) => {
+    const prior = previous.get(rowKey(current));
+    return {
+      ...current,
+      previousClicks: prior?.clicks ?? 0,
+      previousPosition: prior?.position ?? null,
+      clickDelta: current.clicks - (prior?.clicks ?? 0),
+      positionDelta:
+        prior?.position == null ? null : prior.position - current.position,
+      status: prior ? "both" : "new",
+    };
+  });
+
+  for (const [key, prior] of previous) {
+    if (currentKeys.has(key)) continue;
+    movers.push({
+      query: prior.query,
+      page: prior.page,
+      clicks: 0,
+      impressions: 0,
+      ctr: 0,
+      position: 0,
+      previousClicks: prior.clicks,
+      previousPosition: prior.position,
+      clickDelta: -prior.clicks,
+      positionDelta: null,
+      status: "disappeared",
+    });
+  }
+
+  return movers.sort((a, b) => Math.abs(b.clickDelta) - Math.abs(a.clickDelta));
+}
+
+// Pads to `count` items with a single filler line only when there are fewer
+// real findings than slots; filler never displaces a real finding.
+function fillTo(items, filler, count = 3) {
+  const real = items.slice(0, count);
+  if (real.length < count) real.push(filler);
+  return real;
 }
 
 function buildWins({ currentSummary, previousSummary, state, movers }) {
   const wins = [];
+  const topMover = movers.find((row) => row.clickDelta > 0);
+  if (topMover) {
+    wins.push(
+      `${topMover.query} gained ${topMover.clickDelta} clicks vs the comparison period.`,
+    );
+  }
   if (currentSummary.clicks > previousSummary.clicks) {
     wins.push(
       `Organic clicks increased by ${currentSummary.clicks - previousSummary.clicks}.`,
@@ -100,27 +184,18 @@ function buildWins({ currentSummary, previousSummary, state, movers }) {
       `Organic impressions increased by ${currentSummary.impressions - previousSummary.impressions}.`,
     );
   }
+  if ((state.backlog?.doneThisPeriod ?? 0) > 0) {
+    wins.push(
+      `${state.backlog.doneThisPeriod} SEO backlog items were completed this period.`,
+    );
+  }
   if ((state.calendar?.scheduled ?? 0) > 0) {
     wins.push(
       `${state.calendar.scheduled} content items are scheduled in the calendar.`,
     );
   }
-  if ((state.backlog?.doneThisPeriod ?? 0) > 0) {
-    wins.push(
-      `${state.backlog.doneThisPeriod} SEO backlog items were completed.`,
-    );
-  }
-  const topMover = movers.find((row) => row.clickDelta > 0);
-  if (topMover) {
-    wins.push(
-      `${topMover.query} gained ${topMover.clickDelta} clicks vs the comparison period.`,
-    );
-  }
 
-  return [...wins, "Baseline established for next reporting cycle."].slice(
-    0,
-    3,
-  );
+  return fillTo(wins, "Baseline established for next reporting cycle.");
 }
 
 function buildProblems({
@@ -128,23 +203,34 @@ function buildProblems({
   previousSummary,
   state,
   currentRows,
+  movers,
 }) {
   const problems = [];
-  const lowCtr = currentRows.find(
-    (row) => row.impressions >= 100 && row.position <= 10 && row.ctr < 0.02,
+  const byImpressions = [...currentRows].sort(
+    (a, b) => b.impressions - a.impressions,
   );
-  const pageTwo = currentRows.find(
+  const lowCtr = byImpressions.find((row) => isLowCtr(row));
+  const pageTwo = byImpressions.find(
     (row) => row.impressions >= 100 && row.position >= 11 && row.position <= 20,
+  );
+  const disappeared = movers.find(
+    (row) => row.status === "disappeared" && row.previousClicks > 0,
   );
 
   if (lowCtr) {
+    const band = bandFor(lowCtr.position);
     problems.push(
-      `${lowCtr.query} has high impressions but low CTR (${asPercent(lowCtr.ctr)}).`,
+      `${lowCtr.query} has high impressions but low CTR (${asPercent(lowCtr.ctr)} vs a ~${asPercent(band.baseline)} baseline for positions ${band.label}).`,
     );
   }
   if (pageTwo) {
     problems.push(
       `${pageTwo.query} is still on page 2 at position ${pageTwo.position.toFixed(1)}.`,
+    );
+  }
+  if (disappeared) {
+    problems.push(
+      `${disappeared.query} disappeared from the current period after ${disappeared.previousClicks} clicks previously.`,
     );
   }
   if ((state.calendar?.overdue ?? 0) > 0) {
@@ -166,10 +252,10 @@ function buildProblems({
     );
   }
 
-  return [
-    ...problems,
+  return fillTo(
+    problems,
     "Conversion tracking must be reviewed if leads/calls are not available.",
-  ].slice(0, 3);
+  );
 }
 
 function buildNextAction(problems) {
@@ -184,6 +270,101 @@ function buildNextAction(problems) {
   return "Choose the top Ready backlog item with the clearest traffic or conversion impact and ship it this month.";
 }
 
+function sectionName(line) {
+  const match = line.match(/^##\s+(.+?)\s*$/);
+  return match?.[1]?.trim().toLowerCase() ?? null;
+}
+
+function parseDateRange(rangeText) {
+  const match = rangeText?.match(
+    /(\d{4}-\d{2}-\d{2})\s+to\s+(\d{4}-\d{2}-\d{2})/,
+  );
+  if (!match) return null;
+  return { start: match[1], end: match[2] };
+}
+
+function parseBacklog(markdown, dateRange) {
+  const sections = {
+    ready: [],
+    "in progress": [],
+    blocked: [],
+    done: [],
+  };
+  let active = null;
+
+  for (const line of markdown.split(/\r?\n/)) {
+    const nextSection = sectionName(line);
+    if (nextSection) {
+      active = Object.hasOwn(sections, nextSection) ? nextSection : null;
+      continue;
+    }
+
+    if (active) sections[active].push(line);
+  }
+
+  const countRows = (lines) =>
+    lines.filter((line) => line.startsWith("| SEO-")).length;
+  const doneRows = sections.done.filter((line) => line.startsWith("| SEO-"));
+  const doneDates = doneRows.map((line) =>
+    (line.split("|")[2] ?? "").trim(),
+  );
+
+  const range = parseDateRange(dateRange);
+  const doneThisPeriod = range
+    ? doneDates.filter(
+        (date) =>
+          /^\d{4}-\d{2}-\d{2}$/.test(date) &&
+          date >= range.start &&
+          date <= range.end,
+      ).length
+    : null;
+
+  return {
+    ready: countRows(sections.ready),
+    inProgress: countRows(sections["in progress"]),
+    blocked: countRows(sections.blocked),
+    doneTotal: doneRows.length,
+    // null when the date range is not parseable as "YYYY-MM-DD to YYYY-MM-DD"
+    doneThisPeriod,
+  };
+}
+
+function normalizeTierCounts(raw) {
+  const tiers = raw?.tiers ?? raw ?? {};
+  return {
+    p1: Number(tiers.p1 ?? 0),
+    p2: Number(tiers.p2 ?? 0),
+    p3: Number(tiers.p3 ?? 0),
+  };
+}
+
+function normalizeCalendar(raw) {
+  if (!raw) return { scheduled: 0, published: 0, overdue: 0, next: [] };
+  const entries = Array.isArray(raw) ? raw : raw.entries;
+  if (Array.isArray(entries)) {
+    return {
+      scheduled: entries.filter((entry) => entry.status === "scheduled").length,
+      published: entries.filter((entry) => entry.status === "published").length,
+      overdue: entries.filter((entry) => entry.status === "overdue").length,
+      next: entries
+        .filter((entry) => entry.status === "scheduled")
+        .slice(0, 5)
+        .map((entry) => ({
+          keyword: entry.keyword ?? entry.title ?? "",
+          date: entry.date ?? entry.scheduledFor ?? "",
+          status: entry.status,
+        })),
+    };
+  }
+
+  return {
+    scheduled: Number(raw.scheduled ?? 0),
+    published: Number(raw.published ?? 0),
+    overdue: Number(raw.overdue ?? 0),
+    next: Array.isArray(raw.next) ? raw.next.slice(0, 5) : [],
+  };
+}
+
 function buildReport(state) {
   const currentRows = normalizeRows(state.gsc?.current);
   const previousRows = normalizeRows(state.gsc?.previous);
@@ -196,11 +377,16 @@ function buildReport(state) {
     previousSummary,
     state,
     currentRows,
+    movers,
   });
   const nextAction = buildNextAction(problems);
   const tiers = state.keywords?.tiers ?? {};
   const calendar = state.calendar ?? {};
   const backlog = state.backlog ?? {};
+  const doneLabel =
+    backlog.doneThisPeriod == null
+      ? `${backlog.doneTotal ?? 0} Done (all time)`
+      : `${backlog.doneThisPeriod} Done this period (${backlog.doneTotal ?? 0} all time)`;
 
   const metrics = [
     [
@@ -221,7 +407,7 @@ function buildReport(state) {
       "GSC CTR",
       asPercent(currentSummary.ctr),
       asPercent(previousSummary.ctr),
-      metricChange(currentSummary.ctr, previousSummary.ctr, asPercent),
+      signedPercent(currentSummary.ctr - previousSummary.ctr),
       "Weighted by clicks/impressions",
     ],
     [
@@ -247,7 +433,7 @@ function buildReport(state) {
     ],
     [
       "SEO backlog",
-      `${backlog.ready ?? 0} Ready / ${backlog.inProgress ?? 0} In progress / ${backlog.blocked ?? 0} Blocked / ${backlog.doneThisPeriod ?? 0} Done`,
+      `${backlog.ready ?? 0} Ready / ${backlog.inProgress ?? 0} In progress / ${backlog.blocked ?? 0} Blocked / ${doneLabel}`,
       "",
       "",
       ".seo/backlog.md snapshot",
@@ -262,12 +448,18 @@ function buildReport(state) {
       String(row.clicks),
       String(row.previousClicks),
       signedNumber(row.clickDelta),
-      row.positionDelta == null ? "new" : signedNumber(row.positionDelta, 1),
-      row.ctr < 0.02 && row.impressions >= 100
-        ? "Rewrite title/meta"
-        : row.position >= 11 && row.position <= 20
-          ? "Optimize page-2 opportunity"
-          : "Monitor",
+      row.status === "disappeared"
+        ? "lost"
+        : row.status === "new"
+          ? "new"
+          : signedNumber(row.positionDelta, 1),
+      row.status === "disappeared"
+        ? "Investigate lost query (content, ranking, or seasonality)"
+        : isLowCtr(row)
+          ? "Rewrite title/meta"
+          : row.position >= 11 && row.position <= 20
+            ? "Optimize page-2 opportunity"
+            : "Monitor",
     ]);
 
   const nextRows = (calendar.next ?? [])
@@ -327,11 +519,51 @@ async function main() {
     return;
   }
 
-  const input = argValue("--input");
-  if (!input) throw new Error(usage());
-
+  const target = argValue("--target");
+  const dateRange = argValue("--date-range");
+  const comparisonRange = argValue("--comparison-range");
+  const currentPath = argValue("--gsc-current");
+  const previousPath = argValue("--gsc-previous");
+  const backlogPath = argValue("--backlog");
+  const tiersPath = argValue("--keyword-tiers");
+  const calendarPath = argValue("--calendar");
   const output = argValue("--output");
-  const state = JSON.parse(await readFile(input, "utf-8"));
+
+  if (
+    !target ||
+    !dateRange ||
+    !comparisonRange ||
+    !currentPath ||
+    !previousPath ||
+    !backlogPath
+  ) {
+    throw new Error(usage());
+  }
+
+  const state = {
+    target,
+    dateRange,
+    comparisonRange,
+    dataSources: [
+      currentPath,
+      previousPath,
+      backlogPath,
+      tiersPath ?? "keyword tiers unavailable",
+      calendarPath ?? "calendar unavailable",
+    ],
+    gsc: {
+      current: await readJsonFile(currentPath),
+      previous: await readJsonFile(previousPath),
+    },
+    backlog: parseBacklog(await readFile(backlogPath, "utf-8"), dateRange),
+    keywords: {
+      tiers: normalizeTierCounts(tiersPath ? await readJsonFile(tiersPath) : null),
+    },
+    calendar: normalizeCalendar(
+      calendarPath ? await readJsonFile(calendarPath) : null,
+    ),
+  };
+
   const report = buildReport(state);
 
   if (output) {

@@ -1,16 +1,19 @@
-#!/usr/bin/env bun
+#!/usr/bin/env node
 
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
-const skillRoot = path.resolve(scriptDir, "..");
+const skillRoot = path.resolve(
+  scriptDir,
+  "../../skills/growth/seo-growth-workspace",
+);
 const args = process.argv.slice(2);
 
 function usage() {
   return `Usage:
-  bun scripts/evaluate-release.mjs [--json] [--profile-root name=/path/to/repo]
+  node dev/seo-growth-workspace/evaluate-release.mjs [--json] [--profile-root name=/path/to/repo]
 
 Scores the portable seo-growth-workspace release candidate and optionally inspects
 real repo profiles without modifying them. Higher score is better.`;
@@ -76,29 +79,16 @@ function awardRatio(checks, findings, category, weight, passed, total, message) 
   }
 }
 
-function textIncludes(text, patterns) {
-  return patterns.every((pattern) => text.toLowerCase().includes(pattern));
-}
-
 function portableFiles() {
-  return walk(skillRoot).filter(
-    (file) =>
-      !file.startsWith("SEO_GROWTH_WORKSPACE_") &&
-      file !== "scripts/evaluate-release.mjs" &&
-      /\.(md|mjs|json)$/.test(file),
-  );
+  return walk(skillRoot).filter((file) => /\.(md|mjs|json)$/.test(file));
 }
 
 function installFiles() {
-  return walk(skillRoot).filter((file) => !file.startsWith("SEO_GROWTH_WORKSPACE_"));
+  return walk(skillRoot);
 }
 
 function scanPortableFiles(files) {
   return files.map((file) => ({ file, text: read(file) }));
-}
-
-function runtimeContentFiles(files) {
-  return files.filter((file) => !file.startsWith("fixtures/"));
 }
 
 function includesAny(scanned, regex) {
@@ -106,16 +96,16 @@ function includesAny(scanned, regex) {
 }
 
 function loadScenarioFixture(findings) {
-  const fixture = "fixtures/release-scenarios.json";
-  if (!exists(fixture)) {
+  const fixture = path.join(scriptDir, "fixtures/release-scenarios.json");
+  if (!existsSync(fixture)) {
     addFinding(findings, "Scenario readiness", "warn", "Missing release scenario fixture", fixture);
     return [];
   }
   try {
-    const payload = JSON.parse(read(fixture));
+    const payload = JSON.parse(readFileSync(fixture, "utf-8"));
     return Array.isArray(payload.profiles) ? payload.profiles : [];
   } catch (error) {
-    addFinding(findings, "Scenario readiness", "critical", `Invalid release scenario fixture: ${error.message}`, fixture);
+    addFinding(findings, "Scenario readiness", "critical", `Invalid release scenario fixture ${fixture}: ${error.message}`, fixture);
     return [];
   }
 }
@@ -129,12 +119,34 @@ function classifyProjectRoot(value) {
     return { name: name || value, root, exists: false, signals: [], recommendedMode: "missing" };
   }
 
+  try {
+    return inspectProjectRoot(name, root);
+  } catch (error) {
+    // e.g. ENOTDIR when the profile root is a file, or permission errors.
+    return {
+      name,
+      root,
+      exists: false,
+      signals: [],
+      recommendedMode: "unreadable",
+      error: error.message,
+    };
+  }
+}
+
+function inspectProjectRoot(name, root) {
+  const warnings = [];
   const has = (relativePath) => existsSync(path.join(root, relativePath));
   const rootFiles = readdirSync(root);
   const packageJsonPath = path.join(root, "package.json");
-  const packageJson = existsSync(packageJsonPath)
-    ? JSON.parse(readFileSync(packageJsonPath, "utf-8"))
-    : {};
+  let packageJson = {};
+  if (existsSync(packageJsonPath)) {
+    try {
+      packageJson = JSON.parse(readFileSync(packageJsonPath, "utf-8"));
+    } catch (error) {
+      warnings.push(`Malformed package.json at ${packageJsonPath}: ${error.message}`);
+    }
+  }
   const profileText = `${name} ${root} ${packageJson.name ?? ""}`.toLowerCase();
   const dependencies = {
     ...packageJson.dependencies,
@@ -185,6 +197,7 @@ function classifyProjectRoot(value) {
     publicSignals,
     recommendedMode,
     recommendedPhases,
+    warnings,
   };
 }
 
@@ -219,9 +232,13 @@ function compareInstalledSkill(root) {
 }
 
 function profileFindings(profile) {
-  if (!profile.exists) return [`Profile root does not exist: ${profile.root}`];
+  if (!profile.exists) {
+    return profile.error
+      ? [`Profile root could not be inspected (${profile.root}): ${profile.error}`]
+      : [`Profile root does not exist: ${profile.root}`];
+  }
 
-  const findings = [];
+  const findings = [...(profile.warnings ?? [])];
   if (!profile.hasSeoWorkspace) {
     findings.push("Missing .seo workspace; run bootstrap before operate.");
   } else if (!profile.hasSeoContext) {
@@ -262,14 +279,15 @@ function evaluate() {
   const checks = {};
   const skill = read("SKILL.md");
   const references = [
+    "references/phase-architecture.md",
     "references/operating-loop.md",
     "references/business-context.md",
     "references/admin-preflight.md",
     "references/adapters.md",
-    "references/skill-release-validation.md",
     "references/technical-seo.md",
     "references/search-console.md",
     "references/content-ops.md",
+    "references/content-engine-webhooks.md",
     "references/pseo-gates.md",
     "references/ticket-architecture.md",
     "references/internal-linking.md",
@@ -279,18 +297,17 @@ function evaluate() {
     "references/local-seo-gbp.md",
     "references/backlinks-entity.md",
     "references/monthly-reporting.md",
+    "references/ai-search-visibility.md",
+    "references/data-tools.md",
+    "references/international-seo.md",
+    "references/competitor-profiling.md",
   ];
   const scripts = [
     "scripts/bootstrap-seo-workspace.mjs",
-    "scripts/gsc-fetch.mjs",
     "scripts/gsc-oauth.mjs",
+    "scripts/gsc-fetch.mjs",
     "scripts/gsc-opportunities.mjs",
-    "scripts/gsc-to-backlog.mjs",
-    "scripts/backlog-to-content-keywords.mjs",
-    "scripts/monthly-state.mjs",
     "scripts/monthly-report.mjs",
-    "scripts/validate-skill.mjs",
-    "scripts/export-clean-skill.mjs",
   ];
   const templates = [
     "templates/admin-setup.md",
@@ -301,54 +318,54 @@ function evaluate() {
     "templates/monthly-report.md",
     "templates/pseo-plan.md",
     "templates/taxonomy.md",
-    "templates/skill-dogfood-report.md",
   ];
-  const releaseFiles = [
-    "references/phase-architecture.md",
-    "references/release-checklist.md",
-    "fixtures/release-scenarios.json",
-    "scripts/evaluate-release.mjs",
-    "scripts/export-clean-skill.mjs",
+  // Maintainer tooling lives in dev/seo-growth-workspace, next to this script.
+  const releaseToolingFiles = [
+    path.join(scriptDir, "release-checklist.md"),
+    path.join(scriptDir, "fixtures/release-scenarios.json"),
+    path.join(scriptDir, "validate-skill.mjs"),
+    path.join(scriptDir, "export-clean-skill.mjs"),
   ];
   const portable = portableFiles();
   const allPortable = scanPortableFiles(portable);
-  const runtimeContent = scanPortableFiles(runtimeContentFiles(portable));
-  const combinedPortableText = runtimeContent.map(({ text }) => text).join("\n").toLowerCase();
+  const combinedPortableText = allPortable.map(({ text }) => text).join("\n").toLowerCase();
   const allReferencesLinked = references.filter((file) => skill.includes(file)).length;
   const scenarioProfiles = loadScenarioFixture(findings);
   const phaseArchitecture = exists("references/phase-architecture.md")
     ? read("references/phase-architecture.md").toLowerCase()
     : "";
-  const releaseChecklist = exists("references/release-checklist.md")
-    ? read("references/release-checklist.md").toLowerCase()
+  const releaseChecklistPath = path.join(scriptDir, "release-checklist.md");
+  const releaseChecklist = existsSync(releaseChecklistPath)
+    ? readFileSync(releaseChecklistPath, "utf-8").toLowerCase()
     : "";
 
   award(checks, findings, "Structure", 2, /^---[\s\S]*name:\s*seo-growth-workspace[\s\S]*description:/m.test(skill), "SKILL.md frontmatter should include name and description", "SKILL.md");
   awardRatio(checks, findings, "Structure", 7, [...references, ...scripts, ...templates].filter(exists).length, references.length + scripts.length + templates.length, "Required runtime files present");
   awardRatio(checks, findings, "Structure", 3, allReferencesLinked, references.length, "SKILL.md links current references");
-  awardRatio(checks, findings, "Structure", 3, releaseFiles.filter(exists).length, releaseFiles.length, "Release-evaluation files present");
+  awardRatio(checks, findings, "Structure", 3, releaseToolingFiles.filter((file) => existsSync(file)).length, releaseToolingFiles.length, "Release tooling files present in dev/seo-growth-workspace");
 
-  const localMarkers = [
-    "/Users/" + "jorge",
-    "Supera" + "SEO",
-    "Jor" + "ge",
-    "Acre" + "dix",
-    "Her" + "mes",
-    "To" + "by",
-    "andy-" + "partner",
-    "lab" + "orix",
-    "ark" + "etix",
+  // Generic contamination patterns: no personal names or private project markers —
+  // any user-specific absolute path, email address, or UUID is a packaging leak.
+  const contaminationPatterns = [
+    { label: "absolute home path", regex: /\/(?:Users|home)\/[A-Za-z0-9._-]+/ },
+    {
+      label: "email address",
+      regex: /[A-Za-z0-9._%+-]+@(?!example\.(?:com|org|net))[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}/,
+    },
+    {
+      label: "UUID",
+      regex: /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/i,
+    },
   ];
-  const contamination = allPortable.filter(({ text }) =>
-    localMarkers.some((marker) => text.toLowerCase().includes(marker.toLowerCase())),
-  );
-  const nodeCommands = includesAny(allPortable, /(^|\n|\s)(node\s+(scripts\/|\.?\/?[-\w/]+\.mjs)|Usage:\s*\n\s*node\s+)/);
-  const nonBunManagers = includesAny(allPortable, /\b(npm|pnpm|yarn)\s+(run|install|add|exec)\b/);
+  const contamination = allPortable.flatMap(({ file, text }) => {
+    const hits = contaminationPatterns.filter(({ regex }) => regex.test(text));
+    return hits.length === 0
+      ? []
+      : [{ file, markers: hits.map(({ label }) => label).join("/") }];
+  });
   const secretExamples = includesAny(allPortable, /(ya29\.|sk-[A-Za-z0-9]|GSC_REFRESH_TOKEN=.*[A-Za-z0-9]{12})/);
-  award(checks, findings, "Portability", 5, contamination.length === 0, `Portable files contain project/local contamination: ${contamination.map(({ file }) => file).join(", ")}`);
-  award(checks, findings, "Portability", 4, nodeCommands.length === 0, `User-facing examples should use bun, not node: ${nodeCommands.map(({ file }) => file).join(", ")}`);
-  award(checks, findings, "Portability", 3, nonBunManagers.length === 0, `Portable files contain non-Bun package-manager commands: ${nonBunManagers.map(({ file }) => file).join(", ")}`);
-  award(checks, findings, "Portability", 3, secretExamples.length === 0, `Portable files may contain secret-like examples: ${secretExamples.map(({ file }) => file).join(", ")}`);
+  award(checks, findings, "Portability", 11, contamination.length === 0, `Portable files contain user-specific contamination: ${contamination.map(({ file, markers }) => `${file} (${markers})`).join(", ")}`);
+  award(checks, findings, "Portability", 4, secretExamples.length === 0, `Portable files may contain secret-like examples: ${secretExamples.map(({ file }) => file).join(", ")}`);
 
   award(checks, findings, "Matt-style architecture", 3, skill.split("\n").length <= 180, "SKILL.md should remain a concise router", "SKILL.md");
   award(checks, findings, "Matt-style architecture", 3, /mode router|choose a mode/i.test(skill), "SKILL.md should explicitly route modes", "SKILL.md");

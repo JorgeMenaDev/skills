@@ -23,5 +23,7 @@ Current focus: none
 
 ## Done
 
-| ID  | Completed | Verify |
-| --- | --------- | ------ |
+| ID      | Completed  | Verify                                    |
+| ------- | ---------- | ----------------------------------------- |
+| SEO-009 | 2026-04-12 | GSC shows query recovery after title fix  |
+| SEO-008 | 2026-03-02 | Sitemap resubmitted and processed in GSC  |

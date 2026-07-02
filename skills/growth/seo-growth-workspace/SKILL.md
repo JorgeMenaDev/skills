@@ -1,6 +1,10 @@
 ---
 name: seo-growth-workspace
-description: "Use when starting, auditing, or operating SEO, Search Console, schema, content, local SEO, backlinks, analytics, conversion, pSEO, or ongoing organic-growth work for a product or local-business website. Creates a durable .seo workspace, captures business context, audits live/code/admin evidence, prioritizes a backlog, implements one high-leverage action, verifies reality, and logs handoff notes."
+description: "Use when starting, auditing, or operating SEO or organic growth for a product or local-business website — technical SEO, Search Console, keyword/content ops, schema, pSEO, local SEO/GBP, backlinks, AI-search visibility, conversion, and monthly reporting. Triggers: \"set up SEO\", \"audit my site\", \"my traffic dropped\", \"why am I not ranking\", \"Search Console opportunities\", \"monthly SEO report\", \"how do we show up in ChatGPT/AI search\". Creates a durable .seo workspace, captures business context, audits live/code/admin evidence, prioritizes a backlog, implements one high-leverage action, verifies reality, and logs handoff notes. For standalone copywriting, paid channels, or email, use a dedicated skill."
+version: 2.0.0
+license: MIT
+mutating: true
+writes_to: [.seo/]
 ---
 
 # SEO Growth Workspace
@@ -13,7 +17,7 @@ Use this skill as a mode router. Load only the reference needed for the selected
 
 - Speak to the user in their preferred language; keep code identifiers in English.
 - Match the target site's language, market, and brand voice for public content.
-- Use the target repo's package manager, deployment path, auth workflow, and available UI/browser validation tool.
+- Use the target repo's package manager, deployment path, auth workflow, and available UI/browser validation tool. The bundled scripts are dependency-free and run with `node` (Node 18+) in any repo.
 - Do not print secrets from environment files, hosting dashboards, analytics, Search Console, OAuth, email, billing, or admin surfaces.
 - Keep one current focus ticket at a time.
 - Do not create task lists outside `.seo/backlog.md`.
@@ -52,100 +56,58 @@ Pick the narrowest mode that satisfies the request. If no narrower mode is reque
 | --- | --- | --- |
 | `operate` | Continuing SEO work without a narrower request | Current state is read, next work is chosen, one useful step is verified, and `.seo/log.md` is updated |
 | `bootstrap` | Starting or auditing an SEO workspace | `.seo/` exists, business context exists, first audit/backlog are populated |
-| `technical-seo-fix` | Fixing robots, sitemap, canonicals, metadata, schema, redirects, analytics, CWV, or indexability | Change is deployed or documented as blocked, then live verified |
+| `technical-seo-fix` | Fixing robots, sitemap, canonicals, metadata, schema, redirects, analytics, CWV, hreflang, AI-crawler access, or indexability | Change is deployed or documented as blocked, then live verified |
 | `content-ops` | Planning or operating keywords, blog calendars, briefs, articles, internal links, or a content engine | Keyword/content state is visible, publish path is verified or blocked, and next rows are documented |
 | `pseo-planning` | Creating pSEO page types, data, or publish gates | `.seo/pseo/plan.md` and data/specs exist; publish/no-publish decision is explicit |
 | `local-seo` | GBP/local-map intent, service areas, citations, reviews, local competitors | Competitor/GBP matrix and prioritized local action plan are produced |
 | `monthly-report` | Reporting performance or deciding next-month SEO actions | One-page report with wins, problems, metric deltas, and the single next action |
-| `release-dogfood` | Validating this skill inside a real repo before publishing it | Phase coverage, skill frictions, and limitations are reported without production mutation |
 
 ## Progressive References
 
 Load only the file needed for the mode or ticket:
 
-- First-run phase architecture: `references/phase-architecture.md`
+- First-run phase architecture and site-type classifier: `references/phase-architecture.md`
 - Operating loop and handoff: `references/operating-loop.md`
 - Business context intake: `references/business-context.md`
 - Admin/auth evidence: `references/admin-preflight.md`
 - Local adapters and repo-specific bridges: `references/adapters.md`
-- Technical SEO checks/fixes: `references/technical-seo.md`
-- Search Console opportunity analysis: `references/search-console.md`
-- Keywords/blog/content-engine operations: `references/content-ops.md`
-- pSEO publish gates: `references/pseo-gates.md`
-- Ticket taxonomy, statuses, and done criteria: `references/ticket-architecture.md`
+- Technical SEO checks/fixes (incl. CWV field data, AI-crawler access, JS rendering): `references/technical-seo.md`
+- International/multilingual (hreflang): `references/international-seo.md`
+- Search Console opportunity analysis (CLI pipeline, banded CTR, cannibalization): `references/search-console.md`
+- Keywords/blog/content-engine operations (research method, scoring, E-E-A-T): `references/content-ops.md`
+- Content-engine webhook publishing (receive, verify, deploy): `references/content-engine-webhooks.md`
+- pSEO publish gates and playbook chooser: `references/pseo-gates.md`
+- Ticket taxonomy, work selection, statuses, and done criteria: `references/ticket-architecture.md`
 - Internal linking audits: `references/internal-linking.md`
 - Schema and rich-results work: `references/schema-rich-results.md`
-- Content decay and refresh workflows: `references/content-refresh.md`
+- Content decay and refresh/consolidate/remove decisions: `references/content-refresh.md`
 - Conversion and CTA audits: `references/conversion-cta.md`
 - Local SEO/GBP/citations: `references/local-seo-gbp.md`
-- Backlinks/entity authority: `references/backlinks-entity.md`
+- Backlinks/entity authority, directories, digital PR: `references/backlinks-entity.md`
+- Competitor profiling and dated snapshots: `references/competitor-profiling.md`
+- Third-party keyword/SERP/backlink data tools: `references/data-tools.md`
+- AI/LLM search visibility (ChatGPT, Perplexity, AI Overviews): `references/ai-search-visibility.md`
 - Monthly reporting: `references/monthly-reporting.md`
-- Release validation before publishing the skill: `references/release-checklist.md`
-- Dogfood this skill in a real repo: `references/skill-release-validation.md`
 
-Use templates from `templates/` for report shape. Use scripts when deterministic scaffolding or analysis is useful:
+Use templates from `templates/` for report shape. Use scripts when deterministic scaffolding or analysis is useful (all run with `node`, no dependencies):
 
 - `scripts/bootstrap-seo-workspace.mjs` creates the base `.seo/` workspace without overwriting files.
-- `scripts/gsc-fetch.mjs` fetches Search Console `query,page` rows when an OAuth access token is available.
-- `scripts/gsc-oauth.mjs` helps create a local refresh-token env file without printing token values.
-- `scripts/gsc-opportunities.mjs` converts a Search Console API response into page-2 and CTR opportunity tables.
-- `scripts/gsc-to-backlog.mjs` converts Search Console rows into draft `.seo/backlog.md` rows for review.
-- `scripts/backlog-to-content-keywords.mjs` extracts content tickets from `.seo/backlog.md` into a keyword import draft.
-- `scripts/monthly-state.mjs` builds monthly reporting state from exported GSC rows, backlog, keyword tiers, and calendar snapshots.
-- `scripts/monthly-report.mjs` builds a one-page monthly SEO report from exported GSC, backlog, keyword, and calendar state.
-- `scripts/validate-skill.mjs` checks references/templates/scripts and smoke-tests helpers.
-- `scripts/evaluate-release.mjs` scores release readiness before publishing the skill.
-- `scripts/export-clean-skill.mjs` installs the portable package into another repo without copying release-run artifacts.
-
-Use `fixtures/` only when validating or editing bundled scripts.
+- `scripts/gsc-oauth.mjs` creates a local refresh-token env file without printing token values.
+- `scripts/gsc-fetch.mjs` fetches Search Console `query,page` rows with pagination using env credentials.
+- `scripts/gsc-opportunities.mjs` turns exported GSC rows into position-banded CTR, page-2, and cannibalization opportunity tables; `--brand` excludes branded queries, `--format backlog` emits draft `.seo/backlog.md` rows for review.
+- `scripts/monthly-report.mjs` builds a one-page monthly SEO report from exported GSC, backlog, keyword, and calendar files.
 
 ## Core Workflow
 
 1. State assumptions, target root, live URL, market, language, and success criteria.
 2. Classify the site type and next phase with `references/phase-architecture.md` when the request is broad, first-run, or ambiguous.
 3. Choose the mode and load only its reference file. For `operate`, load `references/operating-loop.md`, then load the narrow reference required by the chosen ticket.
-4. Create or update `.seo/context.md` using `references/business-context.md`. In no-write or `release-dogfood` mode, use existing context from `.seo/strategy.md`, `.seo/audit.md`, `.seo/README.md`, and `.agents/product-marketing.md` if `.seo/context.md` is missing, then record workspace drift instead of forcing a write.
+4. Create or update `.seo/context.md` using `references/business-context.md`. In no-write runs, use existing context from `.seo/strategy.md`, `.seo/audit.md`, and `.seo/README.md` if `.seo/context.md` is missing, then record workspace drift instead of forcing a write.
 5. Capture admin/auth evidence with `references/admin-preflight.md` before changing production or authenticated surfaces.
 6. Load `references/adapters.md` when the repo has a content engine, CMS, publisher bot, local skill customizations, or `.seo/adapters/` notes.
 7. Load `references/ticket-architecture.md` before writing or changing `.seo/backlog.md`.
-8. Audit production and code in phase order: crawl/index foundations, metadata, schema, measurement, conversion paths, content/pSEO readiness, local/authority signals, and reporting.
-9. Write `.seo/audit.md` with evidence and link each finding to a backlog ID.
-10. Seed `.seo/backlog.md` in priority order: P0 indexability/Search Console/sitemap, P1 CTR/conversion/analytics, P2 CWV/schema, P3 content/internal links/pSEO, P4 backlinks/regional/monitoring.
-11. Implement the top accessible Ready ticket.
-12. Run checks/build with the target repo's package manager.
-13. Deploy through the target repo's established production path when access exists and the user has approved it.
-14. Verify live production metadata, robots/sitemap/schema/analytics/UI. Use at least one mobile viewport for UI/CTA work.
-15. Update `.seo/backlog.md`, `.seo/log.md`, `.seo/audit.md`, `.seo/strategy.md`, and `.seo/backlinks/work-log.md` only where facts changed.
+8. Execute the mode's reference workflow, verify live results (use at least one mobile viewport for UI/CTA work), and update `.seo/` files only where facts changed.
 
 ## Optional Expert Lenses
 
-When installed, use adjacent marketing skills as lenses, not dependencies: `product-marketing` for ICP/positioning/proof, `customer-research` for pains and objections, `content-strategy` for clusters, `copywriting` or `copy-editing` for landing-page/snippet copy, `cro` for conversion paths, `analytics` for measurement proof, `schema` for structured data, `seo-audit` for a broad technical cross-check, `ai-seo` for AI search visibility without hacks, `site-architecture` for navigation/internal links, and `programmatic-seo` for pSEO planning. If they are unavailable, continue with this skill's references.
-
-## Content And pSEO Gates
-
-- Do not schedule content work until the target has a working renderer, CMS, or publishing destination.
-- If using a content engine, verify project/config state, keyword imports, scheduled rows, and authenticated UI/admin visibility. If backend/admin and UI disagree, log it as a blocker.
-- Map `.seo/backlog.md` content tickets to the target's content-engine artifacts instead of duplicating planning.
-- Add public blog hubs and post routes to `sitemap.xml` before treating content publishing as complete.
-- Do not mass-publish pSEO on a fresh domain. First prove at least one normal article can be deployed, linked, submitted or discovered, and quality-reviewed.
-- pSEO pages must have unique copy, concrete intent, internal links, and explicit no-publish/publish status in `.seo/pseo/plan.md`.
-
-## Search Console
-
-When authenticated access is available:
-
-- Confirm property type and verified access.
-- Submit/resubmit sitemap when the sitemap is new or changed.
-- Record performance top queries/pages for the last 3 months when data exists.
-- Record indexing reasons, sitemap discovered URLs, links, CWV, HTTPS, and rich result reports.
-- Inspect important changed URLs and request indexing only after real improvements.
-- If API access exists, use the bundled GSC scripts or document the target's established API path. Otherwise document browser-only access and blocked API setup.
-- For opportunity work, load `references/search-console.md` and produce a matrix for page-2 keywords, high-impression/low-CTR pages, money-page mapping, and cannibalization.
-
-## Backlinks
-
-Prioritize legitimate, relevant links: local/regional directories, industry associations, public SaaS/startup profiles, trade publications, partner/resource pages, and first-party linkable assets.
-
-Do not invent legal company details, addresses, phone numbers, certifications, customers, or proof. Label pending submissions honestly; a backlink is live only when the public page is indexable and contains the link.
-
-For local-business work, treat Google Business Profile, reviews, photos, services, posts, citations, and NAP consistency as first-class SEO surfaces. Load `references/local-seo-gbp.md`.
+When adjacent marketing skills are installed, use them as lenses, not dependencies. The Marketing Skill Bridge table in `references/phase-architecture.md` maps which skill helps which phase. If none are installed, this skill's references are sufficient.

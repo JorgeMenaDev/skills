@@ -8,7 +8,7 @@ Use this before creating or changing `.seo/backlog.md`.
 | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | ID       | `SEO-000`, `SEO-001`, monotonically increasing per target workspace                                                                                                             |
 | Priority | `P0` urgent indexability/data loss, `P1` revenue/conversion/measurement, `P2` quality/performance/schema, `P3` content/internal links/pSEO, `P4` authority/backlinks/monitoring |
-| Area     | One of `indexability`, `gsc`, `analytics`, `cro`, `schema`, `performance`, `content`, `internal-links`, `pseo`, `local-seo`, `backlinks`, `entity`, `reporting`, `admin`        |
+| Area     | One of `indexability`, `gsc`, `analytics`, `cro`, `schema`, `performance`, `content`, `internal-links`, `pseo`, `local-seo`, `backlinks`, `entity`, `ai-visibility`, `reporting`, `admin` |
 | Ticket   | One clear outcome, not a vague theme                                                                                                                                            |
 | Verify   | The exact evidence required to move to Done                                                                                                                                     |
 | Status   | Location in `Ready`, `In progress`, `Blocked`, or `Done` table                                                                                                                  |
@@ -65,6 +65,7 @@ Do not run every audit every time. Use stale evidence, missing reports, recent p
 | `pseo`           | Plan/data/gates plus explicit publish/no-publish decision                                      |
 | `local-seo`      | GBP/citation/review matrix plus ranked actions or applied changes                              |
 | `backlinks`      | Public indexable URL or logged outreach/submission status                                      |
+| `ai-visibility`  | AI-crawler access evidence plus dated citation matrix or assistant-referral data               |
 | `reporting`      | Data source, date range, deltas, wins/problems/next action                                     |
 
 ## Blocker Rules

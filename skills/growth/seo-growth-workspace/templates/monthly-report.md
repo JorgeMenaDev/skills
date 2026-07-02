@@ -5,6 +5,9 @@
 Target:
 Date range:
 Comparison range:
+YoY basis (if 13+ months of data):
+Core updates in window:
+Branded terms:
 Data sources:
 
 ## Summary
@@ -25,17 +28,22 @@ Data sources:
 
 ## Metrics
 
-| Metric                    | Current | Previous | Change | Notes |
-| ------------------------- | ------: | -------: | -----: | ----- |
-| GSC clicks                |         |          |        |       |
-| GSC impressions           |         |          |        |       |
-| GSC CTR                   |         |          |        |       |
-| GSC average position      |         |          |        |       |
-| Organic sessions          |         |          |        |       |
-| Organic conversions/leads |         |          |        |       |
-| GBP calls                 |         |          |        |       |
-| GBP website clicks        |         |          |        |       |
-| Reviews                   |         |          |        |       |
+| Metric                    | Current | Previous | Change | YoY | Notes |
+| ------------------------- | ------: | -------: | -----: | --: | ----- |
+| GSC clicks                |         |          |        |     |       |
+| GSC impressions           |         |          |        |     |       |
+| GSC non-branded clicks    |         |          |        |     |       |
+| GSC non-branded impressions |       |          |        |     |       |
+| GSC CTR                   |         |          |        |     |       |
+| GSC average position      |         |          |        |     |       |
+| Indexed pages             |         |          |        |     |       |
+| Organic sessions          |         |          |        |     |       |
+| Organic conversions/leads |         |          |        |     |       |
+| GBP calls                 |         |          |        |     |       |
+| GBP website clicks        |         |          |        |     |       |
+| Reviews                   |         |          |        |     |       |
+
+Zero-click note (impressions up, clicks down — why?):
 
 ## Movers
 

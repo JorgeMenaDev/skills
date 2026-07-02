@@ -1,4 +1,7 @@
-#!/usr/bin/env bun
+#!/usr/bin/env node
+
+// Maintainer tool: copies the portable seo-growth-workspace skill package into a target repo.
+// Lives in dev/ and is not part of the consumer skill package.
 
 import {
   cpSync,
@@ -14,14 +17,18 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
-const skillRoot = path.resolve(scriptDir, "..");
+const skillRoot = path.resolve(
+  scriptDir,
+  "../../skills/growth/seo-growth-workspace",
+);
 const args = process.argv.slice(2);
 
 function usage() {
   return `Usage:
-  bun scripts/export-clean-skill.mjs --target /path/to/repo [--dry-run] [--force] [--include-release-artifacts] [--write-install-notes]
+  node dev/seo-growth-workspace/export-clean-skill.mjs --target /path/to/repo [--dry-run] [--force] [--write-install-notes]
 
-Copies the portable seo-growth-workspace package into:
+Copies the portable seo-growth-workspace package (SKILL.md, references/, templates/,
+scripts/*.mjs — no fixtures or release tooling) into:
   <target>/.agents/skills/seo-growth-workspace
 
 Default behavior:
@@ -34,7 +41,13 @@ Default behavior:
 
 function argValue(name) {
   const index = args.indexOf(name);
-  return index === -1 ? null : args[index + 1];
+  if (index === -1) return null;
+  const value = args[index + 1];
+  if (value === undefined || value.startsWith("--")) {
+    console.error(`Missing value for ${name}\n\n${usage()}`);
+    process.exit(1);
+  }
+  return value;
 }
 
 function walk(root, relativeRoot = "") {
@@ -47,13 +60,19 @@ function walk(root, relativeRoot = "") {
   });
 }
 
-function excluded(relativePath, includeReleaseArtifacts) {
-  if (!includeReleaseArtifacts && relativePath.startsWith("SEO_GROWTH_WORKSPACE_")) return true;
-  return false;
+// Final portable inventory: SKILL.md + references/ + templates/ + scripts/*.mjs only.
+function portable(relativePath) {
+  return (
+    relativePath === "SKILL.md" ||
+    relativePath.startsWith(`references${path.sep}`) ||
+    relativePath.startsWith(`templates${path.sep}`) ||
+    (relativePath.startsWith(`scripts${path.sep}`) &&
+      relativePath.endsWith(".mjs"))
+  );
 }
 
-function portableFiles(includeReleaseArtifacts) {
-  return walk(skillRoot).filter((file) => !excluded(file, includeReleaseArtifacts));
+function portableFiles() {
+  return walk(skillRoot).filter(portable);
 }
 
 function sameFile(source, target) {
@@ -120,11 +139,13 @@ if (!targetRoot) {
 
 const dryRun = args.includes("--dry-run") || args.includes("--check");
 const force = args.includes("--force");
-const includeReleaseArtifacts = args.includes("--include-release-artifacts");
 const writeNotes = args.includes("--write-install-notes");
 const resolvedTargetRoot = path.resolve(targetRoot);
-const targetSkillRoot = path.join(resolvedTargetRoot, ".agents/skills/seo-growth-workspace");
-const files = portableFiles(includeReleaseArtifacts);
+const targetSkillRoot = path.join(
+  resolvedTargetRoot,
+  ".agents/skills/seo-growth-workspace",
+);
+const files = portableFiles();
 const state = targetState(targetSkillRoot, files);
 const riskyReplacement =
   state.localOnlyFiles.length > 0 || state.modifiedSamePathFiles.length > 0;
@@ -133,7 +154,6 @@ const plan = {
   targetRoot: resolvedTargetRoot,
   targetSkillRoot,
   copiedFiles: files.length,
-  excludedReleaseArtifacts: !includeReleaseArtifacts,
   dryRun,
   force,
   willWrite: !dryRun && (!riskyReplacement || force),

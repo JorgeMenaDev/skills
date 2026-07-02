@@ -10,7 +10,7 @@ Prefer this order:
 
 1. `.seo/adapters/<name>.md` for repo-local operating notes and project-specific bridges.
 2. `.seo/strategy.md` for durable decisions and tool ownership.
-3. `.agents/product-marketing.md` for product, ICP, positioning, proof, and voice.
+3. The repo's own product/positioning doc for product, ICP, positioning, proof, and voice (for example `.agents/product-marketing.md` if the repo keeps one).
 
 Avoid putting project-specific adapters inside `.agents/skills/seo-growth-workspace/references/` unless the skill copy is intentionally private to that repo. Generic reinstalls can replace the skill folder.
 
@@ -20,18 +20,7 @@ Do not replace an existing `.agents/skills/seo-growth-workspace` folder blindly.
 
 1. Inventory files that are not part of the portable package.
 2. Preserve useful project-specific notes in `.seo/adapters/` or `.seo/strategy.md`.
-3. Run the clean exporter instead of raw copy commands:
-
-```bash
-bun skills/growth/seo-growth-workspace/scripts/export-clean-skill.mjs --target /path/to/repo --dry-run
-bun skills/growth/seo-growth-workspace/scripts/export-clean-skill.mjs --target /path/to/repo --force
-```
-
-4. Validate the installed copy:
-
-```bash
-bun /path/to/repo/.agents/skills/seo-growth-workspace/scripts/validate-skill.mjs
-```
+3. Reinstall through the skills installer the repo already uses (for example `npx skills@latest add <owner>/<repo> --skill seo-growth-workspace`), then confirm the preserved notes still exist. Maintainers working from the authoring repo can use its dev exporter instead.
 
 ## Content Engine Adapters
 
@@ -39,6 +28,7 @@ When the target has a content engine, CMS, publisher bot, or app-owned workflow:
 
 - Treat the skill as the strategist/operator layer.
 - Treat the app/CMS/publisher as the execution layer.
+- For engines that push articles by webhook, use `references/content-engine-webhooks.md` for the receiver contract and verification gates.
 - Map `.seo/backlog.md` content tickets to the target's native project, keyword, calendar, article, or publish artifacts.
 - Verify backend/CLI state and authenticated UI state agree before marking content work complete.
 - Keep reconciliation/publish mutations behind explicit owner approval and dry-run proof when the target supports it.

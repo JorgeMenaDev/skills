@@ -4,17 +4,20 @@ Use for audits and fixes involving link equity, crawl paths, blog hubs, pSEO hub
 
 ## Audit Matrix
 
-| Source URL | Target URL | Anchor text | Current state | Desired state | Intent | Priority | Fix |
-| ---------- | ---------- | ----------- | ------------- | ------------- | ------ | -------- | --- |
+| Source URL | Target URL | Anchor text | Click depth | Current state | Desired state | Intent | Priority | Fix |
+| ---------- | ---------- | ----------- | ----------- | ------------- | ------------- | ------ | -------- | --- |
 
 Check:
 
 - Homepage links to primary money pages, blog hub, and key pSEO hubs.
+- Money and hub pages sit <= 3 clicks from the homepage; record click depth in the matrix.
 - Blog posts link to relevant product/service pages and related articles.
 - pSEO pages link back to hubs and high-intent CTAs.
 - Orphan pages are listed and assigned sources.
+- Breadcrumbs render on nested pages and match `BreadcrumbList` markup when present.
 - Anchor text is descriptive and natural, not repeated exact-match spam.
 - Footer/nav links support core conversion and crawl paths.
+- Use the GSC Links report as evidence for internal-link counts and top linked pages.
 
 ## Done Criteria
 

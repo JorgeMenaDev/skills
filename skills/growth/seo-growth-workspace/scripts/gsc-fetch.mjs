@@ -1,17 +1,24 @@
-#!/usr/bin/env bun
+#!/usr/bin/env node
 
 import { writeFile } from "node:fs/promises";
 
+const PAGE_SIZE = 25000; // GSC searchAnalytics.query per-request maximum
+const DEFAULT_MAX_ROWS = 100000;
+
 function usage() {
   return `Usage:
-  GSC_ACCESS_TOKEN=<access-token> bun gsc-fetch.mjs --site https://example.com/ --start 2026-01-01 --end 2026-03-31 [--output gsc.json]
+  GSC_ACCESS_TOKEN=<access-token> node gsc-fetch.mjs --site https://example.com/ --start 2026-01-01 --end 2026-03-31 [--output gsc.json] [--max-rows ${DEFAULT_MAX_ROWS}]
 
   # Or use refresh-token auth:
-  GSC_CLIENT_ID=... GSC_CLIENT_SECRET=... GSC_REFRESH_TOKEN=... bun gsc-fetch.mjs --site https://example.com/ --start 2026-01-01 --end 2026-03-31 [--output gsc.json]
+  GSC_CLIENT_ID=... GSC_CLIENT_SECRET=... GSC_REFRESH_TOKEN=... node gsc-fetch.mjs --site https://example.com/ --start 2026-01-01 --end 2026-03-31 [--output gsc.json]
 
 Fetches Google Search Console searchAnalytics.query data for query+page rows.
+Pages through results with startRow (25,000 rows per request) until the export is
+complete or --max-rows (default ${DEFAULT_MAX_ROWS}) is reached; a note is printed
+to stderr if the cap is hit.
 
 Auth:
+  - Credentials are read from environment variables only, never from CLI flags.
   - Uses GSC_ACCESS_TOKEN first when present.
   - Otherwise exchanges GSC_CLIENT_ID, GSC_CLIENT_SECRET, and GSC_REFRESH_TOKEN for an access token.
   - Required OAuth scope: webmasters.readonly.
@@ -21,7 +28,12 @@ Auth:
 
 function argValue(name) {
   const index = process.argv.indexOf(name);
-  return index === -1 ? null : process.argv[index + 1];
+  if (index === -1) return null;
+  const value = process.argv[index + 1];
+  if (value === undefined || value.startsWith("--")) {
+    throw new Error(`Missing value for ${name}\n\n${usage()}`);
+  }
+  return value;
 }
 
 async function getAccessToken() {
@@ -55,25 +67,7 @@ async function getAccessToken() {
   return payload.access_token;
 }
 
-async function main() {
-  if (process.argv.includes("--help") || process.argv.includes("-h")) {
-    console.log(usage());
-    return;
-  }
-
-  const site = argValue("--site");
-  const startDate = argValue("--start");
-  const endDate = argValue("--end");
-  const output = argValue("--output");
-
-  if (!site || !startDate || !endDate) throw new Error(usage());
-  const token = await getAccessToken();
-  if (!token) throw new Error(usage());
-
-  const endpoint = `https://www.googleapis.com/webmasters/v3/sites/${encodeURIComponent(
-    site,
-  )}/searchAnalytics/query`;
-
+async function fetchPage({ endpoint, token, startDate, endDate, rowLimit, startRow }) {
   const response = await fetch(endpoint, {
     method: "POST",
     headers: {
@@ -84,7 +78,8 @@ async function main() {
       startDate,
       endDate,
       dimensions: ["query", "page"],
-      rowLimit: 25000,
+      rowLimit,
+      startRow,
     }),
   });
 
@@ -93,12 +88,67 @@ async function main() {
     throw new Error(`GSC request failed ${response.status}: ${body}`);
   }
 
-  const payload = await response.json();
-  const text = `${JSON.stringify(payload, null, 2)}\n`;
+  return response.json();
+}
+
+async function main() {
+  if (process.argv.includes("--help") || process.argv.includes("-h")) {
+    console.log(usage());
+    return;
+  }
+
+  const site = argValue("--site");
+  const startDate = argValue("--start");
+  const endDate = argValue("--end");
+  const output = argValue("--output");
+  const maxRows = Number(argValue("--max-rows") ?? DEFAULT_MAX_ROWS);
+  if (!Number.isInteger(maxRows) || maxRows < 1) {
+    throw new Error("--max-rows must be a positive integer");
+  }
+
+  if (!site || !startDate || !endDate) throw new Error(usage());
+  const token = await getAccessToken();
+  if (!token) throw new Error(usage());
+
+  const endpoint = `https://www.googleapis.com/webmasters/v3/sites/${encodeURIComponent(
+    site,
+  )}/searchAnalytics/query`;
+
+  const rows = [];
+  let startRow = 0;
+  let responseAggregationType = null;
+  let lastPageWasFull = false;
+
+  while (rows.length < maxRows) {
+    const rowLimit = Math.min(PAGE_SIZE, maxRows - rows.length);
+    const payload = await fetchPage({
+      endpoint,
+      token,
+      startDate,
+      endDate,
+      rowLimit,
+      startRow,
+    });
+    const page = Array.isArray(payload.rows) ? payload.rows : [];
+    responseAggregationType ??= payload.responseAggregationType ?? null;
+    rows.push(...page);
+    startRow += page.length;
+    lastPageWasFull = page.length === rowLimit && page.length > 0;
+    if (page.length < rowLimit) break;
+  }
+
+  if (lastPageWasFull && rows.length >= maxRows) {
+    console.error(
+      `Note: stopped at --max-rows (${maxRows}); more rows may exist. Re-run with a higher --max-rows or a narrower date range for a complete export.`,
+    );
+  }
+
+  const result = { responseAggregationType, rows };
+  const text = `${JSON.stringify(result, null, 2)}\n`;
 
   if (output) {
     await writeFile(output, text);
-    console.log(`Wrote ${payload.rows?.length ?? 0} rows to ${output}`);
+    console.log(`Wrote ${rows.length} rows to ${output}`);
     return;
   }
 

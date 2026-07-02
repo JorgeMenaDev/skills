@@ -1,11 +1,67 @@
-import { mkdir, writeFile } from "node:fs/promises";
+#!/usr/bin/env node
+
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const root = process.argv[2] ? path.resolve(process.argv[2]) : process.cwd();
+const scriptDir = path.dirname(fileURLToPath(import.meta.url));
+const taxonomyTemplatePath = path.resolve(scriptDir, "../templates/taxonomy.md");
 
-const files = {
-  ".seo/README.md": `# SEO workspace
+function usage() {
+  return `Usage:
+  node bootstrap-seo-workspace.mjs [target-dir]
+
+Creates or verifies the .seo/ workspace (backlog, log, audit, taxonomy, strategy, context,
+backlinks, reports) in the target directory (default: current directory). Existing files are
+never overwritten. .seo/taxonomy.md is sourced from the skill's templates/taxonomy.md.`;
+}
+
+// Fallback only for installed copies that are missing templates/taxonomy.md.
+const inlineTaxonomyFallback = `# SEO ticket taxonomy
+
+## Priorities
+
+| Priority | Meaning |
+| --- | --- |
+| P0 | Indexability, data loss, or production blockers |
+| P1 | Revenue, conversion, measurement, or high-confidence quick wins |
+| P2 | Quality, performance, schema, or reliability improvements |
+| P3 | Content, internal links, pSEO planning, or expansion |
+| P4 | Authority, backlinks, monitoring, or longer-term bets |
+
+## Areas
+
+\`indexability\`, \`gsc\`, \`analytics\`, \`cro\`, \`schema\`, \`performance\`, \`content\`, \`internal-links\`, \`pseo\`, \`local-seo\`, \`backlinks\`, \`entity\`, \`reporting\`, \`admin\`
+
+## Evidence standard
+
+Every ticket needs a concrete Verify cell: command output, live URL/status, rendered metadata/schema, admin report, API/CLI output, or public backlink/citation URL.
+
+## Work Selection
+
+Use this order:
+
+1. \`Current focus\` when it points to a real ticket.
+2. First real row in \`In progress\`.
+3. Top Ready ticket by priority and table order.
+4. Blocked ticket that has become unblockable.
+5. New evidence-backed ticket from stale notes, expired recheck dates, missing reports, or checkpoint findings.
+
+Empty Ready/In progress tables do not mean SEO is done. Run the smallest useful operating-loop checkpoint, create or update one evidence-backed ticket if needed, and write the handoff in \`.seo/log.md\`.
+`;
+
+async function taxonomyContent() {
+  try {
+    return await readFile(taxonomyTemplatePath, "utf-8");
+  } catch {
+    return inlineTaxonomyFallback;
+  }
+}
+
+function staticFiles() {
+  return {
+    ".seo/README.md": `# SEO workspace
 
 Canonical files:
 
@@ -17,7 +73,7 @@ Canonical files:
 - \`.seo/reports/\` stores dated reports.
 - \`.seo/backlinks/work-log.md\` stores backlink/citation attempts.
 `,
-  ".seo/backlog.md": `# SEO backlog
+    ".seo/backlog.md": `# SEO backlog
 
 Last updated: YYYY-MM-DD
 Current focus: none
@@ -49,11 +105,11 @@ Current focus: none
 | ID | Completed | Verify |
 | --- | --- | --- |
 `,
-  ".seo/log.md": `# SEO operating log
+    ".seo/log.md": `# SEO operating log
 
 Use this as the chronological handoff for continuous SEO work. Keep entries short and link to reports or backlog tickets for detail.
 `,
-  ".seo/audit.md": `# SEO audit
+    ".seo/audit.md": `# SEO audit
 
 Last updated: YYYY-MM-DD
 
@@ -62,31 +118,7 @@ Last updated: YYYY-MM-DD
 | ID | Priority | Area | Finding | Evidence | Recommended action |
 | --- | --- | --- | --- | --- | --- |
 `,
-  ".seo/taxonomy.md": `# SEO ticket taxonomy
-
-## Priorities
-
-| Priority | Meaning |
-| --- | --- |
-| P0 | Indexability, data loss, or production blockers |
-| P1 | Revenue, conversion, measurement, or high-confidence quick wins |
-| P2 | Quality, performance, schema, or reliability improvements |
-| P3 | Content, internal links, pSEO planning, or expansion |
-| P4 | Authority, backlinks, monitoring, or longer-term bets |
-
-## Areas
-
-\`indexability\`, \`gsc\`, \`analytics\`, \`cro\`, \`schema\`, \`performance\`, \`content\`, \`internal-links\`, \`pseo\`, \`local-seo\`, \`backlinks\`, \`entity\`, \`reporting\`, \`admin\`
-
-## Evidence standard
-
-Every ticket needs a concrete Verify cell: command output, live URL/status, rendered metadata/schema, admin report, API/CLI output, or public backlink/citation URL.
-
-## Work selection
-
-Use this order: Current focus, first In progress row, top Ready row, newly unblockable Blocked row, then one new evidence-backed ticket from the operating loop.
-`,
-  ".seo/strategy.md": `# SEO strategy
+    ".seo/strategy.md": `# SEO strategy
 
 Last updated: YYYY-MM-DD
 
@@ -101,16 +133,16 @@ See \`.seo/context.md\`.
 
 ## Decisions
 `,
-  ".seo/backlinks/summary.md": `# Backlink summary
+    ".seo/backlinks/summary.md": `# Backlink summary
 
 Last updated: YYYY-MM-DD
 `,
-  ".seo/backlinks/work-log.md": `# Backlink work log
+    ".seo/backlinks/work-log.md": `# Backlink work log
 
 | Date | Target | Action | Status | Evidence | Next step |
 | --- | --- | --- | --- | --- | --- |
 `,
-  ".seo/context.md": `# SEO business context
+    ".seo/context.md": `# SEO business context
 
 ## Business basics
 
@@ -128,13 +160,29 @@ Last updated: YYYY-MM-DD
 
 ## Constraints and operating preferences
 `,
-};
+  };
+}
 
 async function ensureDir(filePath) {
   await mkdir(path.dirname(filePath), { recursive: true });
 }
 
 async function main() {
+  const arg = process.argv[2];
+  if (arg === "--help" || arg === "-h") {
+    console.log(usage());
+    return;
+  }
+  if (arg?.startsWith("-")) {
+    throw new Error(`Unknown flag ${arg}\n\n${usage()}`);
+  }
+
+  const root = arg ? path.resolve(arg) : process.cwd();
+  const files = {
+    ...staticFiles(),
+    ".seo/taxonomy.md": await taxonomyContent(),
+  };
+
   await Promise.all(
     [".seo/reports", ".seo/scripts", ".seo/pseo"].map((dir) =>
       mkdir(path.join(root, dir), { recursive: true }),
@@ -152,6 +200,6 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error(error);
+  console.error(error.message);
   process.exit(1);
 });

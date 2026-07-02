@@ -1,23 +1,32 @@
-#!/usr/bin/env bun
+#!/usr/bin/env node
 
-import { writeFile } from "node:fs/promises";
+import { chmod, writeFile } from "node:fs/promises";
 
 const scope = "https://www.googleapis.com/auth/webmasters.readonly";
 
 function usage() {
   return `Usage:
   # 1. Generate a Google OAuth consent URL.
-  GSC_CLIENT_ID=... bun gsc-oauth.mjs --print-auth-url [--redirect-uri http://localhost:8080/oauth2callback]
+  GSC_CLIENT_ID=... node gsc-oauth.mjs --print-auth-url [--redirect-uri http://localhost:8080/oauth2callback]
 
   # 2. Exchange the returned code into a local env file.
-  GSC_CLIENT_ID=... GSC_CLIENT_SECRET=... bun gsc-oauth.mjs --code <returned-code> --output .env.local [--redirect-uri http://localhost:8080/oauth2callback] [--force]
+  GSC_CLIENT_ID=... GSC_CLIENT_SECRET=... node gsc-oauth.mjs --code <returned-code> --output .env.local [--redirect-uri http://localhost:8080/oauth2callback] [--force]
+
+The client secret is read only from the GSC_CLIENT_SECRET environment variable (never from a CLI
+flag, so it cannot leak into shell history or process lists). The output file is written with
+0600 permissions and is never overwritten unless --force is passed.
 
 This helper never prints credential values or token response bodies. Use the output file with gsc-fetch.mjs.`;
 }
 
 function argValue(name) {
   const index = process.argv.indexOf(name);
-  return index === -1 ? null : process.argv[index + 1];
+  if (index === -1) return null;
+  const value = process.argv[index + 1];
+  if (value === undefined || value.startsWith("--")) {
+    throw new Error(`Missing value for ${name}\n\n${usage()}`);
+  }
+  return value;
 }
 
 function envLine(name, value) {
@@ -73,8 +82,7 @@ async function main() {
   }
 
   const clientId = argValue("--client-id") ?? process.env.GSC_CLIENT_ID;
-  const clientSecret =
-    argValue("--client-secret") ?? process.env.GSC_CLIENT_SECRET;
+  const clientSecret = process.env.GSC_CLIENT_SECRET;
   const redirectUri =
     argValue("--redirect-uri") ?? "http://localhost:8080/oauth2callback";
   const code = argValue("--code");
@@ -101,8 +109,10 @@ async function main() {
     envLine("GSC_REFRESH_TOKEN", refreshToken),
   ].join("");
 
-  await writeFile(output, content, { flag: force ? "w" : "wx" });
-  console.log(`Wrote GSC OAuth env values to ${output}`);
+  await writeFile(output, content, { flag: force ? "w" : "wx", mode: 0o600 });
+  // mode above only applies on creation; enforce it on --force overwrites too.
+  await chmod(output, 0o600);
+  console.log(`Wrote GSC OAuth env values to ${output} (mode 0600)`);
 }
 
 main().catch((error) => {

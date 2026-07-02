@@ -19,13 +19,14 @@
 | `analytics`      | analytics install, events, conversion tracking, reporting         |
 | `cro`            | CTAs, forms, signup/contact paths, trust blocks                   |
 | `schema`         | JSON-LD, rich-results eligibility, entity markup                  |
-| `performance`    | Lighthouse, CWV, mobile rendering                                 |
+| `performance`    | CWV field data, lab performance checks, mobile rendering          |
 | `content`        | keyword research, blog calendar, briefs, articles                 |
 | `internal-links` | crawl paths, anchors, hubs, orphan pages                          |
 | `pseo`           | programmatic page planning, datasets, templates, publish gates    |
 | `local-seo`      | GBP, reviews, citations, NAP, service areas                       |
 | `backlinks`      | link opportunities, outreach, submissions                         |
 | `entity`         | brand/entity consistency, profiles, sameAs                        |
+| `ai-visibility`  | AI-crawler access, assistant citations, assistant referral proof  |
 | `reporting`      | monthly reports and deltas                                        |
 | `admin`          | Vercel, DNS, CMS, scheduler, auth, permissions                    |
 
@@ -43,16 +44,9 @@
 | `pseo`           | Plan, data, gates, explicit publish/no-publish decision                        |
 | `local-seo`      | GBP/citation/review matrix plus applied change or ranked action                |
 | `backlinks`      | Public indexable URL or logged outreach/submission status                      |
+| `ai-visibility`  | AI-crawler access evidence plus dated citation matrix or referral data         |
 | `reporting`      | Source, date range, deltas, wins/problems/next action                          |
 
 ## Work Selection
 
-Use this order:
-
-1. `Current focus` when it points to a real ticket.
-2. First real row in `In progress`.
-3. Top Ready ticket by priority and table order.
-4. Blocked ticket that has become unblockable.
-5. New evidence-backed ticket from stale notes, expired recheck dates, missing reports, or checkpoint findings.
-
-Empty Ready/In progress tables do not mean SEO is done. Run the smallest useful operating-loop checkpoint, create or update one evidence-backed ticket if needed, and write the handoff in `.seo/log.md`.
+The work-selection order, duplicate rules, empty-backlog rule, and blocker rules live in the skill's `references/ticket-architecture.md`. Follow that file; do not restate its rules here. An empty Ready/In progress queue does not mean SEO is done — run the smallest useful operating-loop checkpoint and write the handoff in `.seo/log.md`.

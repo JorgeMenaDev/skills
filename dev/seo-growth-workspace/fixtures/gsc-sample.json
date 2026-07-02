@@ -13,6 +13,34 @@
       "impressions": 300,
       "ctr": 0.003,
       "position": 4.2
+    },
+    {
+      "keys": ["examplebrand pricing", "https://example.com/pricing"],
+      "clicks": 4,
+      "impressions": 800,
+      "ctr": 0.005,
+      "position": 1.2
+    },
+    {
+      "keys": ["seo reporting | dashboards", "https://example.com/reporting"],
+      "clicks": 4,
+      "impressions": 400,
+      "ctr": 0.01,
+      "position": 2.1
+    },
+    {
+      "keys": ["keyword tracker", "https://example.com/tools/keyword-tracker"],
+      "clicks": 7,
+      "impressions": 350,
+      "ctr": 0.02,
+      "position": 6.8
+    },
+    {
+      "keys": ["keyword tracker", "https://example.com/blog/keyword-tracking-guide"],
+      "clicks": 2,
+      "impressions": 250,
+      "ctr": 0.008,
+      "position": 9.2
     }
   ]
 }

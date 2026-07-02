@@ -26,6 +26,8 @@ If those signals are absent, exit the phase as `not applicable` and record the e
 | Description      | GBP descriptions and competitor patterns                                           | 3 description variants under platform limits       |
 | Photos           | Photo count, recency, types, quality, local signals                                | Weekly upload plan and shot list                   |
 | Citations        | NAP across directories and duplicates                                              | Fix list and missing directory list                |
+| Q&A              | Existing Q&A on target and competitor listings                                     | Seed and answer your own common pre-sale questions (owned real estate) |
+| Spam listings    | Fake or keyword-stuffed competitor listings in the map pack                        | Report via Google's Business Redressal Complaint Form, with evidence |
 | Local intent     | Keyword stages from problem to ready-to-hire                                       | Keyword-to-page/GBP strategy                       |
 
 ## Matrix Columns
@@ -33,6 +35,10 @@ If those signals are absent, exit the phase as `not applicable` and record the e
 Use columns such as:
 
 `competitor`, `rank`, `category`, `attribute`, `review count`, `review velocity`, `service`, `city`, `evidence URL`, `gap`, `impact`, `time-to-result`, `next action`.
+
+Depth tiers: quick scan (default) covers categories, reviews, and obvious gaps for the top 3 competitors; run the full module matrix only when a local ticket justifies it.
+
+Save the matrix using `templates/local-seo-gbp.md`.
 
 ## Customer-Language Mining
 
@@ -60,5 +66,5 @@ Output a cadence recommendation and the first 4 weeks of posts when relevant. Ke
 ## Guardrails
 
 - Do not invent addresses, phone numbers, certifications, service areas, reviews, or photos.
-- Do not recommend fake review language. Suggest prompts that help happy customers mention real service/location details.
+- Do not recommend fake review language. Ask ALL customers for reviews; never filter by sentiment (review gating violates Google review policies and the FTC fake-reviews rule).
 - If authenticated GBP changes are possible, record before/after evidence and avoid changing legal business details without explicit confirmation.

@@ -13,6 +13,39 @@ Use for `content-ops` mode: keywords, clusters, blog calendars, briefs, article 
 
 If any gate fails, create a blocker or technical ticket before importing/scheduling content.
 
+## Keyword Research
+
+Seed sources, strongest evidence first:
+
+1. First-party GSC data: `node scripts/gsc-opportunities.mjs --format backlog` — queries already earning impressions.
+2. Competitor demand gaps (matrix below).
+3. Community mining: `site:reddit.com <topic>` and `site:quora.com <topic>` — questions, frustrations, upvoted answers.
+4. Support tickets and sales-call questions/objections.
+
+Validate each candidate against the live SERP: what ranks, in what format (guide, listicle, tool, comparison), which SERP features. Write only where the format matches intent and you can add information gain.
+
+Buyer-stage modifiers:
+
+| Stage          | Example modifiers                 |
+| -------------- | --------------------------------- |
+| Awareness      | what is, how to, guide to         |
+| Consideration  | best, top, vs, alternatives       |
+| Decision       | pricing, reviews, demo, trial     |
+| Implementation | template, tutorial, setup, how to use |
+
+Score each candidate 1-10 per factor:
+
+| Factor             | Weight | Ask                                                              |
+| ------------------ | -----: | ---------------------------------------------------------------- |
+| Customer impact    |    40% | How often/intensely this pain appears in tickets, calls, research |
+| Content-market fit |    30% | Maps to what the product solves; unique insight available         |
+| Search potential   |    20% | Volume, competitiveness, long-tail room                           |
+| Resources          |    10% | Expertise and assets already on hand                              |
+
+`priorityScore = 0.4*impact + 0.3*fit + 0.2*search + 0.1*resources`
+
+The old backlog-to-keywords script is removed; extracting keywords from `.seo/backlog.md` is agent judgment guided by this rubric.
+
 ## Keyword Batch Shape
 
 Recommended columns/fields:
@@ -28,7 +61,7 @@ Use this when competitors rank for useful demand that the target does not yet ca
 | Keyword | Competitor URL | Buyer stage | Volume/difficulty if known | Existing page | Action | Priority |
 | --- | --- | --- | --- | --- | --- | --- |
 
-Actions should be one of: optimize an existing page, create a page/article, import to the content engine, add internal links, defer. Do not import every gap into the calendar; keep only topics with product fit, buyer intent, and a plausible route to ranking or conversion.
+Actions: optimize an existing page, create a page/article, import to the content engine, add internal links, defer. Do not import every gap; keep only topics with product fit, buyer intent, and a plausible route to ranking or conversion.
 
 ## Calendar Verification
 
@@ -39,6 +72,28 @@ After seeding a lane, verify:
 - UI visibility in the production workspace.
 - Next planned item or processing queue status.
 - Blog route and sitemap behavior.
+
+## E-E-A-T
+
+Check, and build where missing:
+
+- Author pages with real credentials, linked from every article; `Person` schema with `sameAs`.
+- First-hand-experience proof in articles: real screenshots, test data, named examples.
+- Editorial standards page (review process, corrections policy); honest bylines and dates (see `references/content-refresh.md`).
+
+## Publish Gate
+
+A human reviews every published article for added value. Automated calendar publishing without a per-article value check is a policy risk: Google's scaled content abuse policy (March 2024) targets publishing many pages without added value, regardless of how they were produced.
+
+Naturalness self-check before publish:
+
+- Em-dashes: more than ~1 per page reads machine-written; prefer commas/parentheses.
+- Cut stock openers/transitions: "in today's fast-paced world", "it's worth noting", "at its core", "in conclusion".
+- Cut filler intensifiers: very, truly, ultimately, significantly, seamlessly.
+- Vary sentence length and paragraph rhythm; uniform blocks read generated.
+- Avoid listicle-itis: prose where prose serves; lists only for list-shaped content.
+- Avoid template constructions: "whether you're X, Y, or Z", "it's not just X, it's Y".
+- Read a sample aloud; revise anything you would not say to a colleague.
 
 ## Report Output
 
@@ -56,6 +111,7 @@ Use `templates/content-plan.md`. Include:
 When the target uses a content engine:
 
 - Load `references/adapters.md` and the repo's local adapter before creating/importing/scheduling content work.
+- If the engine pushes finished articles to the target via webhook, build or audit the receiving endpoint with `references/content-engine-webhooks.md`.
 - Store durable project config and keyword batches in the target repo's established content-engine paths.
 - Prefer a small import script for repeatability.
 - Use the repo's CLI/status commands to verify tiers/calendar/status.

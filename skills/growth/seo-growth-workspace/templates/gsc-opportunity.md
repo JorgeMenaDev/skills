@@ -5,6 +5,7 @@
 Property:
 Date range:
 Data source:
+Branded terms excluded (`--brand`):
 
 ## Page 2 goldmine
 
@@ -13,8 +14,8 @@ Data source:
 
 ## CTR fixes
 
-| Page | Main query | Impressions | CTR | Avg position | Current title/meta issue | New title | New meta | Impact |
-| ---- | ---------- | ----------: | --: | -----------: | ------------------------ | --------- | -------- | ------ |
+| Page | Main query | Impressions | CTR | Expected CTR (band) | Avg position | Current title/meta issue | New title | New meta | Impact |
+| ---- | ---------- | ----------: | --: | ------------------: | -----------: | ------------------------ | --------- | -------- | ------ |
 
 ## Money page mapping
 
@@ -23,8 +24,8 @@ Data source:
 
 ## Cannibalization
 
-| Query | Competing URLs | Strongest URL | Weak URL action | Internal-link fix |
-| ----- | -------------- | ------------- | --------------- | ----------------- |
+| Query | Competing URLs | Impression split | Strongest URL | Weak URL action | Internal-link fix |
+| ----- | -------------- | ---------------- | ------------- | --------------- | ----------------- |
 
 ## 30-day sprint
 

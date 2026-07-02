@@ -1,12 +1,37 @@
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { mkdtempSync, rmSync } from "node:fs";
+#!/usr/bin/env node
+
+// Maintainer validation for skills/growth/seo-growth-workspace.
+// Run from anywhere: node dev/seo-growth-workspace/validate-skill.mjs [--skill-dir <path>]
+
+import {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
-const skillRoot = path.resolve(scriptDir, "..");
+const fixturesDir = path.join(scriptDir, "fixtures");
+
+function argValue(name) {
+  const index = process.argv.indexOf(name);
+  if (index === -1) return null;
+  const value = process.argv[index + 1];
+  if (value === undefined || value.startsWith("--")) {
+    throw new Error(`Missing value for ${name}`);
+  }
+  return value;
+}
+
+const skillRoot = path.resolve(
+  argValue("--skill-dir") ??
+    path.resolve(scriptDir, "../../skills/growth/seo-growth-workspace"),
+);
 
 const requiredFiles = [
   "SKILL.md",
@@ -15,10 +40,10 @@ const requiredFiles = [
   "references/business-context.md",
   "references/admin-preflight.md",
   "references/adapters.md",
-  "references/skill-release-validation.md",
   "references/technical-seo.md",
   "references/search-console.md",
   "references/content-ops.md",
+  "references/content-engine-webhooks.md",
   "references/pseo-gates.md",
   "references/ticket-architecture.md",
   "references/internal-linking.md",
@@ -28,290 +53,267 @@ const requiredFiles = [
   "references/local-seo-gbp.md",
   "references/backlinks-entity.md",
   "references/monthly-reporting.md",
-  "references/release-checklist.md",
-  "templates/admin-setup.md",
-  "templates/gsc-opportunity.md",
-  "templates/content-plan.md",
+  "references/ai-search-visibility.md",
+  "references/data-tools.md",
+  "references/international-seo.md",
+  "references/competitor-profiling.md",
+  "templates/taxonomy.md",
   "templates/local-seo-gbp.md",
   "templates/backlink-gap.md",
-  "templates/monthly-report.md",
+  "templates/content-plan.md",
   "templates/pseo-plan.md",
-  "templates/taxonomy.md",
-  "templates/skill-dogfood-report.md",
+  "templates/gsc-opportunity.md",
+  "templates/monthly-report.md",
+  "templates/admin-setup.md",
   "scripts/bootstrap-seo-workspace.mjs",
-  "scripts/gsc-fetch.mjs",
   "scripts/gsc-oauth.mjs",
+  "scripts/gsc-fetch.mjs",
   "scripts/gsc-opportunities.mjs",
-  "scripts/gsc-to-backlog.mjs",
-  "scripts/backlog-to-content-keywords.mjs",
-  "scripts/monthly-state.mjs",
   "scripts/monthly-report.mjs",
-  "scripts/evaluate-release.mjs",
-  "scripts/export-clean-skill.mjs",
-  "fixtures/gsc-sample.json",
-  "fixtures/backlog-sample.md",
-  "fixtures/monthly-calendar-sample.json",
-  "fixtures/monthly-keyword-tiers-sample.json",
-  "fixtures/monthly-report-sample.json",
-  "fixtures/release-scenarios.json",
 ];
 
-function run(command, args) {
-  const result = spawnSync(command, args, {
-    cwd: skillRoot,
+const failures = [];
+
+function check(condition, message) {
+  if (!condition) failures.push(message);
+}
+
+function section(name, fn) {
+  try {
+    fn();
+  } catch (error) {
+    failures.push(`${name}: ${error.message}`);
+  }
+}
+
+function run(command, commandArgs, options = {}) {
+  const result = spawnSync(command, commandArgs, {
     encoding: "utf-8",
+    ...options,
   });
 
+  if (result.error) {
+    throw new Error(
+      `${command} ${commandArgs.join(" ")} failed to spawn: ${result.error.message}`,
+    );
+  }
   if (result.status !== 0) {
     throw new Error(
-      `${command} ${args.join(" ")} failed:\n${result.stderr || result.stdout}`,
+      `${command} ${commandArgs.join(" ")} failed:\n${result.stderr || result.stdout}`,
     );
   }
 
   return result.stdout;
 }
 
-function assert(condition, message) {
-  if (!condition) throw new Error(message);
-}
-
-for (const file of requiredFiles) {
-  assert(existsSync(path.join(skillRoot, file)), `Missing ${file}`);
-}
-
-const skill = readFileSync(path.join(skillRoot, "SKILL.md"), "utf-8");
-for (const file of requiredFiles.filter((file) =>
-  file.startsWith("references/"),
-)) {
-  assert(skill.includes(file), `SKILL.md does not reference ${file}`);
-}
-
-const bootstrapRoot = mkdtempSync(path.join(tmpdir(), "seo-skill-"));
-try {
-  run("bun", ["scripts/bootstrap-seo-workspace.mjs", bootstrapRoot]);
-  assert(
-    existsSync(path.join(bootstrapRoot, ".seo/taxonomy.md")),
-    "Bootstrap did not create taxonomy",
-  );
-  assert(
-    existsSync(path.join(bootstrapRoot, ".seo/log.md")),
-    "Bootstrap did not create operating log",
-  );
-  assert(
-    existsSync(path.join(bootstrapRoot, ".seo/context.md")),
-    "Bootstrap did not create SEO business context",
-  );
-} finally {
-  rmSync(bootstrapRoot, { recursive: true, force: true });
-}
-
-const gscOutput = run("bun", [
-  "scripts/gsc-opportunities.mjs",
-  "--input",
-  "fixtures/gsc-sample.json",
-]);
-assert(
-  gscOutput.includes("## Page 2 goldmine"),
-  "GSC output missing page-2 section",
-);
-assert(
-  gscOutput.includes("seo automation"),
-  "GSC output missing expected page-2 query",
-);
-assert(
-  gscOutput.includes("content seo"),
-  "GSC output missing expected CTR query",
-);
-
-const gscFetchHelp = run("bun", ["scripts/gsc-fetch.mjs", "--help"]);
-assert(
-  gscFetchHelp.includes("GSC_ACCESS_TOKEN"),
-  "GSC fetch help should document token auth",
-);
-
-const gscOAuthHelp = run("bun", ["scripts/gsc-oauth.mjs", "--help"]);
-assert(
-  gscOAuthHelp.includes("--print-auth-url"),
-  "GSC OAuth help should document auth URL generation",
-);
-
-const gscAuthUrl = run("bun", [
-  "scripts/gsc-oauth.mjs",
-  "--client-id",
-  "demo-client-id",
-  "--print-auth-url",
-]);
-assert(
-  gscAuthUrl.includes("webmasters.readonly"),
-  "GSC OAuth URL should request read-only Search Console scope",
-);
-
-const keywordDraft = path.join(tmpdir(), `seo-keywords-${Date.now()}.json`);
-try {
-  run("bun", [
-    "scripts/backlog-to-content-keywords.mjs",
-    "--backlog",
-    "fixtures/backlog-sample.md",
-    "--project",
-    "demo",
-    "--locale",
-    "en",
-    "--output",
-    keywordDraft,
+function runScript(relativeScript, scriptArgs) {
+  return run(process.execPath, [
+    path.join(skillRoot, relativeScript),
+    ...scriptArgs,
   ]);
-  const payload = JSON.parse(readFileSync(keywordDraft, "utf-8"));
-  assert(
-    payload.keywords.length === 3,
-    "Backlog keyword draft should contain 3 rows",
-  );
-  assert(
-    payload.keywords[0].sourceTicket === "SEO-010",
-    "Backlog draft missing source ticket",
-  );
-} finally {
-  rmSync(keywordDraft, { force: true });
 }
 
-const gscBacklogDraft = path.join(tmpdir(), `seo-gsc-backlog-${Date.now()}.md`);
-const gscKeywordDraft = path.join(
-  tmpdir(),
-  `seo-gsc-keywords-${Date.now()}.json`,
-);
-try {
-  run("bun", [
-    "scripts/gsc-to-backlog.mjs",
+function fixture(name) {
+  return path.join(fixturesDir, name);
+}
+
+function normalizeTimestamps(text) {
+  return text.replace(/^Generated: .*$/m, "Generated: <timestamp>");
+}
+
+// --- File inventory ---
+section("file inventory", () => {
+  for (const file of requiredFiles) {
+    check(existsSync(path.join(skillRoot, file)), `Missing ${file}`);
+  }
+});
+
+// --- SKILL.md routes every reference ---
+section("SKILL.md routing", () => {
+  const skill = readFileSync(path.join(skillRoot, "SKILL.md"), "utf-8");
+  for (const file of requiredFiles.filter((f) => f.startsWith("references/"))) {
+    check(skill.includes(file), `SKILL.md does not reference ${file}`);
+  }
+});
+
+// --- bootstrap-seo-workspace.mjs ---
+section("bootstrap smoke test", () => {
+  const bootstrapRoot = mkdtempSync(path.join(tmpdir(), "seo-skill-"));
+  try {
+    run(process.execPath, [
+      path.join(skillRoot, "scripts/bootstrap-seo-workspace.mjs"),
+      bootstrapRoot,
+    ]);
+    for (const file of [
+      ".seo/taxonomy.md",
+      ".seo/log.md",
+      ".seo/context.md",
+      ".seo/backlog.md",
+    ]) {
+      check(
+        existsSync(path.join(bootstrapRoot, file)),
+        `Bootstrap did not create ${file}`,
+      );
+    }
+    const taxonomy = readFileSync(
+      path.join(bootstrapRoot, ".seo/taxonomy.md"),
+      "utf-8",
+    );
+    const template = readFileSync(
+      path.join(skillRoot, "templates/taxonomy.md"),
+      "utf-8",
+    );
+    check(
+      taxonomy === template,
+      "Bootstrap taxonomy should be sourced verbatim from templates/taxonomy.md",
+    );
+  } finally {
+    rmSync(bootstrapRoot, { recursive: true, force: true });
+  }
+});
+
+// --- gsc-opportunities.mjs: report format + golden file ---
+section("gsc-opportunities report", () => {
+  const report = runScript("scripts/gsc-opportunities.mjs", [
     "--input",
-    "fixtures/gsc-sample.json",
-    "--output",
-    gscBacklogDraft,
+    fixture("gsc-sample.json"),
+    "--brand",
+    "examplebrand",
+  ]);
+  check(report.includes("## Page 2 goldmine"), "Report missing page-2 section");
+  check(
+    report.includes("## CTR underperformers (position-banded)"),
+    "Report missing banded CTR section",
+  );
+  check(
+    report.includes("## Query cannibalization"),
+    "Report missing cannibalization section",
+  );
+  check(
+    report.includes("seo automation"),
+    "Report missing expected page-2 query",
+  );
+  check(report.includes("content seo"), "Report missing expected CTR query");
+  check(
+    report.includes("Branded queries excluded from CTR analysis: 1"),
+    "Report should count excluded branded queries",
+  );
+  check(
+    !report.includes("examplebrand pricing"),
+    "Branded query should be excluded from CTR analysis",
+  );
+  check(
+    report.includes("seo reporting \\| dashboards"),
+    "Pipe characters in queries must be escaped in table cells",
+  );
+  check(
+    report.includes("keyword tracker"),
+    "Report missing expected cannibalization query",
+  );
+
+  const expected = readFileSync(
+    fixture("gsc-opportunities.expected.md"),
+    "utf-8",
+  );
+  check(
+    normalizeTimestamps(report) === expected,
+    "gsc-opportunities report drifted from fixtures/gsc-opportunities.expected.md (regenerate deliberately if the change is intended)",
+  );
+});
+
+// --- gsc-opportunities.mjs: backlog format ---
+section("gsc-opportunities backlog", () => {
+  const backlog = runScript("scripts/gsc-opportunities.mjs", [
+    "--input",
+    fixture("gsc-sample.json"),
+    "--format",
+    "backlog",
     "--start-id",
     "40",
+    "--brand",
+    "examplebrand",
   ]);
-  run("bun", [
-    "scripts/backlog-to-content-keywords.mjs",
-    "--backlog",
-    gscBacklogDraft,
-    "--project",
-    "demo",
-    "--locale",
-    "en",
-    "--output",
-    gscKeywordDraft,
-  ]);
-  const payload = JSON.parse(readFileSync(gscKeywordDraft, "utf-8"));
-  assert(
-    payload.keywords.length === 1,
-    "GSC backlog draft should produce 1 importable content keyword",
+  check(
+    backlog.includes("| ID | P | Area | Ticket | Verify |"),
+    "Backlog format missing Ready-row table header",
   );
-  assert(
-    payload.keywords[0].keyword === "seo automation",
-    "GSC-to-keyword fixture should preserve the page-2 query",
+  check(backlog.includes("SEO-040"), "Backlog format should honor --start-id");
+  check(
+    backlog.includes("seo reporting \\| dashboards"),
+    "Backlog format must escape pipe characters in queries",
   );
-} finally {
-  rmSync(gscBacklogDraft, { force: true });
-  rmSync(gscKeywordDraft, { force: true });
-}
+  check(
+    backlog.includes("draft backlog"),
+    "Backlog format should be framed as a review draft",
+  );
+});
 
-const monthlyReport = run("bun", [
-  "scripts/monthly-report.mjs",
-  "--input",
-  "fixtures/monthly-report-sample.json",
-]);
-assert(
-  monthlyReport.includes("## Query/page movers"),
-  "Monthly report missing movers section",
-);
-assert(
-  monthlyReport.includes("Keyword tiers"),
-  "Monthly report missing keyword tier metric",
-);
+// --- gsc-opportunities.mjs: malformed JSON names the file ---
+section("malformed JSON error", () => {
+  const badJson = path.join(mkdtempSync(path.join(tmpdir(), "seo-bad-")), "bad.json");
+  try {
+    writeFileSync(badJson, "{ not json");
+    const result = spawnSync(
+      process.execPath,
+      [
+        path.join(skillRoot, "scripts/gsc-opportunities.mjs"),
+        "--input",
+        badJson,
+      ],
+      { encoding: "utf-8" },
+    );
+    check(result.status !== 0, "Malformed JSON input should exit non-zero");
+    check(
+      (result.stderr ?? "").includes("bad.json"),
+      "JSON parse errors must name the offending file",
+    );
+  } finally {
+    rmSync(path.dirname(badJson), { recursive: true, force: true });
+  }
+});
 
-const exportTarget = mkdtempSync(path.join(tmpdir(), "seo-export-"));
-try {
-  const dryRun = run("bun", [
-    "scripts/export-clean-skill.mjs",
-    "--target",
-    exportTarget,
-    "--dry-run",
-  ]);
-  assert(dryRun.includes('"dryRun": true'), "Exporter dry-run should report dryRun true");
-  assert(
-    !existsSync(path.join(exportTarget, ".agents/skills/seo-growth-workspace/SKILL.md")),
-    "Exporter dry-run should not install files",
+// --- gsc-fetch.mjs / gsc-oauth.mjs help contracts ---
+section("gsc-fetch help", () => {
+  const help = runScript("scripts/gsc-fetch.mjs", ["--help"]);
+  check(
+    help.includes("GSC_ACCESS_TOKEN"),
+    "GSC fetch help should document token auth",
+  );
+  check(
+    help.includes("--max-rows"),
+    "GSC fetch help should document pagination cap",
+  );
+});
+
+section("gsc-oauth help and auth URL", () => {
+  const help = runScript("scripts/gsc-oauth.mjs", ["--help"]);
+  check(
+    help.includes("--print-auth-url"),
+    "GSC OAuth help should document auth URL generation",
+  );
+  check(
+    !help.includes("--client-secret"),
+    "GSC OAuth must not advertise a --client-secret flag (env var only)",
+  );
+  check(
+    help.includes("GSC_CLIENT_SECRET"),
+    "GSC OAuth help should require the GSC_CLIENT_SECRET env var",
   );
 
-  run("bun", [
-    "scripts/export-clean-skill.mjs",
-    "--target",
-    exportTarget,
+  const authUrl = runScript("scripts/gsc-oauth.mjs", [
+    "--client-id",
+    "demo-client-id",
+    "--print-auth-url",
   ]);
-  assert(
-    existsSync(path.join(exportTarget, ".agents/skills/seo-growth-workspace/SKILL.md")),
-    "Clean export did not install SKILL.md",
+  check(
+    authUrl.includes("webmasters.readonly"),
+    "GSC OAuth URL should request read-only Search Console scope",
   );
-  assert(
-    !existsSync(
-      path.join(
-        exportTarget,
-        ".agents/skills/seo-growth-workspace/SEO_GROWTH_WORKSPACE_AUDIT.md",
-      ),
-    ),
-    "Clean export should exclude release audit artifacts by default",
-  );
-  const extraFile = path.join(
-    exportTarget,
-    ".agents/skills/seo-growth-workspace/references/local-adapter.md",
-  );
-  const modifiedFile = path.join(
-    exportTarget,
-    ".agents/skills/seo-growth-workspace/SKILL.md",
-  );
-  writeFileSync(extraFile, "# local adapter\n");
-  writeFileSync(modifiedFile, `${readFileSync(modifiedFile, "utf-8")}\n<!-- local edit -->\n`);
-  const blocked = spawnSync(
-    "bun",
-    ["scripts/export-clean-skill.mjs", "--target", exportTarget],
-    {
-      cwd: skillRoot,
-      encoding: "utf-8",
-    },
-  );
-  assert(blocked.status !== 0, "Exporter should refuse risky replacement without --force");
-  assert(blocked.stdout.includes("local-adapter.md"), "Exporter should report local-only files");
-  assert(blocked.stdout.includes("SKILL.md"), "Exporter should report modified same-path files");
-  run("bun", [
-    "scripts/export-clean-skill.mjs",
-    "--target",
-    exportTarget,
-    "--force",
-  ]);
-  assert(
-    !existsSync(path.join(exportTarget, ".seo/reports/seo-growth-workspace-install-notes.md")),
-    "Exporter should not write install notes unless requested",
-  );
-} finally {
-  rmSync(exportTarget, { recursive: true, force: true });
-}
-assert(
-  monthlyReport.includes("Content calendar"),
-  "Monthly report missing content calendar metric",
-);
-assert(
-  monthlyReport.includes("Single next action"),
-  "Monthly report missing next action",
-);
+});
 
-const monthlyState = path.join(
-  tmpdir(),
-  `seo-monthly-state-${Date.now()}.json`,
-);
-const monthlyStateReport = path.join(
-  tmpdir(),
-  `seo-monthly-report-${Date.now()}.md`,
-);
-try {
-  run("bun", [
-    "scripts/monthly-state.mjs",
+// --- monthly-report.mjs ---
+section("monthly report", () => {
+  const report = runScript("scripts/monthly-report.mjs", [
     "--target",
     "Demo SaaS",
     "--date-range",
@@ -319,35 +321,101 @@ try {
     "--comparison-range",
     "2026-03-01 to 2026-03-31",
     "--gsc-current",
-    "fixtures/gsc-sample.json",
+    fixture("gsc-sample.json"),
     "--gsc-previous",
-    "fixtures/gsc-sample.json",
+    fixture("gsc-previous-sample.json"),
     "--backlog",
-    "fixtures/backlog-sample.md",
+    fixture("backlog-sample.md"),
     "--keyword-tiers",
-    "fixtures/monthly-keyword-tiers-sample.json",
+    fixture("monthly-keyword-tiers-sample.json"),
     "--calendar",
-    "fixtures/monthly-calendar-sample.json",
-    "--output",
-    monthlyState,
+    fixture("monthly-calendar-sample.json"),
   ]);
-  run("bun", [
-    "scripts/monthly-report.mjs",
-    "--input",
-    monthlyState,
-    "--output",
-    monthlyStateReport,
-  ]);
-  const state = JSON.parse(readFileSync(monthlyState, "utf-8"));
-  const report = readFileSync(monthlyStateReport, "utf-8");
-  assert(state.backlog.ready === 3, "Monthly state should count Ready rows");
-  assert(
-    report.includes("SEO backlog"),
-    "Monthly state report should include backlog metric",
+  check(
+    report.includes("## Query/page movers"),
+    "Monthly report missing movers section",
   );
-} finally {
-  rmSync(monthlyState, { force: true });
-  rmSync(monthlyStateReport, { force: true });
+  check(
+    report.includes("Keyword tiers"),
+    "Monthly report missing keyword tier metric",
+  );
+  check(
+    report.includes("Content calendar"),
+    "Monthly report missing content calendar metric",
+  );
+  check(
+    report.includes("Single next action"),
+    "Monthly report missing next action",
+  );
+  check(
+    report.includes("legacy feature guide") && report.includes("| lost |"),
+    "Movers table must surface disappeared queries",
+  );
+  check(
+    report.includes("1 Done this period"),
+    "Backlog Done count should be filtered to the reporting period",
+  );
+  check(
+    report.includes("seo reporting \\| dashboards"),
+    "Monthly report must escape pipe characters in table cells",
+  );
+  check(
+    /GSC CTR \|[^|]+\|[^|]+\| [+-]\d/.test(report),
+    "CTR delta should carry a +/- sign",
+  );
+});
+
+// --- export-clean-skill.mjs (dev sibling) ---
+section("clean export", () => {
+  const exporter = path.join(scriptDir, "export-clean-skill.mjs");
+  const exportTarget = mkdtempSync(path.join(tmpdir(), "seo-export-"));
+  try {
+    const dryRun = run(process.execPath, [
+      exporter,
+      "--target",
+      exportTarget,
+      "--dry-run",
+    ]);
+    check(
+      dryRun.includes('"dryRun": true'),
+      "Exporter dry-run should report dryRun true",
+    );
+    const installedSkill = path.join(
+      exportTarget,
+      ".agents/skills/seo-growth-workspace",
+    );
+    check(
+      !existsSync(path.join(installedSkill, "SKILL.md")),
+      "Exporter dry-run should not install files",
+    );
+
+    run(process.execPath, [exporter, "--target", exportTarget]);
+    check(
+      existsSync(path.join(installedSkill, "SKILL.md")),
+      "Clean export did not install SKILL.md",
+    );
+    check(
+      existsSync(path.join(installedSkill, "scripts/gsc-opportunities.mjs")),
+      "Clean export should install skill scripts",
+    );
+    check(
+      !existsSync(path.join(installedSkill, "fixtures")),
+      "Clean export must not install fixtures",
+    );
+    check(
+      !existsSync(path.join(installedSkill, "scripts/validate-skill.mjs")) &&
+        !existsSync(path.join(installedSkill, "scripts/evaluate-release.mjs")),
+      "Clean export must not install release/dev tooling",
+    );
+  } finally {
+    rmSync(exportTarget, { recursive: true, force: true });
+  }
+});
+
+if (failures.length > 0) {
+  console.error(`seo-growth-workspace skill validation FAILED (${failures.length}):`);
+  for (const failure of failures) console.error(`- ${failure}`);
+  process.exit(1);
 }
 
 console.log("seo-growth-workspace skill validation passed");

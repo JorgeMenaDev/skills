@@ -22,6 +22,19 @@ If a form or CTA has no real destination, do not fake the conversion path. Log t
 
 Do not treat analytics installation as conversion measurement. Distinguish pageviews flowing, CTA/action events firing, useful event properties, a real conversion destination, and admin/reporting proof.
 
+## Naming Conventions
+
+Events: `object_action`, lowercase snake_case (`cta_hero_clicked`, `form_submitted`, `signup_completed`). Context goes in properties, not the event name. These names feed the conversion event matrix above.
+
+| UTM            | Discipline                                          | Example              |
+| -------------- | --------------------------------------------------- | -------------------- |
+| `utm_source`   | Real traffic source, lowercase                      | `google`, `newsletter` |
+| `utm_medium`   | Fixed vocabulary: `cpc`, `email`, `social`, `referral` | `email`              |
+| `utm_campaign` | One consistent scheme, documented                   | `spring_sale`        |
+| `utm_content`  | Variant/placement differentiator                    | `hero_cta`           |
+
+Keep one documented list of event names and UTMs; inconsistent casing splits reports.
+
 ## Checks
 
 - Cold visitors have a lower-friction path than immediate login/signup when appropriate.
