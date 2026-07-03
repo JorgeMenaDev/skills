@@ -1,7 +1,7 @@
 ---
 name: afk-pipeline
 description: Run a dev task as an AFK Task — grill the request, choose Pipeline Flags, write an Agent Brief, and trigger the label-driven pipeline that ends in a draft PR. Use when the user asks for a code change, feature, or fix in a repo listed in the AFK registry, asks which phases a task needs, or wants the pipeline installed in a new repo.
-version: 1.0.0
+version: 1.1.0
 mutating: true
 writes_to: [.agents/afk-pipeline/]
 ---
@@ -31,7 +31,7 @@ _R=.agents/afk-pipeline/REGISTRY.md
 ## The loop
 
 1. **Route.** Find the target repo's registry row. No row → not an AFK repo: do normal work, or offer installation. Done when: row in hand.
-2. **Mini-grill.** Interrogate the request until the brief is writable: goal, constraints, acceptance criteria, blast radius, and what could hide inside it. One question at a time, with your recommended answer. Done when: every acceptance criterion is checkable by an agent with no context (browser or shell), and you can predict the diff shape.
+2. **Mini-grill.** Interrogate the request until the brief is writable: goal, constraints, acceptance criteria, blast radius, and what could hide inside it. One question at a time, with your recommended answer. Never paper over ambiguity: an unclear or underspecified request means the issue does not get written yet — ask until it's settled. Escalate to a full `grill-with-docs` session (target = this repo) when the task reshapes domain language, carries a trade-off worth an ADR, or introduces a new integration, credential, or external service. Done when: every acceptance criterion is checkable by an agent with no context (browser or shell), and you can predict the diff shape.
 3. **Flags.** Apply [reference/phase-rubric.md](reference/phase-rubric.md) to the predicted diff shape. Done when: each flag has a one-line reason.
 4. **Brief.** Write it per [reference/brief-template.md](reference/brief-template.md), `### Pipeline` section included, and show the user the full body plus your flag reasoning.
 5. **STOP — get explicit go-ahead before creating/labeling anything.** The failure this gate prevents: an unattended agent burning a full run on a mis-scoped brief the user never read.
