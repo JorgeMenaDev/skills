@@ -36,7 +36,7 @@ _R=.agents/afk-pipeline/REGISTRY.md
 4. **Brief.** Write it per [reference/brief-template.md](reference/brief-template.md), `### Pipeline` section included, and show the user the full body plus your flag reasoning.
 5. **STOP — get explicit go-ahead before creating/labeling anything.** The failure this gate prevents: an unattended agent burning a full run on a mis-scoped brief the user never read.
 6. **Trigger.** Create the issue, add the repo's trigger label (lane per registry default). Watch by polling `gh run view <id> --json status` in a loop — never `gh run watch` (unbounded output).
-7. **Deliver.** When the draft PR opens, hand over PR + QA Evidence + recap links. If the diff touches the pipeline itself, say plainly: pipeline changes execute from the default branch, so they can't self-prove — their first validating run is the first run *after* merge.
+7. **Deliver.** When the draft PR opens, hand over PR + QA Evidence + recap links, plus the live deploy-preview URL when the repo has a PR-preview integration (e.g. Vercel comments it on the PR) — it's the fastest human review surface, ahead of screenshots. If the diff touches the pipeline itself, say plainly: pipeline changes execute from the default branch, so they can't self-prove — their first validating run is the first run *after* merge.
 
 ## Output format
 
