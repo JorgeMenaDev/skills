@@ -57,3 +57,26 @@ GOOD (real content from the product UI):
     <WireframeBlock id="header-after">
       <Screen surface="browser" caption="Header after the change." html={'<div style="display:flex;align-items:center;gap:14px;width:100%;padding:12px 16px;border-bottom:1.4px solid var(--wf-line)"><strong>{{PROJECT_NAME}}</strong><span class="wf-muted">Blog</span><div style="flex:1"></div><button>Contact</button><button class="primary">Book a Call</button></div>'} />
     </WireframeBlock>
+
+---
+
+# MDX AUTHORING GUARDRAIL — component attributes must stay parseable (superaseo #35 recap)
+
+The Plan app 422s the whole publish when any component attribute is not valid
+JSX ("Unexpected character `;` (U+003B) in local attribute name …"). The
+observed cause: assembling `<Endpoint>`/`<Screen>`-style tags via a script
+(f-strings, json.dumps interpolation) and letting raw text — URLs with query
+strings (`?w=1080&q=80`), code fragments (`urls.regular ?? urls.raw`),
+semicolons — land in attribute position outside a quoted string.
+
+**Rule:** every attribute must be exactly `name="simple string"` or
+`name={<valid JS expression>}` (e.g. `params={JSON-serialized-by-code}`).
+Never hand-interpolate prose, URLs, or code snippets into a tag: build the
+value in your script as a real string/object, serialize it with the JSON
+encoder, and inject the serialized result as ONE `{...}` expression. Text with
+`? & ; =` belongs inside a quoted attribute string, a `{'...'}` expression, or
+body prose/code spans — never bare between attributes.
+
+After assembling `recap-source.json`, self-check every authored tag: each
+attribute matches `name="..."` or `name={...}` with balanced quotes/braces. A
+single malformed attribute kills the publish for the entire recap.
