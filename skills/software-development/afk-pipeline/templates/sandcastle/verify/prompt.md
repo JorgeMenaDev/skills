@@ -97,3 +97,12 @@ thing in your response:
 
 `pass` is true only if EVERY acceptance criterion is met and the standard
 sweep is clean. If false, list each unmet criterion in `failedCriteria`.
+
+The `<verdict>` block is MANDATORY on every exit path. If you are running
+out of time or context, or a criterion is stuck on a long-running async
+process (e.g. an article generation that never completes), STOP verifying
+early: commit whatever evidence you already have and emit `pass: false`
+with the stuck criterion in `failedCriteria` and what you observed in
+`summary`. A missing verdict destroys the whole run's diagnostics (the
+orchestrator only sees a StructuredOutputError — observed on superaseo #55,
+2026-07-04); a false verdict with partial evidence is always better.
