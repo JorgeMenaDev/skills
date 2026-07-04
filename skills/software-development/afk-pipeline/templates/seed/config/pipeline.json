@@ -1,0 +1,19 @@
+{
+  "projectName": "REPLACE Project display name (recap wireframe examples)",
+  "imageName": "sandcastle-REPLACE",
+  "bunVersion": "REPLACE with the repo's packageManager bun version, e.g. 1.3.7",
+  "baseBranch": "main",
+  "passthroughKeys": [],
+  "passthroughDoc": ["REPLACE: which secrets verify boot needs and why (or delete keys for none)."],
+  "verifySecrets": [],
+  "implementGate": "bun run check",
+  "implementGateNote": " (REPLACE: what the gate covers, e.g. ' (turbo: typecheck + lint)')",
+  "evidenceDir": "docs/evidence",
+  "evidenceDirNote": "",
+  "entryUrl": "http://localhost:3000",
+  "localesNote": "REPLACE: the repo's locale scheme and what to sweep (or state single-locale).",
+  "fixNotes": "",
+  "reportExtras": "server mode used, the Verify Profile you ran (viewports from VERIFY PROFILE above), console/errors outcome;",
+  "deployNote": "REPLACE: what merging deploys and via what mechanism.",
+  "recapExtraExcludes": []
+}

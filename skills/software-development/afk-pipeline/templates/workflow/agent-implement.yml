@@ -1,0 +1,360 @@
+name: Agent Implement
+
+# AFK Task pipeline (implement → verify → draft PR → best-effort recap).
+# GENERATED from the afk-pipeline skill's templates/ — repo-specific values live
+# in .sandcastle/config/; edit there and re-run the generator, never this file.
+# Decisions: matias repo docs/adr/0002 + 0003.
+
+on:
+  issues:
+    types: [labeled]
+
+# Pin the recap CLI to an exact version (never @latest). Shared by the recap
+# job's install (via RECAP_CLI_VERSION env) and the Playwright browser cache key
+# so a CLI bump busts the cache. Bump deliberately when adopting a new recap CLI.
+env:
+  RECAP_CLI_VERSION: "0.85.6"
+
+jobs:
+  implement:
+    # Two lanes, one pipeline: `agent:implement` → GitHub-hosted VM (noSandbox),
+    # `agent:implement-local` → self-hosted Mac mini (agent inside Docker).
+    if: github.event.label.name == 'agent:implement' || github.event.label.name == 'agent:implement-local'
+    runs-on: ${{ github.event.label.name == 'agent:implement-local' && 'self-hosted' || 'ubuntu-latest' }}
+    timeout-minutes: 60
+    concurrency:
+      group: agent-implement-issue-${{ github.event.issue.number }}
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+
+    # Handoff to the separate `recap` job (runs on a GitHub-hosted VM regardless
+    # of which lane implemented, so it must be told the PR + branch explicitly).
+    # `recap` carries the parsed Pipeline Flag so the recap job's `if:` can skip
+    # the whole job — before any install — when the brief says `recap: off`.
+    outputs:
+      pr_url: ${{ steps.open_pr.outputs.pr_url }}
+      pr_number: ${{ steps.open_pr.outputs.pr_number }}
+      branch: ${{ steps.branch.outputs.name }}
+      recap: ${{ steps.flags.outputs.recap }}
+
+    env:
+      ISSUE_NUMBER: ${{ github.event.issue.number }}
+      ISSUE_TITLE: ${{ github.event.issue.title }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_REPO: ${{ github.repository }}
+      SANDCASTLE_SANDBOX: ${{ github.event.label.name == 'agent:implement-local' && 'docker' || 'none' }}
+
+    steps:
+      - name: Pre-flight — refuse if an open PR already exists for this issue
+        id: preflight
+        run: |
+          set -euo pipefail
+          existing=$(gh pr list \
+            --state open \
+            --search "in:body \"#${ISSUE_NUMBER}\"" \
+            --json number,url,body \
+            --jq "[.[] | select(.body | test(\"(?i)(closes|fixes|resolves)\\\\s+#${ISSUE_NUMBER}\\\\b\"))]")
+          count=$(echo "$existing" | jq 'length')
+          if [ "$count" -gt 0 ]; then
+            url=$(echo "$existing" | jq -r '.[0].url')
+            echo "existing_pr_url=$url" >> "$GITHUB_OUTPUT"
+            echo "refused=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "refused=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Pre-flight refusal — comment + remove label, exit
+        if: steps.preflight.outputs.refused == 'true'
+        env:
+          EXISTING_PR_URL: ${{ steps.preflight.outputs.existing_pr_url }}
+          TRIGGER_LABEL: ${{ github.event.label.name }}
+        run: |
+          gh issue edit "$ISSUE_NUMBER" --remove-label "$TRIGGER_LABEL" || true
+          gh issue comment "$ISSUE_NUMBER" --body "Refused to run: PR $EXISTING_PR_URL already targets this issue. Close it first, then re-add \`$TRIGGER_LABEL\`."
+          exit 0
+
+      - name: Transition labels — remove implement/blocked, add in-progress
+        if: steps.preflight.outputs.refused != 'true'
+        run: |
+          gh issue edit "$ISSUE_NUMBER" --remove-label "agent:implement" || true
+          gh issue edit "$ISSUE_NUMBER" --remove-label "agent:implement-local" || true
+          gh issue edit "$ISSUE_NUMBER" --remove-label "agent:blocked" || true
+          gh issue edit "$ISSUE_NUMBER" --add-label "agent:in-progress"
+
+      - name: Checkout base branch
+        if: steps.preflight.outputs.refused != 'true'
+        uses: actions/checkout@v4
+        with:
+          ref: {{BASE_BRANCH}}
+          fetch-depth: 0
+          # AGENT_PAT so pushes may touch .github/workflows/ (GITHUB_TOKEN
+          # lacks the workflow scope). Falls back to GITHUB_TOKEN if unset.
+          token: ${{ secrets.AGENT_PAT || secrets.GITHUB_TOKEN }}
+
+      - name: Compute branch name
+        if: steps.preflight.outputs.refused != 'true'
+        id: branch
+        run: |
+          slug=$(echo "$ISSUE_TITLE" \
+            | tr '[:upper:]' '[:lower:]' \
+            | sed -E 's/[^a-z0-9]+/-/g; s/^-+|-+$//g' \
+            | cut -c1-50)
+          branch="agent/issue-${ISSUE_NUMBER}-${slug}"
+          echo "name=$branch" >> "$GITHUB_OUTPUT"
+
+      - name: Create branch
+        if: steps.preflight.outputs.refused != 'true'
+        env:
+          BRANCH: ${{ steps.branch.outputs.name }}
+        run: |
+          # Author pipeline commits with a real GitHub identity so Vercel can
+          # map the commit author to an account (bot noreply emails fail the
+          # preview-deploy check). Set once here, before the implement/verify
+          # phases commit — this step runs on both lanes (no lane conditional).
+          git config user.name "JorgeMenaDev"
+          git config user.email "77608748+JorgeMenaDev@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+
+      - name: Setup Bun
+        if: steps.preflight.outputs.refused != 'true'
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "{{BUN_VERSION}}"
+
+      - name: Parse Pipeline Flags from the Agent Brief
+        # Reads the `### Pipeline` section (verify: full|slim|off, recap: on|off)
+        # from the issue body and exposes the parsed set as step outputs. The
+        # parser is fail-safe: an absent section / unknown key / bad value falls
+        # back to the full-pipeline defaults. Lives in .sandcastle so it travels
+        # with the pipeline; uses only Bun builtins (no node_modules yet).
+        if: steps.preflight.outputs.refused != 'true'
+        id: flags
+        env:
+          ISSUE_BODY: ${{ github.event.issue.body }}
+        run: bun .sandcastle/flags/parse-flags.ts | tee "${RUNNER_TEMP}/flags-echo.md"
+
+      - name: Echo parsed Pipeline Flags on the issue
+        # Surface the parsed flag set immediately so a misparse is visible before
+        # the phases run; retriggering re-reads the same body.
+        if: steps.preflight.outputs.refused != 'true'
+        run: gh issue comment "$ISSUE_NUMBER" --body-file "${RUNNER_TEMP}/flags-echo.md"
+
+      - name: Install dependencies
+        if: steps.preflight.outputs.refused != 'true'
+        run: bun install --frozen-lockfile
+
+      - name: Install Claude Code (cloud lane — baked into the image on local)
+        if: steps.preflight.outputs.refused != 'true' && env.SANDCASTLE_SANDBOX == 'none'
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Install agent-browser + Chrome (cloud lane)
+        if: steps.preflight.outputs.refused != 'true' && env.SANDCASTLE_SANDBOX == 'none'
+        run: |
+          npm install -g agent-browser
+          agent-browser install --with-deps
+
+      - name: Ensure sandbox image (local lane)
+        if: steps.preflight.outputs.refused != 'true' && env.SANDCASTLE_SANDBOX == 'docker'
+        run: |
+          docker image inspect {{IMAGE_NAME}} > /dev/null 2>&1 \
+            || docker build -t {{IMAGE_NAME}} .sandcastle/
+
+      - name: Run implement phase
+        if: steps.preflight.outputs.refused != 'true'
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          BRANCH: ${{ steps.branch.outputs.name }}
+          OUTPUT_DIR: ${{ runner.temp }}
+        run: bun .sandcastle/implement/implement.ts
+
+      - name: Run verify phase (e2e, agent-browser)
+        # Verify Profile from the parsed flags: `off` skips this step entirely
+        # (no QA Evidence — the degrade mode is picked up by write-pr and the
+        # completion comment); `slim` narrows the sweep to 2 viewports; `full`
+        # (default) keeps the full sweep. One prompt template, parameterized by
+        # env — never a per-profile prompt file.
+        if: steps.preflight.outputs.refused != 'true' && steps.flags.outputs.verify != 'off'
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          BRANCH: ${{ steps.branch.outputs.name }}
+          OUTPUT_DIR: ${{ runner.temp }}
+          VERIFY_MODE: ${{ steps.flags.outputs.verify }}
+          VERIFY_VIEWPORTS: ${{ steps.flags.outputs.verify == 'slim' && '1440x900, 390x844' || '390x844, 768x1024, 1440x900, 1920x1080' }}
+          VERIFY_LOCALES: ${{ steps.flags.outputs.verify == 'slim' && 'diff' || 'all' }}
+          # Repo verify-boot secrets (from .sandcastle/config). These must ALSO be
+          # listed in .sandcastle/runtime.ts PASSTHROUGH_KEYS — a workflow-step
+          # env line alone never reaches the agent (matias registry quirk, cost
+          # a failed run on andesphere #26). The generator keeps both in sync.
+{{VERIFY_SECRETS_ENV}}
+        run: bun .sandcastle/verify/verify.ts
+
+      - name: Push branch
+        if: steps.preflight.outputs.refused != 'true' && success()
+        env:
+          BRANCH: ${{ steps.branch.outputs.name }}
+        # Force-push recovers from orphan branches whose PR has since closed —
+        # safe because preflight refuses when an open PR exists for this issue.
+        run: git push --force origin "$BRANCH"
+
+      - name: Write PR title and description
+        if: steps.preflight.outputs.refused != 'true' && success()
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          BRANCH: ${{ steps.branch.outputs.name }}
+          OUTPUT_DIR: ${{ runner.temp }}
+          # Degrade mode: when verify was skipped by design there is no QA
+          # Evidence, so write-pr must say so instead of pointing at screenshots.
+          VERIFY_MODE: ${{ steps.flags.outputs.verify }}
+          VERIFY_REASON: ${{ steps.flags.outputs.verify_reason }}
+        run: bun .sandcastle/write-pr/write-pr.ts
+
+      - name: Open draft PR
+        if: steps.preflight.outputs.refused != 'true' && success()
+        id: open_pr
+        env:
+          BRANCH: ${{ steps.branch.outputs.name }}
+          # AGENT_PAT: GITHUB_TOKEN cannot create PRs unless the org-level
+          # "Allow GitHub Actions to create and approve pull requests" is on
+          # (often off at the org level). A user PAT has no such restriction.
+          GH_TOKEN: ${{ secrets.AGENT_PAT || secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          PR_TITLE=$(cat "${RUNNER_TEMP}/pr_title.txt")
+          PR_TITLE="${PR_TITLE:0:256}"
+          pr_url=$(gh pr create \
+            --draft \
+            --base {{BASE_BRANCH}} \
+            --head "$BRANCH" \
+            --title "$PR_TITLE" \
+            --body-file "${RUNNER_TEMP}/pr_description.txt" | tail -n1)
+          [ -n "$pr_url" ] || { echo "gh pr create produced no URL" >&2; exit 1; }
+          echo "pr_url=$pr_url" >> "$GITHUB_OUTPUT"
+          echo "pr_number=${pr_url##*/}" >> "$GITHUB_OUTPUT"
+
+      - name: Comment PR link on the issue
+        if: steps.preflight.outputs.refused != 'true' && success()
+        env:
+          PR_URL: ${{ steps.open_pr.outputs.pr_url }}
+          VERIFY_MODE: ${{ steps.flags.outputs.verify }}
+          VERIFY_REASON: ${{ steps.flags.outputs.verify_reason }}
+        run: |
+          set -euo pipefail
+          [ -n "$PR_URL" ] || { echo "missing PR_URL from open_pr step" >&2; exit 1; }
+          if [ "$VERIFY_MODE" = "off" ]; then
+            reason="${VERIFY_REASON:-no reason provided}"
+            gh issue comment "$ISSUE_NUMBER" --body "AFK Task complete — draft PR: $PR_URL. verify skipped by design: $reason. This run committed no QA Evidence; review the diff in the Files changed tab. {{DEPLOY_NOTE}}"
+          else
+            gh issue comment "$ISSUE_NUMBER" --body "AFK Task complete — draft PR with committed QA Evidence: $PR_URL. Review the screenshots in the Files changed tab; {{DEPLOY_NOTE_LOWER}}"
+          fi
+
+      - name: Mark blocked on failure
+        if: steps.preflight.outputs.refused != 'true' && failure()
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          TRIGGER_LABEL: ${{ github.event.label.name }}
+        run: |
+          reason="(no reason file written — check workflow logs)"
+          if [ -f "${RUNNER_TEMP}/failure_reason.txt" ]; then
+            reason=$(cat "${RUNNER_TEMP}/failure_reason.txt")
+          fi
+          gh issue edit "$ISSUE_NUMBER" --add-label "agent:blocked" || true
+          gh issue comment "$ISSUE_NUMBER" --body "$(cat <<EOF
+          \`$TRIGGER_LABEL\` run failed.
+
+          **Reason:** $reason
+
+          **Workflow run:** $RUN_URL
+
+          Re-add \`$TRIGGER_LABEL\` to retry.
+          EOF
+          )"
+
+      - name: Always remove in-progress
+        if: always() && steps.preflight.outputs.refused != 'true'
+        run: gh issue edit "$ISSUE_NUMBER" --remove-label "agent:in-progress" || true
+
+  recap:
+    # Visual Recap runs as a separate best-effort job on a GitHub-hosted VM
+    # regardless of which lane implemented, so a local-lane run frees the Mac
+    # mini's runner slot the moment the draft PR + issue comment exist.
+    #
+    # Best-effort at the JOB level (`continue-on-error: true`): a recap failure
+    # never fails the run, blocks the PR, or marks the issue blocked. The PR
+    # already carries its QA Evidence; the recap is review sugar.
+    needs: implement
+    # Gate on the draft PR existing — skipped/refused/failed implement runs
+    # leave pr_url empty and this job is skipped. Also gate on the parsed
+    # `recap` flag: `recap: off` skips the entire job here, before any checkout
+    # or install (composes with the tiny-diff gate inside recap.ts, which handles
+    # the recap:on-but-trivial case).
+    if: needs.implement.outputs.pr_url != '' && needs.implement.outputs.recap != 'off'
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+    env:
+      ISSUE_NUMBER: ${{ github.event.issue.number }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_REPO: ${{ github.repository }}
+      # Always the cloud sandbox mode — this job runs on a GitHub-hosted VM.
+      SANDCASTLE_SANDBOX: none
+      PR_URL: ${{ needs.implement.outputs.pr_url }}
+      PR_NUMBER: ${{ needs.implement.outputs.pr_number }}
+      BRANCH: ${{ needs.implement.outputs.branch }}
+
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.implement.outputs.branch }}
+          fetch-depth: 0
+
+      - name: Fetch base ref (for the diff range)
+        # The recap diff is computed against the base branch; the single-branch
+        # checkout above doesn't create that remote-tracking ref, so fetch it.
+        run: git fetch --no-tags origin {{BASE_BRANCH}}:refs/remotes/origin/{{BASE_BRANCH}}
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "{{BUN_VERSION}}"
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Setup Node (recap CLI)
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+
+      - name: Install Claude Code (recap agent run uses noSandbox)
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Cache Playwright browser (recap screenshots)
+        # Keyed on the pinned recap CLI version so a bump re-downloads Chromium;
+        # otherwise the cached Chrome-for-Testing is reused (cold download only
+        # on a cache miss). `~/.cache/ms-playwright` is the default browsers dir.
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ms-playwright-${{ env.RECAP_CLI_VERSION }}
+          restore-keys: |
+            ms-playwright-
+
+      - name: Visual recap on the draft PR (best-effort)
+        # Publishes an interactive Visual Recap of the PR diff to the
+        # self-hosted Plan app and upserts a sticky PR comment with the URL +
+        # screenshot. The tiny-diff gate inside recap.ts short-circuits before
+        # any install, so a skipped recap costs seconds.
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          PLAN_RECAP_TOKEN: ${{ secrets.PLAN_RECAP_TOKEN }}
+          PLAN_RECAP_APP_URL: ${{ secrets.PLAN_RECAP_APP_URL }}
+          OUTPUT_DIR: ${{ runner.temp }}
+        run: bun .sandcastle/recap/recap.ts
