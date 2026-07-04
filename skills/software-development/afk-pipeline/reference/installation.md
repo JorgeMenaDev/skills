@@ -27,9 +27,15 @@ this (three drifting copies: andesphere, superaseo, andyChat) is `JorgeMenaDev/s
 2. Generate: `node <skills-checkout>/skills/software-development/afk-pipeline/scripts/generate.mjs --repo <repo>`.
    It refuses on missing config fields or unresolved tokens. `--check` mode diffs
    without writing (drift audit).
-3. **Labels** — `agent:implement` (cloud), `agent:implement-local` (self-hosted) plus
+3. **Runtime dependency**: add `@ai-hero/sandcastle` to the consumer's ROOT
+   `package.json` devDependencies (`bun add -d '@ai-hero/sandcastle@^0.12.0'`) and
+   commit the lockfile. Every generated phase script imports it, and the workflow's
+   `bun install --frozen-lockfile` only installs what the repo declares — a missing
+   dep fails the first run instantly with `Cannot find module '@ai-hero/sandcastle'`
+   (cost andyChat run 28712325830, 2026-07-04).
+4. **Labels** — `agent:implement` (cloud), `agent:implement-local` (self-hosted) plus
    state labels `agent:in-progress`, `agent:blocked`.
-4. **Secrets** — `CLAUDE_CODE_OAUTH_TOKEN`; `AGENT_PAT` (orgs commonly disallow
+5. **Secrets** — `CLAUDE_CODE_OAUTH_TOKEN`; `AGENT_PAT` (orgs commonly disallow
    Actions-created PRs, and pushes touching `.github/workflows/` need it) — mint the
    PAT with **no expiration** (or the max GitHub offers); a short-lived PAT silently
    kills the pipeline when it expires;
@@ -37,10 +43,10 @@ this (three drifting copies: andesphere, superaseo, andyChat) is `JorgeMenaDev/s
    config's `verifySecrets`. A verify secret must appear in BOTH the config's
    `passthroughKeys` and repo secrets — the generator keeps workflow env and
    runtime.ts in sync from the same field.
-5. **Local lane (optional)** — register a self-hosted runner; the Docker image
+6. **Local lane (optional)** — register a self-hosted runner; the Docker image
    (`docker build -t <imageName> .sandcastle/`) bakes in the harness CLI, `gh`, and
    browser tooling. A persistent runner on real hardware must not run agents unsandboxed.
-6. Commit everything (config + generated files). Pipeline changes can't self-prove —
+7. Commit everything (config + generated files). Pipeline changes can't self-prove —
    the workflow executes from the default branch, so the first validating run is the
    first run after merge.
 
