@@ -60,6 +60,14 @@ function expandHome(input) {
   return input;
 }
 
+// A workspace cell may wrap the path in backticks and surround it with prose
+// (e.g. "frontend `~/dev/code/x` (blog in a CMS)"). Use the first backtick-quoted
+// token when present; otherwise treat the whole cell as the path.
+function workspacePath(cell) {
+  const quoted = cell.match(/`([^`]+)`/);
+  return (quoted ? quoted[1] : cell).trim();
+}
+
 // Split a markdown table row into trimmed cells, dropping the outer pipes.
 // Splits on unescaped pipes only, then unescapes `\|` back to a literal pipe so a
 // cell written with an escaped pipe (the house escapeCell convention) round-trips.
@@ -166,7 +174,7 @@ function inspectSite(entry, nowMs) {
   const workspaceRaw = entry.workspaceRaw;
   const unresolved =
     !workspaceRaw || workspaceRaw.toLowerCase() === "unknown";
-  const root = unresolved ? null : expandHome(workspaceRaw);
+  const root = unresolved ? null : expandHome(workspacePath(workspaceRaw));
   const seoDir = root ? path.join(root, ".seo") : null;
   const missing = !seoDir || !existsSync(seoDir);
 
