@@ -57,6 +57,8 @@ const requiredFiles = [
   "references/data-tools.md",
   "references/international-seo.md",
   "references/competitor-profiling.md",
+  "references/scheduled-operation.md",
+  "references/portfolio-registry.md",
   "templates/taxonomy.md",
   "templates/local-seo-gbp.md",
   "templates/backlink-gap.md",
@@ -65,11 +67,13 @@ const requiredFiles = [
   "templates/gsc-opportunity.md",
   "templates/monthly-report.md",
   "templates/admin-setup.md",
+  "templates/portfolio-index.md",
   "scripts/bootstrap-seo-workspace.mjs",
   "scripts/gsc-oauth.mjs",
   "scripts/gsc-fetch.mjs",
   "scripts/gsc-opportunities.mjs",
   "scripts/monthly-report.mjs",
+  "scripts/portfolio-status.mjs",
 ];
 
 const failures = [];
@@ -558,6 +562,160 @@ section("clean export", () => {
     );
   } finally {
     rmSync(exportTarget, { recursive: true, force: true });
+  }
+});
+
+// --- portfolio-status.mjs: registry parse + ranking + escaping ---
+section("portfolio status", () => {
+  const help = runScript("scripts/portfolio-status.mjs", ["--help"]);
+  check(
+    help.includes("--registry"),
+    "portfolio-status help should document --registry",
+  );
+
+  const portfolioRoot = mkdtempSync(path.join(tmpdir(), "seo-portfolio-"));
+  try {
+    // Stale site: old log date + a P0 Ready ticket whose title contains a pipe.
+    const staleSeo = path.join(portfolioRoot, "stale", ".seo");
+    const freshSeo = path.join(portfolioRoot, "fresh", ".seo");
+    for (const dir of [
+      path.join(staleSeo, "reports"),
+      path.join(freshSeo, "reports"),
+    ]) {
+      run("mkdir", ["-p", dir]);
+    }
+
+    writeFileSync(
+      path.join(staleSeo, "log.md"),
+      "# SEO operating log\n\n## 2020-01-01 - Old handoff\n\n- Mode: operate.\n",
+    );
+    writeFileSync(
+      path.join(staleSeo, "backlog.md"),
+      [
+        "# SEO backlog",
+        "",
+        "## Ready",
+        "",
+        "| ID | P | Area | Ticket | Verify |",
+        "| --- | --- | --- | --- | --- |",
+        "| SEO-001 | P0 | indexability | Fix robots \\| sitemap block | robots.txt 200 |",
+        "| SEO-002 | P3 | content | Blog cluster | calendar exists |",
+        "",
+        "## In progress",
+        "",
+        "| ID | Started | Notes |",
+        "| --- | --- | --- |",
+        "",
+        "## Blocked",
+        "",
+        "| ID | Blocker | Since |",
+        "| --- | --- | --- |",
+        "",
+        "## Done",
+        "",
+        "| ID | Completed | Verify |",
+        "| --- | --- | --- |",
+        "",
+      ].join("\n"),
+    );
+
+    const today = new Date().toISOString().slice(0, 10);
+    writeFileSync(
+      path.join(freshSeo, "log.md"),
+      `# SEO operating log\n\n## ${today} - Fresh handoff\n\n- Mode: operate.\n`,
+    );
+    writeFileSync(
+      path.join(freshSeo, "backlog.md"),
+      [
+        "# SEO backlog",
+        "",
+        "## Ready",
+        "",
+        "| ID | P | Area | Ticket | Verify |",
+        "| --- | --- | --- | --- | --- |",
+        "",
+        "## In progress",
+        "",
+        "| ID | Started | Notes |",
+        "| --- | --- | --- |",
+        "",
+        "## Blocked",
+        "",
+        "| ID | Blocker | Since |",
+        "| --- | --- | --- |",
+        "",
+        "## Done",
+        "",
+        "| ID | Completed | Verify |",
+        "| --- | --- | --- |",
+        "",
+      ].join("\n"),
+    );
+
+    const registryPath = path.join(portfolioRoot, "registry.md");
+    writeFileSync(
+      registryPath,
+      [
+        "# Portfolio Registry",
+        "",
+        "| Site | Workspace root | GSC property | Credentials | Market / language | Publish gate | Notes |",
+        "| --- | --- | --- | --- | --- | --- | --- |",
+        `| stale.example | ${path.join(portfolioRoot, "stale")} | sc-domain:stale.example | none yet | UK / en-GB | human approves | — |`,
+        `| fresh.example | ${path.join(portfolioRoot, "fresh")} | sc-domain:fresh.example | none yet | UK / en-GB | human approves | — |`,
+        `| gone.example | ${path.join(portfolioRoot, "missing")} | unknown | unknown | UK / en-GB | unknown | — |`,
+        "",
+      ].join("\n"),
+    );
+
+    const report = runScript("scripts/portfolio-status.mjs", [
+      "--registry",
+      registryPath,
+    ]);
+
+    check(
+      report.includes("Fix robots \\| sitemap block"),
+      "portfolio-status must escape pipe characters in ticket titles",
+    );
+    check(
+      report.includes("no workspace"),
+      "portfolio-status must flag a missing workspace",
+    );
+
+    const idxMissing = report.indexOf("gone.example");
+    const idxStale = report.indexOf("stale.example");
+    const idxFresh = report.indexOf("fresh.example");
+    check(
+      idxMissing !== -1 && idxStale !== -1 && idxFresh !== -1,
+      "portfolio-status must list every registry row",
+    );
+    check(
+      idxMissing < idxStale,
+      "Missing workspaces must rank before present ones",
+    );
+    check(
+      idxStale < idxFresh,
+      "A stale workspace with an open P0 must rank above a fresh one",
+    );
+
+    const json = runScript("scripts/portfolio-status.mjs", [
+      "--registry",
+      registryPath,
+      "--format",
+      "json",
+    ]);
+    const parsed = JSON.parse(json);
+    check(
+      parsed.sites?.[0]?.site === "gone.example" &&
+        parsed.sites?.[0]?.missing === true,
+      "portfolio-status json output must rank the missing workspace first",
+    );
+    check(
+      parsed.sites?.[1]?.site === "stale.example" &&
+        parsed.sites?.[1]?.openP0P1 === 1,
+      "portfolio-status json must report the stale workspace's open P0/P1 count",
+    );
+  } finally {
+    rmSync(portfolioRoot, { recursive: true, force: true });
   }
 });
 

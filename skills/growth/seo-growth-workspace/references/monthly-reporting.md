@@ -45,6 +45,14 @@ Always pass `--brand` with known branded terms: branded queries stay in the topl
 
 Missing inputs become recorded gaps, not fabricated numbers. When GSC exports are genuinely unavailable, pass `--allow-missing-gsc` to produce a partial report banner-marked `partial — GSC exports unavailable` instead of failing; fill the GSC-derived sections from repo/public evidence per No-Mutation Validation below. If the target has a content engine, export keyword-tier and calendar snapshots through its established CLI, API, or admin export path. Record the command or source in the report without exposing secrets.
 
+## Portfolio Reporting
+
+`scripts/monthly-report.mjs` reports one target per run. For a portfolio, do not blend sites into one report:
+
+- Iterate the registry (`references/portfolio-registry.md`), one target per run, writing one dated report per site into that site's `.seo/reports/`.
+- Then build one cross-site rollup from `templates/portfolio-index.md`, using `scripts/portfolio-status.mjs --registry <file>` for the ranked table.
+- Link the per-site reports from the index; never merge their metrics. Ticket IDs, deltas, and next actions stay per-site.
+
 ## No-Mutation Validation
 
 In read-only or no-access runs, do not force a monthly report when current/previous GSC, analytics, or content-engine exports are unavailable. Instead:
