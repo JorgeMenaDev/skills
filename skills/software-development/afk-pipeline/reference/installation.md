@@ -32,7 +32,11 @@ this (three drifting copies: andesphere, superaseo, andyChat) is `JorgeMenaDev/s
    commit the lockfile. Every generated phase script imports it, and the workflow's
    `bun install --frozen-lockfile` only installs what the repo declares — a missing
    dep fails the first run instantly with `Cannot find module '@ai-hero/sandcastle'`
-   (cost andyChat run 28712325830, 2026-07-04).
+   (cost andyChat run 28712325830, 2026-07-04). If the dep is ALREADY declared,
+   check its version: a stale pin from a previous orchestrator passes install but
+   fails the implement phase at runtime (`handle.copyIn is not a function` — cost
+   acredix run 28720470196, 2026-07-04, pinned 0.5.8). `generate.mjs` now refuses
+   pins below 0.12.
 4. **Labels** — `agent:implement` (cloud), `agent:implement-local` (self-hosted) plus
    state labels `agent:in-progress`, `agent:blocked`.
 5. **Secrets** — `CLAUDE_CODE_OAUTH_TOKEN`; `AGENT_PAT` (orgs commonly disallow

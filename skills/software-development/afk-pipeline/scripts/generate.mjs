@@ -33,6 +33,26 @@ if (!fs.existsSync(cfgPath)) {
 }
 const cfg = JSON.parse(fs.readFileSync(cfgPath, "utf8"));
 
+// The generated phase scripts require @ai-hero/sandcastle >= this version
+// (older APIs lack handle.copyIn — a stale pin from a previous orchestrator
+// fails the implement phase at runtime, not install time).
+const MIN_SANDCASTLE = [0, 12];
+{
+  const pkgPath = path.join(repo, "package.json");
+  const deps = fs.existsSync(pkgPath)
+    ? { ...(JSON.parse(fs.readFileSync(pkgPath, "utf8")).dependencies ?? {}), ...(JSON.parse(fs.readFileSync(pkgPath, "utf8")).devDependencies ?? {}) }
+    : {};
+  const declared = deps["@ai-hero/sandcastle"];
+  const nums = declared?.match(/\d+/g)?.slice(0, 2).map(Number);
+  if (declared && nums && (nums[0] < MIN_SANDCASTLE[0] || (nums[0] === MIN_SANDCASTLE[0] && nums[1] < MIN_SANDCASTLE[1]))) {
+    console.error(`Root package.json pins @ai-hero/sandcastle ${declared} — the generated scripts need >= ${MIN_SANDCASTLE.join(".")}. Run: bun add -d '@ai-hero/sandcastle@^0.12.0'`);
+    process.exit(1);
+  }
+  if (!declared) {
+    console.warn(`WARN: @ai-hero/sandcastle not in root package.json — the first run will fail at bun install. Run: bun add -d '@ai-hero/sandcastle@^0.12.0'`);
+  }
+}
+
 // String fields may be arrays-of-lines for JSON readability.
 const str = (v) => (Array.isArray(v) ? v.join("\n") : (v ?? ""));
 const req = (k) => {
