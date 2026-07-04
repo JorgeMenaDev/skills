@@ -1,7 +1,7 @@
 ---
 name: operator-handoff
 description: Job-file handoff between a requesting agent and the Operator — a human-supervised computer-use agent driving the machine's real desktop and browser. Use when a task needs real clicks or credentials the agent doesn't hold (desktop app setup, third-party dashboards, OAuth consents, captchas, 2FA), when delegating a Gherkin-spec QA run or a fully-designed code slice, or when resuming after a run ("check the operator report", "run job NNN").
-version: 1.2.0
+version: 1.2.1
 mutating: true
 writes_to: [.agents/operator/]
 ---
@@ -117,6 +117,8 @@ The skill is generic; everything machine-, account-, or repo-specific lives in `
 ## Secrets rule (both roles)
 
 Secret values go ONLY into a destination the job names, chosen from the legal ones `HOST.md` lists (an env file, a platform env, a password manager). Job, report, and evidence files carry env key NAMES, never values. Never screenshot a page with a visible secret.
+
+When a job MINTS a credential (a PAT, API token, key), the job spec sets its lifetime to **no expiration** — or the maximum the service offers if "never" isn't available. Short-lived tokens (7/30/90 days) silently break consumers later and force a new job to replace them. Spec an expiry only when the human asks for one or the credential is deliberately throwaway (revoked within the same job).
 
 ## Division of labor
 

@@ -30,7 +30,9 @@ this (three drifting copies: andesphere, superaseo, andyChat) is `JorgeMenaDev/s
 3. **Labels** — `agent:implement` (cloud), `agent:implement-local` (self-hosted) plus
    state labels `agent:in-progress`, `agent:blocked`.
 4. **Secrets** — `CLAUDE_CODE_OAUTH_TOKEN`; `AGENT_PAT` (orgs commonly disallow
-   Actions-created PRs, and pushes touching `.github/workflows/` need it);
+   Actions-created PRs, and pushes touching `.github/workflows/` need it) — mint the
+   PAT with **no expiration** (or the max GitHub offers); a short-lived PAT silently
+   kills the pipeline when it expires;
    `PLAN_RECAP_TOKEN` + `PLAN_RECAP_APP_URL` if recap is wired; every key in the
    config's `verifySecrets`. A verify secret must appear in BOTH the config's
    `passthroughKeys` and repo secrets — the generator keeps workflow env and
