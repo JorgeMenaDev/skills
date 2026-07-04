@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
-import { chmod, writeFile } from "node:fs/promises";
+import { chmod, readFile, writeFile } from "node:fs/promises";
+import path from "node:path";
 
 const scope = "https://www.googleapis.com/auth/webmasters.readonly";
 
@@ -9,14 +10,20 @@ function usage() {
   # 1. Generate a Google OAuth consent URL.
   GSC_CLIENT_ID=... node gsc-oauth.mjs --print-auth-url [--redirect-uri http://localhost:8080/oauth2callback]
 
-  # 2. Exchange the returned code into a local env file.
-  GSC_CLIENT_ID=... GSC_CLIENT_SECRET=... node gsc-oauth.mjs --code <returned-code> --output .env.local [--redirect-uri http://localhost:8080/oauth2callback] [--force]
+  # 2a. Exchange the returned code into a local env file.
+  GSC_CLIENT_ID=... GSC_CLIENT_SECRET=... node gsc-oauth.mjs --code <returned-code> --output .env.local [--redirect-uri ...] [--force]
 
-The client secret is read only from the GSC_CLIENT_SECRET environment variable (never from a CLI
-flag, so it cannot leak into shell history or process lists). The output file is written with
-0600 permissions and is never overwritten unless --force is passed.
+  # 2b. Or write token.json into a credential home (client_secret.json supplies the client).
+  node gsc-oauth.mjs --credentials-dir ~/creds/acme-gsc --code <returned-code> [--redirect-uri ...] [--force]
 
-This helper never prints credential values or token response bodies. Use the output file with gsc-fetch.mjs.`;
+The client secret is read only from the GSC_CLIENT_SECRET environment variable or from
+client_secret.json inside --credentials-dir / GSC_CREDENTIALS_DIR (never from a CLI flag, so it
+cannot leak into shell history or process lists). With --credentials-dir the refresh token is
+written to <dir>/token.json; otherwise --output writes an env file. Both are written with 0600
+permissions and are never overwritten unless --force is passed. Prefer a credential home outside
+the target repo over the repo's .env.local.
+
+This helper never prints credential values or token response bodies. Use the output with gsc-fetch.mjs.`;
 }
 
 function argValue(name) {
@@ -31,6 +38,14 @@ function argValue(name) {
 
 function envLine(name, value) {
   return `${name}=${JSON.stringify(value)}\n`;
+}
+
+// Reads the client id/secret from a Google OAuth client_secret.json ("installed" or "web" shape)
+// inside a credential home, as an alternative to the GSC_CLIENT_ID/GSC_CLIENT_SECRET env vars.
+async function clientConfigFromDir(dir) {
+  const raw = JSON.parse(await readFile(path.join(dir, "client_secret.json"), "utf-8"));
+  const cfg = raw.installed ?? raw.web ?? raw;
+  return { clientId: cfg.client_id, clientSecret: cfg.client_secret };
 }
 
 function authUrl({ clientId, redirectUri }) {
@@ -81,8 +96,18 @@ async function main() {
     return;
   }
 
-  const clientId = argValue("--client-id") ?? process.env.GSC_CLIENT_ID;
-  const clientSecret = process.env.GSC_CLIENT_SECRET;
+  let clientId = argValue("--client-id") ?? process.env.GSC_CLIENT_ID;
+  let clientSecret = process.env.GSC_CLIENT_SECRET;
+  const credsDir = argValue("--credentials-dir") ?? process.env.GSC_CREDENTIALS_DIR;
+  if (credsDir && (!clientId || !clientSecret)) {
+    try {
+      const cfg = await clientConfigFromDir(credsDir);
+      clientId ??= cfg.clientId;
+      clientSecret ??= cfg.clientSecret;
+    } catch {
+      // fall through to the usage()/missing-credential errors below
+    }
+  }
   const redirectUri =
     argValue("--redirect-uri") ?? "http://localhost:8080/oauth2callback";
   const code = argValue("--code");
@@ -95,7 +120,8 @@ async function main() {
     return;
   }
 
-  if (!clientId || !clientSecret || !code || !output) throw new Error(usage());
+  if (!clientId || !clientSecret || !code) throw new Error(usage());
+  if (!output && !credsDir) throw new Error(usage());
 
   const refreshToken = await exchangeCode({
     clientId,
@@ -103,16 +129,32 @@ async function main() {
     code,
     redirectUri,
   });
-  const content = [
-    envLine("GSC_CLIENT_ID", clientId),
-    envLine("GSC_CLIENT_SECRET", clientSecret),
-    envLine("GSC_REFRESH_TOKEN", refreshToken),
-  ].join("");
 
-  await writeFile(output, content, { flag: force ? "w" : "wx", mode: 0o600 });
-  // mode above only applies on creation; enforce it on --force overwrites too.
-  await chmod(output, 0o600);
-  console.log(`Wrote GSC OAuth env values to ${output} (mode 0600)`);
+  if (output) {
+    const content = [
+      envLine("GSC_CLIENT_ID", clientId),
+      envLine("GSC_CLIENT_SECRET", clientSecret),
+      envLine("GSC_REFRESH_TOKEN", refreshToken),
+    ].join("");
+    await writeFile(output, content, { flag: force ? "w" : "wx", mode: 0o600 });
+    // mode above only applies on creation; enforce it on --force overwrites too.
+    await chmod(output, 0o600);
+    console.log(`Wrote GSC OAuth env values to ${output} (mode 0600)`);
+    return;
+  }
+
+  const tokenPath = path.join(credsDir, "token.json");
+  const tokenContent = `${JSON.stringify(
+    { refresh_token: refreshToken, type: "authorized_user" },
+    null,
+    2,
+  )}\n`;
+  await writeFile(tokenPath, tokenContent, {
+    flag: force ? "w" : "wx",
+    mode: 0o600,
+  });
+  await chmod(tokenPath, 0o600);
+  console.log(`Wrote GSC refresh token to ${tokenPath} (mode 0600)`);
 }
 
 main().catch((error) => {

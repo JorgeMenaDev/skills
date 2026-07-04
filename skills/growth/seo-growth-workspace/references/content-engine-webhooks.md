@@ -36,6 +36,8 @@ A webhook delivery is not "published" until:
 - Rendered metadata/schema match the payload without invented facts.
 - The `.seo/backlog.md` content ticket and the engine's dashboard state agree. Backend/UI disagreement is a blocker, not a success.
 
+One worked example follows; your engine will differ — record its contract in `.seo/adapters/<engine>.md`.
+
 ## Example: SuperaSEO (superaseo.app)
 
 A keyword-research and article-scheduling engine with a webhook-first publishing path. Contract as of 2026-07:

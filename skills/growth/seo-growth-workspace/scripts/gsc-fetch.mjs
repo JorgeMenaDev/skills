@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
-import { writeFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
+import path from "node:path";
 
 const PAGE_SIZE = 25000; // GSC searchAnalytics.query per-request maximum
 const DEFAULT_MAX_ROWS = 100000;
@@ -9,8 +10,15 @@ function usage() {
   return `Usage:
   GSC_ACCESS_TOKEN=<access-token> node gsc-fetch.mjs --site https://example.com/ --start 2026-01-01 --end 2026-03-31 [--output gsc.json] [--max-rows ${DEFAULT_MAX_ROWS}]
 
-  # Or use refresh-token auth:
+  # Or use refresh-token auth from environment variables:
   GSC_CLIENT_ID=... GSC_CLIENT_SECRET=... GSC_REFRESH_TOKEN=... node gsc-fetch.mjs --site https://example.com/ --start 2026-01-01 --end 2026-03-31 [--output gsc.json]
+
+  # Or point at a credential home (profile/agent creds outside the repo):
+  GSC_CREDENTIALS_DIR=~/creds/acme-gsc node gsc-fetch.mjs --site https://example.com/ --start 2026-01-01 --end 2026-03-31
+  node gsc-fetch.mjs --credentials-dir ~/creds/acme-gsc --site https://example.com/ --start 2026-01-01 --end 2026-03-31
+
+--site accepts both GSC property forms: sc-domain:example.com (domain property) and
+https://example.com/ (URL-prefix property). The wrong form for the verified property yields a 403.
 
 Fetches Google Search Console searchAnalytics.query data for query+page rows.
 Pages through results with startRow (25,000 rows per request) until the export is
@@ -18,9 +26,12 @@ complete or --max-rows (default ${DEFAULT_MAX_ROWS}) is reached; a note is print
 to stderr if the cap is hit.
 
 Auth:
-  - Credentials are read from environment variables only, never from CLI flags.
   - Uses GSC_ACCESS_TOKEN first when present.
+  - Then --credentials-dir / GSC_CREDENTIALS_DIR: a directory holding file-shaped
+    client_secret.json (Google OAuth client JSON, "installed" or "web" shape) and
+    token.json (containing refresh_token). Prefer this over repo-local env files.
   - Otherwise exchanges GSC_CLIENT_ID, GSC_CLIENT_SECRET, and GSC_REFRESH_TOKEN for an access token.
+  - Client secrets and refresh tokens are read from env vars or credential files, never from CLI flags.
   - Required OAuth scope: webmasters.readonly.
   - This script intentionally does not print credentials or token response bodies.
   - For browser-only access, export manually and use gsc-opportunities.mjs instead.`;
@@ -36,12 +47,44 @@ function argValue(name) {
   return value;
 }
 
+async function readJsonFile(filePath) {
+  const text = await readFile(filePath, "utf-8");
+  try {
+    return JSON.parse(text);
+  } catch (error) {
+    throw new Error(`Invalid JSON in ${filePath}: ${error.message}`);
+  }
+}
+
+// Reads file-shaped OAuth credentials from a directory in a credential home:
+// client_secret.json ("installed" or "web" Google OAuth client) + token.json (refresh_token).
+async function credentialsFromDir(dir) {
+  const clientRaw = await readJsonFile(path.join(dir, "client_secret.json"));
+  const cfg = clientRaw.installed ?? clientRaw.web ?? clientRaw;
+  const tokenRaw = await readJsonFile(path.join(dir, "token.json"));
+  const clientId = cfg.client_id;
+  const clientSecret = cfg.client_secret;
+  const refreshToken = tokenRaw.refresh_token ?? tokenRaw.refreshToken;
+  if (!clientId || !clientSecret || !refreshToken) {
+    throw new Error(
+      `credentials dir ${dir} must contain client_secret.json (installed/web with client_id + client_secret) and token.json (with refresh_token)`,
+    );
+  }
+  return { clientId, clientSecret, refreshToken };
+}
+
 async function getAccessToken() {
   if (process.env.GSC_ACCESS_TOKEN) return process.env.GSC_ACCESS_TOKEN;
 
-  const clientId = process.env.GSC_CLIENT_ID;
-  const clientSecret = process.env.GSC_CLIENT_SECRET;
-  const refreshToken = process.env.GSC_REFRESH_TOKEN;
+  let clientId = process.env.GSC_CLIENT_ID;
+  let clientSecret = process.env.GSC_CLIENT_SECRET;
+  let refreshToken = process.env.GSC_REFRESH_TOKEN;
+
+  const credsDir = argValue("--credentials-dir") ?? process.env.GSC_CREDENTIALS_DIR;
+  if (credsDir) {
+    ({ clientId, clientSecret, refreshToken } = await credentialsFromDir(credsDir));
+  }
+
   if (!clientId || !clientSecret || !refreshToken) return null;
 
   const response = await fetch("https://oauth2.googleapis.com/token", {

@@ -10,12 +10,27 @@ const CTR_BANDS = [
 ];
 const CTR_FLAG_RATIO = 0.5;
 
+// Keep in sync with gsc-opportunities.mjs: branded-query parsing/matching.
+function parseBrandTerms(raw) {
+  if (!raw) return [];
+  return raw
+    .split(",")
+    .map((term) => term.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+function isBranded(query, brandTerms) {
+  const lower = String(query).toLowerCase();
+  return brandTerms.some((term) => lower.includes(term));
+}
+
 function usage() {
   return `Usage:
   node monthly-report.mjs --target "Example SaaS" \\
       --date-range "2026-04-01 to 2026-04-30" --comparison-range "2026-03-01 to 2026-03-31" \\
       --gsc-current current.json --gsc-previous previous.json --backlog .seo/backlog.md \\
-      [--keyword-tiers tiers.json] [--calendar calendar.json] [--output report.md]
+      [--brand "acme,acme app"] [--keyword-tiers tiers.json] [--calendar calendar.json] \\
+      [--allow-missing-gsc] [--output report.md]
 
 Builds a one-page SEO report directly from exported GSC rows and local SEO/content-engine state:
 metric deltas, query/page movers (including disappeared queries), wins/problems, and a single
@@ -24,8 +39,13 @@ next action.
 Inputs:
   --gsc-current / --gsc-previous  GSC searchAnalytics.query JSON exports (rows[]).
   --backlog                       .seo/backlog.md (Ready/In progress/Blocked/Done tables).
+  --brand                         Optional comma-separated brand terms (case-insensitive substring).
+                                  Branded queries stay in topline totals but are excluded from
+                                  problem selection and the single next action.
   --keyword-tiers                 Optional JSON: { "p1": n, "p2": n, "p3": n } or { "tiers": {...} }.
   --calendar                      Optional JSON: entries[] with status fields, or precomputed counts.
+  --allow-missing-gsc             Produce a partial report marked "partial — GSC exports unavailable"
+                                  instead of failing when GSC exports (or backlog) are absent.
 
 Do not include secrets in any input file.`;
 }
@@ -63,7 +83,7 @@ function normalizeRows(payload) {
       ctr: Number(row.ctr ?? 0),
       position: Number(row.position ?? row.avgPosition ?? 0),
     };
-  });
+  }).filter((row) => row.position > 0);
 }
 
 function summarizeRows(rows) {
@@ -105,9 +125,13 @@ function markdownTable(headers, rows) {
   ].join("\n");
 }
 
+// Band on the unrounded position with explicit half-open boundaries so rows in gaps like
+// (10.5, 11.0) do not fall through both the CTR bands and the page-2 table (>= 11).
 function bandFor(position) {
-  const rounded = Math.max(1, Math.round(position));
-  return CTR_BANDS.find((band) => rounded >= band.min && rounded <= band.max) ?? null;
+  if (!(position >= 1)) return null;
+  return (
+    CTR_BANDS.find((band) => position >= band.min && position < band.max + 1) ?? null
+  );
 }
 
 function isLowCtr(row) {
@@ -204,14 +228,23 @@ function buildProblems({
   state,
   currentRows,
   movers,
+  brandTerms,
 }) {
   const problems = [];
   const byImpressions = [...currentRows].sort(
     (a, b) => b.impressions - a.impressions,
   );
-  const lowCtr = byImpressions.find((row) => isLowCtr(row));
+  // Branded queries stay in topline totals but must not become a problem or the single next
+  // action: a branded high-impression low-CTR query is a brand-SERP artifact, not a title fix.
+  const lowCtr = byImpressions.find(
+    (row) => isLowCtr(row) && !isBranded(row.query, brandTerms),
+  );
   const pageTwo = byImpressions.find(
-    (row) => row.impressions >= 100 && row.position >= 11 && row.position <= 20,
+    (row) =>
+      row.impressions >= 100 &&
+      row.position >= 11 &&
+      row.position <= 20 &&
+      !isBranded(row.query, brandTerms),
   );
   const disappeared = movers.find(
     (row) => row.status === "disappeared" && row.previousClicks > 0,
@@ -366,6 +399,7 @@ function normalizeCalendar(raw) {
 }
 
 function buildReport(state) {
+  const brandTerms = state.brandTerms ?? [];
   const currentRows = normalizeRows(state.gsc?.current);
   const previousRows = normalizeRows(state.gsc?.previous);
   const currentSummary = summarizeRows(currentRows);
@@ -378,6 +412,7 @@ function buildReport(state) {
     state,
     currentRows,
     movers,
+    brandTerms,
   });
   const nextAction = buildNextAction(problems);
   const tiers = state.keywords?.tiers ?? {};
@@ -455,7 +490,7 @@ function buildReport(state) {
           : signedNumber(row.positionDelta, 1),
       row.status === "disappeared"
         ? "Investigate lost query (content, ranking, or seasonality)"
-        : isLowCtr(row)
+        : isLowCtr(row) && !isBranded(row.query, brandTerms)
           ? "Rewrite title/meta"
           : row.position >= 11 && row.position <= 20
             ? "Optimize page-2 opportunity"
@@ -470,8 +505,12 @@ function buildReport(state) {
       String(item.status ?? ""),
     ]);
 
-  return `# Monthly SEO report - ${state.dateRange ?? "unknown range"}
+  const partialBanner = state.partial
+    ? `\n> Status: partial — GSC exports unavailable (${(state.missingSources ?? []).join(", ") || "GSC exports"}). GSC-derived sections are incomplete; fill them from repo/public evidence.\n`
+    : "";
 
+  return `# Monthly SEO report - ${state.dateRange ?? "unknown range"}
+${partialBanner}
 ## Scope
 
 Target: ${state.target ?? "Unknown"}
@@ -527,35 +566,45 @@ async function main() {
   const backlogPath = argValue("--backlog");
   const tiersPath = argValue("--keyword-tiers");
   const calendarPath = argValue("--calendar");
+  const brandTerms = parseBrandTerms(argValue("--brand"));
+  const allowMissingGsc = process.argv.includes("--allow-missing-gsc");
   const output = argValue("--output");
 
-  if (
-    !target ||
-    !dateRange ||
-    !comparisonRange ||
-    !currentPath ||
-    !previousPath ||
-    !backlogPath
-  ) {
+  if (!target || !dateRange || !comparisonRange) {
     throw new Error(usage());
   }
+  if (!allowMissingGsc && (!currentPath || !previousPath || !backlogPath)) {
+    throw new Error(usage());
+  }
+
+  const missingSources = [];
+  if (!currentPath) missingSources.push("--gsc-current");
+  if (!previousPath) missingSources.push("--gsc-previous");
+  if (!backlogPath) missingSources.push("--backlog");
+  const partial = allowMissingGsc && (!currentPath || !previousPath);
 
   const state = {
     target,
     dateRange,
     comparisonRange,
+    brandTerms,
+    partial,
+    missingSources,
     dataSources: [
-      currentPath,
-      previousPath,
-      backlogPath,
+      currentPath ?? "GSC current unavailable",
+      previousPath ?? "GSC previous unavailable",
+      backlogPath ?? "backlog unavailable",
       tiersPath ?? "keyword tiers unavailable",
       calendarPath ?? "calendar unavailable",
     ],
     gsc: {
-      current: await readJsonFile(currentPath),
-      previous: await readJsonFile(previousPath),
+      current: currentPath ? await readJsonFile(currentPath) : { rows: [] },
+      previous: previousPath ? await readJsonFile(previousPath) : { rows: [] },
     },
-    backlog: parseBacklog(await readFile(backlogPath, "utf-8"), dateRange),
+    backlog: parseBacklog(
+      backlogPath ? await readFile(backlogPath, "utf-8") : "",
+      dateRange,
+    ),
     keywords: {
       tiers: normalizeTierCounts(tiersPath ? await readJsonFile(tiersPath) : null),
     },

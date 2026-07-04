@@ -32,9 +32,17 @@ Lighthouse is a lab proxy only: use it to diagnose, never to report CWV pass/fai
 
 ## AI-Crawler Access
 
-Inventory access for GPTBot, OAI-SearchBot, ClaudeBot/Claude-SearchBot, PerplexityBot, Google-Extended, Applebot-Extended, and CCBot.
+Inventory access by purpose — the allow/block consequence differs by what the crawler feeds. Bot names as of mid-2026; verify against server logs, since operators add and rename agents.
 
-- Check `robots.txt` AND CDN-level bot rules. Cloudflare's AI-bot blocking is a common accidental suppressor of assistant visibility.
+| Purpose | Crawlers | Cost of blocking |
+| --- | --- | --- |
+| Training (model corpora) | GPTBot, Google-Extended, Applebot-Extended, CCBot, Meta-ExternalAgent, Bytespider | None to citations; only opts the site out of training data |
+| Search-index (assistant retrieval index) | OAI-SearchBot, Claude-SearchBot, PerplexityBot, Amazonbot | The assistant cannot index the site, so it cannot cite it |
+| User-triggered / live-fetch (answer-time fetch) | ChatGPT-User, Perplexity-User, Claude-User | The assistant cannot fetch the page when a user asks — kills the live citation path |
+
+xAI/Grok crawls without a broadly published dedicated token as of mid-2026; identify it from server logs rather than assuming a name.
+
+- Check `robots.txt` AND CDN-level bot rules. Cloudflare default-blocks AI crawlers on new zones since 2025-07-01 — verify the AI-crawler / bot-management setting explicitly rather than assuming default-allow.
 - Allow/block is a business decision, not a default. Record the per-bot choice and rationale in `.seo/strategy.md`; flag mismatches between recorded policy and live behavior.
 
 ## JS Rendering

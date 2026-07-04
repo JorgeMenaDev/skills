@@ -6,11 +6,29 @@ Use for `technical-seo-fix`, `monthly-report`, or focused GSC analysis. GSC is t
 
 Default to the last 90 days for opportunity analysis and last 30 days vs previous 30 days for reporting. Record the exact date range and property. GSC retains 16 months of data and lags ~2 days behind real time.
 
+## Credential Discovery (before any OAuth)
+
+Do not initiate an OAuth flow until you have checked, in order, whether access already exists:
+
+1. `--credentials-dir` / `GSC_CREDENTIALS_DIR` — a credential-home directory with file-shaped `client_secret.json` + `token.json`. Preferred: credentials live in the profile's/agent's credential home outside the target repo.
+2. `GSC_*` env vars — `GSC_ACCESS_TOKEN` (one-off) or `GSC_CLIENT_ID`/`GSC_CLIENT_SECRET`/`GSC_REFRESH_TOKEN` (repeatable).
+3. Prior exports — reuse existing `.seo/reports/gsc-*.json` for read-only analysis without any fetch.
+4. Site registry — if the target has a site→property→credential registry, read it for the property string and credential location.
+
+Only when all four miss do you initiate OAuth (Safe Helper Flow below). Store the result in the credential home, not the repo's `.env.local` (`.env.local` remains a fallback for standalone use).
+
+## Property String Forms
+
+`--site` accepts both GSC property forms; use the one that matches the verified property, or the request 403s:
+
+- `sc-domain:example.com` — domain property (all subdomains + protocols).
+- `https://example.com/` — URL-prefix property (exact origin, trailing slash).
+
 ## CLI Pipeline
 
 Primary operating loop (Node >= 18; auth setup below):
 
-1. `node scripts/gsc-oauth.mjs` — one-time auth into an ignored env file (see Safe Helper Flow). Never print token values.
+1. `node scripts/gsc-oauth.mjs` — one-time auth into a credential home or ignored env file (see Safe Helper Flow). Never print token values.
 2. `node scripts/gsc-fetch.mjs --site https://example.com/ --start 2026-01-01 --end 2026-03-31 --output .seo/reports/gsc-2026-03-31.json` — exports `query,page` rows, paginating past the 25k-row API cap.
 3. `node scripts/gsc-opportunities.mjs --input .seo/reports/gsc-2026-03-31.json --brand "acme, acme app" --format report` — drafts the page-2 goldmine, CTR-vs-expected-band, and cannibalization tables. Always pass `--brand` with known branded terms. Use `--format backlog` to emit draft `.seo/backlog.md` rows instead.
 
@@ -23,6 +41,18 @@ Review every generated row before merging; opportunity output is not a full prio
 - Impressions up + clicks down is often AI Overviews / SERP-feature driven, not a title problem. GSC folds AI-surface impressions into totals with no breakdown — check SERP appearance for affected queries before rewriting titles.
 - Annotate known Google core-update dates when interpreting deltas.
 - For programmatic single-URL checks, the URL Inspection API exists; keep its use bounded (see Bounded Indexing Requests).
+
+## Diagnosis: Traffic Or Ranking Drops
+
+Route here for the `diagnose` mode ("my traffic dropped", "why did we lose rankings"). Characterize the drop before touching anything:
+
+1. Split branded vs non-branded (see Analysis Rules). A branded-only drop is a brand/PR/demand problem, not organic decay — do not rewrite titles for it.
+2. Impressions up + clicks down → likely a SERP-feature / AI-Overviews shift, not a ranking loss. Check SERP appearance for the affected queries before acting.
+3. Impressions and positions down across many queries at once → suspect a Google core update; annotate known core-update dates inside the window before attributing to on-site changes.
+4. Specific URLs 404/redirect/noindex, dropped from the sitemap, or newly blocked by robots/CDN → technical regression; verify indexability and the deploy/CDN history.
+5. Content-engine articles stopped deploying or the sitemap broke → follow `references/content-engine-webhooks.md`.
+
+Exit: the drop is characterized as branded/non-branded + SERP-feature/AI-Overviews vs core-update vs technical regression, with evidence, and the next action is filed to `.seo/backlog.md`.
 
 ## Matrices To Produce
 
@@ -100,7 +130,7 @@ Use this only when the user already has Google Cloud/Search Console access and a
 
 1. Create or select a Google Cloud OAuth client that is allowed to request `https://www.googleapis.com/auth/webmasters.readonly`.
 2. Generate a refresh token through the OAuth consent flow for the account that can access the property.
-3. Store the values outside tracked files, normally in the shell session or a local ignored env file: `GSC_CLIENT_ID`, `GSC_CLIENT_SECRET`, `GSC_REFRESH_TOKEN`.
+3. Store the values in the profile's/agent's credential home outside the target repo — a directory with file-shaped `client_secret.json` + `token.json`, read via `--credentials-dir` / `GSC_CREDENTIALS_DIR`. For standalone use, a local ignored env file (`.env.local`) with `GSC_CLIENT_ID`, `GSC_CLIENT_SECRET`, `GSC_REFRESH_TOKEN` remains a fallback.
 4. Run step 2 of the CLI pipeline.
 
 If the OAuth refresh fails, report only the HTTP status and the likely setup issue. Do not paste token endpoint response bodies into chat, reports, commits, or issues.
@@ -113,10 +143,16 @@ When a Google OAuth client already exists, use the helper instead of manually pa
 GSC_CLIENT_ID=<client-id> node scripts/gsc-oauth.mjs --print-auth-url
 ```
 
-Open the URL, grant Search Console read-only access, then copy only the `code` query parameter from the redirect URL. Exchange it into an ignored env file:
+Open the URL, grant Search Console read-only access, then copy only the `code` query parameter from the redirect URL. Exchange it into a credential home (preferred) — `client_secret.json` supplies the client, and the helper writes `token.json`:
+
+```bash
+node scripts/gsc-oauth.mjs --credentials-dir <creds-dir> --code <returned-code>
+```
+
+Or, for standalone use, into a repo-ignored env file:
 
 ```bash
 GSC_CLIENT_ID=<client-id> GSC_CLIENT_SECRET=<client-secret> node scripts/gsc-oauth.mjs --code <returned-code> --output .env.local
 ```
 
-The helper writes `GSC_CLIENT_ID`, `GSC_CLIENT_SECRET`, and `GSC_REFRESH_TOKEN` to the output file and prints only the file path. Use `--force` only when intentionally replacing a previous local token file.
+The credential-home path writes `<creds-dir>/token.json`; the env-file path writes `GSC_CLIENT_ID`, `GSC_CLIENT_SECRET`, and `GSC_REFRESH_TOKEN`. Both print only the file path (0600). Use `--force` only when intentionally replacing a previous token file.

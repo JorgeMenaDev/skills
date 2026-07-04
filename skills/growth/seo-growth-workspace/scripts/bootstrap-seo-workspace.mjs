@@ -17,45 +17,22 @@ backlinks, reports) in the target directory (default: current directory). Existi
 never overwritten. .seo/taxonomy.md is sourced from the skill's templates/taxonomy.md.`;
 }
 
-// Fallback only for installed copies that are missing templates/taxonomy.md.
-const inlineTaxonomyFallback = `# SEO ticket taxonomy
+// Stub only for degraded installs missing templates/taxonomy.md. No inline taxonomy is
+// restated here: the canonical taxonomy has a single owner (references/ticket-architecture.md).
+const taxonomyStub = `# SEO ticket taxonomy (stub)
 
-## Priorities
-
-| Priority | Meaning |
-| --- | --- |
-| P0 | Indexability, data loss, or production blockers |
-| P1 | Revenue, conversion, measurement, or high-confidence quick wins |
-| P2 | Quality, performance, schema, or reliability improvements |
-| P3 | Content, internal links, pSEO planning, or expansion |
-| P4 | Authority, backlinks, monitoring, or longer-term bets |
-
-## Areas
-
-\`indexability\`, \`gsc\`, \`analytics\`, \`cro\`, \`schema\`, \`performance\`, \`content\`, \`internal-links\`, \`pseo\`, \`local-seo\`, \`backlinks\`, \`entity\`, \`reporting\`, \`admin\`
-
-## Evidence standard
-
-Every ticket needs a concrete Verify cell: command output, live URL/status, rendered metadata/schema, admin report, API/CLI output, or public backlink/citation URL.
-
-## Work Selection
-
-Use this order:
-
-1. \`Current focus\` when it points to a real ticket.
-2. First real row in \`In progress\`.
-3. Top Ready ticket by priority and table order.
-4. Blocked ticket that has become unblockable.
-5. New evidence-backed ticket from stale notes, expired recheck dates, missing reports, or checkpoint findings.
-
-Empty Ready/In progress tables do not mean SEO is done. Run the smallest useful operating-loop checkpoint, create or update one evidence-backed ticket if needed, and write the handoff in \`.seo/log.md\`.
+This install is missing templates/taxonomy.md. Read the canonical taxonomy — priorities, areas,
+evidence standard, and work selection — in the skill's references/ticket-architecture.md, then fill this file in.
 `;
 
 async function taxonomyContent() {
   try {
     return await readFile(taxonomyTemplatePath, "utf-8");
   } catch {
-    return inlineTaxonomyFallback;
+    process.stderr.write(
+      "Warning: templates/taxonomy.md not found next to this script; wrote a stub .seo/taxonomy.md. See references/ticket-architecture.md for the canonical taxonomy.\n",
+    );
+    return taxonomyStub;
   }
 }
 

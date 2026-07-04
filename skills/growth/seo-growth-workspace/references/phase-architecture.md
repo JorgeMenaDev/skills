@@ -55,6 +55,7 @@ Use the classifier to route the first useful mode:
 | Blog or content engine exists | `content-ops` | Plan only after publish path and sitemap route are real |
 | Programmatic page idea | `pseo-planning` | pSEO must pass quality, data, links, and noindex/sitemap gates before publishing |
 | GBP or local-map intent | `local-seo` | Local surfaces have separate evidence and ownership |
+| Traffic or rankings dropped | `diagnose` | Characterize the drop (branded split, AI-Overviews/SERP feature, core update, technical regression) with evidence before acting — see `references/search-console.md` Diagnosis section |
 | Month-end review | `monthly-report` | Summarize deltas and choose one next action |
 
 ## Marketing Skill Bridge

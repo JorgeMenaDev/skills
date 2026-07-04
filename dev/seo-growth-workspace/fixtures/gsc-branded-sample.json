@@ -1,0 +1,18 @@
+{
+  "rows": [
+    {
+      "keys": ["examplebrand pricing", "https://example.com/pricing"],
+      "clicks": 50,
+      "impressions": 5000,
+      "ctr": 0.01,
+      "position": 2.0
+    },
+    {
+      "keys": ["seo automation", "https://example.com/seo-automation"],
+      "clicks": 5,
+      "impressions": 500,
+      "ctr": 0.01,
+      "position": 12.4
+    }
+  ]
+}

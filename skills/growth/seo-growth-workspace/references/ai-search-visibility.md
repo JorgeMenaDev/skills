@@ -4,11 +4,11 @@ Use for the `ai-visibility` phase of every first run, for `operate` checkpoints 
 
 No special markup tricks exist for Google AI surfaces: AI Overviews and AI Mode use core Search ranking, and Google says no AI-specific markup or files are required. This workflow is about access, extractability, and honest measurement — not "AEO/GEO" hacks. Keep the framing from the AI Search Note in `references/phase-architecture.md`.
 
-Index backing matters for the non-Google engines: ChatGPT search and Copilot draw on Bing's index, Claude on Brave Search, Gemini and AI Overviews on Google's. Not indexed there means not citable there.
+Index backing matters for the non-Google engines (as of mid-2026): ChatGPT search and Copilot draw on Bing's index, Claude on Brave Search, Gemini and AI Overviews on Google's. Not indexed there means not citable there.
 
 ## 1. Crawler Access Inventory
 
-Run the AI-crawler access check in `references/technical-seo.md`: robots.txt and CDN-level rules (Cloudflare-style AI-bot blocking is a common accidental suppressor) for GPTBot, OAI-SearchBot, ClaudeBot/Claude-SearchBot, PerplexityBot, Google-Extended, Applebot-Extended, and CCBot. Allow/block is a business decision, not a default: blocking a cite-path crawler means that assistant cannot cite the site; blocking training-only crawlers (CCBot) does not affect citation. Record the decision and rationale in `.seo/strategy.md`.
+Run the purpose-split AI-crawler access check in `references/technical-seo.md` (training vs search-index vs user-triggered agents, bot names as of mid-2026, including Cloudflare's default-block on new zones). The citation consequence follows the purpose: blocking a search-index or user-triggered crawler (OAI-SearchBot, Claude-SearchBot, PerplexityBot, Amazonbot, ChatGPT-User, Perplexity-User, Claude-User) means that assistant cannot cite the site; blocking a training-only crawler (CCBot, Google-Extended) does not affect citation. Record the decision and rationale in `.seo/strategy.md`.
 
 ## 2. Query-Set Visibility Audit
 
@@ -29,7 +29,7 @@ For pages the audit says should be cited but are not:
 | Extractable answer | Self-contained, direct answer near the top of the page, not buried mid-article |
 | Concrete facts | Specific numbers, dates, and named sources; "we're the best" is not citable |
 | Machine-readable pricing/docs | Public, indexable, plain-HTML pricing and docs; no login wall or JS-only rendering |
-| `llms.txt` | Unproven experiment. Fine to add; never report it as a ranking lever or a completed win |
+| `llms.txt` | Unproven experiment as of mid-2026. Fine to add; never report it as a ranking lever or a completed win |
 
 File fixes as normal backlog tickets with evidence.
 

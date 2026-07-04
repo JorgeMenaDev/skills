@@ -365,6 +365,155 @@ section("monthly report", () => {
   );
 });
 
+// --- monthly-report.mjs: branded-query exclusion + --allow-missing-gsc ---
+section("monthly report branded query", () => {
+  const args = [
+    "--target",
+    "Branded SaaS",
+    "--date-range",
+    "2026-04-01 to 2026-04-30",
+    "--comparison-range",
+    "2026-03-01 to 2026-03-31",
+    "--gsc-current",
+    fixture("gsc-branded-sample.json"),
+    "--gsc-previous",
+    fixture("gsc-branded-sample.json"),
+    "--backlog",
+    fixture("backlog-sample.md"),
+  ];
+
+  const withoutBrand = runScript("scripts/monthly-report.mjs", args);
+  check(
+    withoutBrand.includes("examplebrand pricing has high impressions but low CTR"),
+    "Without --brand, the branded low-CTR query should surface as a problem (baseline)",
+  );
+
+  const withBrand = runScript("scripts/monthly-report.mjs", [
+    ...args,
+    "--brand",
+    "examplebrand",
+  ]);
+  const problemsBlock = withBrand.slice(
+    withBrand.indexOf("### 3 problems"),
+    withBrand.indexOf("### Single next action"),
+  );
+  check(
+    !problemsBlock.includes("examplebrand"),
+    "With --brand, the branded query must not appear in problem selection",
+  );
+  check(
+    !withBrand.includes(
+      "Rewrite the title/meta for the highest-impression low-CTR query",
+    ),
+    "With --brand, the Single Next Action must not target the branded low-CTR query",
+  );
+  check(
+    withBrand.includes("| GSC impressions | 5500 |"),
+    "Branded rows must still count toward topline impressions totals",
+  );
+});
+
+section("monthly report allow-missing-gsc", () => {
+  const partial = runScript("scripts/monthly-report.mjs", [
+    "--target",
+    "Cold Start",
+    "--date-range",
+    "2026-04-01 to 2026-04-30",
+    "--comparison-range",
+    "2026-03-01 to 2026-03-31",
+    "--allow-missing-gsc",
+  ]);
+  check(
+    partial.includes("partial — GSC exports unavailable"),
+    "--allow-missing-gsc must mark the report partial",
+  );
+
+  const missing = spawnSync(
+    process.execPath,
+    [
+      path.join(skillRoot, "scripts/monthly-report.mjs"),
+      "--target",
+      "Cold Start",
+      "--date-range",
+      "2026-04-01 to 2026-04-30",
+      "--comparison-range",
+      "2026-03-01 to 2026-03-31",
+    ],
+    { encoding: "utf-8" },
+  );
+  check(
+    missing.status !== 0,
+    "Without --allow-missing-gsc, missing GSC exports must exit non-zero",
+  );
+});
+
+// --- gsc-fetch.mjs: --credentials-dir parsing ---
+section("gsc-fetch credentials-dir", () => {
+  const credsDir = mkdtempSync(path.join(tmpdir(), "seo-creds-"));
+  try {
+    writeFileSync(
+      path.join(credsDir, "client_secret.json"),
+      JSON.stringify({
+        installed: { client_id: "dummy.apps.googleusercontent.com", client_secret: "dummy" },
+      }),
+    );
+    writeFileSync(
+      path.join(credsDir, "token.json"),
+      JSON.stringify({ refresh_token: "dummy-refresh-token", type: "authorized_user" }),
+    );
+    const parsed = spawnSync(
+      process.execPath,
+      [
+        path.join(skillRoot, "scripts/gsc-fetch.mjs"),
+        "--credentials-dir",
+        credsDir,
+        "--site",
+        "sc-domain:example.com",
+        "--start",
+        "2026-01-01",
+        "--end",
+        "2026-03-31",
+      ],
+      { encoding: "utf-8" },
+    );
+    // Dummy creds parse, then the token exchange is attempted and rejected by Google —
+    // proving the credentials-dir shape reached the API stage without a shape error.
+    check(
+      (parsed.stderr ?? "").includes("GSC OAuth refresh failed"),
+      "--credentials-dir should parse {client_secret.json, token.json} and reach the token exchange",
+    );
+
+    const badDir = mkdtempSync(path.join(tmpdir(), "seo-creds-bad-"));
+    writeFileSync(
+      path.join(badDir, "client_secret.json"),
+      JSON.stringify({ installed: { client_id: "x", client_secret: "y" } }),
+    );
+    writeFileSync(path.join(badDir, "token.json"), JSON.stringify({ no_token: true }));
+    const badResult = spawnSync(
+      process.execPath,
+      [
+        path.join(skillRoot, "scripts/gsc-fetch.mjs"),
+        "--credentials-dir",
+        badDir,
+        "--site",
+        "sc-domain:example.com",
+        "--start",
+        "2026-01-01",
+        "--end",
+        "2026-03-31",
+      ],
+      { encoding: "utf-8" },
+    );
+    check(
+      (badResult.stderr ?? "").includes("token.json (with refresh_token)"),
+      "A credentials dir missing token.json.refresh_token should name the requirement",
+    );
+    rmSync(badDir, { recursive: true, force: true });
+  } finally {
+    rmSync(credsDir, { recursive: true, force: true });
+  }
+});
+
 // --- export-clean-skill.mjs (dev sibling) ---
 section("clean export", () => {
   const exporter = path.join(scriptDir, "export-clean-skill.mjs");

@@ -77,7 +77,7 @@ function normalizeRows(payload) {
       ctr: Number(row.ctr ?? 0),
       position: Number(row.position ?? row.avgPosition ?? 0),
     };
-  });
+  }).filter((row) => row.position > 0);
 }
 
 function escapeCell(value) {
@@ -92,9 +92,13 @@ function markdownTable(headers, rows) {
   ].join("\n");
 }
 
+// Band on the unrounded position with explicit half-open boundaries so rows in gaps like
+// (10.5, 11.0) do not fall through both the CTR bands and the page-2 table (>= 11).
 function bandFor(position) {
-  const rounded = Math.max(1, Math.round(position));
-  return CTR_BANDS.find((band) => rounded >= band.min && rounded <= band.max) ?? null;
+  if (!(position >= 1)) return null;
+  return (
+    CTR_BANDS.find((band) => position >= band.min && position < band.max + 1) ?? null
+  );
 }
 
 function parseBrandTerms(raw) {

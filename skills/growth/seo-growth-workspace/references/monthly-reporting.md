@@ -38,10 +38,12 @@ When exports are available, draft it in one command:
 
 ```bash
 node scripts/monthly-report.mjs --gsc-current <rows.json> --gsc-previous <rows.json> \
-  --backlog .seo/backlog.md --keyword-tiers <file> --calendar <file> --output <report.md>
+  --backlog .seo/backlog.md --brand "acme,acme app" --keyword-tiers <file> --calendar <file> --output <report.md>
 ```
 
-Missing inputs become recorded gaps, not fabricated numbers. If the target has a content engine, export keyword-tier and calendar snapshots through its established CLI, API, or admin export path. Record the command or source in the report without exposing secrets.
+Always pass `--brand` with known branded terms: branded queries stay in the topline totals but are excluded from problem selection and the single next action, so a branded high-impression low-CTR query is never misdiagnosed as a title problem.
+
+Missing inputs become recorded gaps, not fabricated numbers. When GSC exports are genuinely unavailable, pass `--allow-missing-gsc` to produce a partial report banner-marked `partial — GSC exports unavailable` instead of failing; fill the GSC-derived sections from repo/public evidence per No-Mutation Validation below. If the target has a content engine, export keyword-tier and calendar snapshots through its established CLI, API, or admin export path. Record the command or source in the report without exposing secrets.
 
 ## No-Mutation Validation
 
