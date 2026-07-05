@@ -26,7 +26,7 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { execSync } from "node:child_process";
+import { execSync, spawn } from "node:child_process";
 
 const CONVEX_DIR = "{{CONVEX_DIR}}";
 const GATE_PREP = "{{CONVEX_GATE_PREP}}";
@@ -69,8 +69,54 @@ if (gateEnvKeys.length > 0) {
     "bun x convex dev --once --typecheck=disable --codegen=disable --tail-logs=disable",
     true // tolerated: the only job of this pass is to create the deployment
   );
-  for (const key of gateEnvKeys) {
-    sh(`bun x convex env set ${key} '${GATE_ENV[key]}'`);
+  // First try the direct writes (works on CLI lines where `env set` reaches a
+  // stopped anonymous deployment). Older pins — bcr's convex 1.31 — refuse with
+  // "Local backend isn't running" (run 28756709922, 2026-07-05), so any key
+  // that fails is retried against a persistent backend kept alive just for
+  // the env writes.
+  const pending = gateEnvKeys.filter(
+    (key) => !sh(`bun x convex env set ${key} '${GATE_ENV[key]}'`, true)
+  );
+  if (pending.length > 0) {
+    console.log(
+      "convex-gate: env set needs a running backend — keeping one alive for the writes…"
+    );
+    const dev = spawn(
+      "bun",
+      [
+        "x",
+        "convex",
+        "dev",
+        "--typecheck=disable",
+        "--codegen=disable",
+        "--tail-logs=disable",
+      ],
+      { cwd: dirAbs, env, stdio: "ignore", detached: true }
+    );
+    let up = false;
+    for (let i = 0; i < 120 && !up; i++) {
+      try {
+        const res = await fetch("http://127.0.0.1:3210/version");
+        up = res.ok;
+      } catch {}
+      if (!up) await new Promise((r) => setTimeout(r, 1000));
+    }
+    if (!up) {
+      try {
+        process.kill(-dev.pid!, "SIGTERM");
+      } catch {}
+      fail(
+        "Anonymous local Convex backend did not come up on 127.0.0.1:3210 within 120s while seeding gate env vars."
+      );
+    }
+    for (const key of pending) {
+      sh(`bun x convex env set ${key} '${GATE_ENV[key]}'`);
+    }
+    try {
+      process.kill(-dev.pid!, "SIGTERM");
+    } catch {}
+    // Let the backend release the port/deployment lock before the real push.
+    await new Promise((r) => setTimeout(r, 3000));
   }
 }
 
