@@ -1,15 +1,19 @@
 ---
 name: fixloop
-description: Production incident loop - triage alerts, investigate read-only, record every incident in a durable ledger, fix only what evidence proves, verify, ship, close. Use when the user says triage Sentry, debug production, investigate an error spike, a customer reports a prod bug, or wants the incident maintenance loop run end to end.
-version: 1.0.0
+description: DEPRECATED (2026-07-05): no longer used. Production incident loop - triage alerts, investigate read-only, record every incident in a durable ledger, fix only what evidence proves, verify, ship, close. Use when the user says triage Sentry, debug production, investigate an error spike, a customer reports a prod bug, or wants the incident maintenance loop run end to end.
+version: 2.0.0
 license: MIT
 ---
 
-# Fixloop
+# Fixloop (deprecated)
 
-Run production incidents through one durable loop: alert or report in, evidence gathered read-only, every actionable incident recorded as a ledger issue, fixes shipped only on proof, loop closed in both the ledger and the alerting surface.
+**Deprecated 2026-07-05 — do not install or invoke.** Production incident debugging now splits into three pieces:
 
-Keep this skill as the router. Load only the reference needed for the current step.
+- **Handles**: per-stack one-liners live in the Matias profile's `STACK.md` (Sentry evidence + known-good commands).
+- **Method**: the `diagnosing-bugs` skill from [github.com/mattpocock/skills](https://github.com/mattpocock/skills) (`skills/engineering/diagnosing-bugs`).
+- **Repo footguns**: each repo's `AGENTS.md` "Debugging notes" section.
+
+The original skill body is preserved below for history only.
 
 ## Vocabulary
 

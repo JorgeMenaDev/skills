@@ -18,7 +18,7 @@ npx skills@latest add JorgeMenaDev/skills
 
 3. Open a session in a target repo and invoke the skill that matches the work — for example, start SEO work with `seo-growth-workspace`.
 
-Most people begin with **`seo-growth-workspace`**. For unattended multi-phase shipping, add **`shiploop`**. For production incidents, add **`fixloop`**. When the question is where a plan should live, use **`work-tracking`**.
+Most people begin with **`seo-growth-workspace`**. For unattended multi-phase shipping, add **`shiploop`**. When the question is where a plan should live, use **`work-tracking`**.
 
 ### `operator-handoff`
 
@@ -76,7 +76,6 @@ I built these skills to fix failure modes I keep seeing in AI growth and agent-o
 
 - **`seo-growth-workspace`** — one high-leverage SEO action per pass, with handoff.
 - **`shiploop`** — multi-phase shipping through GitHub issue ledgers, gated PRs, and worker adapters when the run must survive context loss.
-- **`fixloop`** — production incidents: triage, read-only evidence, ledger in GitHub issues, fix only on proof, verify, ship, close.
 
 ### Summary
 
@@ -101,4 +100,4 @@ All skills below are **model-invoked** — the agent can reach for them when the
 ### DevOps
 
 - **[shiploop](./skills/devops/shiploop/SKILL.md)** — Turn a plan, fix, or feature into an unattended shipping run: GitHub issue ledger, dependency-gated phases, gated PRs, review evidence, optional worker adapters.
-- **[fixloop](./skills/devops/fixloop/SKILL.md)** — Production incident loop: triage alerts (default Sentry), investigate read-only, ledger every incident in GitHub issues, fix only on evidence, verify, ship, close.
+- ~~**fixloop**~~ — deprecated 2026-07-05 ([history](./deprecated/fixloop/SKILL.md)): incident debugging now = Sentry evidence + `STACK.md` handles (Matias profile) + the `diagnosing-bugs` skill (github.com/mattpocock/skills) + per-repo `AGENTS.md` debugging notes.
