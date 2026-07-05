@@ -1,7 +1,7 @@
 ---
 name: afk-pipeline
 description: Run a dev task as an AFK Task — grill the request, choose Pipeline Flags, write an Agent Brief, and trigger the label-driven pipeline that ends in a draft PR. Use when the user asks for a code change, feature, or fix in a repo listed in the AFK registry, asks which phases a task needs, or wants the pipeline installed in a new repo.
-version: 2.2.3
+version: 2.3.0
 mutating: true
 writes_to: [.agents/afk-pipeline/]
 ---
@@ -26,6 +26,7 @@ _R=.agents/afk-pipeline/REGISTRY.md
 - Every dev task in a registered repo goes through an Agent Brief — no inline implementation, no direct pushes, no merges.
 - Phases are fail-safe ON: Pipeline Flags only reduce work; absent flags mean the full pipeline (implement → advisory second-model review → verify → draft PR → recap).
 - The second-model review runs on the **codex engine by default, on every repo and lane** — a different vendor than the implementer. `review-engine: claude` in the brief is the only override; a runner without the requested engine skips the review loudly instead of silently swapping engines.
+- Repos with a Convex backend (`convexDir` in `.sandcastle/config/pipeline.json`) get a **Convex integrity gate**, always-on and not flag-controlled: the pipeline regenerates `_generated` with real codegen against a keyless anonymous local backend and fails the RUN when committed files diverge or the schema doesn't validate. Hand-editing `_generated` is forbidden everywhere. Companion stack policy: merging a Convex change must trigger an automatic backend release (Vercel-coupled build or a main-push deploy workflow) — a repo where merged backend code waits for a manual `convex deploy` is drift.
 - Skip decisions key on **predicted diff shape** — the files and surfaces the change will actually touch — never on how the task is framed.
 - Labeling starts a paid, unattended run; the user confirms brief + flags before any label lands.
 

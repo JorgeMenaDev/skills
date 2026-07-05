@@ -83,6 +83,29 @@ const recapExcludes = [
 ].map((d) => `  ":(exclude)${d}/**",`).join("\n");
 
 const deployNote = req("deployNote");
+
+// Convex integrity gate (optional): convexDir = the Convex package dir
+// relative to the repo root ("packages/backend", "." for root convex/), empty
+// for repos without Convex. convexGateEnv seeds the anonymous local deployment
+// with env vars its auth.config reads (dummy values are fine — the deployment
+// is throwaway); convexGatePrep is a repo-specific setup command run first.
+const convexDir = str(cfg.convexDir);
+const convexRules = convexDir
+  ? `# CONVEX INTEGRITY (non-negotiable)
+
+This repo's Convex backend lives at \`${convexDir}\`. Files under
+\`**/_generated/**\` are machine output — NEVER write or edit them by hand,
+even if codegen looks unavailable in the sandbox. It is not: run
+
+    bun .sandcastle/implement/convex-gate.ts --regen
+
+(from the repo root) after any change under \`${convexDir}/convex/\` and commit
+the regenerated files. It boots an anonymous local Convex backend — no login,
+no deploy key — and runs real codegen + schema/type validation. After this
+phase the pipeline reruns that gate and FAILS THE RUN if committed _generated
+files differ from real codegen output: hand-applied codegen cannot pass.`
+  : "";
+
 const TOKENS = {
   "{{PROJECT_NAME}}": req("projectName"),
   "{{IMAGE_NAME}}": req("imageName"),
@@ -100,6 +123,10 @@ const TOKENS = {
   "{{ENTRY_URL}}": req("entryUrl"),
   "{{LOCALES_NOTE}}": req("localesNote"),
   "{{FIX_NOTES}}": str(cfg.fixNotes),
+  "{{CONVEX_DIR}}": convexDir,
+  "{{CONVEX_GATE_PREP}}": str(cfg.convexGatePrep),
+  "{{CONVEX_GATE_ENV_JSON}}": JSON.stringify(cfg.convexGateEnv ?? {}),
+  "{{CONVEX_RULES}}": convexRules,
   "{{REPORT_EXTRAS}}": req("reportExtras"),
   "{{RECAP_EVIDENCE_EXCLUDES}}": recapExcludes,
   "{{ORIENTATION_MD}}": frag("orientation.md"),
@@ -134,6 +161,7 @@ const FILES = {
   "sandcastle/flags/parse-flags.ts": ".sandcastle/flags/parse-flags.ts",
   "sandcastle/implement/implement.ts": ".sandcastle/implement/implement.ts",
   "sandcastle/implement/prompt.md": ".sandcastle/implement/prompt.md",
+  "sandcastle/implement/convex-gate.ts": ".sandcastle/implement/convex-gate.ts",
   "sandcastle/verify/verify.ts": ".sandcastle/verify/verify.ts",
   "sandcastle/verify/prompt.md": ".sandcastle/verify/prompt.md",
   "sandcastle/write-pr/write-pr.ts": ".sandcastle/write-pr/write-pr.ts",

@@ -37,9 +37,31 @@ this (three drifting copies: andesphere, superaseo, andyChat) is `JorgeMenaDev/s
    fails the implement phase at runtime (`handle.copyIn is not a function` — cost
    acredix run 28720470196, 2026-07-04, pinned 0.5.8). `generate.mjs` now refuses
    pins below 0.12.
-4. **Labels** — `agent:implement` (cloud), `agent:implement-local` (self-hosted) plus
+4. **Convex repos** — set three config fields so the always-on Convex integrity
+   gate arms (empty `convexDir` = gate self-skips; only correct for repos with
+   no Convex package):
+   - `convexDir`: the Convex package dir relative to the repo root
+     (`packages/backend`, or `.` when `convex/` sits at the root).
+   - `convexGateEnv`: env vars the repo's `convex/auth.config.ts` reads, with
+     dummy values — the gate's anonymous local deployment starts empty and the
+     first push fails without them (e.g. `{"CLERK_JWT_ISSUER_DOMAIN":
+     "https://ci.<product>.test"}`; andyChat/andy-cotiza read
+     `CLERK_FRONTEND_API_URL` instead — check the file, don't assume).
+   - `convexGatePrep`: optional repo-specific setup command run in `convexDir`
+     first (e.g. acredix's `bun run prepare:workspace-links`).
+   The gate (`.sandcastle/implement/convex-gate.ts`) runs real codegen +
+   schema/type validation against a keyless anonymous local backend
+   (`CONVEX_AGENT_MODE=anonymous` — no login/deploy key; needs network to fetch
+   the local backend binary once per runner) and fails the run when committed
+   `_generated` files diverge — hand-applied codegen (acredix PR #72,
+   2026-07-05) cannot reach the merge. Companion policy (enforced outside this
+   pipeline): the repo must release its Convex backend automatically on merge —
+   either the Vercel-coupled build (`npx convex deploy --cmd '<build>'`) or a
+   main-push deploy workflow paths-filtered to the backend package. Verify one
+   exists; if not, add it as part of the install.
+5. **Labels** — `agent:implement` (cloud), `agent:implement-local` (self-hosted) plus
    state labels `agent:in-progress`, `agent:blocked`.
-5. **Secrets** — `CLAUDE_CODE_OAUTH_TOKEN`; `AGENT_PAT` (orgs commonly disallow
+6. **Secrets** — `CLAUDE_CODE_OAUTH_TOKEN`; `AGENT_PAT` (orgs commonly disallow
    Actions-created PRs, and pushes touching `.github/workflows/` need it) — mint the
    PAT with **no expiration** (or the max GitHub offers); a short-lived PAT silently
    kills the pipeline when it expires;
@@ -47,16 +69,16 @@ this (three drifting copies: andesphere, superaseo, andyChat) is `JorgeMenaDev/s
    config's `verifySecrets`. A verify secret must appear in BOTH the config's
    `passthroughKeys` and repo secrets — the generator keeps workflow env and
    runtime.ts in sync from the same field.
-6. **Local lane (optional)** — register a self-hosted runner; the Docker image
+7. **Local lane (optional)** — register a self-hosted runner; the Docker image
    (`docker build -t <imageName> .sandcastle/`) bakes in the harness CLI, `gh`, and
    browser tooling. A persistent runner on real hardware must not run agents unsandboxed.
-7. **Second-model review (optional but recommended)** — vendor the `autoreview`
+8. **Second-model review (optional but recommended)** — vendor the `autoreview`
    skill in the consumer: `npx skills add openclaw/agent-skills` (pick
    `autoreview`). The review step self-skips with an issue note when the skill
    or a review engine (`codex`, else `claude`) is missing on the runner host —
    advisory by construction, it can never fail a run. For the local lane,
    install/auth the codex CLI on the runner host once for the best engine.
-8. Commit everything (config + generated files). Pipeline changes can't self-prove —
+9. Commit everything (config + generated files). Pipeline changes can't self-prove —
    the workflow executes from the default branch, so the first validating run is the
    first run after merge.
 

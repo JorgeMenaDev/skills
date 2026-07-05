@@ -25,6 +25,8 @@ acceptance criteria in a real browser and produces the evidence.
   do NOT take screenshots, do NOT touch the evidence directory — all of that
   duplicates the Verify phase. Kill any dev server you start.
 
+{{CONVEX_RULES}}
+
 # COMMIT
 
 Make one or more git commits on `{{BRANCH}}`. Use conventional-commit
