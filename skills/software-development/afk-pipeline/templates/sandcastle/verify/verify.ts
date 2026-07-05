@@ -25,28 +25,37 @@ const Verdict = z.object({
   failedCriteria: z.array(z.string()).default([]),
 });
 
-const result = await runWithRetry({
-  name: `verify-#${ISSUE_NUMBER}`,
-  agent: sandcastle.claudeCode("claude-opus-4-8", {
-    effort: "high",
-    env: agentEnv(TOKEN),
-  }),
-  sandbox: chooseSandbox(TOKEN),
-  hooks: sandboxHooks(),
-  logging: { type: "stdout" },
-  promptFile: path.join(import.meta.dirname, "prompt.md"),
-  promptArgs: {
-    ISSUE_NUMBER,
-    ISSUE_TITLE,
-    BRANCH,
-    VERIFY_VIEWPORTS,
-    VERIFY_LOCALES,
-  },
-  output: sandcastle.Output.object({
-    tag: "verdict",
-    schema: Verdict,
-  }),
-});
+// Internal phase timeout (v2.2.2). Without it a hung verify burns the whole
+// job's timeout-minutes budget and dies as an opaque `cancelled` — no reason
+// file, no blocked label, disposition skipped (superaseo #55, three runs,
+// 2026-07-04/05). Timing out here instead produces an honest failure through
+// the normal fail() path. The review phase has its own 15-min cap.
+const VERIFY_TIMEOUT_MINUTES = Number(process.env.VERIFY_TIMEOUT_MINUTES ?? 60);
+
+const result = await withTimeout(
+  runWithRetry({
+    name: `verify-#${ISSUE_NUMBER}`,
+    agent: sandcastle.claudeCode("claude-opus-4-8", {
+      effort: "high",
+      env: agentEnv(TOKEN),
+    }),
+    sandbox: chooseSandbox(TOKEN),
+    hooks: sandboxHooks(),
+    logging: { type: "stdout" },
+    promptFile: path.join(import.meta.dirname, "prompt.md"),
+    promptArgs: {
+      ISSUE_NUMBER,
+      ISSUE_TITLE,
+      BRANCH,
+      VERIFY_VIEWPORTS,
+      VERIFY_LOCALES,
+    },
+    output: sandcastle.Output.object({
+      tag: "verdict",
+      schema: Verdict,
+    }),
+  })
+);
 
 // Repo evidence root (real path, never a symlink) — from .sandcastle/config.
 const EVIDENCE_DIR = "{{EVIDENCE_DIR}}";
@@ -80,6 +89,32 @@ function required(name: string): string {
     process.exit(1);
   }
   return value;
+}
+
+async function withTimeout<T>(work: Promise<T>): Promise<T> {
+  let timer: ReturnType<typeof setTimeout>;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(
+      () => reject(new Error("VERIFY_PHASE_TIMEOUT")),
+      VERIFY_TIMEOUT_MINUTES * 60 * 1000
+    );
+  });
+  try {
+    return await Promise.race([work, timeout]);
+  } catch (err) {
+    if (err instanceof Error && err.message === "VERIFY_PHASE_TIMEOUT") {
+      // The sandbox container may still be running; the workflow's reap step
+      // (cancelled() || failure()) kills it after this process exits.
+      fail(
+        `Verify phase exceeded its ${VERIFY_TIMEOUT_MINUTES}-minute internal timeout. ` +
+          `The verify agent never returned a verdict — treat as not verified. ` +
+          `Tune with VERIFY_TIMEOUT_MINUTES if this task legitimately needs longer.`
+      );
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer!);
+  }
 }
 
 function fail(message: string): never {
