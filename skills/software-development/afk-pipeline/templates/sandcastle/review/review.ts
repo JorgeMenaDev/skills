@@ -78,33 +78,56 @@ try {
   /* already present */
 }
 
+const reportPath = path.join(OUTPUT_DIR, "review-report.json");
 const run = spawnSync(
   SKILL_BIN,
-  ["--mode", "branch", "--base", `origin/${BASE_BRANCH}`, "--engine", engine],
+  [
+    "--mode",
+    "branch",
+    "--base",
+    `origin/${BASE_BRANCH}`,
+    "--engine",
+    engine,
+    "--json-output",
+    reportPath,
+  ],
   { encoding: "utf8", timeout: 15 * 60 * 1000 }
 );
 
 const raw = `${run.stdout ?? ""}\n${run.stderr ?? ""}`.trim();
 fs.writeFileSync(path.join(OUTPUT_DIR, "review-findings.md"), raw);
 
-if (run.status !== 0 || run.error) {
+// autoreview's exit code encodes the VERDICT, not health: 1 = review completed
+// WITH findings, but also 1 = graceful SystemExit error — so success is "it
+// wrote a valid JSON report", never the exit code. (Judging by exit code
+// misreported a completed 2-finding review as a crash and silently skipped the
+// disposition pass — bcr run 28737274527's predecessor, 2026-07-05.)
+let report: { findings?: unknown[]; overall_correctness?: string } | null =
+  null;
+try {
+  report = JSON.parse(fs.readFileSync(reportPath, "utf8"));
+} catch {
+  report = null;
+}
+
+if (!report || run.error) {
   summary(
-    `### 🔍 Second-model review (engine: ${engine})\n\nAdvisory review crashed (exit ${run.status ?? "spawn-error"}) — pipeline continues by design. Tail of output:\n\n\`\`\`\n${raw.slice(-1500)}\n\`\`\``
+    `### 🔍 Second-model review (engine: ${engine})\n\nAdvisory review crashed (exit ${run.status ?? "spawn-error"}, no JSON report) — pipeline continues by design. Tail of output:\n\n\`\`\`\n${raw.slice(-1500)}\n\`\`\``
   );
   finish("engine_error", engine, false);
 }
 
-// autoreview's structured verdict line: `overall: patch is correct|incorrect (…)`
-const verdict = raw.match(/^overall:\s*patch is (correct|incorrect)/im)?.[1];
-const hasFindings = verdict === "incorrect";
+const verdict = report.overall_correctness ?? "no structured verdict";
+const hasFindings =
+  (report.findings?.length ?? 0) > 0 || verdict === "patch is incorrect";
 
 summary(
   [
     `### 🔍 Second-model review (engine: ${engine})`,
     "",
     hasFindings
-      ? "Reviewer flagged findings — a disposition pass runs next (fix or justify, committed to the branch before verify)."
-      : `Reviewer verdict: ${verdict ? "patch is correct" : "no structured verdict"} — no disposition pass needed.`,
+      ? `Reviewer flagged ${report.findings?.length ?? 0} finding(s) (verdict: ${verdict}) — a disposition pass runs next (fix or justify, committed to the branch before verify).`
+      : `Reviewer verdict: ${verdict} — no disposition pass needed.`,
     "",
     "<details><summary>Raw review output</summary>",
     "",
