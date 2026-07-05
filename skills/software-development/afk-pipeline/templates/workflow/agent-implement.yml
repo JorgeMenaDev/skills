@@ -312,6 +312,16 @@ jobs:
         if: always() && steps.preflight.outputs.refused != 'true'
         run: gh issue edit "$ISSUE_NUMBER" --remove-label "agent:in-progress" || true
 
+      - name: Reap sandcastle containers on cancel (docker lane)
+        # Cancelling a run does NOT stop the phase's docker container — an
+        # orphan kept squatting the mini for 11h after a cancel (superaseo #55,
+        # 2026-07-04/05) and can keep mutating the shared verify backend with
+        # stale branch code. On cancellation, kill every container from this
+        # repo's sandcastle image: the one-pipeline-per-repo rule means they
+        # can only belong to this (cancelled) run.
+        if: cancelled() && env.SANDCASTLE_SANDBOX == 'docker'
+        run: docker ps -q --filter "ancestor={{IMAGE_NAME}}" | xargs -r docker rm -f
+
   recap:
     # Visual Recap runs as a separate best-effort job on a GitHub-hosted VM
     # regardless of which lane implemented, so a local-lane run frees the Mac
