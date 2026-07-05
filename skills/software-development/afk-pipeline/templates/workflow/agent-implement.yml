@@ -125,7 +125,8 @@ jobs:
           bun-version: "{{BUN_VERSION}}"
 
       - name: Parse Pipeline Flags from the Agent Brief
-        # Reads the `### Pipeline` section (verify: full|slim|off, recap: on|off)
+        # Reads the `### Pipeline` section (verify: full|slim|off, recap: on|off,
+        # review: on|off, review-engine: codex|claude)
         # from the issue body and exposes the parsed set as step outputs. The
         # parser is fail-safe: an absent section / unknown key / bad value falls
         # back to the full-pipeline defaults. Lives in .sandcastle so it travels
@@ -171,13 +172,16 @@ jobs:
         run: bun .sandcastle/implement/implement.ts
 
       - name: Second-model review (advisory)
-        # Runs the repo's vendored autoreview skill (codex engine when available
-        # on the runner host, else claude via --safe-mode) against the branch
-        # diff BEFORE verify, so the disposition pass and the QA Evidence both
-        # cover reviewed code. Advisory by construction: review.ts always exits
-        # 0 and every degrade path (skill missing, no engine, engine crash)
-        # becomes a summary note — continue-on-error is a second belt. Skipped
-        # entirely when the brief says `review: off`.
+        # Runs the repo's vendored autoreview skill against the branch diff
+        # BEFORE verify, so the disposition pass and the QA Evidence both cover
+        # reviewed code. Engine is codex by default — the reviewer must be a
+        # different vendor than the implementer; `review-engine: claude` in the
+        # brief is the only path to a claude review (--safe-mode). No silent
+        # fallback: requested engine missing on the runner ⇒ loud skipped note,
+        # never a quiet engine swap. Advisory by construction: review.ts always
+        # exits 0 and every degrade path (skill missing, no engine, engine
+        # crash) becomes a summary note — continue-on-error is a second belt.
+        # Skipped entirely when the brief says `review: off`.
         if: steps.preflight.outputs.refused != 'true' && steps.flags.outputs.review != 'off'
         id: review
         continue-on-error: true
@@ -185,6 +189,7 @@ jobs:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           BRANCH: ${{ steps.branch.outputs.name }}
           OUTPUT_DIR: ${{ runner.temp }}
+          REVIEW_ENGINE: ${{ steps.flags.outputs.review_engine }}
         run: bun .sandcastle/review/review.ts
 
       - name: Review disposition pass (fix blockers or justify)

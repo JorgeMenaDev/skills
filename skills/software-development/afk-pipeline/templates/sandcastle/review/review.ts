@@ -9,11 +9,15 @@
  * unattended pipeline. The workflow additionally wraps the step in
  * `continue-on-error: true` as a second belt.
  *
- * Engine pick: `codex` when the binary is on the runner host's PATH (the
- * recommended reviewer — a different vendor than the implement agent), else
- * `claude` (still a fresh, isolated context; autoreview runs it with
- * --safe-mode so repo hooks/skills/MCP stay out of the review). Neither →
- * skipped_no_engine.
+ * Engine pick: `codex` by default, everywhere — the point of a second-model
+ * review is a different vendor than the implement agent. NO silent fallback:
+ * a claude review only runs when the brief explicitly says
+ * `review-engine: claude` (passed in via REVIEW_ENGINE; autoreview runs claude
+ * with --safe-mode so repo hooks/skills/MCP stay out of the review). Requested
+ * engine missing from the runner host's PATH → loud skipped_no_engine note,
+ * never a quiet engine swap (acredix #64 posted "engine: claude" because the
+ * cloud runner lacked codex and the old fallback degraded silently,
+ * 2026-07-05).
  *
  * Outputs (GITHUB_OUTPUT): outcome, engine, has_findings.
  * Files (OUTPUT_DIR): review-findings.md (raw engine output),
@@ -59,10 +63,15 @@ if (!fs.existsSync(SKILL_BIN)) {
   finish("skipped_missing_skill", "none", false);
 }
 
-const engine = onPath("codex") ? "codex" : onPath("claude") ? "claude" : null;
-if (!engine) {
+const engine =
+  process.env.REVIEW_ENGINE === "claude" ? "claude" : "codex";
+if (!onPath(engine)) {
+  const hint =
+    engine === "codex"
+      ? "Install `codex` on this runner, or explicitly override with `review-engine: claude` in the brief's `### Pipeline` section and retrigger."
+      : "Install `claude` on this runner and retrigger.";
   summary(
-    "### 🔍 Second-model review\n\nSkipped: neither `codex` nor `claude` is on the runner host's PATH. Install one on the runner (codex recommended) to get advisory reviews."
+    `### 🔍 Second-model review\n\n**Skipped: \`${engine}\` is not on the runner host's PATH — no review ran.** No engine fallback by design: a second-model review must be a different vendor than the implementer. ${hint}`
   );
   finish("skipped_no_engine", "none", false);
 }

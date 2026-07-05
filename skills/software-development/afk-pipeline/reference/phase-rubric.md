@@ -10,6 +10,7 @@
 
 - **on** (default) — advisory second-model review of the branch diff after implement, before verify; findings get a fix-or-justify disposition pass committed to the branch. Advisory: never fails the run.
 - **off** — skip the review + disposition steps. For tiny/mechanical diffs (dep bumps, copy tweaks, one-liner fixes) where reviewing costs more than reading the diff.
+- **Engine:** codex, always, on every repo and lane — the review's value is a *different vendor* than the implementer. Override to `review-engine: claude` only when codex genuinely can't run the task (runner without codex and the review still matters more than vendor diversity) — name the reason in the flag line. A runner missing the engine skips the review loudly; that's preferable to a silent same-vendor review.
 
 ## The table
 
