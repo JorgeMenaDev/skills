@@ -1,7 +1,7 @@
 ---
 name: afk-pipeline
 description: Run a dev task as an AFK Task — grill the request, choose Pipeline Flags, write an Agent Brief, and trigger the label-driven pipeline that ends in a draft PR. Use when the user asks for a code change, feature, or fix in a repo listed in the AFK registry, asks which phases a task needs, or wants the pipeline installed in a new repo.
-version: 2.2.2
+version: 2.2.3
 mutating: true
 writes_to: [.agents/afk-pipeline/]
 ---
@@ -42,3 +42,7 @@ _R=.agents/afk-pipeline/REGISTRY.md
 ## Output format
 
 End a triggered task with: issue URL, run URL, flag set with reasons, and a status line — `WAITING_ON: review` or `BLOCKED: <one line of evidence>`.
+
+## Watching a local-lane run
+
+The agent's output streams to the **GitHub Actions job log** (repo → Actions → agent-implement run, or `gh run watch -R <owner>/<repo>`), plus the committed evidence dir and the PR recap. Docker Desktop is only for liveness/CPU/kill: sandcastle boots the container detached with a keepalive PID 1 and drives all work via `docker exec`, so the container's own Logs tab is empty **by design**. Container names are `sandcastle-<uuid>` — hardcoded upstream in `@ai-hero/sandcastle` (no name option; never `docker rename` a live one, sandcastle addresses it by that name). Identify containers by IMAGE: `docker ps --format '{{.Names}}  {{.Image}}  {{.RunningFor}}'` — the per-repo image (`sandcastle-<project>`) tells you whose run it is.
