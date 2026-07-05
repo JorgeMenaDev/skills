@@ -23,6 +23,7 @@
 
 ## Rules
 
+- **The Convex integrity gate is not a flag.** On repos with `convexDir` configured it always runs (real codegen + anonymous schema validation, fail-the-run on `_generated` divergence) — no brief line can turn it off, and briefs never need to ask for it.
 - **Renders anywhere ⇒ at least slim.** No exceptions — if it's worth a screenshot, it's worth slim.
 - `verify: off ⇒ recap: off` as the starting suggestion (overridable).
 - `review: off` pairs naturally with `recap: off` — both mean "the raw diff is the best review surface". A diff big enough for a recap is big enough to review.
