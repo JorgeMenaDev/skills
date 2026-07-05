@@ -1,6 +1,6 @@
 name: Agent Implement
 
-# AFK Task pipeline (implement → verify → draft PR → best-effort recap).
+# AFK Task pipeline (implement → advisory review → verify → draft PR → best-effort recap).
 # GENERATED from the afk-pipeline skill's templates/ — repo-specific values live
 # in .sandcastle/config/; edit there and re-run the generator, never this file.
 # Decisions: matias repo docs/adr/0002 + 0003.
@@ -169,6 +169,42 @@ jobs:
           BRANCH: ${{ steps.branch.outputs.name }}
           OUTPUT_DIR: ${{ runner.temp }}
         run: bun .sandcastle/implement/implement.ts
+
+      - name: Second-model review (advisory)
+        # Runs the repo's vendored autoreview skill (codex engine when available
+        # on the runner host, else claude via --safe-mode) against the branch
+        # diff BEFORE verify, so the disposition pass and the QA Evidence both
+        # cover reviewed code. Advisory by construction: review.ts always exits
+        # 0 and every degrade path (skill missing, no engine, engine crash)
+        # becomes a summary note — continue-on-error is a second belt. Skipped
+        # entirely when the brief says `review: off`.
+        if: steps.preflight.outputs.refused != 'true' && steps.flags.outputs.review != 'off'
+        id: review
+        continue-on-error: true
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          BRANCH: ${{ steps.branch.outputs.name }}
+          OUTPUT_DIR: ${{ runner.temp }}
+        run: bun .sandcastle/review/review.ts
+
+      - name: Review disposition pass (fix blockers or justify)
+        # Only when the reviewer flagged findings: a fresh agent session fixes
+        # real blocker/major findings or rejects them with a one-line rationale,
+        # records the disposition table in the evidence dir, and commits on the
+        # branch. Best-effort: a crash leaves the implement commits intact.
+        if: steps.preflight.outputs.refused != 'true' && steps.review.outputs.has_findings == 'true'
+        continue-on-error: true
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          BRANCH: ${{ steps.branch.outputs.name }}
+          OUTPUT_DIR: ${{ runner.temp }}
+        run: bun .sandcastle/review/review-fix.ts
+
+      - name: Comment review outcome on the issue
+        if: steps.preflight.outputs.refused != 'true' && steps.flags.outputs.review != 'off'
+        continue-on-error: true
+        run: |
+          [ -f "${RUNNER_TEMP}/review-summary.md" ] && gh issue comment "$ISSUE_NUMBER" --body-file "${RUNNER_TEMP}/review-summary.md" || true
 
       - name: Run verify phase (e2e, agent-browser)
         # Verify Profile from the parsed flags: `off` skips this step entirely

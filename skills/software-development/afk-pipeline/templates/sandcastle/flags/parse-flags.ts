@@ -15,9 +15,11 @@
  *   ### Pipeline
  *   verify: full|slim|off — optional reason
  *   recap:  on|off        — optional reason
+ *   review: on|off        — optional reason
  *
  * FAIL-SAFE: an absent section, an unknown key, or an unparseable value ⇒ that
- * flag falls back to its default (`verify: full`, `recap: on`). Parsing may only
+ * flag falls back to its default (`verify: full`, `recap: on`, `review: on`).
+ * Parsing may only
  * reduce work below the default when the body explicitly and legibly says so.
  *
  * Lives in the `.sandcastle` layer (not inline YAML) so it travels with the
@@ -41,11 +43,13 @@ interface Flag {
 const DEFAULTS = {
   verify: { value: "full", reason: "", status: "default" as Status, raw: "" },
   recap: { value: "on", reason: "", status: "default" as Status, raw: "" },
+  review: { value: "on", reason: "", status: "default" as Status, raw: "" },
 };
 
 const ALLOWED = {
   verify: new Set(["full", "slim", "off"]),
   recap: new Set(["on", "off"]),
+  review: new Set(["on", "off"]),
 };
 
 /** Extract the body of the `### Pipeline` section: lines after the heading up to
@@ -61,7 +65,7 @@ function pipelineSection(body: string): string {
 
 /** Parse one flag key out of the section body. The value is a single word; an
  *  optional reason follows an em/en dash or hyphen separator. */
-function parseFlag(key: "verify" | "recap", section: string): Flag {
+function parseFlag(key: "verify" | "recap" | "review", section: string): Flag {
   const re = new RegExp(
     `^\\s*${key}\\s*:\\s*([A-Za-z]+)\\s*(?:[—–-]\\s*(.*))?$`,
     "im"
@@ -83,6 +87,7 @@ const body = process.env.ISSUE_BODY ?? "";
 const section = pipelineSection(body);
 const verify = parseFlag("verify", section);
 const recap = parseFlag("recap", section);
+const review = parseFlag("review", section);
 
 // --- machine outputs -------------------------------------------------------
 if (process.env.GITHUB_OUTPUT) {
@@ -93,6 +98,9 @@ if (process.env.GITHUB_OUTPUT) {
     `recap=${recap.value}`,
     `recap_status=${recap.status}`,
     `recap_reason=${recap.reason}`,
+    `review=${review.value}`,
+    `review_status=${review.status}`,
+    `review_reason=${review.reason}`,
   ].join("\n");
   fs.appendFileSync(process.env.GITHUB_OUTPUT, out + "\n");
 }
@@ -115,7 +123,8 @@ console.log(
     "",
     line("verify", verify),
     line("recap", recap),
+    line("review", review),
     "",
-    "_Defaults (`verify: full`, `recap: on`) keep today's full pipeline; retriggering re-reads this body._",
+    "_Defaults (`verify: full`, `recap: on`, `review: on`) keep today's full pipeline; retriggering re-reads this body._",
   ].join("\n")
 );

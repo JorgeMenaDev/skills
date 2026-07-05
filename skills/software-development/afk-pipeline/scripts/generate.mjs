@@ -138,6 +138,9 @@ const FILES = {
   "sandcastle/verify/prompt.md": ".sandcastle/verify/prompt.md",
   "sandcastle/write-pr/write-pr.ts": ".sandcastle/write-pr/write-pr.ts",
   "sandcastle/write-pr/prompt.md": ".sandcastle/write-pr/prompt.md",
+  "sandcastle/review/review.ts": ".sandcastle/review/review.ts",
+  "sandcastle/review/review-fix.ts": ".sandcastle/review/review-fix.ts",
+  "sandcastle/review/fix-prompt.md": ".sandcastle/review/fix-prompt.md",
   "sandcastle/recap/recap.ts": ".sandcastle/recap/recap.ts",
   "sandcastle/recap/mdx-authoring-rules.md": ".sandcastle/recap/mdx-authoring-rules.md",
 };
@@ -147,7 +150,7 @@ for (const [tplRel, outRel] of Object.entries(FILES)) {
   const rendered = header(outRel) + render(fs.readFileSync(path.join(TPL, tplRel), "utf8"));
   const leftovers = [...rendered.matchAll(/\{\{[A-Z0-9_]+\}\}/g)]
     .map((m) => m[0])
-    .filter((t) => !["{{ISSUE_NUMBER}}", "{{ISSUE_TITLE}}", "{{BRANCH}}", "{{VERIFY_VIEWPORTS}}", "{{VERIFY_LOCALES}}", "{{VERIFY_MODE}}", "{{VERIFY_REASON}}"].includes(t));
+    .filter((t) => !["{{ISSUE_NUMBER}}", "{{ISSUE_TITLE}}", "{{BRANCH}}", "{{VERIFY_VIEWPORTS}}", "{{VERIFY_LOCALES}}", "{{VERIFY_MODE}}", "{{VERIFY_REASON}}", "{{FINDINGS}}"].includes(t));
   if (leftovers.length) {
     console.error(`Unresolved generator tokens in ${outRel}: ${[...new Set(leftovers)].join(", ")}`);
     process.exit(1);

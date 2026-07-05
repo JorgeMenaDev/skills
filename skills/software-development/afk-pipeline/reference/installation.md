@@ -50,7 +50,13 @@ this (three drifting copies: andesphere, superaseo, andyChat) is `JorgeMenaDev/s
 6. **Local lane (optional)** — register a self-hosted runner; the Docker image
    (`docker build -t <imageName> .sandcastle/`) bakes in the harness CLI, `gh`, and
    browser tooling. A persistent runner on real hardware must not run agents unsandboxed.
-7. Commit everything (config + generated files). Pipeline changes can't self-prove —
+7. **Second-model review (optional but recommended)** — vendor the `autoreview`
+   skill in the consumer: `npx skills add openclaw/agent-skills` (pick
+   `autoreview`). The review step self-skips with an issue note when the skill
+   or a review engine (`codex`, else `claude`) is missing on the runner host —
+   advisory by construction, it can never fail a run. For the local lane,
+   install/auth the codex CLI on the runner host once for the best engine.
+8. Commit everything (config + generated files). Pipeline changes can't self-prove —
    the workflow executes from the default branch, so the first validating run is the
    first run after merge.
 
