@@ -1,7 +1,7 @@
 ---
 name: seo-growth-workspace
 description: "Use when starting, auditing, or operating SEO or organic growth for a product or local-business website — technical SEO, Search Console, keyword/content ops, schema, pSEO, local SEO/GBP, backlinks, AI-search visibility, conversion, and monthly reporting. Triggers: \"set up SEO\", \"audit my site\", \"my traffic dropped\", \"why am I not ranking\", \"Search Console opportunities\", \"monthly SEO report\", \"how do we show up in ChatGPT/AI search\". Creates a durable .seo workspace, captures business context, audits live/code/admin evidence, prioritizes a backlog, implements one high-leverage action, verifies reality, and logs handoff notes. For standalone copywriting, paid channels, or email, use a dedicated skill."
-version: 2.3.1
+version: 2.4.0
 license: MIT
 mutating: true
 writes_to: [.seo/]
@@ -57,7 +57,7 @@ Pick the narrowest mode that satisfies the request. If no narrower mode is reque
 | `operate` | Continuing SEO work without a narrower request | Current state is read, next work is chosen, one useful step is verified, and `.seo/log.md` is updated |
 | `bootstrap` | Starting or auditing an SEO workspace | `.seo/` exists, business context exists, first audit/backlog are populated |
 | `technical-seo-fix` | Fixing robots, sitemap, canonicals, metadata, schema, redirects, analytics, CWV, hreflang, AI-crawler access, or indexability | Change is deployed or documented as blocked, then live verified |
-| `content-ops` | Planning or operating keywords, blog calendars, briefs, articles, internal links, or a content engine | Keyword/content state is visible, publish path is verified or blocked, and next rows are documented |
+| `content-ops` | Planning or operating keywords, blog calendars, briefs, articles, utility/tool pages, internal links, or a content engine | Keyword/content state is visible, publish path is verified or blocked, and next rows are documented |
 | `pseo-planning` | Creating pSEO page types, data, or publish gates | `.seo/pseo/plan.md` and data/specs exist; publish/no-publish decision is explicit |
 | `local-seo` | GBP/local-map intent, service areas, citations, reviews, local competitors | Competitor/GBP matrix and prioritized local action plan are produced |
 | `monthly-report` | Reporting performance or deciding next-month SEO actions | One-page report with wins, problems, metric deltas, and the single next action |
@@ -76,6 +76,7 @@ Load only the file needed for the mode or ticket:
 - International/multilingual (hreflang): `references/international-seo.md`
 - Search Console opportunity analysis (CLI pipeline, banded CTR, cannibalization): `references/search-console.md`
 - Keywords/blog/content-engine operations (research method, scoring, E-E-A-T): `references/content-ops.md`
+- Utility/free tool pages (calculators, generators, checkers, formatters, templates): `references/utility-tool-pages.md`
 - Content-engine webhook publishing (receive, verify, deploy; includes one worked example): `references/content-engine-webhooks.md`
 - pSEO publish gates and playbook chooser: `references/pseo-gates.md`
 - Ticket taxonomy, work selection, statuses, and done criteria: `references/ticket-architecture.md`

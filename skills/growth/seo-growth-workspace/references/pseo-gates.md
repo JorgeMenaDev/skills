@@ -47,8 +47,9 @@ Data defensibility: proprietary > product-derived > user-generated > licensed > 
 | Design/creative assets      | Templates, examples                         |
 | Multi-segment audience      | Personas ("[product] for [audience]")       |
 | Real local presence         | Service/location pages (gate below)         |
-| Utility/tool product        | Conversions/calculators ("[X] to [Y]")      |
-| Deep domain expertise       | Glossary, curation ("best [category]")      |
+| Utility/tool product      | Conversions/calculators ("[X] to [Y]")      |
+| Reusable public utilities | Tool pages (calculators, generators, checkers, formatters, templates) |
+| Deep domain expertise     | Glossary, curation ("best [category]")      |
 | Competitor landscape        | Comparisons (formats below)                 |
 
 ## Common Page Types
@@ -59,6 +60,9 @@ Data defensibility: proprietary > product-derived > user-generated > licensed > 
 | Comparison        | `/alternativa-a-surfer-seo`     | Fair, accurate, current; pick a format below |
 | Use case          | `/software-seo-para-blogs-b2b`  | Anchor around problem and workflow       |
 | Service/location  | `/plomeria-emergencia-santiago` | Only for true local/service businesses   |
+| Utility tool      | `/linkedin-text-formatter`      | Must provide a working task result, not just an article or empty form |
+
+For utility/free tool pages, load `utility-tool-pages.md`; use pSEO gates only when the page family is generated from a dataset or batch template.
 
 ## Comparison Page Formats
 

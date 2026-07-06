@@ -19,8 +19,9 @@ Seed sources, strongest evidence first:
 
 1. First-party GSC data: `node scripts/gsc-opportunities.mjs --format backlog` — queries already earning impressions.
 2. Competitor demand gaps (matrix below).
-3. Community mining: `site:reddit.com <topic>` and `site:quora.com <topic>` — questions, frustrations, upvoted answers.
-4. Support tickets and sales-call questions/objections.
+3. Utility/tool opportunities: calculators, generators, checkers, formatters, templates, and public datasets where the SERP intent is task completion; load `utility-tool-pages.md` before planning these.
+4. Community mining: `site:reddit.com <topic>` and `site:quora.com <topic>` — questions, frustrations, upvoted answers.
+5. Support tickets and sales-call questions/objections.
 
 Validate each candidate against the live SERP: what ranks, in what format (guide, listicle, tool, comparison), which SERP features. Write only where the format matches intent and you can add information gain.
 
@@ -62,6 +63,12 @@ Use this when competitors rank for useful demand that the target does not yet ca
 | --- | --- | --- | --- | --- | --- | --- |
 
 Actions: optimize an existing page, create a page/article, import to the content engine, add internal links, defer. Do not import every gap; keep only topics with product fit, buyer intent, and a plausible route to ranking or conversion.
+
+## Utility / Free Tool Pages
+
+When competitor or keyword research shows task-completion demand, consider a real utility page before a blog post. Good candidates are calculators, generators, checkers, formatters, analyzers, templates, or curated examples that solve the query on-page and naturally lead to the product.
+
+Load `utility-tool-pages.md` and use `templates/utility-tool-page-plan.md` when creating more than one utility page or a tools hub. Do not treat empty forms, thin AI wrappers, or keyword-swapped generators as publish-ready content.
 
 ## Calendar Verification
 

@@ -17,6 +17,7 @@ Classify the target before planning work. Mark uncertainty plainly.
 | Publisher / blog | Article routes, editorial calendar, author/date/category pages | `content-ops`, `monthly-report` |
 | Ecommerce / marketplace | Categories, product pages, variants, merchant data | `bootstrap`, `technical-seo-fix`, `content-ops` |
 | Programmatic site | Data-driven page types, templates, index/noindex states | `pseo-planning`, `technical-seo-fix` |
+| Utility/tool library | Public calculators, converters, checkers, generators, templates, curated examples, tools hub | `content-ops`, `pseo-planning`, `technical-seo-fix` |
 | Multilingual / multi-region | Locale routes, hreflang, regional canonicals | `bootstrap`, `technical-seo-fix`, `content-ops` |
 
 If a target fits multiple types, choose the type that best explains the current growth bottleneck. Multilingual / multi-region targets also load `references/international-seo.md` during the `technical` phase.
@@ -33,7 +34,7 @@ Do not jump to content, backlinks, or pSEO until earlier blocking phases are che
 | `schema` | Does JSON-LD match visible page content without invented proof? | `schema-rich-results.md` | Route-family schema is parsed and visible-content matched |
 | `measurement` | Can we see baseline traffic, indexing, conversions, and admin truth? | `admin-preflight.md`, `search-console.md`, `conversion-cta.md` | GSC/analytics/admin access is verified or blocked with next owner |
 | `conversion` | Can a qualified visitor take the intended next step? | `conversion-cta.md` | Primary CTA, backup CTA, trust proof, mobile behavior, and event proof are checked |
-| `content` | Is there a real publishing path and a useful topic strategy? | `content-ops.md`, `internal-linking.md` | Renderer/CMS/content engine exists before calendar or briefs are treated as ready |
+| `content` | Is there a real publishing path and a useful topic strategy? | `content-ops.md`, `utility-tool-pages.md`, `internal-linking.md` | Renderer/CMS/content engine exists before calendar, briefs, or utility pages are treated as ready |
 | `pseo` | Is a page type ready for small-batch programmatic expansion? | `pseo-gates.md`, `schema-rich-results.md`, `internal-linking.md` | Normal content path is proven; page type has data, unique value, links, and publish/no-publish status |
 | `local` | Are GBP, NAP, service areas, reviews, photos, citations, and local competitors relevant? | `local-seo-gbp.md`, `backlinks-entity.md` | Applicability is checked; if relevant, local matrix/action exists; if not, mark `not applicable` with evidence |
 | `authority` | Does the site have credible entity and link signals? | `backlinks-entity.md` | Prospects, submissions, and live links are tracked without invented business facts |
