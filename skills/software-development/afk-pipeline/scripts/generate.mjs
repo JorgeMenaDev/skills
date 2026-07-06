@@ -113,7 +113,7 @@ const TOKENS = {
   "{{BASE_BRANCH}}": cfg.baseBranch ?? "main",
   "{{PASSTHROUGH_DOC}}": passthroughDoc,
   "{{PASSTHROUGH_KEYS}}": passthroughArr,
-  "{{VERIFY_SECRETS_ENV}}": verifySecretsEnv || "          {}: # no repo verify secrets",
+  "{{VERIFY_SECRETS_ENV}}": verifySecretsEnv || "          # (no repo verify secrets configured)",
   "{{DEPLOY_NOTE}}": deployNote,
   "{{DEPLOY_NOTE_LOWER}}": deployNote.charAt(0).toLowerCase() + deployNote.slice(1),
   "{{IMPLEMENT_GATE}}": req("implementGate"),
