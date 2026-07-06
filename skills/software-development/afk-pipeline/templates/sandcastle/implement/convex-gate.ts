@@ -72,6 +72,23 @@ function sh(cmd: string, tolerate = false): boolean {
 // 1. Repo-specific prep (e.g. acredix's workspace symlinks). Fatal if it fails.
 if (GATE_PREP) sh(GATE_PREP);
 
+// 1b. tsc resolution: convex resolves the compiler at the RELATIVE path
+// `node_modules/typescript/bin/tsc` inside the convex dir (typecheck.js runTsc
+// — not $PATH). Bun workspaces hoist typescript to the repo root, so a
+// workspace convexDir can lack a local copy and `--typecheck=enable` dies with
+// "No tsc binary found" (andyChat run 28788950712, 2026-07-06 — same root
+// cause its convex-prod-deploy dry-run hit in bb5e09bd). Link the hoisted
+// compiler in instead of weakening the gate to --typecheck=try/disable.
+const localTs = path.join(dirAbs, "node_modules", "typescript");
+const hoistedTs = path.resolve("node_modules", "typescript");
+if (!fs.existsSync(localTs) && fs.existsSync(hoistedTs)) {
+  console.log(
+    "convex-gate: typescript not present in convexDir — linking the hoisted copy for convex typecheck."
+  );
+  fs.mkdirSync(path.dirname(localTs), { recursive: true });
+  fs.symlinkSync(hoistedTs, localTs, "junction");
+}
+
 // 2. Bootstrap dance: a fresh anonymous deployment starts with an empty env,
 // so a first push can fail on missing env vars referenced by auth.config
 // (e.g. CLERK_JWT_ISSUER_DOMAIN). Boot once tolerantly to create the
