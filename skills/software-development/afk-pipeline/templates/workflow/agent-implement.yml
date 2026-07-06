@@ -305,21 +305,66 @@ jobs:
             gh issue comment "$ISSUE_NUMBER" --body "AFK Task complete — draft PR with committed QA Evidence: $PR_URL. Review the screenshots in the Files changed tab; {{DEPLOY_NOTE_LOWER}}"
           fi
 
+      - name: Salvage push — preserve committed work on failure/cancel
+        # A failure after implement (convex gate, verify, write-pr, open-pr)
+        # used to lose the ENTIRE run's committed work: the branch only pushed
+        # on success. andyChat #283 run 28788950712 (2026-07-06) lost a full
+        # implement + codex review + disposition to a gate failure. This step
+        # pushes whatever commits exist on the agent branch whenever the run
+        # dies after the branch was created — including timeout kills, which
+        # GitHub reports as cancelled. Uncommitted debris (e.g. gate-regenerated
+        # _generated) is committed as an explicit WIP commit first so the
+        # branch carries the exact failing state. It never opens a PR: the
+        # branch failed a gate, so a human (or a fresh retry) decides.
+        # A retry recreates the branch from base and force-pushes over this on
+        # SUCCESS only — so a salvaged branch survives until superseded by a
+        # good run. Cannot cover a crash inside the implement phase itself
+        # (work not yet committed); that class stays lossy by nature.
+        if: steps.preflight.outputs.refused != 'true' && (failure() || cancelled()) && steps.branch.outputs.name != ''
+        id: salvage
+        continue-on-error: true
+        env:
+          BRANCH: ${{ steps.branch.outputs.name }}
+        run: |
+          set -euo pipefail
+          git rev-parse --verify HEAD >/dev/null 2>&1 || { echo "no HEAD — nothing to salvage"; exit 0; }
+          if [ -n "$(git status --porcelain)" ]; then
+            git add -A
+            git commit -m "wip(salvage): uncommitted state at run failure (run ${{ github.run_id }})" || true
+          fi
+          base=$(git rev-parse "origin/{{BASE_BRANCH}}")
+          head=$(git rev-parse HEAD)
+          if [ "$head" = "$base" ]; then
+            echo "no commits beyond {{BASE_BRANCH}} — nothing to salvage"
+            exit 0
+          fi
+          git push --force origin "HEAD:refs/heads/${BRANCH}"
+          echo "salvaged=true" >> "$GITHUB_OUTPUT"
+          echo "Salvaged $(git rev-list --count "$base".."$head") commit(s) to $BRANCH"
+
       - name: Mark blocked on failure
         if: steps.preflight.outputs.refused != 'true' && failure()
         env:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           TRIGGER_LABEL: ${{ github.event.label.name }}
+          SALVAGED: ${{ steps.salvage.outputs.salvaged }}
+          BRANCH: ${{ steps.branch.outputs.name }}
         run: |
           reason="(no reason file written — check workflow logs)"
           if [ -f "${RUNNER_TEMP}/failure_reason.txt" ]; then
             reason=$(cat "${RUNNER_TEMP}/failure_reason.txt")
+          fi
+          salvage_note=""
+          if [ "$SALVAGED" = "true" ]; then
+            salvage_note="**Committed work preserved** on branch \`$BRANCH\` (unreviewed for merge — it failed this run; inspect/cherry-pick, or just retry: a successful retry force-replaces it)."
           fi
           gh issue edit "$ISSUE_NUMBER" --add-label "agent:blocked" || true
           gh issue comment "$ISSUE_NUMBER" --body "$(cat <<EOF
           \`$TRIGGER_LABEL\` run failed.
 
           **Reason:** $reason
+
+          $salvage_note
 
           **Workflow run:** $RUN_URL
 
