@@ -25,6 +25,7 @@
 // the gate self-skips instantly.
 
 import * as fs from "node:fs";
+import * as os from "node:os";
 import * as path from "node:path";
 import { execSync, spawn } from "node:child_process";
 
@@ -42,7 +43,20 @@ if (!CONVEX_DIR) {
 }
 
 const dirAbs = path.resolve(CONVEX_DIR);
-const env = { ...process.env, CONVEX_AGENT_MODE: "anonymous" };
+// Isolated HOME: on self-hosted runners the host user may have a real Convex
+// login (~/.convex/config.json) — convex 1.31 then tries to reconcile the
+// anonymous-agent deployment against the account and prompts interactively,
+// killing the gate (bcr run 28780385669, 2026-07-06: "not linked with your
+// account", persistent backend never came up). A scratch HOME makes the gate
+// credential-blind like the cloud VM, and keeps its backend state away from
+// the host user's real local deployments in ~/.convex/convex-backend-state.
+// The convex binary resolves from the checkout's node_modules, not $HOME.
+const gateHome = fs.mkdtempSync(path.join(os.tmpdir(), "convex-gate-home-"));
+const env = {
+  ...process.env,
+  CONVEX_AGENT_MODE: "anonymous",
+  HOME: gateHome,
+};
 
 function sh(cmd: string, tolerate = false): boolean {
   console.log(`convex-gate$ ${cmd}`);
