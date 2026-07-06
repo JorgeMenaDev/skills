@@ -17,6 +17,7 @@ apply; add ones the repo needs. When a job reveals a missing host fact, add it h
 
 - Machine: <e.g. "Jorge's Mac — macOS computer-use agent (`computer_use` tool + `macos-computer-use` skill)">
 - Supervising human (credentials, 2FA, approvals): <name>
+- Headless computer-use executor: <skill/command that runs jobs unattended when no human-only gate is expected, e.g. "`codex-computer-use` skill" — or delete this line if the host has none>
 
 ## Secrets destinations (the only legal ones)
 
