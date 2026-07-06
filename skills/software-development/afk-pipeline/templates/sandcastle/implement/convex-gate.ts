@@ -79,14 +79,30 @@ if (GATE_PREP) sh(GATE_PREP);
 // "No tsc binary found" (andyChat run 28788950712, 2026-07-06 — same root
 // cause its convex-prod-deploy dry-run hit in bb5e09bd). Link the hoisted
 // compiler in instead of weakening the gate to --typecheck=try/disable.
-const localTs = path.join(dirAbs, "node_modules", "typescript");
-const hoistedTs = path.resolve("node_modules", "typescript");
-if (!fs.existsSync(localTs) && fs.existsSync(hoistedTs)) {
-  console.log(
-    "convex-gate: typescript not present in convexDir — linking the hoisted copy for convex typecheck."
+//
+// lstat-aware on purpose: on the docker lane the container's workspace syncs
+// back to the host, and bun's container-absolute node_modules symlinks arrive
+// BROKEN on the host — existsSync() follows the link and says "absent" while
+// symlinkSync() hits EEXIST and crashed the gate uncaught (andyChat run
+// 28792950059, 2026-07-06). Probe the actual file convex probes, replace
+// whatever dead entry sits at the link path, and never crash the gate from
+// this block — if linking fails, the real gate below reports honestly.
+try {
+  const localTs = path.join(dirAbs, "node_modules", "typescript");
+  const hoistedTs = path.resolve("node_modules", "typescript");
+  const tscUsable = fs.existsSync(path.join(localTs, "bin", "tsc"));
+  if (!tscUsable && fs.existsSync(path.join(hoistedTs, "bin", "tsc"))) {
+    console.log(
+      "convex-gate: typescript not resolvable in convexDir — linking the hoisted copy for convex typecheck."
+    );
+    fs.rmSync(localTs, { recursive: true, force: true }); // clears broken symlinks/dead dirs
+    fs.mkdirSync(path.dirname(localTs), { recursive: true });
+    fs.symlinkSync(hoistedTs, localTs);
+  }
+} catch (e) {
+  console.warn(
+    `convex-gate: tsc link attempt failed (${e}) — continuing; the validation below will report the real state.`
   );
-  fs.mkdirSync(path.dirname(localTs), { recursive: true });
-  fs.symlinkSync(hoistedTs, localTs, "junction");
 }
 
 // 2. Bootstrap dance: a fresh anonymous deployment starts with an empty env,
