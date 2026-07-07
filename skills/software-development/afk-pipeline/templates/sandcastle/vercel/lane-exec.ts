@@ -112,7 +112,36 @@ function fail(message: string): never {
   process.exit(1);
 }
 
-const creds = { token: TOKEN, teamId: TEAM_ID, projectId: PROJECT_ID };
+// v2.5.2 transport hardening — superaseo #88 run 28875762914: Bun's fetch on
+// the GH runner threw BrotliDecompressionError mid-runCommand and killed the
+// driver while the phase inside the microVM was SUCCEEDING. Two defenses:
+// (1) force identity encoding so the brotli decode path never runs;
+// (2) detached commands + retryable wait() so a dropped stream is re-awaited
+//     server-side instead of crashing (never re-runs a phase).
+const safeFetch: typeof globalThis.fetch = (input, init) => {
+  const headers = new Headers((init as RequestInit | undefined)?.headers);
+  headers.set("accept-encoding", "identity");
+  return fetch(input, { ...(init as RequestInit), headers });
+};
+
+const creds = { token: TOKEN, teamId: TEAM_ID, projectId: PROJECT_ID, fetch: safeFetch };
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+async function withRetry<T>(fn: () => Promise<T>, label: string, attempts = 4): Promise<T> {
+  let lastErr: unknown;
+  for (let a = 1; a <= attempts; a++) {
+    try {
+      return await fn();
+    } catch (e) {
+      lastErr = e;
+      if (a === attempts) break;
+      console.error(`[lane-exec] ${label} failed (attempt ${a}/${attempts}): ${e instanceof Error ? e.message : e} — retrying`);
+      await sleep(2000 * a);
+    }
+  }
+  throw lastErr;
+}
 
 async function getExisting() {
   if (!fs.existsSync(CREATED_FILE)) return null;
@@ -134,38 +163,82 @@ function forwardEnv(ghOutputFile: string): Record<string, string> {
 }
 
 let callSeq = 0;
-async function runInside(sandbox: any, script: string): Promise<number> {
+async function runInside(sandbox: any, script: string, extraEnv: Record<string, string> = {}): Promise<number> {
   const ghOutputFile = `${REMOTE_OUT}/ghout-${process.pid}-${++callSeq}`;
-  const cmd = await sandbox.runCommand({
-    cmd: "bash",
-    args: ["-c", `export PATH="$HOME/.bun/bin:$PATH"; cd ${WORKDIR}; ${script}`],
-    cwd: WORKDIR,
-    env: forwardEnv(ghOutputFile),
-    stdout: process.stdout,
-    stderr: process.stderr,
-  });
+  // Detached launch: the command's lifetime lives server-side, so a transport
+  // fault in streaming or waiting is recoverable without re-running the phase.
+  const cmd = await withRetry(
+    () =>
+      sandbox.runCommand({
+        cmd: "bash",
+        args: ["-c", `mkdir -p ${REMOTE_OUT}; export PATH="$HOME/.bun/bin:$PATH"; cd ${WORKDIR}; ${script}`],
+        cwd: WORKDIR,
+        env: { ...forwardEnv(ghOutputFile), ...extraEnv },
+        detached: true,
+      }),
+    "runCommand launch"
+  );
+
+  // Best-effort live log streaming; a re-opened stream may replay earlier
+  // lines (cosmetic). Never allowed to kill the driver.
+  const stream = (attempt: number): Promise<void> =>
+    (async () => {
+      for await (const log of cmd.logs()) {
+        (log.stream === "stdout" ? process.stdout : process.stderr).write(log.data);
+      }
+    })().catch(async (e: unknown) => {
+      if (attempt >= 3) {
+        console.error(`[lane-exec] log stream lost (${e instanceof Error ? e.message : e}) — command continues, see final sync`);
+        return;
+      }
+      await sleep(1500 * attempt);
+      return stream(attempt + 1);
+    });
+  const logsDone = stream(1);
+
+  const finished = await withRetry(() => cmd.wait(), "command wait", 6);
+  await Promise.race([logsDone, sleep(4000)]);
 
   // Sync artifacts + step outputs back to the host, success or failure —
   // the failure path is exactly when failure_reason.txt matters.
   for (const name of ARTIFACTS) {
-    try {
-      const content = await sandbox.fs.readFile(`${REMOTE_OUT}/${name}`, "utf8");
-      if (content != null) fs.writeFileSync(path.join(RUNNER_TEMP, name), content);
-    } catch {}
+    const content = await readRemote(sandbox, `${REMOTE_OUT}/${name}`);
+    if (content != null) fs.writeFileSync(path.join(RUNNER_TEMP, name), content);
   }
   if (process.env.GITHUB_OUTPUT) {
-    try {
-      const out = await sandbox.fs.readFile(ghOutputFile, "utf8");
-      if (out) fs.appendFileSync(process.env.GITHUB_OUTPUT, out.endsWith("\n") ? out : out + "\n");
-    } catch {}
+    const out = await readRemote(sandbox, ghOutputFile);
+    if (out) fs.appendFileSync(process.env.GITHUB_OUTPUT, out.endsWith("\n") ? out : out + "\n");
   }
-  return cmd.exitCode ?? 1;
+  return finished.exitCode ?? 1;
+}
+
+/** Absent file = normal (most artifacts most calls) → null, silently. Only transport errors retry + log. */
+async function readRemote(sandbox: any, p: string): Promise<string | null> {
+  for (let a = 1; a <= 2; a++) {
+    try {
+      return await sandbox.fs.readFile(p, "utf8");
+    } catch (e) {
+      const m = e instanceof Error ? e.message : String(e);
+      if (/ENOENT|no such file|not found/i.test(m)) return null;
+      if (a === 2) {
+        console.error(`[lane-exec] read ${p} failed after retry: ${m}`);
+        return null;
+      }
+      await sleep(1500);
+    }
+  }
+  return null;
 }
 
 /** One-time toolchain bootstrap; idempotent, re-run if a prior call died mid-boot. */
 const BOOTSTRAP = `set -euo pipefail
 git config user.name "JorgeMenaDev"
 git config user.email "77608748+JorgeMenaDev@users.noreply.github.com"
+# The SDK's git-source credentials do NOT persist to the origin remote —
+# salvage/push from inside the microVM died with exit 128 on superaseo #88.
+# Re-point origin with the PAT (bootstrap-only env; not in FORWARD_KEYS).
+git remote set-url origin "https://x-access-token:\${AGENT_PAT:-\$GH_TOKEN}@github.com/\$GH_REPO.git"
+git fetch origin "{{BASE_BRANCH}}" --quiet || true
 git checkout -B "{{BASE_BRANCH}}" "origin/{{BASE_BRANCH}}" 2>/dev/null || git checkout -B "{{BASE_BRANCH}}"
 git checkout -B "$BRANCH"
 mkdir -p ${REMOTE_OUT}
@@ -198,6 +271,10 @@ async function ensureSandbox() {
       runtime: "node22",
       timeout: TIMEOUT_MINUTES * 60_000,
       resources: { vcpus: VCPUS },
+      // Per-run throwaway: default persistence would snapshot every stopped
+      // run's filesystem for 30 days (billed storage) for no benefit — a retry
+      // gets a new run id → new name → fresh clone anyway.
+      persistent: false,
       tags: { purpose: "afk-pipeline", issue: process.env.ISSUE_NUMBER ?? "unknown" },
       source: {
         type: "git",
@@ -218,7 +295,9 @@ async function ensureSandbox() {
   }
   if (!fs.existsSync(BOOT_FILE)) {
     console.log("Bootstrapping sandbox toolchain (bun, Claude Code, agent-browser + Chromium)...");
-    const code = await runInside(sandbox, BOOTSTRAP);
+    const bootEnv: Record<string, string> = {};
+    if (process.env.AGENT_PAT) bootEnv.AGENT_PAT = process.env.AGENT_PAT;
+    const code = await runInside(sandbox, BOOTSTRAP, bootEnv);
     if (code !== 0) fail(`sandbox toolchain bootstrap failed (exit ${code}) — see log above.`);
     fs.writeFileSync(BOOT_FILE, "1");
   }
@@ -240,6 +319,19 @@ if (mode === "--stop") {
   process.exit(0);
 }
 
+try {
+  await main();
+} catch (e) {
+  const msg = `sandbox lane driver error (${mode}): ${e instanceof Error ? e.message : e}`;
+  // Salvage/stop crashes must never overwrite the run's REAL failure reason.
+  if (mode === "--salvage" || mode === "--stop") {
+    console.error(msg);
+    process.exit(1);
+  }
+  fail(msg);
+}
+
+async function main(): Promise<never> {
 const sandbox = await ensureSandbox();
 let script: string;
 if (mode === "--salvage") {
@@ -259,3 +351,4 @@ bash .sandcastle/salvage.sh`;
   script = `bun .sandcastle/${mode} ${rest.join(" ")}`.trim();
 }
 process.exit(await runInside(sandbox, script));
+}
