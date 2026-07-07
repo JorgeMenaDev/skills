@@ -19,8 +19,10 @@ jobs:
   implement:
     # Three lanes, one pipeline: `agent:implement` → GitHub-hosted VM (noSandbox),
     # `agent:implement-local` → self-hosted Mac mini (agent inside Docker),
-    # `agent:implement-sandbox` → GitHub-hosted driver + Vercel Sandbox microVM
-    # (phases execute inside via .sandcastle/vercel/lane-exec.ts; ADR 0004).
+    # `agent:implement-sandbox` → GitHub-hosted runner + Vercel Sandbox microVM
+    # (the AGENT runs inside via sandcastle's isolated provider — workspace
+    # syncs in/out by git bundle/format-patch, so every workflow step here
+    # stays host-side on all three lanes; ADR 0004, .sandcastle/vercel/provider.ts).
     if: github.event.label.name == 'agent:implement' || github.event.label.name == 'agent:implement-local' || github.event.label.name == 'agent:implement-sandbox'
     runs-on: ${{ github.event.label.name == 'agent:implement-local' && 'self-hosted' || 'ubuntu-latest' }}
     timeout-minutes: 120
@@ -48,8 +50,9 @@ jobs:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       GH_REPO: ${{ github.repository }}
       SANDCASTLE_SANDBOX: ${{ github.event.label.name == 'agent:implement-local' && 'docker' || (github.event.label.name == 'agent:implement-sandbox' && 'vercel' || 'none') }}
-      # Sandbox lane auth (empty/unused on the other lanes). Team/project IDs are
-      # baked into lane-exec.ts from pipeline.json `sandbox:` at generate time.
+      # Sandbox lane auth (empty/unused on the other lanes). Team/project IDs
+      # are baked into .sandcastle/vercel/provider.ts from pipeline.json
+      # `sandbox:` at generate time; the provider reads this token from env.
       VERCEL_SANDBOX_TOKEN: ${{ secrets.VERCEL_SANDBOX_TOKEN }}
 
     steps:
@@ -175,11 +178,7 @@ jobs:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           BRANCH: ${{ steps.branch.outputs.name }}
           OUTPUT_DIR: ${{ runner.temp }}
-          # Sandbox lane ONLY: the first lane-exec call clones the repo into the
-          # microVM, so it needs the PAT here. Empty on the other lanes — the
-          # implement agent process must never carry it there.
-          AGENT_PAT: ${{ github.event.label.name == 'agent:implement-sandbox' && secrets.AGENT_PAT || '' }}
-        run: bun .sandcastle/vercel/lane-exec.ts implement/implement.ts
+        run: bun .sandcastle/implement/implement.ts
 
       - name: Second-model review (advisory)
         # Runs the repo's vendored autoreview skill against the branch diff
@@ -200,7 +199,7 @@ jobs:
           BRANCH: ${{ steps.branch.outputs.name }}
           OUTPUT_DIR: ${{ runner.temp }}
           REVIEW_ENGINE: ${{ steps.flags.outputs.review_engine }}
-        run: bun .sandcastle/vercel/lane-exec.ts review/review.ts
+        run: bun .sandcastle/review/review.ts
 
       - name: Review disposition pass (fix blockers or justify)
         # Only when the reviewer flagged findings: a fresh agent session fixes
@@ -213,7 +212,7 @@ jobs:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           BRANCH: ${{ steps.branch.outputs.name }}
           OUTPUT_DIR: ${{ runner.temp }}
-        run: bun .sandcastle/vercel/lane-exec.ts review/review-fix.ts
+        run: bun .sandcastle/review/review-fix.ts
 
       - name: Comment review outcome on the issue
         if: steps.preflight.outputs.refused != 'true' && steps.flags.outputs.review != 'off'
@@ -233,7 +232,7 @@ jobs:
         if: steps.preflight.outputs.refused != 'true'
         env:
           OUTPUT_DIR: ${{ runner.temp }}
-        run: bun .sandcastle/vercel/lane-exec.ts implement/convex-gate.ts
+        run: bun .sandcastle/implement/convex-gate.ts
 
       - name: Run verify phase (e2e, agent-browser)
         # Verify Profile from the parsed flags: `off` skips this step entirely
@@ -254,7 +253,7 @@ jobs:
           # env line alone never reaches the agent (matias registry quirk, cost
           # a failed run on andesphere #26). The generator keeps both in sync.
 {{VERIFY_SECRETS_ENV}}
-        run: bun .sandcastle/vercel/lane-exec.ts verify/verify.ts
+        run: bun .sandcastle/verify/verify.ts
 
       - name: Push branch
         if: steps.preflight.outputs.refused != 'true' && success()
@@ -262,9 +261,9 @@ jobs:
           BRANCH: ${{ steps.branch.outputs.name }}
         # Force-push recovers from orphan branches whose PR has since closed —
         # safe because preflight refuses when an open PR exists for this issue.
-        # On the sandbox lane the commits live inside the microVM, so the push
-        # runs there (lane-exec --sh is a local bash on the other lanes).
-        run: bun .sandcastle/vercel/lane-exec.ts --sh 'git push --force origin "$BRANCH"'
+        # All lanes: commits land on the HOST checkout (bind-mount on docker,
+        # sandcastle sync-out on the vercel lane), so this push is host-side.
+        run: git push --force origin "$BRANCH"
 
       - name: Write PR title and description
         if: steps.preflight.outputs.refused != 'true' && success()
@@ -276,7 +275,7 @@ jobs:
           # Evidence, so write-pr must say so instead of pointing at screenshots.
           VERIFY_MODE: ${{ steps.flags.outputs.verify }}
           VERIFY_REASON: ${{ steps.flags.outputs.verify_reason }}
-        run: bun .sandcastle/vercel/lane-exec.ts write-pr/write-pr.ts
+        run: bun .sandcastle/write-pr/write-pr.ts
 
       - name: Open draft PR
         if: steps.preflight.outputs.refused != 'true' && success()
@@ -337,16 +336,14 @@ jobs:
         continue-on-error: true
         env:
           BRANCH: ${{ steps.branch.outputs.name }}
-        # Salvage body lives in .sandcastle/salvage.sh (v2.5.0) so the sandbox
-        # lane can run the SAME logic inside the microVM — where the commits
-        # actually are; on the other lanes lane-exec runs it locally, unchanged.
-        # --salvage (not --sh) so the sandbox lane first kills any phase process
-        # a cancel left running remotely — otherwise `git add -A` races the
-        # still-live agent. The salvaged=true step output bridges back via
-        # lane-exec's GITHUB_OUTPUT sync. If the sandbox itself died (create
-        # failure, timeout), lane-exec refuses to create a new one and errors;
-        # continue-on-error keeps the honest no-salvage failure comment.
-        run: bun .sandcastle/vercel/lane-exec.ts --salvage
+        # Salvage body lives in .sandcastle/salvage.sh (extracted v2.5.0).
+        # Host-side on all lanes. Vercel-lane honesty: sandcastle sync-out runs
+        # only AFTER a phase succeeds, so this saves commits from COMPLETED
+        # phases; the failing phase's in-microVM commits die with it (same
+        # lossy class as an implement-crash before commit — upstream
+        # sync-on-failure hook is the eventual fix). Docker/cloud lanes keep
+        # full coverage via the shared workspace.
+        run: bash .sandcastle/salvage.sh
 
       - name: Mark blocked on failure
         if: steps.preflight.outputs.refused != 'true' && failure()
@@ -392,15 +389,10 @@ jobs:
         # one-pipeline-per-repo rule means they can only belong to this run.
         if: (cancelled() || failure()) && env.SANDCASTLE_SANDBOX == 'docker'
         run: docker ps -q --filter "ancestor={{IMAGE_NAME}}" | xargs -r docker rm -f
-
-      - name: Stop Vercel sandbox (sandbox lane)
-        # Billing stops when the sandbox stops; the create-time timeout
-        # (VERCEL_SANDBOX_TIMEOUT_MINUTES, default 115) is the backstop for a
-        # driver that dies before reaching this step.
-        # Refused runs never checked out or installed bun — nothing to stop.
-        if: always() && env.SANDCASTLE_SANDBOX == 'vercel' && steps.preflight.outputs.refused != 'true'
-        continue-on-error: true
-        run: bun .sandcastle/vercel/lane-exec.ts --stop
+      # No vercel teardown step needed: sandcastle closes each phase's microVM
+      # (stop + delete, persistent:false) when run() ends; the create-time
+      # timeout (VERCEL_SANDBOX_TIMEOUT_MINUTES, default 115) is the backstop
+      # for a phase process killed mid-run.
 
   recap:
     # Visual Recap runs as a separate best-effort job on a GitHub-hosted VM

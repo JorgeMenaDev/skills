@@ -93,13 +93,15 @@ a provisioning message — fail-safe by design). Per repo:
 3. Repo secret `VERCEL_SANDBOX_TOKEN` = the team-scoped Vercel access token (no expiration, minted per team, lives in the consumer-home store.env).
 4. Create the `agent:implement-sandbox` label; regen + commit.
 
-Mechanics: the GitHub-hosted runner is only a driver — the first `lane-exec` call
-creates one Firecracker microVM for the whole job (repo cloned at the base branch via
-`AGENT_PAT`, ~35s bootstrap incl. bun + Claude Code + agent-browser/Chromium +
-`bun install`), every phase executes inside with `SANDCASTLE_SANDBOX=none`, branch
-push + salvage run inside (that's where the commits are), and an always-run step stops
-the sandbox (create-time timeout `VERCEL_SANDBOX_TIMEOUT_MINUTES`, default 115, is the
-backstop — needs a Pro team; Hobby caps at 45m). Cost: ~$0.10–0.35 per typical run,
+Mechanics (v2.6.0): sandcastle's isolated-provider path does the heavy lifting — each
+agent phase gets its own Firecracker microVM (`.sandcastle/vercel/provider.ts`,
+`persistent: false`, stop+delete on close), the workspace syncs IN via git bundle and
+OUT via format-patch onto the host checkout, and a per-phase toolchain hook installs
+bun + Claude Code + agent-browser/Chromium (~60-90s each). Push, salvage, artifacts,
+and `GITHUB_OUTPUT` never leave the runner, so those workflow steps are identical on
+all three lanes and no credentials enter the microVM beyond the phase env.
+Create-time timeout `VERCEL_SANDBOX_TIMEOUT_MINUTES` (default 115) is the orphan
+backstop — needs a Pro team; Hobby caps at 45m. Cost: ~$0.10–0.35 per typical run,
 billed to the team's `afk-sandbox` project.
 
 ## Upgrading consumers after a template change

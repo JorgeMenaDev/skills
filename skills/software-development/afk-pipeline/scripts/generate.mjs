@@ -87,18 +87,14 @@ const deployNote = req("deployNote");
 
 // Vercel Sandbox lane (optional): sandbox = { teamId, projectId, vcpus }.
 // Empty/absent = lane not provisioned — the generated workflow still carries
-// the `agent:implement-sandbox` label wiring, but lane-exec fails loudly with
-// a provisioning message if the label is used. Provisioned repos also need the
-// `@vercel/sandbox` devDependency (lane-exec imports it on the driver) and the
-// VERCEL_SANDBOX_TOKEN repo secret (the repo's Vercel team's token).
+// the `agent:implement-sandbox` label wiring, but the provider fails loudly
+// with a provisioning message if the label is used. Provisioned repos also
+// need the `@vercel/sandbox` devDependency (provider.ts dynamic-imports it)
+// and the VERCEL_SANDBOX_TOKEN repo secret (the repo's Vercel team's token).
 const sandboxCfg = cfg.sandbox ?? {};
 if (sandboxCfg.teamId && !rootDeps["@vercel/sandbox"]) {
-  console.warn("WARN: pipeline.json has sandbox.teamId but @vercel/sandbox is not in root package.json — lane-exec's dynamic import will fail on the sandbox lane. Run: bun add -d @vercel/sandbox");
+  console.warn("WARN: pipeline.json has sandbox.teamId but @vercel/sandbox is not in root package.json — provider.ts's dynamic import will fail on the sandbox lane. Run: bun add -d @vercel/sandbox");
 }
-const forwardSecretKeys = [...new Set([...passthroughKeys, ...verifySecrets])];
-const forwardSecretArr = forwardSecretKeys.length
-  ? "[\n" + forwardSecretKeys.map((k) => `  "${k}",`).join("\n") + "\n]"
-  : "[]";
 
 // Convex integrity gate (optional): convexDir = the Convex package dir
 // relative to the repo root ("packages/backend", "." for root convex/), empty
@@ -149,7 +145,6 @@ const TOKENS = {
   "{{CONVEX_RULES}}": convexRules,
   "{{REPORT_EXTRAS}}": req("reportExtras"),
   "{{RECAP_EVIDENCE_EXCLUDES}}": recapExcludes,
-  "{{FORWARD_SECRET_KEYS}}": forwardSecretArr,
   "{{SANDBOX_TEAM_ID}}": str(sandboxCfg.teamId),
   "{{SANDBOX_PROJECT_ID}}": str(sandboxCfg.projectId),
   "{{SANDBOX_VCPUS}}": String(sandboxCfg.vcpus ?? 4),
@@ -181,7 +176,7 @@ const FILES = {
   "sandcastle/Dockerfile": ".sandcastle/Dockerfile",
   "sandcastle/runtime.ts": ".sandcastle/runtime.ts",
   "sandcastle/salvage.sh": ".sandcastle/salvage.sh",
-  "sandcastle/vercel/lane-exec.ts": ".sandcastle/vercel/lane-exec.ts",
+  "sandcastle/vercel/provider.ts": ".sandcastle/vercel/provider.ts",
   "sandcastle/retry-feedback.ts": ".sandcastle/retry-feedback.ts",
   "sandcastle/run-with-retry.ts": ".sandcastle/run-with-retry.ts",
   "sandcastle/flags/parse-flags.ts": ".sandcastle/flags/parse-flags.ts",

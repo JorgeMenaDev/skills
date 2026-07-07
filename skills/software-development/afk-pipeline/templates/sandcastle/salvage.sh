@@ -1,7 +1,7 @@
 # Salvage push — preserve committed work on failure/cancel (v2.4.0 contract).
-# Extracted from the workflow's inline step (v2.5.0) so the sandbox lane can run
-# the SAME logic inside the microVM via lane-exec --sh; on the cloud/local lanes
-# lane-exec executes this locally, byte-for-byte the old behavior.
+# Extracted from the workflow's inline step (v2.5.0); runs host-side on every
+# lane (v2.6.0 — the vercel lane's sync-out lands completed phases' commits on
+# the host checkout, which is what there is to save).
 # Env: BRANCH (required), GITHUB_RUN_ID, GITHUB_OUTPUT (optional).
 set -euo pipefail
 git rev-parse --verify HEAD >/dev/null 2>&1 || { echo "no HEAD — nothing to salvage"; exit 0; }
