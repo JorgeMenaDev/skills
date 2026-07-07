@@ -7,8 +7,18 @@
 // Hand-edited codegen is a corruption vector; this gate makes it impossible
 // to ship: it regenerates _generated with REAL codegen against a keyless
 // anonymous local Convex backend (CONVEX_AGENT_MODE=anonymous — no login, no
-// deploy key) and fails the RUN when the committed files differ, or when the
-// branch's schema/functions don't push cleanly.
+// deploy key). Schema/type validation failures fail the RUN. Divergent
+// committed _generated does NOT fail the run (since v2.5.1/2.4.3): by the
+// time divergence is measured, the working tree holds canonical codegen that
+// typecheck + schema push already validated, so the gate SELF-HEALS — it
+// commits the canonical output itself (a visible `[convex-gate]` commit in
+// the PR) instead of discarding a whole implement run over machine output.
+// (andyChat run 28868627711, 2026-07-07: a full slice-4 implement+review was
+// lost to a hand-edited api.d.ts the prompt already forbade — prompts don't
+// make this impossible, the gate does.) Hand-edits still can never ship:
+// they are overwritten by real codegen either way. If the agent's code
+// depended on phantom hand-written types, PR CI typecheck fails the merge —
+// the error surfaces at review instead of burning the run.
 //
 // Two modes:
 //   bun .sandcastle/implement/convex-gate.ts          workflow gate: validate,
@@ -187,26 +197,52 @@ if (REGEN_ONLY) {
   process.exit(0);
 }
 
-// 4. Divergence check: regenerated _generated must equal committed _generated.
+// 4. Divergence check + self-heal: regenerated _generated should equal
+// committed _generated. When it doesn't, the working tree now holds the
+// canonical output — validated by the typecheck+schema push above — so commit
+// it here rather than failing the run (see header).
+const repoRoot = path.resolve(".");
 const status = execSync(`git status --porcelain -- "${CONVEX_DIR}"`, {
-  cwd: path.resolve("."),
+  cwd: repoRoot,
   encoding: "utf8",
 });
 const generatedDrift = status
   .split("\n")
   .filter((line) => line.includes("_generated"));
 if (generatedDrift.length > 0) {
-  fail(
-    `Committed Convex _generated files diverge from real codegen output:\n` +
+  console.warn(
+    `convex-gate: committed _generated diverged from real codegen (agent hand-edited or forgot --regen):\n` +
       generatedDrift.map((l) => `  ${l}`).join("\n") +
-      `\n_generated is machine output — the agent hand-edited it or forgot to regenerate. ` +
-      `Regenerate with \`bun .sandcastle/implement/convex-gate.ts --regen\` and commit the result; never hand-apply codegen deltas.`
+      `\nconvex-gate: SELF-HEAL — committing the canonical codegen output.`
+  );
+  // Porcelain line: XY<space>path (codegen never renames; _generated paths
+  // have no spaces). `git add` stages modifications, additions and deletions.
+  const files = generatedDrift.map((l) => l.slice(3).trim()).filter(Boolean);
+  try {
+    execSync(`git add -- ${files.map((f) => JSON.stringify(f)).join(" ")}`, {
+      cwd: repoRoot,
+      stdio: "inherit",
+    });
+    execSync(
+      `git -c user.name="afk-pipeline convex-gate" -c user.email="convex-gate@sandcastle.invalid" ` +
+        `commit -m "chore(convex): self-heal _generated to canonical codegen [convex-gate]" ` +
+        `-m "The implement agent committed _generated files diverging from real codegen. The gate regenerated them against an anonymous local backend (typecheck + schema validation passed) and committed the canonical output. Reviewer: this commit is pure machine output; if earlier commits relied on hand-written phantom types, PR CI typecheck will fail."`,
+      { cwd: repoRoot, stdio: "inherit" }
+    );
+  } catch (e) {
+    fail(
+      `Committed Convex _generated files diverge from real codegen output and the self-heal commit failed (${e}). ` +
+        `Regenerate with \`bun .sandcastle/implement/convex-gate.ts --regen\` and commit the result; never hand-apply codegen deltas.`
+    );
+  }
+  console.log(
+    "convex-gate: PASS (self-healed) — schema/types validate; _generated replaced with canonical codegen in its own commit."
+  );
+} else {
+  console.log(
+    "convex-gate: PASS — schema/types validate and committed _generated matches real codegen."
   );
 }
-
-console.log(
-  "convex-gate: PASS — schema/types validate and committed _generated matches real codegen."
-);
 
 function fail(message: string): never {
   console.error(`\nFAILED: ${message}`);
