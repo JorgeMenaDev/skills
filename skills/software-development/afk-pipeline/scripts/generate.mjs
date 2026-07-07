@@ -102,8 +102,12 @@ even if codegen looks unavailable in the sandbox. It is not: run
 (from the repo root) after any change under \`${convexDir}/convex/\` and commit
 the regenerated files. It boots an anonymous local Convex backend — no login,
 no deploy key — and runs real codegen + schema/type validation. After this
-phase the pipeline reruns that gate and FAILS THE RUN if committed _generated
-files differ from real codegen output: hand-applied codegen cannot pass.`
+phase the pipeline reruns that gate; any divergence between committed
+_generated and real codegen is OVERWRITTEN with the canonical output in an
+automatic commit the reviewer sees. Hand-applied codegen can never ship — but
+if your code leans on hand-written phantom types, the canonical regen breaks
+it at PR CI. Run --regen yourself so you build against the real API surface,
+not an imagined one.`
   : "";
 
 const TOKENS = {
