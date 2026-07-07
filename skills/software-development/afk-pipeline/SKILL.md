@@ -1,7 +1,7 @@
 ---
 name: afk-pipeline
 description: Run a dev task as an AFK Task — grill the request, choose Pipeline Flags, write an Agent Brief, and trigger the label-driven pipeline that ends in a draft PR. Use when the user asks for a code change, feature, or fix in a repo listed in the AFK registry, asks which phases a task needs, or wants the pipeline installed in a new repo.
-version: 2.4.2
+version: 2.5.0
 mutating: true
 writes_to: [.agents/afk-pipeline/]
 ---
@@ -30,6 +30,7 @@ _R=.agents/afk-pipeline/REGISTRY.md
 - Skip decisions key on **predicted diff shape** — the files and surfaces the change will actually touch — never on how the task is framed.
 - Labeling starts a paid, unattended run; the user confirms brief + flags before any label lands.
 - **No failed run loses committed work** (v2.4.0): any failure or timeout-cancel after the branch exists salvage-pushes the agent branch (uncommitted debris included as an explicit WIP commit) and the failure comment names it. A salvaged branch is unreviewed-for-merge by definition; a successful retry force-replaces it. The one class this cannot cover: a crash inside the implement phase before the agent commits.
+- **Three lanes** (v2.5.0), selected per task by trigger label: `agent:implement` (cloud — GitHub-hosted VM, noSandbox), `agent:implement-local` (self-hosted runner, agent in Docker), `agent:implement-sandbox` (GitHub-hosted driver + **Vercel Sandbox** microVM — phases execute inside via `.sandcastle/vercel/lane-exec.ts`; full pipeline incl. browser verify). The sandbox lane needs per-repo provisioning: `sandbox: {teamId, projectId}` in pipeline.json (the repo's Vercel team + its `afk-sandbox` project), the team-scoped `VERCEL_SANDBOX_TOKEN` repo secret, and the `@vercel/sandbox` devDependency. Unprovisioned label use fails loudly at the first phase. Known degrade shared with the cloud lane: codex reviews skip loudly (no headless codex auth off the mini).
 
 ## The loop
 

@@ -6,6 +6,7 @@
   "passthroughKeys": [],
   "passthroughDoc": ["REPLACE: which secrets verify boot needs and why (or delete keys for none)."],
   "verifySecrets": [],
+  "sandbox": { "teamId": "", "projectId": "", "vcpus": 4 },
   "convexDir": "",
   "convexGatePrep": "",
   "convexGateEnv": {},

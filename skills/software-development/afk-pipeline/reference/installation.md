@@ -82,6 +82,26 @@ this (three drifting copies: andesphere, superaseo, andyChat) is `JorgeMenaDev/s
    the workflow executes from the default branch, so the first validating run is the
    first run after merge.
 
+## Provisioning the sandbox lane (`agent:implement-sandbox`, optional)
+
+The generated workflow always carries the label wiring; the lane only WORKS once the
+repo is provisioned (until then, using the label fails loudly at the first phase with
+a provisioning message — fail-safe by design). Per repo:
+
+1. `pipeline.json` → `"sandbox": { "teamId": "<the repo's Vercel team>", "projectId": "<that team's afk-sandbox project>", "vcpus": 4 }` — team follows the repo's Vercel project (fleet registry STACK.md), attach project is the per-team `afk-sandbox` project.
+2. `bun add -d @vercel/sandbox` (the driver imports it; the generator warns if missing).
+3. Repo secret `VERCEL_SANDBOX_TOKEN` = the team-scoped Vercel access token (no expiration, minted per team, lives in the consumer-home store.env).
+4. Create the `agent:implement-sandbox` label; regen + commit.
+
+Mechanics: the GitHub-hosted runner is only a driver — the first `lane-exec` call
+creates one Firecracker microVM for the whole job (repo cloned at the base branch via
+`AGENT_PAT`, ~35s bootstrap incl. bun + Claude Code + agent-browser/Chromium +
+`bun install`), every phase executes inside with `SANDCASTLE_SANDBOX=none`, branch
+push + salvage run inside (that's where the commits are), and an always-run step stops
+the sandbox (create-time timeout `VERCEL_SANDBOX_TIMEOUT_MINUTES`, default 115, is the
+backstop — needs a Pro team; Hobby caps at 45m). Cost: ~$0.10–0.35 per typical run,
+billed to the team's `afk-sandbox` project.
+
 ## Upgrading consumers after a template change
 
 Bump `version:` in SKILL.md, then for every registered repo:

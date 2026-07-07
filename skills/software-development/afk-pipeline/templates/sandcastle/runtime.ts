@@ -6,6 +6,12 @@ import { noSandbox } from "@ai-hero/sandcastle/sandboxes/no-sandbox";
  * (`agent:implement-local` → self-hosted Mac mini runner, agent isolated in
  * Docker) and =none on the cloud lane (`agent:implement` → GitHub-hosted VM,
  * noSandbox — the VM is the sandbox). See matias docs/adr/0003.
+ *
+ * The sandbox lane (`agent:implement-sandbox`, SANDCASTLE_SANDBOX=vercel on
+ * the DRIVER) never reaches this file with `vercel`: lane-exec re-runs each
+ * phase INSIDE the Vercel microVM with SANDCASTLE_SANDBOX=none, so the
+ * noSandbox path below is the correct one there — the microVM is the sandbox
+ * (matias docs/adr/0004).
  */
 const useDocker = process.env.SANDCASTLE_SANDBOX === "docker";
 
