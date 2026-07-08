@@ -52,6 +52,13 @@ const rootDeps = fs.existsSync(pkgPath)
   if (!declared) {
     console.warn(`WARN: @ai-hero/sandcastle not in root package.json — the first run will fail at bun install. Run: bun add -d '@ai-hero/sandcastle@^0.12.0'`);
   }
+  // write-pr.ts + verify.ts import zod directly; most consumers carry it
+  // transitively, but a minimal root package.json does not (first hit:
+  // nexonet-app run 28920501453 — implement+gate PASSED, then write-pr
+  // crashed on "Cannot find package 'zod'").
+  if (!deps["zod"]) {
+    console.warn(`WARN: zod not in root package.json — write-pr/verify phases will crash at runtime. Run: bun add -d zod`);
+  }
 }
 
 // String fields may be arrays-of-lines for JSON readability.
