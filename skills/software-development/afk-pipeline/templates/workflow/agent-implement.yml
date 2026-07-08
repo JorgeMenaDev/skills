@@ -17,14 +17,19 @@ env:
 
 jobs:
   implement:
-    # Three lanes, one pipeline: `agent:implement` → GitHub-hosted VM (noSandbox),
+    # Three lanes, one pipeline: `agent:implement` → cloud-hosted VM (noSandbox),
     # `agent:implement-local` → self-hosted Mac mini (agent inside Docker),
-    # `agent:implement-sandbox` → GitHub-hosted runner + Vercel Sandbox microVM
+    # `agent:implement-sandbox` → cloud-hosted runner + Vercel Sandbox microVM
     # (the AGENT runs inside via sandcastle's isolated provider — workspace
     # syncs in/out by git bundle/format-patch, so every workflow step here
     # stays host-side on all three lanes; ADR 0004, .sandcastle/vercel/provider.ts).
+    # The non-local runner is per-repo config (v2.7.0): pipeline.json
+    # `cloudRunsOn` — GitHub's `ubuntu-latest` (default) or a Blacksmith tag
+    # (e.g. `blacksmith-4vcpu-ubuntu-2404`, requires the Blacksmith GitHub App
+    # on the repo's org). A tag no runner backs queues the job forever — the
+    # first run after flipping this validates it.
     if: github.event.label.name == 'agent:implement' || github.event.label.name == 'agent:implement-local' || github.event.label.name == 'agent:implement-sandbox'
-    runs-on: ${{ github.event.label.name == 'agent:implement-local' && 'self-hosted' || 'ubuntu-latest' }}
+    runs-on: ${{ github.event.label.name == 'agent:implement-local' && 'self-hosted' || '{{CLOUD_RUNS_ON}}' }}
     timeout-minutes: 120
     concurrency:
       group: agent-implement-issue-${{ github.event.issue.number }}
@@ -409,7 +414,7 @@ jobs:
     # or install (composes with the tiny-diff gate inside recap.ts, which handles
     # the recap:on-but-trivial case).
     if: needs.implement.outputs.pr_url != '' && needs.implement.outputs.recap != 'off'
-    runs-on: ubuntu-latest
+    runs-on: {{CLOUD_RUNS_ON}}
     continue-on-error: true
     timeout-minutes: 20
     permissions:
@@ -420,7 +425,7 @@ jobs:
       ISSUE_NUMBER: ${{ github.event.issue.number }}
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       GH_REPO: ${{ github.repository }}
-      # Always the cloud sandbox mode — this job runs on a GitHub-hosted VM.
+      # Always the cloud sandbox mode — this job runs on a cloud-hosted VM.
       SANDCASTLE_SANDBOX: none
       PR_URL: ${{ needs.implement.outputs.pr_url }}
       PR_NUMBER: ${{ needs.implement.outputs.pr_number }}

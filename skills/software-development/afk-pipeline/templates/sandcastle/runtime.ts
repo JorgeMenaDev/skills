@@ -65,6 +65,12 @@ export function chooseSandbox(token: string) {
     // Desktop's VM handles bind-mount ownership, so pin the container user.
     containerUid: 1000,
     containerGid: 1000,
+    // Cap each phase container's CPUs so concurrent local-lane runs can't
+    // starve the runner host (v2.7.0 — the mini crawled under 3-4 parallel
+    // jobs). RAM stays the harder ceiling: the cap curbs thrash, it doesn't
+    // make 4 simultaneous Next builds fit in 16 GB — route overflow to the
+    // cloud/sandbox lanes instead. Per-repo: dockerCpus in pipeline.json.
+    cpus: {{DOCKER_CPUS}},
     env: sandboxEnv(token),
   });
 }

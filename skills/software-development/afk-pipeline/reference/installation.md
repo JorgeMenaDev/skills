@@ -86,6 +86,19 @@ this (three drifting copies: andesphere, superaseo, andyChat) is `JorgeMenaDev/s
    the workflow executes from the default branch, so the first validating run is the
    first run after merge.
 
+## Runner + resource knobs (v2.7.0, optional)
+
+- `pipeline.json` → `"cloudRunsOn"`: the runner tag for every non-local job (cloud lane,
+  sandbox-lane driver, recap job). Default `ubuntu-latest` (GitHub-hosted, billed minutes
+  on private repos). Set a Blacksmith size tag (e.g. `blacksmith-4vcpu-ubuntu-2404`) on
+  repos whose GitHub **org** has the Blacksmith App installed — 3,000 free min/month per
+  workspace, faster machines. A tag with no backing runner queues jobs forever; the first
+  run after flipping validates it.
+- `pipeline.json` → `"dockerCpus"` (default 3): `--cpus` cap on each local-lane phase
+  container so concurrent runs can't starve the runner host. RAM is not capped (not
+  exposed by sandcastle's docker provider) — cap concurrency by routing policy, not just
+  CPU.
+
 ## Provisioning the sandbox lane (`agent:implement-sandbox`, optional)
 
 The generated workflow always carries the label wiring; the lane only WORKS once the

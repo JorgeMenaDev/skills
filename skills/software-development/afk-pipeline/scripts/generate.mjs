@@ -99,6 +99,20 @@ const deployNote = req("deployNote");
 // need the `@vercel/sandbox` devDependency (provider.ts dynamic-imports it)
 // and the VERCEL_SANDBOX_TOKEN repo secret (the repo's Vercel team's token).
 const sandboxCfg = cfg.sandbox ?? {};
+
+// Non-local runner (v2.7.0): GitHub's ubuntu-latest by default, or a
+// Blacksmith size tag (blacksmith-<n>vcpu-ubuntu-2404) on orgs with the
+// Blacksmith GitHub App installed. Drives the implement job's cloud/sandbox
+// branches AND the recap job.
+const cloudRunsOn = str(cfg.cloudRunsOn) || "ubuntu-latest";
+
+// Local-lane per-container CPU cap (v2.7.0): passed to sandcastle's docker()
+// provider. Default 3 keeps two concurrent runs responsive on a 10-core mini.
+const dockerCpus = Number(cfg.dockerCpus ?? 3);
+if (!Number.isFinite(dockerCpus) || dockerCpus <= 0) {
+  console.error(`pipeline.json dockerCpus must be a positive number, got: ${JSON.stringify(cfg.dockerCpus)}`);
+  process.exit(1);
+}
 if (sandboxCfg.teamId && !rootDeps["@vercel/sandbox"]) {
   console.warn("WARN: pipeline.json has sandbox.teamId but @vercel/sandbox is not in root package.json — provider.ts's dynamic import will fail on the sandbox lane. Run: bun add -d @vercel/sandbox");
 }
@@ -155,6 +169,8 @@ const TOKENS = {
   "{{SANDBOX_TEAM_ID}}": str(sandboxCfg.teamId),
   "{{SANDBOX_PROJECT_ID}}": str(sandboxCfg.projectId),
   "{{SANDBOX_VCPUS}}": String(sandboxCfg.vcpus ?? 4),
+  "{{CLOUD_RUNS_ON}}": cloudRunsOn,
+  "{{DOCKER_CPUS}}": String(dockerCpus),
   "{{ORIENTATION_MD}}": frag("orientation.md"),
   "{{VERIFY_BOOT_MD}}": frag("verify-boot.md"),
   "{{VERIFY_NOTES_MD}}": frag("verify-notes.md"),
