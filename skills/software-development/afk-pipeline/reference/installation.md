@@ -36,7 +36,11 @@ this (three drifting copies: andesphere, superaseo, andyChat) is `JorgeMenaDev/s
    check its version: a stale pin from a previous orchestrator passes install but
    fails the implement phase at runtime (`handle.copyIn is not a function` — cost
    acredix run 28720470196, 2026-07-04, pinned 0.5.8). `generate.mjs` now refuses
-   pins below 0.12.
+   pins below 0.12. Also `bun add -d zod`: the generated write-pr/verify scripts
+   import it directly — consumers with app deps get it transitively, but a
+   minimal root `package.json` does not (cost nexonet-app run 28920501453,
+   2026-07-08: implement + Convex gate PASSED, then write-pr crashed on
+   `Cannot find package 'zod'`). `generate.mjs` warns when it's missing.
 4. **Convex repos** — set three config fields so the always-on Convex integrity
    gate arms (empty `convexDir` = gate self-skips; only correct for repos with
    no Convex package):
