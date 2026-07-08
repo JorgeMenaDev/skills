@@ -17,7 +17,7 @@
 verify: full|slim|off — <reason>
 recap: on|off — <reason>
 review: on|off — <reason>
-engine: claude|codex — <always stamped by the dispatcher; use `engine: claude — override ignored: <reason>` when applicable>
+engine: claude|codex|cursor — <always stamped by the dispatcher; use `engine: claude — override ignored: <reason>` when applicable>
 review-engine: codex|claude — <only when overriding the cross-vendor default; omit otherwise>
 
 ## Notes
@@ -38,6 +38,6 @@ Each repo's workflow implements this parser; the skill only authors the section.
 - `slim` reaches the verify phase as env (`VERIFY_VIEWPORTS`, `VERIFY_LOCALES`) into a single parameterized verify prompt — one prompt template per repo, never per-profile prompt forks.
 - `verify: off` skips the verify step entirely and sets a degrade mode consumed by write-pr and the completion comment.
 - `review: on` (default) runs an advisory second-model review of the branch diff between implement and verify (vendored `autoreview` skill). Findings trigger a disposition pass that fixes real blockers or rejects with rationale (table committed to the evidence dir). `review: off` for tiny/mechanical diffs where a second model can't beat reading the code.
-- `engine: claude` (default) runs the four agent phases on Claude. `engine: codex` runs implement, review-fix, verify, and write-pr on Codex gpt-5.5 high with ChatGPT-subscription auth. Recap remains Claude. New briefs always stamp `engine:`; if the override is ignored, stamp `engine: claude — override ignored: <reason>` so the durable brief records the decision.
-- `review-engine` defaults cross-vendor: default `engine: claude` pairs with `review-engine: codex`; `engine: codex` plus absent/default `review-engine` resolves to `review-engine: claude`. Key this resolution on `review_engine_status == default`, not the value, because old briefs may explicitly carry `review-engine: codex`. **No silent fallback:** if the runner lacks the requested engine, the review is loudly skipped (`skipped_no_engine` note on the issue), never quietly swapped to another engine.
-- Codex-stamped briefs never overflow to a codex-incapable lane. Queue them, or re-cut the brief as `engine: claude — override ignored: <reason>` before labeling.
+- `engine: claude` (default) runs the four agent phases on Claude. `engine: codex` runs implement, review-fix, verify, and write-pr on Codex gpt-5.5 high with ChatGPT-subscription auth. `engine: cursor` runs implement only on Cursor Agent CLI, then keeps review-fix, verify, and write-pr on Claude because Cursor sessions are non-resumable and structured-output retry needs resume. Cursor v1 is cloud-lane only (`agent:implement`), requires the repo secret `CURSOR_API_KEY`, defaults to model `grok-4.5-xhigh`, and honors a `CURSOR_MODEL` env override. Recap remains Claude. New briefs always stamp `engine:`; if the override is ignored, stamp `engine: claude — override ignored: <reason>` so the durable brief records the decision.
+- `review-engine` defaults cross-vendor: default `engine: claude` pairs with `review-engine: codex`; `engine: cursor` follows that same default; `engine: codex` plus absent/default `review-engine` resolves to `review-engine: claude`. Key this resolution on `review_engine_status == default`, not the value, because old briefs may explicitly carry `review-engine: codex`. **No silent fallback:** if the runner lacks the requested engine, the review is loudly skipped (`skipped_no_engine` note on the issue), never quietly swapped to another engine.
+- Codex-stamped briefs never overflow to a codex-incapable lane, and Cursor-stamped briefs never overflow to docker or sandbox lanes. Queue them, or re-cut the brief as `engine: claude — override ignored: <reason>` before labeling.

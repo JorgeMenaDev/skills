@@ -10,9 +10,10 @@
  * `continue-on-error: true` as a second belt.
  *
  * Engine pick is resolved by parse-flags/workflow and passed in REVIEW_ENGINE:
- * default Claude implementation pairs with Codex review, while `engine: codex`
- * and absent/default `review-engine` pairs with Claude review. NO silent
- * fallback: requested engine missing from the runner host's PATH → loud
+ * default Claude implementation pairs with Codex review, Cursor follows that
+ * same review default, while `engine: codex` and absent/default
+ * `review-engine` pairs with Claude review. NO silent fallback: requested
+ * engine missing from the runner host's PATH → loud
  * skipped_no_engine note, never a quiet engine swap (acredix #64 posted
  * "engine: claude" because the cloud runner lacked codex and the old fallback
  * degraded silently, 2026-07-05).

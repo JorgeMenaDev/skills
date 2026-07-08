@@ -65,7 +65,9 @@ this (three drifting copies: andesphere, superaseo, andyChat) is `JorgeMenaDev/s
    exists; if not, add it as part of the install.
 5. **Labels** — `agent:implement` (cloud), `agent:implement-local` (self-hosted) plus
    state labels `agent:in-progress`, `agent:blocked`.
-6. **Secrets** — `CLAUDE_CODE_OAUTH_TOKEN`; `AGENT_PAT` (orgs commonly disallow
+6. **Secrets** — `CLAUDE_CODE_OAUTH_TOKEN`; `CURSOR_API_KEY` only for repos that
+   will run `engine: cursor` cloud-lane briefs (Cursor v1 is implement-only,
+   default model `grok-4.5-xhigh`, with `CURSOR_MODEL` env override); `AGENT_PAT` (orgs commonly disallow
    Actions-created PRs, and pushes touching `.github/workflows/` need it) — mint the
    PAT with **no expiration** (or the max GitHub offers); a short-lived PAT silently
    kills the pipeline when it expires;

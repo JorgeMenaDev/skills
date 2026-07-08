@@ -141,7 +141,7 @@ jobs:
 
       - name: Parse Pipeline Flags from the Agent Brief
         # Reads the `### Pipeline` section (verify: full|slim|off, recap: on|off,
-        # review: on|off, engine: claude|codex, review-engine: codex|claude)
+        # review: on|off, engine: claude|codex|cursor, review-engine: codex|claude)
         # from the issue body and exposes the parsed set as step outputs. The
         # parser is fail-safe: an absent section / unknown key / bad value falls
         # back to the full-pipeline defaults. Lives in .sandcastle so it travels
@@ -173,6 +173,20 @@ jobs:
             exit 1
           fi
 
+      - name: Pre-flight Cursor engine
+        if: steps.preflight.outputs.refused != 'true' && steps.flags.outputs.engine == 'cursor'
+        env:
+          CURSOR_API_KEY: ${{ steps.flags.outputs.engine == 'cursor' && secrets.CURSOR_API_KEY || '' }}
+        run: |
+          set -euo pipefail
+          fail() {
+            echo "$1" > "${RUNNER_TEMP}/failure_reason.txt"
+            echo "$1" >&2
+            exit 1
+          }
+          [ "$SANDCASTLE_SANDBOX" = "none" ] || fail "engine: cursor is cloud-lane only (v1) — local Docker images and the microVM bootstrap lack the Cursor CLI"
+          [ -n "$CURSOR_API_KEY" ] || fail "Cursor preflight failed: CURSOR_API_KEY repo secret is missing for engine=cursor."
+
       - name: Install dependencies
         if: steps.preflight.outputs.refused != 'true'
         run: bun install --frozen-lockfile
@@ -198,6 +212,13 @@ jobs:
           printf "%s" "$CODEX_AUTH_B64" | base64 -d > "${RUNNER_TEMP}/codex-home/auth.json" \
             || fail "Codex setup failed: CODEX_AUTH_B64 is not valid base64."
           chmod 600 "${RUNNER_TEMP}/codex-home/auth.json"
+
+      - name: Install Cursor CLI (cloud cursor lane)
+        if: steps.preflight.outputs.refused != 'true' && steps.flags.outputs.engine == 'cursor'
+        run: |
+          set -euo pipefail
+          curl https://cursor.com/install -fsS | bash
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: Install agent-browser + Chrome (cloud lane)
         if: steps.preflight.outputs.refused != 'true' && env.SANDCASTLE_SANDBOX == 'none'
@@ -283,11 +304,35 @@ jobs:
             fi
           fi
 
+      - name: Cursor auth/model smoke
+        if: steps.preflight.outputs.refused != 'true' && steps.flags.outputs.engine == 'cursor'
+        env:
+          CURSOR_API_KEY: ${{ steps.flags.outputs.engine == 'cursor' && secrets.CURSOR_API_KEY || '' }}
+          CURSOR_MODEL: ${{ vars.CURSOR_MODEL || 'grok-4.5-xhigh' }}
+        run: |
+          set -euo pipefail
+          fail() {
+            echo "$1" > "${RUNNER_TEMP}/failure_reason.txt"
+            echo "$1" >&2
+            exit 1
+          }
+          target_model="${CURSOR_MODEL:-grok-4.5-xhigh}"
+          [ "$SANDCASTLE_SANDBOX" = "none" ] || fail "engine: cursor is cloud-lane only (v1) — local Docker images and the microVM bootstrap lack the Cursor CLI"
+          [ -n "$CURSOR_API_KEY" ] || fail "cursor auth/model failure: CURSOR_API_KEY repo secret is missing for engine=cursor."
+          if ! agent models > "${RUNNER_TEMP}/cursor-models.txt" 2> "${RUNNER_TEMP}/cursor-models.err"; then
+            tail -n 40 "${RUNNER_TEMP}/cursor-models.err" >&2 || true
+            fail "cursor auth/model failure: agent models failed. Check CURSOR_API_KEY and Cursor CLI auth."
+          fi
+          grep -F "$target_model" "${RUNNER_TEMP}/cursor-models.txt" >/dev/null \
+            || fail "cursor auth/model failure: target model '$target_model' was not listed by agent models."
+
       - name: Run implement phase
         if: steps.preflight.outputs.refused != 'true'
         env:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           CODEX_AUTH_B64: ${{ github.event.label.name != 'agent:implement-local' && secrets.CODEX_AUTH_B64 || '' }}
+          CURSOR_API_KEY: ${{ steps.flags.outputs.engine == 'cursor' && secrets.CURSOR_API_KEY || '' }}
+          CURSOR_MODEL: ${{ vars.CURSOR_MODEL || 'grok-4.5-xhigh' }}
           ENGINE: ${{ steps.flags.outputs.engine }}
           BRANCH: ${{ steps.branch.outputs.name }}
           OUTPUT_DIR: ${{ runner.temp }}
@@ -297,9 +342,10 @@ jobs:
         # Runs the repo's vendored autoreview skill against the branch diff
         # BEFORE verify, so the disposition pass and the QA Evidence both cover
         # reviewed code. Review engine defaults to the opposite vendor from the
-        # selected implementation engine; explicit `review-engine` overrides are
-        # allowed and visible. No silent fallback: requested engine missing on
-        # the runner ⇒ loud skipped note, never a quiet engine swap.
+        # selected implementation engine; Cursor implement follows the Claude
+        # default (`review-engine: codex`). Explicit `review-engine` overrides
+        # are allowed and visible. No silent fallback: requested engine missing
+        # on the runner ⇒ loud skipped note, never a quiet engine swap.
         # Advisory by construction: review.ts always
         # exits 0 and every degrade path (skill missing, no engine, engine
         # crash) becomes a summary note — continue-on-error is a second belt.
@@ -310,7 +356,7 @@ jobs:
         env:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           CODEX_AUTH_B64: ${{ github.event.label.name != 'agent:implement-local' && secrets.CODEX_AUTH_B64 || '' }}
-          ENGINE: ${{ steps.flags.outputs.engine }}
+          ENGINE: ${{ steps.flags.outputs.engine == 'cursor' && 'claude' || steps.flags.outputs.engine }}
           BRANCH: ${{ steps.branch.outputs.name }}
           OUTPUT_DIR: ${{ runner.temp }}
           REVIEW_ENGINE: ${{ steps.flags.outputs.review_engine }}
@@ -326,7 +372,7 @@ jobs:
         env:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           CODEX_AUTH_B64: ${{ github.event.label.name != 'agent:implement-local' && secrets.CODEX_AUTH_B64 || '' }}
-          ENGINE: ${{ steps.flags.outputs.engine }}
+          ENGINE: ${{ steps.flags.outputs.engine == 'cursor' && 'claude' || steps.flags.outputs.engine }}
           BRANCH: ${{ steps.branch.outputs.name }}
           OUTPUT_DIR: ${{ runner.temp }}
         run: bun .sandcastle/review/review-fix.ts
@@ -361,7 +407,7 @@ jobs:
         env:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           CODEX_AUTH_B64: ${{ github.event.label.name != 'agent:implement-local' && secrets.CODEX_AUTH_B64 || '' }}
-          ENGINE: ${{ steps.flags.outputs.engine }}
+          ENGINE: ${{ steps.flags.outputs.engine == 'cursor' && 'claude' || steps.flags.outputs.engine }}
           BRANCH: ${{ steps.branch.outputs.name }}
           OUTPUT_DIR: ${{ runner.temp }}
           VERIFY_MODE: ${{ steps.flags.outputs.verify }}
@@ -389,7 +435,7 @@ jobs:
         env:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           CODEX_AUTH_B64: ${{ github.event.label.name != 'agent:implement-local' && secrets.CODEX_AUTH_B64 || '' }}
-          ENGINE: ${{ steps.flags.outputs.engine }}
+          ENGINE: ${{ steps.flags.outputs.engine == 'cursor' && 'claude' || steps.flags.outputs.engine }}
           BRANCH: ${{ steps.branch.outputs.name }}
           OUTPUT_DIR: ${{ runner.temp }}
           # Degrade mode: when verify was skipped by design there is no QA

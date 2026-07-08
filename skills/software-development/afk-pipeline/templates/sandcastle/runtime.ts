@@ -17,10 +17,22 @@ import { vercelSandbox } from "./vercel/provider";
 const LANE = process.env.SANDCASTLE_SANDBOX ?? "none";
 const useDocker = LANE === "docker";
 const useVercel = LANE === "vercel";
-const ENGINE = process.env.ENGINE === "codex" ? "codex" : "claude";
+const ENGINE =
+  process.env.ENGINE === "codex"
+    ? "codex"
+    : process.env.ENGINE === "cursor"
+      ? "cursor"
+      : "claude";
 const CODEX_HOST_HOME = "~/.codex-afk";
 const CODEX_SANDBOX_HOME = "/home/agent/.codex";
 const CODEX_CLOUD_HOME = `${process.env.RUNNER_TEMP ?? "/tmp"}/codex-home`;
+const CURSOR_MODEL = process.env.CURSOR_MODEL || "grok-4.5-xhigh";
+const CURSOR_LANE_ERROR =
+  "engine: cursor is cloud-lane only (v1) — local Docker images and the microVM bootstrap lack the Cursor CLI";
+
+if (ENGINE === "cursor" && (useDocker || useVercel)) {
+  throw new Error(CURSOR_LANE_ERROR);
+}
 
 /**
  * Secrets the workflow injects for phases that exercise real integrations.
@@ -51,8 +63,15 @@ function passthroughEnv(): Record<string, string> {
 export function agentEnv(token?: string): Record<string, string> {
   if (useDocker || useVercel) return {};
   if (ENGINE === "codex") return { CODEX_HOME: CODEX_CLOUD_HOME, ...passthroughEnv() };
-  if (!token) throw new Error("CLAUDE_CODE_OAUTH_TOKEN is required when ENGINE=claude");
+  if (!token) throw new Error("CLAUDE_CODE_OAUTH_TOKEN is required for Claude-backed phases");
   return { CLAUDE_CODE_OAUTH_TOKEN: token, ...passthroughEnv() };
+}
+
+function cursorAgentEnv(): Record<string, string> {
+  if (useDocker || useVercel) throw new Error(CURSOR_LANE_ERROR);
+  const cursorApiKey = process.env.CURSOR_API_KEY;
+  if (!cursorApiKey) throw new Error("CURSOR_API_KEY is required when ENGINE=cursor");
+  return { CURSOR_API_KEY: cursorApiKey, ...passthroughEnv() };
 }
 
 function sandboxEnv(token?: string): Record<string, string> {
@@ -61,11 +80,18 @@ function sandboxEnv(token?: string): Record<string, string> {
   if (ENGINE === "codex") {
     env.CODEX_HOME = CODEX_SANDBOX_HOME;
   } else {
-    if (!token) throw new Error("CLAUDE_CODE_OAUTH_TOKEN is required when ENGINE=claude");
+    if (!token) throw new Error("CLAUDE_CODE_OAUTH_TOKEN is required for Claude-backed phases");
     env.CLAUDE_CODE_OAUTH_TOKEN = token;
   }
   if (process.env.GH_TOKEN) env.GH_TOKEN = process.env.GH_TOKEN;
   return env;
+}
+
+function claudeAgent(token?: string, claudeOptions: { effort?: "medium" | "high" } = { effort: "high" }) {
+  return sandcastle.claudeCode("claude-opus-4-8", {
+    ...claudeOptions,
+    env: agentEnv(token),
+  });
 }
 
 export function chooseAgent(token?: string, claudeOptions: { effort?: "medium" | "high" } = { effort: "high" }) {
@@ -79,10 +105,16 @@ export function chooseAgent(token?: string, claudeOptions: { effort?: "medium" |
       },
     });
   }
-  return sandcastle.claudeCode("claude-opus-4-8", {
-    ...claudeOptions,
-    env: agentEnv(token),
-  });
+  return claudeAgent(token, claudeOptions);
+}
+
+export function chooseImplementAgent(token?: string, claudeOptions: { effort?: "medium" | "high" } = { effort: "high" }) {
+  if (ENGINE === "cursor") {
+    return sandcastle.cursor(CURSOR_MODEL, {
+      env: cursorAgentEnv(),
+    });
+  }
+  return chooseAgent(token, claudeOptions);
 }
 
 export function chooseSandbox(token?: string) {

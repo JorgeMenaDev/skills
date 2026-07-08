@@ -16,7 +16,7 @@
  *   verify: full|slim|off — optional reason
  *   recap:  on|off        — optional reason
  *   review: on|off        — optional reason
- *   engine: claude|codex  — optional reason
+ *   engine: claude|codex|cursor — optional reason
  *   review-engine: codex|claude — optional reason
  *
  * FAIL-SAFE: an absent section, an unknown key, or an unparseable value ⇒ that
@@ -25,7 +25,8 @@
  * reduce work below the default when the body explicitly and legibly says so.
  * `review-engine` defaults to codex unless `engine: codex` is set and
  * `review-engine` itself was not set; then it resolves to claude to keep the
- * implement/review engines cross-vendor. Explicit old briefs carry their
+ * implement/review engines cross-vendor. `engine: cursor` is implement-only
+ * and follows the Claude default. Explicit old briefs carry their
  * `review-engine: codex` contract forward.
  *
  * Lives in the `.sandcastle` layer (not inline YAML) so it travels with the
@@ -63,7 +64,7 @@ const ALLOWED = {
   verify: new Set(["full", "slim", "off"]),
   recap: new Set(["on", "off"]),
   review: new Set(["on", "off"]),
-  engine: new Set(["claude", "codex"]),
+  engine: new Set(["claude", "codex", "cursor"]),
   "review-engine": new Set(["codex", "claude"]),
 };
 
@@ -159,6 +160,6 @@ console.log(
     line("engine", engine),
     line("review-engine", reviewEngine),
     "",
-    "_Defaults (`verify: full`, `recap: on`, `review: on`, `engine: claude`, `review-engine: codex`) keep today's full pipeline. When `engine: codex` is set and `review-engine` is absent, review defaults to `claude`; retriggering re-reads this body._",
+    "_Defaults (`verify: full`, `recap: on`, `review: on`, `engine: claude`, `review-engine: codex`) keep today's full pipeline. `engine: cursor` runs implement only on Cursor, then Claude-backed structured phases continue. When `engine: codex` is set and `review-engine` is absent, review defaults to `claude`; retriggering re-reads this body._",
   ].join("\n")
 );

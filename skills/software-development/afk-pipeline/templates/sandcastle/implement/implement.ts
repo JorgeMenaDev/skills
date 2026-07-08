@@ -2,7 +2,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { execSync } from "node:child_process";
 import * as sandcastle from "@ai-hero/sandcastle";
-import { chooseAgent, chooseSandbox, sandboxHooks } from "../runtime";
+import { chooseImplementAgent, chooseSandbox, sandboxHooks } from "../runtime";
 
 const ISSUE_NUMBER = required("ISSUE_NUMBER");
 const ISSUE_TITLE = required("ISSUE_TITLE");
@@ -12,7 +12,7 @@ const TOKEN = process.env.CLAUDE_CODE_OAUTH_TOKEN;
 
 const result = await sandcastle.run({
   name: `implement-#${ISSUE_NUMBER}`,
-  agent: chooseAgent(TOKEN),
+  agent: chooseImplementAgent(TOKEN),
   sandbox: chooseSandbox(TOKEN),
   hooks: sandboxHooks(),
   logging: { type: "stdout" },
