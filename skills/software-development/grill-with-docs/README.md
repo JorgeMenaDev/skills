@@ -11,4 +11,5 @@ Originally vendored from [mattpocock/skills → skills/engineering/grill-with-do
 
 - **Do not** run `sync-vendored-skills` update flows against mattpocock/skills for this skill — this repo is its single source of truth now.
 - Worth an occasional glance at upstream's `grilling` and `domain-modeling` skills: improvements to those may be worth porting into this body by hand.
+  - 2026-07-08: ported the v1.1.0 `grilling` sharpening — facts (look up in codebase) vs decisions (always put to the human), the explicit don't-enact-until-confirmed stop-gate, and the one-question-at-a-time rationale.
 - Consumers install it from `JorgeMenaDev/skills` via the `skills` CLI like any other skill here.

@@ -2,7 +2,7 @@
 
 This skill is a copy of [mattpocock/skills → skills/productivity/writing-great-skills](https://github.com/mattpocock/skills/tree/main/skills/productivity/writing-great-skills), plus our own additions. Keep both intact when updating.
 
-**Last synced:** upstream commit `16a2a5cd00b4416f673f4ff38c7971a04dd708e7` (2026-07-06).
+**Last synced:** upstream commit `d574778f94cf620fcc8ce741584093bc650a61d3` (2026-07-08, v1.1.0 — verified byte-identical: upstream's Negation/Negative Space failure modes were already in our copy).
 
 ## What's Matt's vs ours
 
