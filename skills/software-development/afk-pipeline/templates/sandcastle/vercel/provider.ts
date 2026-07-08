@@ -40,6 +40,7 @@ const TEAM_ID = "{{SANDBOX_TEAM_ID}}";
 const PROJECT_ID = "{{SANDBOX_PROJECT_ID}}";
 const VCPUS = Number("{{SANDBOX_VCPUS}}") || 4;
 const MAX_TAIL_CHARS = 64 * 1024;
+const CODEX_SANDBOX_HOME = "/home/agent/.codex";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -116,6 +117,32 @@ export const vercelSandbox = (options: { env?: Record<string, string> } = {}): I
       );
       console.log(`[vercel-provider] sandbox "${name}" up (${VCPUS} vCPU, ${timeoutMinutes}m timeout)`);
       await withRetry(() => sandbox.mkDir(WORKTREE_PATH), "mkDir worktree");
+
+      const codexAuthB64 = process.env.ENGINE === "codex" ? process.env.CODEX_AUTH_B64 : undefined;
+      if (codexAuthB64) {
+        const seedAuth = await withRetry(
+          () =>
+            sandbox.runCommand({
+              cmd: "bash",
+              args: [
+                "-lc",
+                'mkdir -p "$CODEX_HOME" && printf "%s" "$CODEX_AUTH_B64" | base64 -d > "$CODEX_HOME/auth.json" && chmod 600 "$CODEX_HOME/auth.json"',
+              ],
+              env: { CODEX_AUTH_B64: codexAuthB64, CODEX_HOME: CODEX_SANDBOX_HOME },
+            }),
+          "seed Codex auth"
+        );
+        if (seedAuth.exitCode !== 0) {
+          // stderr is an async method in @vercel/sandbox 2.x; tolerate both shapes.
+          const seedErr =
+            typeof (seedAuth as any).stderr === "function"
+              ? await (seedAuth as any).stderr().catch(() => "")
+              : String((seedAuth as any).stderr ?? "");
+          throw new Error(
+            `Codex auth seed failed inside Vercel sandbox (exit ${seedAuth.exitCode}). stderr: ${seedErr || "(empty)"}`
+          );
+        }
+      }
 
       let stdinSeq = 0;
 

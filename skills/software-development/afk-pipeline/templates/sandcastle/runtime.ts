@@ -57,9 +57,9 @@ export function agentEnv(token?: string): Record<string, string> {
 
 function sandboxEnv(token?: string): Record<string, string> {
   const env: Record<string, string> = { ...passthroughEnv() };
+  if (useVercel) delete env.CODEX_AUTH_B64;
   if (ENGINE === "codex") {
     env.CODEX_HOME = CODEX_SANDBOX_HOME;
-    if (useVercel && process.env.CODEX_AUTH_B64) env.CODEX_AUTH_B64 = process.env.CODEX_AUTH_B64;
   } else {
     if (!token) throw new Error("CLAUDE_CODE_OAUTH_TOKEN is required when ENGINE=claude");
     env.CLAUDE_CODE_OAUTH_TOKEN = token;
@@ -122,7 +122,6 @@ export function sandboxHooks() {
     const bootstrap = [
       'curl -fsSL https://bun.sh/install | bash >/dev/null 2>&1 && sudo ln -sf "$HOME/.bun/bin/bun" /usr/local/bin/bun && sudo ln -sf "$HOME/.bun/bin/bunx" /usr/local/bin/bunx',
       'npm i -g @anthropic-ai/claude-code @openai/codex agent-browser --silent && sudo ln -sf "$(command -v claude)" /usr/local/bin/claude && sudo ln -sf "$(command -v codex)" /usr/local/bin/codex && sudo ln -sf "$(command -v agent-browser)" /usr/local/bin/agent-browser',
-      'if [ -n "${CODEX_AUTH_B64:-}" ]; then mkdir -p "$CODEX_HOME" && printf "%s" "$CODEX_AUTH_B64" | base64 -d > "$CODEX_HOME/auth.json" && chmod 600 "$CODEX_HOME/auth.json"; fi',
       "sudo dnf install -y -q nss nspr atk at-spi2-atk cups-libs libdrm libXcomposite libXdamage libXrandr mesa-libgbm alsa-lib pango cairo at-spi2-core libXcursor libXext libXi libXtst libxkbcommon >/dev/null 2>&1",
       "agent-browser install >/dev/null 2>&1",
       "bun install --frozen-lockfile",
