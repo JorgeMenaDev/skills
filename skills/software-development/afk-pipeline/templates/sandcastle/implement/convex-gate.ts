@@ -150,24 +150,27 @@ if (gateEnvKeys.length > 0) {
       ],
       { cwd: dirAbs, env, stdio: "ignore", detached: true }
     );
-    let up = false;
-    for (let i = 0; i < 120 && !up; i++) {
-      try {
-        const res = await fetch("http://127.0.0.1:3210/version");
-        up = res.ok;
-      } catch {}
-      if (!up) await new Promise((r) => setTimeout(r, 1000));
+    // Readiness = the env write itself succeeding against OUR deployment.
+    // Never health-poll a fixed port: choosePorts skips busy ports, so the
+    // scratch-HOME backend may come up anywhere, and a FOREIGN backend on
+    // 3210 (e.g. a dev session on the runner host) answers /version with a
+    // healthy 200 and turns the poll into a lie (live-proven: bcr #114 run
+    // 28922561767, acredix dev backend on 3210).
+    let remaining = [...pending];
+    const deadline = Date.now() + 120_000;
+    while (remaining.length > 0 && Date.now() < deadline) {
+      remaining = remaining.filter(
+        (key) => !sh(`bun x convex env set ${key} '${GATE_ENV[key]}'`, true)
+      );
+      if (remaining.length > 0) await new Promise((r) => setTimeout(r, 2000));
     }
-    if (!up) {
+    if (remaining.length > 0) {
       try {
         process.kill(-dev.pid!, "SIGTERM");
       } catch {}
       fail(
-        "Anonymous local Convex backend did not come up on 127.0.0.1:3210 within 120s while seeding gate env vars."
+        `Anonymous local Convex backend never accepted env writes for [${remaining.join(", ")}] within 120s while seeding gate env vars.`
       );
-    }
-    for (const key of pending) {
-      sh(`bun x convex env set ${key} '${GATE_ENV[key]}'`);
     }
     try {
       process.kill(-dev.pid!, "SIGTERM");
