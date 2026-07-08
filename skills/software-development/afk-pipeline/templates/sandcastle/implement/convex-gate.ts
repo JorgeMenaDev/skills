@@ -79,6 +79,22 @@ function sh(cmd: string, tolerate = false): boolean {
   }
 }
 
+// 0. Reap lingering local backends. The implement agent may have run this
+// gate's --regen helper itself and leaked a `convex-local-backend` (the
+// persistent-dev group-kill can miss the re-parented grandchild); the leaked
+// process still LISTENS on the default port, and the CLI then refuses with
+// "A local backend is still running on port 3210" — which this gate used to
+// misreport as a schema failure (nexonet #34 run 28964483293, 2026-07-08).
+// Safe on every lane: the gate runs in an isolated VM/container where any
+// local backend belongs to this run.
+try {
+  execSync("pkill -f convex-local-backend", { stdio: "ignore" });
+  execSync("sleep 2");
+  console.log("convex-gate: reaped a lingering convex-local-backend");
+} catch {
+  /* none running — the normal case */
+}
+
 // 1. Repo-specific prep (e.g. acredix's workspace symlinks). Fatal if it fails.
 if (GATE_PREP) sh(GATE_PREP);
 
