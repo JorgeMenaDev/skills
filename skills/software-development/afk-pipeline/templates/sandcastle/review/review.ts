@@ -9,15 +9,13 @@
  * unattended pipeline. The workflow additionally wraps the step in
  * `continue-on-error: true` as a second belt.
  *
- * Engine pick: `codex` by default, everywhere — the point of a second-model
- * review is a different vendor than the implement agent. NO silent fallback:
- * a claude review only runs when the brief explicitly says
- * `review-engine: claude` (passed in via REVIEW_ENGINE; autoreview runs claude
- * with --safe-mode so repo hooks/skills/MCP stay out of the review). Requested
- * engine missing from the runner host's PATH → loud skipped_no_engine note,
- * never a quiet engine swap (acredix #64 posted "engine: claude" because the
- * cloud runner lacked codex and the old fallback degraded silently,
- * 2026-07-05).
+ * Engine pick is resolved by parse-flags/workflow and passed in REVIEW_ENGINE:
+ * default Claude implementation pairs with Codex review, while `engine: codex`
+ * and absent/default `review-engine` pairs with Claude review. NO silent
+ * fallback: requested engine missing from the runner host's PATH → loud
+ * skipped_no_engine note, never a quiet engine swap (acredix #64 posted
+ * "engine: claude" because the cloud runner lacked codex and the old fallback
+ * degraded silently, 2026-07-05).
  *
  * Outputs (GITHUB_OUTPUT): outcome, engine, has_findings.
  * Files (OUTPUT_DIR): review-findings.md (raw engine output),

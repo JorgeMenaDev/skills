@@ -2,20 +2,17 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { execSync } from "node:child_process";
 import * as sandcastle from "@ai-hero/sandcastle";
-import { agentEnv, chooseSandbox, sandboxHooks } from "../runtime";
+import { chooseAgent, chooseSandbox, sandboxHooks } from "../runtime";
 
 const ISSUE_NUMBER = required("ISSUE_NUMBER");
 const ISSUE_TITLE = required("ISSUE_TITLE");
 const BRANCH = required("BRANCH");
 const OUTPUT_DIR = process.env.OUTPUT_DIR ?? "/tmp";
-const TOKEN = required("CLAUDE_CODE_OAUTH_TOKEN");
+const TOKEN = process.env.CLAUDE_CODE_OAUTH_TOKEN;
 
 const result = await sandcastle.run({
   name: `implement-#${ISSUE_NUMBER}`,
-  agent: sandcastle.claudeCode("claude-opus-4-8", {
-    effort: "high",
-    env: agentEnv(TOKEN),
-  }),
+  agent: chooseAgent(TOKEN),
   sandbox: chooseSandbox(TOKEN),
   hooks: sandboxHooks(),
   logging: { type: "stdout" },

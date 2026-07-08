@@ -219,6 +219,7 @@ if (!suppressed) {
   const tAuthor = Date.now();
   await sandcastle.run({
     name: `recap-#${ISSUE_NUMBER}-pr-${PR_NUMBER}`,
+    // Recap is cloud-only and Claude-tuned; ENGINE overrides do not apply here.
     agent: sandcastle.claudeCode("claude-opus-4-8", {
       effort: "medium",
       env: agentEnv(TOKEN),

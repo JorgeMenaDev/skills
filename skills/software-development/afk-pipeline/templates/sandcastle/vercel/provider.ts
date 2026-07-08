@@ -7,7 +7,7 @@
  * supply our own create/handle because the stock one (as of 0.12.0) has three
  * gaps that bit our validating runs or would:
  *
- * 1. `exec` ignores `stdin` — claudeCode delivers the agent PROMPT via stdin,
+ * 1. `exec` ignores `stdin` — agent providers deliver the PROMPT via stdin,
  *    so the stock provider runs every agent with an empty prompt. We redirect
  *    stdin from a file written into the sandbox.
  * 2. No transport hardening — Bun's fetch on GH runners threw
@@ -138,7 +138,7 @@ export const vercelSandbox = (options: { env?: Record<string, string> } = {}): I
           command: string,
           opts?: { onLine?: (line: string) => void; cwd?: string; sudo?: boolean; stdin?: string }
         ): Promise<ExecResult> => {
-          // stdin contract: claudeCode ships the agent prompt this way (avoids
+          // stdin contract: agent providers ship the prompt this way (avoids
           // the 128KB argv limit). Write it into the sandbox and redirect.
           let fullCommand = command;
           let stdinPath: string | null = null;

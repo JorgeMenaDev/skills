@@ -59,8 +59,8 @@ RUN curl -fsSL https://bun.sh/install | bash \
   && cp /root/.bun/bin/bunx /usr/local/bin/bunx \
   && chmod +x /usr/local/bin/bun /usr/local/bin/bunx
 
-# agent-browser CLI (native binary fetched by npm postinstall)
-RUN npm install -g agent-browser
+# agent-browser + Codex CLIs (native binaries fetched by npm postinstall)
+RUN npm install -g agent-browser @openai/codex
 
 RUN groupmod -n agent node \
   && usermod -d /home/agent -m -l agent -g agent node \

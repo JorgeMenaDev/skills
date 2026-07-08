@@ -16,15 +16,17 @@
  *   verify: full|slim|off — optional reason
  *   recap:  on|off        — optional reason
  *   review: on|off        — optional reason
+ *   engine: claude|codex  — optional reason
  *   review-engine: codex|claude — optional reason
  *
  * FAIL-SAFE: an absent section, an unknown key, or an unparseable value ⇒ that
  * flag falls back to its default (`verify: full`, `recap: on`, `review: on`,
- * `review-engine: codex`). Parsing may only
+ * `engine: claude`, `review-engine: codex`). Parsing may only
  * reduce work below the default when the body explicitly and legibly says so.
- * `review-engine` is codex by default everywhere (the reviewer must be a
- * different vendor than the implementer); claude only on an explicit, legible
- * override in the brief.
+ * `review-engine` defaults to codex unless `engine: codex` is set and
+ * `review-engine` itself was not set; then it resolves to claude to keep the
+ * implement/review engines cross-vendor. Explicit old briefs carry their
+ * `review-engine: codex` contract forward.
  *
  * Lives in the `.sandcastle` layer (not inline YAML) so it travels with the
  * pipeline to other repos. Uses only Node/Bun builtins — no `bun install`
@@ -48,6 +50,7 @@ const DEFAULTS = {
   verify: { value: "full", reason: "", status: "default" as Status, raw: "" },
   recap: { value: "on", reason: "", status: "default" as Status, raw: "" },
   review: { value: "on", reason: "", status: "default" as Status, raw: "" },
+  engine: { value: "claude", reason: "", status: "default" as Status, raw: "" },
   "review-engine": {
     value: "codex",
     reason: "",
@@ -60,6 +63,7 @@ const ALLOWED = {
   verify: new Set(["full", "slim", "off"]),
   recap: new Set(["on", "off"]),
   review: new Set(["on", "off"]),
+  engine: new Set(["claude", "codex"]),
   "review-engine": new Set(["codex", "claude"]),
 };
 
@@ -101,7 +105,12 @@ const section = pipelineSection(body);
 const verify = parseFlag("verify", section);
 const recap = parseFlag("recap", section);
 const review = parseFlag("review", section);
-const reviewEngine = parseFlag("review-engine", section);
+const engine = parseFlag("engine", section);
+const parsedReviewEngine = parseFlag("review-engine", section);
+const reviewEngine =
+  engine.value === "codex" && parsedReviewEngine.status === "default"
+    ? { ...parsedReviewEngine, value: "claude", reason: "defaulted to claude because engine is codex" }
+    : parsedReviewEngine;
 
 // --- machine outputs -------------------------------------------------------
 if (process.env.GITHUB_OUTPUT) {
@@ -115,6 +124,9 @@ if (process.env.GITHUB_OUTPUT) {
     `review=${review.value}`,
     `review_status=${review.status}`,
     `review_reason=${review.reason}`,
+    `engine=${engine.value}`,
+    `engine_status=${engine.status}`,
+    `engine_reason=${engine.reason}`,
     `review_engine=${reviewEngine.value}`,
     `review_engine_status=${reviewEngine.status}`,
     `review_engine_reason=${reviewEngine.reason}`,
@@ -125,7 +137,10 @@ if (process.env.GITHUB_OUTPUT) {
 // --- human echo (stdout) ---------------------------------------------------
 function line(key: string, flag: Flag): string {
   let note: string;
-  if (flag.status === "default") note = "_(default — no override in the brief)_";
+  if (flag.status === "default")
+    note = flag.reason
+      ? `_(default — ${flag.reason})_`
+      : "_(default — no override in the brief)_";
   else if (flag.status === "fallback")
     note = `_(fallback — couldn't parse \`${key}: ${flag.raw}\`, using the default)_`;
   else note = flag.reason ? `— ${flag.reason}` : "_(set)_";
@@ -141,8 +156,9 @@ console.log(
     line("verify", verify),
     line("recap", recap),
     line("review", review),
+    line("engine", engine),
     line("review-engine", reviewEngine),
     "",
-    "_Defaults (`verify: full`, `recap: on`, `review: on`, `review-engine: codex`) keep today's full pipeline; retriggering re-reads this body._",
+    "_Defaults (`verify: full`, `recap: on`, `review: on`, `engine: claude`, `review-engine: codex`) keep today's full pipeline. When `engine: codex` is set and `review-engine` is absent, review defaults to `claude`; retriggering re-reads this body._",
   ].join("\n")
 );

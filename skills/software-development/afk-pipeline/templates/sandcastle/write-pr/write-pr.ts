@@ -2,14 +2,14 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { z } from "zod";
 import * as sandcastle from "@ai-hero/sandcastle";
-import { agentEnv, chooseSandbox, sandboxHooks } from "../runtime";
+import { chooseAgent, chooseSandbox, sandboxHooks } from "../runtime";
 import { runWithRetry } from "../run-with-retry";
 
 const ISSUE_NUMBER = required("ISSUE_NUMBER");
 const ISSUE_TITLE = required("ISSUE_TITLE");
 const BRANCH = required("BRANCH");
 const OUTPUT_DIR = process.env.OUTPUT_DIR ?? "/tmp";
-const TOKEN = required("CLAUDE_CODE_OAUTH_TOKEN");
+const TOKEN = process.env.CLAUDE_CODE_OAUTH_TOKEN;
 // Verify Profile (issue #20). `off` means the verify phase was skipped by design
 // — there is no QA Evidence, so the PR description must say so instead of
 // pointing at screenshots. Defaults to `full` for any brief that says nothing.
@@ -23,9 +23,7 @@ const PromptOutput = z.object({
 
 const result = await runWithRetry({
   name: `write-pr-#${ISSUE_NUMBER}`,
-  agent: sandcastle.claudeCode("claude-opus-4-8", {
-    env: agentEnv(TOKEN),
-  }),
+  agent: chooseAgent(TOKEN, {}),
   sandbox: chooseSandbox(TOKEN),
   hooks: sandboxHooks(),
   logging: { type: "stdout" },
