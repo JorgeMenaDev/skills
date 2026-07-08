@@ -25,6 +25,8 @@ review-engine: codex|claude — <only when overriding the codex default; omit ot
 
 Acceptance criteria are the verify phase's script — write each one as something an agent can check and screenshot, not an intention. If a criterion can't be checked without human judgment, it belongs in Notes, not criteria.
 
+**The executor sees only the repo's git snapshot.** All three lanes run from a fresh clone: gitignored paths (operator reports/evidence, local env files, `.agents/operator/`), other repos, and the requester's machine state do not exist there. Never write a constraint or STOP clause that keys on such a file — the executor will hit the STOP every time and the run is lost (an acredix run burned on a gate reading an operator report that lives outside the snapshot, 2026-07-08). Resolve external gates yourself before labeling and state the resolved fact in the brief ("pre-condition CONFIRMED <date> by requester: <evidence summary>"); the brief carries conclusions about the outside world, never pointers into it.
+
 ## Pipeline Flags parse contract
 
 Each repo's workflow implements this parser; the skill only authors the section.
