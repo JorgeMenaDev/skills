@@ -199,10 +199,11 @@ jobs:
           node "$(npm root -g)/@anthropic-ai/claude-code/install.cjs"
           claude --version
 
-      - name: Install Codex CLI + materialize auth (hosted codex lanes)
-        if: steps.preflight.outputs.refused != 'true' && steps.flags.outputs.engine == 'codex' && env.SANDCASTLE_SANDBOX != 'docker'
+      - name: Install Codex CLI + materialize auth (hosted lanes needing Codex)
+        if: steps.preflight.outputs.refused != 'true' && (steps.flags.outputs.engine == 'codex' || steps.flags.outputs.review_engine == 'codex') && env.SANDCASTLE_SANDBOX != 'docker'
         env:
           CODEX_AUTH_B64: ${{ github.event.label.name != 'agent:implement-local' && secrets.CODEX_AUTH_B64 || '' }}
+          ENGINE: ${{ steps.flags.outputs.engine }}
         run: |
           set -euo pipefail
           fail() {
@@ -210,12 +211,17 @@ jobs:
             echo "$1" >&2
             exit 1
           }
-          [ -n "$CODEX_AUTH_B64" ] || fail "Codex setup failed: CODEX_AUTH_B64 repo secret is missing for this hosted codex lane."
           npm i -g @openai/codex
-          mkdir -p "${RUNNER_TEMP}/codex-home"
-          printf "%s" "$CODEX_AUTH_B64" | base64 -d > "${RUNNER_TEMP}/codex-home/auth.json" \
-            || fail "Codex setup failed: CODEX_AUTH_B64 is not valid base64."
-          chmod 600 "${RUNNER_TEMP}/codex-home/auth.json"
+          if [ -n "$CODEX_AUTH_B64" ]; then
+            mkdir -p "${RUNNER_TEMP}/codex-home"
+            printf "%s" "$CODEX_AUTH_B64" | base64 -d > "${RUNNER_TEMP}/codex-home/auth.json" \
+              || fail "Codex setup failed: CODEX_AUTH_B64 is not valid base64."
+            chmod 600 "${RUNNER_TEMP}/codex-home/auth.json"
+          elif [ "$ENGINE" = "codex" ]; then
+            fail "Codex setup failed: CODEX_AUTH_B64 repo secret is missing for this hosted codex lane."
+          else
+            echo "CODEX_AUTH_B64 missing; hosted Codex review will skip advisory review instead of failing the run." >&2
+          fi
 
       - name: Install Cursor CLI (cloud cursor lane)
         if: steps.preflight.outputs.refused != 'true' && steps.flags.outputs.engine == 'cursor'

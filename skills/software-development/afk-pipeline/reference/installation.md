@@ -82,7 +82,8 @@ this (three drifting copies: andesphere, superaseo, andyChat) is `JorgeMenaDev/s
    skill in the consumer: `npx skills add openclaw/agent-skills` (pick
    `autoreview`). The review step self-skips with an issue note when the skill
    or a review engine (`codex`, else `claude`) is missing on the runner host —
-   advisory by construction, it can never fail a run. For the local lane,
+   advisory by construction, it can never fail a run. Hosted lanes use
+   `CODEX_AUTH_B64` when `review-engine: codex`; for the local lane,
    install/auth the codex CLI on the runner host once for the best engine.
 9. Commit everything (config + generated files). Pipeline changes can't self-prove —
    the workflow executes from the default branch, so the first validating run is the

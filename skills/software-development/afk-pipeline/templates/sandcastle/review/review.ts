@@ -29,6 +29,8 @@ import { execSync, spawnSync } from "node:child_process";
 const OUTPUT_DIR = process.env.OUTPUT_DIR ?? "/tmp";
 const BASE_BRANCH = "{{BASE_BRANCH}}";
 const SKILL_BIN = ".agents/skills/autoreview/scripts/autoreview";
+const SANDCASTLE_SANDBOX = process.env.SANDCASTLE_SANDBOX ?? "none";
+const CODEX_CLOUD_HOME = path.join(process.env.RUNNER_TEMP ?? OUTPUT_DIR, "codex-home");
 
 function out(kv: Record<string, string>) {
   if (!process.env.GITHUB_OUTPUT) return;
@@ -74,6 +76,16 @@ if (!onPath(engine)) {
   );
   finish("skipped_no_engine", "none", false);
 }
+const childEnv = { ...process.env };
+if (engine === "codex" && SANDCASTLE_SANDBOX !== "docker") {
+  childEnv.CODEX_HOME = CODEX_CLOUD_HOME;
+  if (!fs.existsSync(path.join(CODEX_CLOUD_HOME, "auth.json"))) {
+    summary(
+      "### 🔍 Second-model review\n\n**Skipped: hosted Codex auth was not materialized, so no review ran.** Set `CODEX_AUTH_B64` for hosted lanes or explicitly use `review-engine: claude`; advisory review outages never fail the pipeline."
+    );
+    finish("skipped_missing_auth", "codex", false);
+  }
+}
 
 // --- run the review ----------------------------------------------------------
 // Ensure the base ref exists for the diff (single-branch checkouts miss it).
@@ -99,7 +111,7 @@ const run = spawnSync(
     "--json-output",
     reportPath,
   ],
-  { encoding: "utf8", timeout: 15 * 60 * 1000 }
+  { encoding: "utf8", timeout: 15 * 60 * 1000, env: childEnv }
 );
 
 const raw = `${run.stdout ?? ""}\n${run.stderr ?? ""}`.trim();
