@@ -1,7 +1,7 @@
 ---
 name: counsel
 description: Convene a two-vendor counsel — flagship reviewers from different vendors at high effort — to adversarially review an important architecture/design decision or proposal before committing. Use when the user says "counsel", wants a second opinion on a plan, or a hard-to-reverse decision deserves cross-vendor review.
-version: 1.0.0
+version: 1.1.0
 ---
 
 # Counsel (portable protocol)
@@ -12,6 +12,7 @@ Runtime launch mechanics live in adapters — not here:
 
 - Claude Code: consumer-local `.claude/skills/counsel/SKILL.md`
 - Codex / GPT chair notes: `references/codex-chair.md`
+- GitHub Copilot CLI: `references/github-copilot-chair.md`
 
 ## Naming (do not overclaim)
 
@@ -23,7 +24,7 @@ Runtime launch mechanics live in adapters — not here:
 
 ## Contract
 
-- Two seats, two vendors, every round. An engine down ⇒ degrade loudly: a one-seat run is a *second opinion*, not a counsel — name that in the record.
+- Two seats, two vendors, every round. An engine down ⇒ degrade loudly: a one-seat run is a *second opinion*, not a counsel — name that in the record. Each seat's vendor must be established by evidence the chair can verify (runtime metadata, launch surface), **not** by the seat self-reporting its own model — where one tool launches both seats and only a model string differs, self-report can silently echo a substituted default and fake the second vendor.
 - The proposal is a **file**, and it names the source paths reviewers verify claims against — reviewers judge evidence, not prose.
 - Every finding gets a **disposition**: accepted → visible revision in the next draft; rejected → one-line justification in the record. A finding about a *fact* (proposal contradicts a file) is settled by the chair re-reading the file, never by preference.
 - Seats read; only the chair writes the proposal.
