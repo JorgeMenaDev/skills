@@ -95,10 +95,21 @@ All skills below are **model-invoked** — the agent can reach for them when the
 
 ### Software Development
 
-- **[cursor-subagent](./skills/software-development/cursor-subagent/SKILL.md)** — Spawn Cursor Agent CLI as an external sidecar subagent for bounded read-only exploration or isolated Cursor/Grok implementation passes.
+- **[cursor-subagent](./skills/software-development/cursor-subagent/SKILL.md)** — Cursor sidecar delegation for explicit Cursor/Grok exploration, review, or isolated implementation.
 - **[work-tracking](./skills/software-development/work-tracking/SKILL.md)** — Decide where multi-step work should live: repo markdown, GitHub Issues, Linear, memory, or a mix. When to promote tasks to issues and how future agents find current state.
 
 ### DevOps
 
 - **[shiploop](./skills/devops/shiploop/SKILL.md)** — Turn a plan, fix, or feature into an unattended shipping run: GitHub issue ledger, dependency-gated phases, gated PRs, review evidence, optional worker adapters.
 - ~~**fixloop**~~ — deprecated 2026-07-05 ([history](./deprecated/fixloop/SKILL.md)): incident debugging now = Sentry evidence + `STACK.md` handles (Matias profile) + the `diagnosing-bugs` skill (github.com/mattpocock/skills) + per-repo `AGENTS.md` debugging notes.
+
+## Maintainer Notes
+
+`cursor-subagent` source lives in `skills/software-development/cursor-subagent/`. Update it there first, bump `version:` in `SKILL.md`, commit and push `JorgeMenaDev/skills`, then update consumers such as Matias with:
+
+```bash
+cd ~/.hermes/profiles/matias
+npx skills@latest update cursor-subagent -p -y
+```
+
+Public page: https://www.skills.sh/jorgemenadev/skills/cursor-subagent

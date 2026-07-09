@@ -14,8 +14,8 @@
     },
     {
       "title": "Software Development",
-      "description": "Skills for planning, tracking, and shipping multi-step work across repos.",
-      "skills": ["work-tracking"]
+      "description": "Skills for sidecar delegation, planning, tracking, and shipping multi-step work across repos.",
+      "skills": ["cursor-subagent", "work-tracking"]
     },
     {
       "title": "DevOps",

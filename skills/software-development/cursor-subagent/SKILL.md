@@ -1,6 +1,8 @@
 ---
 name: cursor-subagent
 description: "Cursor sidecar delegation. Use when explicitly asked to spawn Cursor/Grok for exploration, review, or isolated implementation."
+version: 1.0.0
+license: MIT
 metadata:
   mutating: true
   writes_to: ["target workspace when run with --mode agent"]
