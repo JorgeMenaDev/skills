@@ -30,6 +30,14 @@ Use it when a task needs real clicks or credentials the agent doesn't hold: desk
 npx skills@latest add JorgeMenaDev/skills --skill operator-handoff
 ```
 
+### `counsel`
+
+A two-vendor adversarial review protocol for hard-to-reverse architecture or design decisions. Two flagship reviewers from different vendors attack a file-backed proposal in parallel; the chair synthesizes, revises, and re-convenes for up to three rounds. A one-vendor run is a *second opinion*, not counsel. Runtime launch adapters stay consumer-local (e.g. Claude Code `.claude/skills/counsel/`).
+
+```bash
+npx skills@latest add JorgeMenaDev/skills --skill counsel
+```
+
 ## Why These Skills Exist
 
 I built these skills to fix failure modes I keep seeing in AI growth and agent-ops work.

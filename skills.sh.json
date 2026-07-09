@@ -10,7 +10,7 @@
     {
       "title": "Agent Operations",
       "description": "Skills for coordinating agents and humans: handoffs, evidence trails, and delegated execution.",
-      "skills": ["operator-handoff"]
+      "skills": ["operator-handoff", "counsel"]
     },
     {
       "title": "Software Development",
