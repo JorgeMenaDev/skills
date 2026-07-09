@@ -1,0 +1,4 @@
+interface:
+  display_name: "Cursor Subagent"
+  short_description: "Spawn Cursor CLI sidecar agents"
+  default_prompt: "Use $cursor-subagent to run a Cursor/Grok sidecar pass on this task."
