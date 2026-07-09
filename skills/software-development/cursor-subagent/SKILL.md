@@ -1,6 +1,6 @@
 ---
 name: cursor-subagent
-description: "Cursor sidecar delegation. Use when the user explicitly asks to spawn a Cursor subagent, run a Grok 4.5 pass, delegate exploration/review to Cursor Agent CLI, or use Cursor/Grok for an isolated implementation."
+description: "Cursor sidecar delegation. Use when explicitly asked to spawn Cursor/Grok for exploration, review, or isolated implementation."
 metadata:
   mutating: true
   writes_to: ["target workspace when run with --mode agent"]
