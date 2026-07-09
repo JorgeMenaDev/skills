@@ -193,7 +193,11 @@ jobs:
 
       - name: Install Claude Code (hosted lanes needing host Claude)
         if: steps.preflight.outputs.refused != 'true' && env.SANDCASTLE_SANDBOX != 'docker' && (env.SANDCASTLE_SANDBOX == 'none' || steps.flags.outputs.review_engine == 'claude')
-        run: npm install -g @anthropic-ai/claude-code
+        run: |
+          set -euo pipefail
+          npm install -g --include=optional @anthropic-ai/claude-code
+          node "$(npm root -g)/@anthropic-ai/claude-code/install.cjs"
+          claude --version
 
       - name: Install Codex CLI + materialize auth (hosted codex lanes)
         if: steps.preflight.outputs.refused != 'true' && steps.flags.outputs.engine == 'codex' && env.SANDCASTLE_SANDBOX != 'docker'
@@ -629,7 +633,11 @@ jobs:
           node-version: "22"
 
       - name: Install Claude Code (recap agent run uses noSandbox)
-        run: npm install -g @anthropic-ai/claude-code
+        run: |
+          set -euo pipefail
+          npm install -g --include=optional @anthropic-ai/claude-code
+          node "$(npm root -g)/@anthropic-ai/claude-code/install.cjs"
+          claude --version
 
       - name: Cache Playwright browser (recap screenshots)
         # Keyed on the pinned recap CLI version so a bump re-downloads Chromium;
