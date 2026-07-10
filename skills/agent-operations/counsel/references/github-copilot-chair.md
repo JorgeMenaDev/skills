@@ -12,7 +12,7 @@ Copilot CLI exposes a `task` tool that launches sub-agents in separate context
 windows:
 
 - `agent_type: general-purpose` — full toolset (reads sources, writes files).
-- `model` override — reaches an OpenAI flagship (e.g. `gpt-5.5`) and an
+- `model` override — reaches an OpenAI flagship (e.g. `gpt-5.6-luna`) and an
   Anthropic flagship (e.g. `claude-opus-4.8`): two genuine vendors.
 - `reasoning_effort` override — `high` / `xhigh`.
 - `mode: background` — runs concurrently; the chair is notified on completion
@@ -36,7 +36,7 @@ One `task` call per seat, in the **same assistant turn** (parallel, blind):
 
 | Seat | `model` (default today) | `reasoning_effort` |
 |---|---|---|
-| openai | `gpt-5.5` | `high` (`xhigh` for an especially hard call) |
+| openai | `gpt-5.6-luna` | `high` (`xhigh` for an especially hard call) |
 | anthropic | `claude-opus-4.8` | `high` (`xhigh` for an especially hard call) |
 
 `agent_type: general-purpose`, `mode: background`. The model **strings are

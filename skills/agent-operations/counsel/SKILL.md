@@ -36,7 +36,7 @@ Edit this table when flagships change. Adapters map these seats onto concrete la
 
 | Seat | Vendor family | Role |
 |---|---|---|
-| openai | OpenAI flagship (e.g. gpt-5.5, high/xhigh effort) | Adversarial reviewer |
+| openai | OpenAI flagship (e.g. gpt-5.6-luna, high/xhigh effort) | Adversarial reviewer |
 | anthropic | Anthropic flagship (e.g. opus, high/xhigh effort) | Adversarial reviewer |
 
 ## The loop

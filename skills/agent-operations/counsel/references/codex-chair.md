@@ -2,7 +2,7 @@
 
 Read the portable protocol first: `../SKILL.md`.
 
-This note is for when **Codex / GPT-5.5** chairs (or sits) a counsel-style review.
+This note is for when **Codex / GPT-5.6-Luna** chairs (or sits) a counsel-style review.
 
 ## Capability check
 
@@ -14,7 +14,7 @@ Before calling the run a **counsel**:
 
 ## OpenAI seat defaults
 
-- Prefer `gpt-5.5` with high or xhigh reasoning effort.
+- Prefer `gpt-5.6-luna` with high or xhigh reasoning effort.
 - Write the report to `{DIR}/review-openai-r{ROUND}.md` (or `review-codex-r{ROUND}.md` if that naming is already in use — be consistent within one counsel dir).
 - Prefer background/deliverable-first patterns when available so the report file is the completion signal.
 

@@ -96,7 +96,7 @@ function claudeAgent(token?: string, claudeOptions: { effort?: "medium" | "high"
 
 export function chooseAgent(token?: string, claudeOptions: { effort?: "medium" | "high" } = { effort: "high" }) {
   if (ENGINE === "codex") {
-    return sandcastle.codex("gpt-5.5", {
+    return sandcastle.codex("gpt-5.6-luna", {
       effort: "high",
       env: agentEnv(token),
       sessionStorage: {
