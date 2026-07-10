@@ -286,7 +286,7 @@ export const vercelSandbox = (options: { env?: Record<string, string> } = {}): I
           let recordingError: unknown;
           if (process.env.RECORDING_MODE === "on") {
             const issue = process.env.ISSUE_NUMBER ?? "unknown";
-            const sandboxPath = `${WORKTREE_PATH}/.sandcastle-artifacts/issue-${issue}/interaction.webm`;
+            const sandboxPath = `${WORKTREE_PATH}/.sandcastle/.sandcastle-artifacts/issue-${issue}/interaction.webm`;
             const hostPath = join(process.env.OUTPUT_DIR ?? tmpdir(), "recording", `issue-${issue}.webm`);
             try {
               const buffer = await withRetry(

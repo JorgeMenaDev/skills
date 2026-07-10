@@ -1,7 +1,7 @@
 ---
 name: afk-pipeline
 description: Run a dev task as an AFK Task — grill the request, choose Pipeline Flags, write an Agent Brief, and trigger the label-driven pipeline that ends in a draft PR. Use when the user asks for a code change, feature, or fix in a repo listed in the AFK registry, asks which phases a task needs, or wants the pipeline installed in a new repo.
-version: 2.10.0
+version: 2.10.1
 mutating: true
 writes_to: [.agents/afk-pipeline/]
 ---

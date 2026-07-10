@@ -21,7 +21,7 @@ const VERIFY_LOCALES = process.env.VERIFY_LOCALES ?? "all";
 const RECORDING_MODE = process.env.RECORDING_MODE ?? "off";
 const RECORDING_HOST_PATH = path.join(OUTPUT_DIR, "recording", `issue-${ISSUE_NUMBER}.webm`);
 const RECORDING_PATH = process.env.SANDCASTLE_SANDBOX === "vercel"
-  ? `.sandcastle-artifacts/issue-${ISSUE_NUMBER}/interaction.webm`
+  ? `.sandcastle/.sandcastle-artifacts/issue-${ISSUE_NUMBER}/interaction.webm`
   : RECORDING_HOST_PATH;
 
 const Verdict = z.object({
