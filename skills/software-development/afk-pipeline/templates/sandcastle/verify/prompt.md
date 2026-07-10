@@ -31,12 +31,13 @@ listed above — no more, no fewer.
 - **Output path:** `{{RECORDING_PATH}}`
 
 If recording is `on`, create the output directory and remove any stale file.
-`agent-browser record start` creates a fresh recording context: start recording
-first, then set the browser to `1440x900`, open the target URL, navigate/scroll
-the feature visibly into the viewport, and perform the acceptance-criterion
-interactions. Never prepare the page before `record start` and assume that state
-survives. If recording must be restarted, repeat the entire visible navigation
-and interaction flow after the final restart. Before stopping, confirm with an
+`agent-browser record start` creates a fresh recording context: first run
+`agent-browser record start {{RECORDING_PATH}}`, then set the browser to
+`1440x900`, open the target URL, navigate/scroll the feature visibly into the
+viewport, and perform the acceptance-criterion interactions. Never prepare the
+page before `record start` and assume that state survives. If recording must be
+restarted, repeat the entire visible navigation and interaction flow after the
+final restart, using the required output path again. Before stopping, confirm with an
 `agent-browser screenshot` that the feature under test is still visibly in the
 recorded viewport; a video of an idle or off-screen page is a failed criterion
 even if DOM assertions passed. Keep one continuous recording through the
