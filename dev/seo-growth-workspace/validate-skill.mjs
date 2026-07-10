@@ -25,6 +25,11 @@ import { fileURLToPath } from "node:url";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const fixturesDir = path.join(scriptDir, "fixtures");
+const validationTmp = mkdtempSync(path.join(tmpdir(), "seo-validator-run-"));
+
+function fixtureTmp(prefix) {
+  return mkdtempSync(path.join(validationTmp, prefix));
+}
 
 function argValue(name) {
   const index = process.argv.indexOf(name);
@@ -217,7 +222,7 @@ section("version consistency", () => {
 
 // --- bootstrap-seo-workspace.mjs ---
 section("bootstrap smoke test", () => {
-  const bootstrapRoot = mkdtempSync(path.join(tmpdir(), "seo-skill-"));
+  const bootstrapRoot = fixtureTmp("seo-skill-");
   try {
     plannedBootstrap(bootstrapRoot, { domain: "standalone.example" });
     for (const file of [
@@ -261,7 +266,7 @@ section("bootstrap smoke test", () => {
 
 // --- bootstrap-seo-workspace.mjs: hub mode ---
 section("hub bootstrap", () => {
-  const hubRoot = mkdtempSync(path.join(tmpdir(), "seo-hub-"));
+  const hubRoot = fixtureTmp("seo-hub-");
   try {
     // --site without a hub must fail before creating anything.
     const orphanSite = spawnSync(
@@ -339,7 +344,7 @@ section("hub bootstrap", () => {
 
 // --- bootstrap-seo-workspace.mjs: legacy-adoption guard ---
 section("legacy adoption guard", () => {
-  const legacyRoot = mkdtempSync(path.join(tmpdir(), "seo-legacy-guard-"));
+  const legacyRoot = fixtureTmp("seo-legacy-guard-");
   try {
     // A .seo/ holding only one random file is NOT a legacy workspace: abort, never adopt.
     mkdirSync(path.join(legacyRoot, ".seo"), { recursive: true });
@@ -392,8 +397,8 @@ section("sentinel idempotence", () => {
   const sentinel = "SENTINEL: operator content — bootstrap must never touch this.\n";
   const bootstrap = path.join(skillRoot, "scripts/bootstrap-seo-workspace.mjs");
 
-  const standaloneRoot = mkdtempSync(path.join(tmpdir(), "seo-sentinel-standalone-"));
-  const hubRoot = mkdtempSync(path.join(tmpdir(), "seo-sentinel-hub-"));
+  const standaloneRoot = fixtureTmp("seo-sentinel-standalone-");
+  const hubRoot = fixtureTmp("seo-sentinel-hub-");
   try {
     plannedBootstrap(standaloneRoot, { domain: "sentinel.example" });
     writeFileSync(path.join(standaloneRoot, ".seo/backlog.md"), sentinel);
@@ -432,7 +437,7 @@ section("sentinel idempotence", () => {
 
 // --- seo-doctor.mjs: read-only preflight scenarios ---
 section("doctor clean root", () => {
-  const container = mkdtempSync(path.join(tmpdir(), "seo-doctor-clean-"));
+  const container = fixtureTmp("seo-doctor-clean-");
   try {
     const target = path.join(container, "site-repo");
     plannedBootstrap(target, { domain: "example.com" });
@@ -455,7 +460,7 @@ section("doctor clean root", () => {
 });
 
 section("doctor decoy workspace", () => {
-  const container = mkdtempSync(path.join(tmpdir(), "seo-doctor-decoy-"));
+  const container = fixtureTmp("seo-doctor-decoy-");
   try {
     const target = path.join(container, "site-repo");
     const hub = path.join(container, "hub");
@@ -509,7 +514,7 @@ section("doctor decoy workspace", () => {
 });
 
 section("doctor dangling symlink", () => {
-  const container = mkdtempSync(path.join(tmpdir(), "seo-doctor-symlink-"));
+  const container = fixtureTmp("seo-doctor-symlink-");
   try {
     const target = path.join(container, "site-repo");
     plannedBootstrap(target, { domain: "example.com" });
@@ -538,7 +543,7 @@ section("doctor dangling symlink", () => {
 });
 
 section("doctor unregistered hub site", () => {
-  const container = mkdtempSync(path.join(tmpdir(), "seo-doctor-unregistered-"));
+  const container = fixtureTmp("seo-doctor-unregistered-");
   try {
     const hub = path.join(container, "hub");
     plannedBootstrap(hub, { domain: "orphan.example", hub: true, site: "orphan-site" });
@@ -564,11 +569,11 @@ section("doctor unregistered hub site", () => {
 });
 
 section("doctor plan and bootstrap action contract", () => {
-  const root = mkdtempSync(path.join(tmpdir(), "seo-plan-contract-"));
-  const mismatchRoot = mkdtempSync(path.join(tmpdir(), "seo-plan-mismatch-"));
-  const expiryRoot = mkdtempSync(path.join(tmpdir(), "seo-plan-expiry-"));
-  const migrationRoot = mkdtempSync(path.join(tmpdir(), "seo-plan-migrate-"));
-  const changedRoot = mkdtempSync(path.join(tmpdir(), "seo-plan-changed-"));
+  const root = fixtureTmp("seo-plan-contract-");
+  const mismatchRoot = fixtureTmp("seo-plan-mismatch-");
+  const expiryRoot = fixtureTmp("seo-plan-expiry-");
+  const migrationRoot = fixtureTmp("seo-plan-migrate-");
+  const changedRoot = fixtureTmp("seo-plan-changed-");
   try {
     const beforeDoctor = treeDigest(root);
     const planned = makePlan(root, { domain: "plan.example", decision: "create" });
@@ -581,9 +586,13 @@ section("doctor plan and bootstrap action contract", () => {
     const copied = spawnSync(process.execPath, [path.join(skillRoot, "scripts/bootstrap-seo-workspace.mjs"), "--plan", copiedPlan, "--action", "verify", "--domain", "plan.example", root], { encoding: "utf-8" });
     check(copied.status !== 0 && (copied.stderr ?? "").includes("output-path mismatch"), "Copying a valid plan to another path must not enable replay");
 
+    const unrelatedRoot = fixtureTmp("seo-plan-unrelated-");
+    mkdirSync(path.join(unrelatedRoot, ".seo"));
+    writeFileSync(path.join(unrelatedRoot, ".seo/config.json"), '{"mode":"standalone","workspaceSchemaVersion":1}\n');
     const beforeVerify = treeDigest(root);
     const verify = run(process.execPath, [path.join(skillRoot, "scripts/bootstrap-seo-workspace.mjs"), "--plan", planned.planPath, "--action", "verify", "--domain", "plan.example", root]);
-    check(verify.includes("zero writes") && treeDigest(root) === beforeVerify && existsSync(planned.planPath), "Verify must perform zero writes and leave the plan available for its reviewed mutation");
+    check(verify.includes("zero writes") && treeDigest(root) === beforeVerify && existsSync(planned.planPath), "Verify must ignore unrelated sibling workspace churn, perform zero writes, and leave the plan available for its reviewed mutation");
+    rmSync(unrelatedRoot, { recursive: true, force: true });
 
     run(process.execPath, [path.join(skillRoot, "scripts/bootstrap-seo-workspace.mjs"), "--plan", planned.planPath, "--action", "create", "--domain", "plan.example", root]);
     check(existsSync(path.join(root, ".seo/config.json")) && !existsSync(planned.planPath), "Create must scaffold once and atomically consume its plan");
@@ -632,9 +641,9 @@ section("doctor plan and bootstrap action contract", () => {
 });
 
 section("doctor schema and filesystem safety", () => {
-  const schemaRoot = mkdtempSync(path.join(tmpdir(), "seo-schema-ahead-"));
-  const symlinkRoot = mkdtempSync(path.join(tmpdir(), "seo-symlink-escape-"));
-  const outside = mkdtempSync(path.join(tmpdir(), "seo-symlink-outside-"));
+  const schemaRoot = fixtureTmp("seo-schema-ahead-");
+  const symlinkRoot = fixtureTmp("seo-symlink-escape-");
+  const outside = fixtureTmp("seo-symlink-outside-");
   try {
     plannedBootstrap(schemaRoot, { domain: "schema.example" });
     const configPath = path.join(schemaRoot, ".seo/config.json");
@@ -658,7 +667,7 @@ section("doctor schema and filesystem safety", () => {
 });
 
 section("site ID grammar and exact legacy grandfathering", () => {
-  const root = mkdtempSync(path.join(tmpdir(), "seo-site-id-"));
+  const root = fixtureTmp("seo-site-id-");
   try {
     plannedBootstrap(root, { domain: "valid.example", hub: true, site: "valid-site" });
     appendFileSync(path.join(root, ".seo/registry.md"), "| valid.example | sites/valid-site | unknown | unknown | unknown | unknown | fixture |\n");
@@ -684,7 +693,7 @@ section("site ID grammar and exact legacy grandfathering", () => {
 });
 
 section("doctor registry, permission, lock, and non-disclosure findings", () => {
-  const container = mkdtempSync(path.join(tmpdir(), "seo-doctor-integrity-"));
+  const container = fixtureTmp("seo-doctor-integrity-");
   try {
     const hub = path.join(container, "hub");
     const credential = path.join(container, "credential.env");
@@ -713,7 +722,7 @@ section("doctor registry, permission, lock, and non-disclosure findings", () => 
 });
 
 section("doctor active-path drift", () => {
-  const root = mkdtempSync(path.join(tmpdir(), "seo-active-drift-"));
+  const root = fixtureTmp("seo-active-drift-");
   try {
     writeFileSync(path.join(root, "README.md"), "SEO state lives in .seo/backlog.md\n");
     const result = spawnSync(process.execPath, [path.join(skillRoot, "scripts/seo-doctor.mjs"), root, "--format", "json"], { encoding: "utf-8" });
@@ -733,7 +742,7 @@ section("command inventory and foreign-CWD matrix", () => {
 });
 
 section("eight-row legacy / six-row hub rehearsal", () => {
-  const container = mkdtempSync(path.join(tmpdir(), "seo-registry-rehearsal-"));
+  const container = fixtureTmp("seo-registry-rehearsal-");
   try {
     const hub = path.join(container, "hub");
     const canonicalRows = [];
@@ -847,7 +856,7 @@ section("gsc-opportunities backlog", () => {
 
 // --- gsc-opportunities.mjs: malformed JSON names the file ---
 section("malformed JSON error", () => {
-  const badJson = path.join(mkdtempSync(path.join(tmpdir(), "seo-bad-")), "bad.json");
+  const badJson = path.join(fixtureTmp("seo-bad-"), "bad.json");
   try {
     writeFileSync(badJson, "{ not json");
     const result = spawnSync(
@@ -1046,7 +1055,7 @@ section("monthly report allow-missing-gsc", () => {
 
 // --- gsc-fetch.mjs: --credentials-dir parsing ---
 section("gsc-fetch credentials-dir", () => {
-  const credsDir = mkdtempSync(path.join(tmpdir(), "seo-creds-"));
+  const credsDir = fixtureTmp("seo-creds-");
   try {
     writeFileSync(
       path.join(credsDir, "client_secret.json"),
@@ -1080,7 +1089,7 @@ section("gsc-fetch credentials-dir", () => {
       "--credentials-dir should parse {client_secret.json, token.json} and reach the token exchange",
     );
 
-    const badDir = mkdtempSync(path.join(tmpdir(), "seo-creds-bad-"));
+    const badDir = fixtureTmp("seo-creds-bad-");
     writeFileSync(
       path.join(badDir, "client_secret.json"),
       JSON.stringify({ installed: { client_id: "x", client_secret: "y" } }),
@@ -1114,7 +1123,7 @@ section("gsc-fetch credentials-dir", () => {
 // --- export-clean-skill.mjs (dev sibling) ---
 section("clean export", () => {
   const exporter = path.join(scriptDir, "export-clean-skill.mjs");
-  const exportTarget = mkdtempSync(path.join(tmpdir(), "seo-export-"));
+  const exportTarget = fixtureTmp("seo-export-");
   try {
     const dryRun = run(process.execPath, [
       exporter,
@@ -1166,7 +1175,7 @@ section("portfolio status", () => {
     "portfolio-status help should document --registry",
   );
 
-  const portfolioRoot = mkdtempSync(path.join(tmpdir(), "seo-portfolio-"));
+  const portfolioRoot = fixtureTmp("seo-portfolio-");
   try {
     // Stale site: old log date + a P0 Ready ticket whose title contains a pipe.
     const staleSeo = path.join(portfolioRoot, "stale", ".seo");
@@ -1314,8 +1323,8 @@ section("portfolio status", () => {
 
 // --- portfolio-status.mjs: hub layout (registry-relative roots + site-folder workspaces) ---
 section("portfolio status hub layout", () => {
-  const hubRoot = mkdtempSync(path.join(tmpdir(), "seo-hub-status-"));
-  const legacyRoot = mkdtempSync(path.join(tmpdir(), "seo-legacy-"));
+  const hubRoot = fixtureTmp("seo-hub-status-");
+  const legacyRoot = fixtureTmp("seo-legacy-");
   try {
     plannedBootstrap(hubRoot, { domain: "acme.com", hub: true, site: "acme-com" });
     writeFileSync(
@@ -1371,6 +1380,8 @@ section("portfolio status hub layout", () => {
     rmSync(legacyRoot, { recursive: true, force: true });
   }
 });
+
+rmSync(validationTmp, { recursive: true, force: true });
 
 if (failures.length > 0) {
   console.error(`seo-growth-workspace skill validation FAILED (${failures.length}):`);

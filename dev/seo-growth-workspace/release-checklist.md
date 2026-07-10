@@ -69,6 +69,7 @@ The existing validator must prove direct bootstrap bypass, expired/tampered/mism
 - `verify` performs zero writes;
 - `repair` creates only the reviewed missing generated allowlist and preserves all existing/historical bytes;
 - doctor writes only `--plan-output`, outside every scan root, and never emits credential content.
+- two validator processes pass concurrently: plans bind the target and discovered inputs, not volatile unrelated entries under a shared system-temp parent.
 
 ## Scenario Gates
 

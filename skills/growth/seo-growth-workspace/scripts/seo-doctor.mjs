@@ -442,7 +442,6 @@ function diagnose(options) {
   const sourcePathMap = new Map();
   const addSource = (input, policy = "content") => sourcePathMap.set(`${path.resolve(input)}:${policy}`, { path: path.resolve(input), policy });
   addSource(target.workspaceDir, "content");
-  for (const searchRoot of searchRoots) addSource(searchRoot, "listing");
   for (const registry of registries) addSource(registry.path, "content");
   for (const install of installs) addSource(install.path, "content");
   if (existsSync(lockPath)) addSource(lockPath, "content");

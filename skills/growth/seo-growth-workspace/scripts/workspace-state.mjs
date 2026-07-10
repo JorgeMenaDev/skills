@@ -201,22 +201,6 @@ function fingerprintEntry(absolute, relative, policy) {
 
 export function fingerprintPath(input, policy = "content") {
   const absolute = path.resolve(input);
-  if (policy === "listing") {
-    try {
-      const roots = [absolute, ...readdirSync(absolute).sort().map((entry) => path.join(absolute, entry))];
-      const rows = roots.flatMap((candidate) => {
-        const seo = path.join(candidate, ".seo");
-        const legacyRegistry = path.join(candidate, ".agents/seo/REGISTRY.md");
-        const signals = [];
-        if (existsSync(seo)) signals.push(`${path.relative(absolute, seo) || ".seo"}:${fingerprintEntry(seo, ".", "stat").join("|")}`);
-        if (existsSync(legacyRegistry)) signals.push(`${path.relative(absolute, legacyRegistry)}:${fingerprintEntry(legacyRegistry, ".", "content").join("|")}`);
-        return signals;
-      });
-      return sha256(rows.join("\n"));
-    } catch {
-      return sha256("missing");
-    }
-  }
   return sha256(fingerprintEntry(absolute, ".", policy).join("\n"));
 }
 

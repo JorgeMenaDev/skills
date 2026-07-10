@@ -66,7 +66,7 @@ PASS — `seo-growth-workspace skill validation passed`.
 The existing validator now covers:
 
 - doctor plan output outside scan roots and zero scanned-root writes;
-- plan hash/expiry/root/domain/search/source binding, source change, mismatch, bypass, one-shot mutation, replay, and manual-migrate refusal;
+- plan hash/expiry/root/domain/search/source binding, source change, mismatch, bypass, one-shot mutation, replay, and manual-migrate refusal; source fingerprints cover the selected target and discovered registry/install/lock/doc/credential inputs, while search-root realpaths are separately bound, so unrelated sibling fixture churn cannot invalidate a plan;
 - exact tolerant backlog/log/audit/strategy signatures; nonsense filenames do not adopt;
 - config-only adoption, zero-write verify, and exact missing-generated-file repair with sentinel history preservation;
 - schema-ahead/malformed state and dangling/escaping generated symlinks;
@@ -74,6 +74,8 @@ The existing validator now covers:
 - stat-only credential permissions, credential non-disclosure marker, skills-lock drift, active-path drift, dangling installs;
 - six existing scenario profiles and all pre-existing GSC/monthly/portfolio checks;
 - disposable six-row hub/eight-row legacy rehearsal: six canonical rows retained, eight inventory rows retained, six stale retired roots, two visible legacy-only sites, zero false candidate findings.
+
+Concurrency regression: two independent `validate-skill.mjs` processes ran simultaneously against isolated per-run fixture parents; both exited 0. This specifically proves shared system-temp churn cannot change another run's reviewed plan sources.
 
 ### Mechanical command inventory / foreign-CWD matrix
 
