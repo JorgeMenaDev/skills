@@ -17,13 +17,15 @@ Both tools live in `dev/seo-growth-workspace/`, not inside the portable skill. R
 
 ```bash
 node dev/seo-growth-workspace/validate-skill.mjs
+node dev/seo-growth-workspace/command-inventory.mjs --verify
 node dev/seo-growth-workspace/evaluate-release.mjs --json
 ```
 
 Pass criteria:
 
 - `validate-skill.mjs` exits 0.
-- `evaluate-release.mjs` reports `pass: true`, score at least `85/100`, no critical findings.
+- `command-inventory.mjs --verify` reports zero malformed/secret-argv entries and every executable row exits 0 from the generated foreign-CWD matrix.
+- `evaluate-release.mjs` reports `pass: true`, score at least `85/100`, no critical findings, no zero-scored category, and no known findings.
 - No project-specific contamination in portable runtime files.
 
 To validate an exported copy, reroute the validator with `--skill-dir` (dev tooling is intentionally excluded from exports, so there is no installed-copy validator or evaluator command):
@@ -45,20 +47,28 @@ node dev/seo-growth-workspace/export-clean-skill.mjs --target /path/to/repo --fo
 
 If the target already has local-only or modified same-path files, the exporter stops or reports them. Move useful project-specific behavior into the workspace's `adapters/` or rerun with `--force` only when replacement is intentional.
 
-## Hub-Migration Dogfood Gate (blocking — cannot be waived)
+## Disposable Registry Rehearsal (blocking — cannot be waived)
 
-Empty fixtures prove scaffolding, not migration. Before release, run one real hub-migration rehearsal on a **disposable copy** of a real consumer:
+V3.1 does not activate or repair a live hub. Run the existing deterministic rehearsal only:
 
-1. Copy a real consumer repo (mature `.seo/`, installed skill copies, doc pointers) and a copy of its hub to a temp dir.
-2. Run the doctor on both copies and record every finding:
+1. Build six synthetic hub site workspaces and a six-row canonical registry under a temp root.
+2. Add an eight-row legacy inventory: six missing retired repo-local roots plus two recognized legacy-only sites.
+3. Run the validator rehearsal and prove all row states are preserved and correctly classified:
 
 ```bash
-node skills/growth/seo-growth-workspace/scripts/seo-doctor.mjs <consumer-copy> --domain <host>
-node skills/growth/seo-growth-workspace/scripts/seo-doctor.mjs <hub-copy> --domain <host>
+node dev/seo-growth-workspace/validate-skill.mjs
 ```
 
-3. Rehearse `references/migrate-uninstall.md` end-to-end against the copies: migrate, strip, post-migration hygiene, re-doctor both ends.
-4. Record PASS only when the final doctor runs are clean on both ends. Record every finding the rehearsal surfaced, fixed or filed.
+PASS requires six canonical rows, eight legacy rows, six `stale_registry_row` findings, two `unmigrated_legacy_site` findings, zero false `candidate_workspace` findings, and realpath-deduplicated registry paths. Migration remains manual/terminal in v3.1.
+
+## Plan/Action Safety Gate (blocking — cannot be waived)
+
+The existing validator must prove direct bootstrap bypass, expired/tampered/mismatched/source-changed plans, replay, ambiguous identity, schema-ahead state, and generated symlink escape all fail before workspace writes. It must also prove:
+
+- `adopt` writes only `config.json` on at least three exactly recognized files;
+- `verify` performs zero writes;
+- `repair` creates only the reviewed missing generated allowlist and preserves all existing/historical bytes;
+- doctor writes only `--plan-output`, outside every scan root, and never emits credential content.
 
 ## Scenario Gates
 
@@ -78,11 +88,11 @@ Inspect at least these six profiles before release; each row gets its own PASS/F
 Before deploy, prove at least one repo-local dry run without mutating unrelated files:
 
 1. Copy or run against a temporary target root.
-2. Run the doctor first, then bootstrap (both ship in the portable skill, so installed-copy paths work too):
+2. Run the doctor first, write the reviewed plan outside the target/search roots, then bootstrap:
 
 ```bash
-node skills/growth/seo-growth-workspace/scripts/seo-doctor.mjs <target-root>
-node skills/growth/seo-growth-workspace/scripts/bootstrap-seo-workspace.mjs <target-root>
+node "$SKILL_DIR/scripts/seo-doctor.mjs" <target-root> --domain example.com --decision create --plan-output <outside-root-plan>
+node "$SKILL_DIR/scripts/bootstrap-seo-workspace.mjs" --plan <outside-root-plan> --action create --domain example.com <target-root>
 ```
 
 For an installed copy, the same scripts under `.agents/skills/seo-growth-workspace/scripts/`.
@@ -92,10 +102,11 @@ For an installed copy, the same scripts under `.agents/skills/seo-growth-workspa
 5. Hub dry run — against a second temporary root:
 
 ```bash
-node skills/growth/seo-growth-workspace/scripts/bootstrap-seo-workspace.mjs --hub --site example-com <hub-root>
+node "$SKILL_DIR/scripts/seo-doctor.mjs" <hub-root> --site example-com --domain example.com --decision create --plan-output <outside-root-plan>
+node "$SKILL_DIR/scripts/bootstrap-seo-workspace.mjs" --plan <outside-root-plan> --action create --domain example.com --hub --site example-com <hub-root>
 ```
 
-Verify `.seo/config.json` with `"mode": "hub"`, `.seo/registry.md`, the full workspace set under `.seo/sites/example-com/`, the `REGISTRATION PENDING` line in the output, and no standalone workspace files at the hub root. Confirm a plain rerun against the hub root refuses (no silent mode conversion).
+Verify `.seo/config.json` with `"mode": "hub"`, `.seo/registry.md`, the full workspace set under `.seo/sites/example-com/`, the `REGISTRATION PENDING` line in the output, and no standalone workspace files at the hub root. Confirm a consumed-plan replay and direct plan-less rerun both refuse.
 
 6. Record command output and target type in the release run log.
 
@@ -106,5 +117,8 @@ Before publishing:
 - Review `git diff -- skills/growth/seo-growth-workspace`.
 - Confirm release-only audit/run files are either intentionally included or excluded by the publish path.
 - Confirm Google-facing guidance is dated where it may age.
+- Confirm the standard Performance report, rollout-limited Generative AI export, and unsupported AI-causality inference remain distinct.
+- Confirm the Search generative AI include/exclude setting is described as an authenticated human-operated control, not a universal API or ranking lever.
 - Confirm pSEO guidance still says plan early, publish late.
 - Confirm the skill asks for explicit approval before production deploys, authenticated admin mutations, external submissions, or `skills.sh` publication.
+- Confirm the release diff contains no schema-2 contracts, migration implementation, writer leases, live-hub mutation, or live install.

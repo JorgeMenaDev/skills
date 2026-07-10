@@ -17,7 +17,7 @@ If any gate fails, create a blocker or technical ticket before importing/schedul
 
 Seed sources, strongest evidence first:
 
-1. First-party GSC data: `node scripts/gsc-opportunities.mjs --format backlog` — queries already earning impressions.
+1. First-party GSC data: `node "$SKILL_DIR/scripts/gsc-opportunities.mjs" --input "$SITE_WORKSPACE/reports/gsc-latest.json" --format backlog` — queries already earning impressions.
 2. Competitor demand gaps (matrix below).
 3. Utility/tool opportunities: calculators, generators, checkers, formatters, templates, and public datasets where the SERP intent is task completion; load `utility-tool-pages.md` before planning these.
 4. Community mining: `site:reddit.com <topic>` and `site:quora.com <topic>` — questions, frustrations, upvoted answers.

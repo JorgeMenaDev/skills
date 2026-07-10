@@ -1,4 +1,6 @@
-# SEO Growth Workspace v3.0.0 Release Run — standalone / hub install modes
+# SEO Growth Workspace Release Runs — 2026-07-10
+
+## v3.0.0 — standalone / hub install modes
 
 Started: 2026-07-10
 Target skill: `skills/growth/seo-growth-workspace`
@@ -38,3 +40,86 @@ Out of scope: pre-existing dirty `skills/agent-operations/counsel/**` and `skill
 
 - Real hub dogfood in the Matias profile (first-run mode question → hub bootstrap → registry fill → operate one site) — recommended before installing broadly.
 - `skills.sh` publication — needs Jorge's explicit confirmation per release checklist.
+
+---
+
+## v3.1.0 — schema-1 discovery safety and release truth
+
+Started: 2026-07-10<br>
+Base reconciled: `320a78a` (`origin/main`)<br>
+Foundational corpus: `coreyhaines31/marketingskills@f04556d923e076a29564559101e5ca33698422f5` — patterns/hypotheses only; official platform documentation remained authority.
+
+### Release boundary
+
+PASS — repository candidate only. No live workspace, credential content, hub activation/repair, install, provider mutation, schema 2, deterministic migrator, writer lease, or new feature family entered this run. Migration remains a terminal/manual doctor decision in v3.1.
+
+### Deterministic validator
+
+Command:
+
+```bash
+node dev/seo-growth-workspace/validate-skill.mjs
+```
+
+PASS — `seo-growth-workspace skill validation passed`.
+
+The existing validator now covers:
+
+- doctor plan output outside scan roots and zero scanned-root writes;
+- plan hash/expiry/root/domain/search/source binding, source change, mismatch, bypass, one-shot mutation, replay, and manual-migrate refusal;
+- exact tolerant backlog/log/audit/strategy signatures; nonsense filenames do not adopt;
+- config-only adoption, zero-write verify, and exact missing-generated-file repair with sentinel history preservation;
+- schema-ahead/malformed state and dangling/escaping generated symlinks;
+- canonical registry routing vs legacy inventory, malformed/duplicate rows, realpath dedupe, stale rows, unmigrated legacy sites, and unbound state;
+- stat-only credential permissions, credential non-disclosure marker, skills-lock drift, active-path drift, dangling installs;
+- six existing scenario profiles and all pre-existing GSC/monthly/portfolio checks;
+- disposable six-row hub/eight-row legacy rehearsal: six canonical rows retained, eight inventory rows retained, six stale retired roots, two visible legacy-only sites, zero false candidate findings.
+
+### Mechanical command inventory / foreign-CWD matrix
+
+Command:
+
+```bash
+node dev/seo-growth-workspace/command-inventory.mjs --verify
+```
+
+PASS — 79 shell-looking snippets mechanically extracted from SKILL/references/templates: 3 executable, 76 illustrative, 0 malformed. Foreign-CWD matrix: 3/3 executable commands exited 0. Secret-bearing argv is blocking; no `superaseo login <key>` or `--access-token <token>` example remains.
+
+### Release evaluation
+
+Command:
+
+```bash
+node dev/seo-growth-workspace/evaluate-release.mjs --json
+```
+
+PASS — 100/100, 0 critical findings, 0 known findings, no zero-scored category. Portability: 15/15. The evaluator now fails closed on any zero category or known finding instead of allowing the aggregate score to mask one.
+
+### Clean export
+
+Commands:
+
+```bash
+node dev/seo-growth-workspace/export-clean-skill.mjs --target <disposable-root> --dry-run
+node dev/seo-growth-workspace/export-clean-skill.mjs --target <disposable-root>
+node dev/seo-growth-workspace/validate-skill.mjs --skill-dir <disposable-root>/.agents/skills/seo-growth-workspace
+```
+
+PASS — dry run made no install; clean export produced 46 portable files; the exported copy passed the full validator. Dev fixtures/release tooling remained outside the portable package.
+
+### Current-fact corrections
+
+PASS — crawler roles/consequences now distinguish training, direct discovery, and user-triggered fetch with enforcement caveats; schema is not claimed to ground AI answers; standard Performance data cannot prove AI causality. Google's rollout-limited Generative AI Performance UI/export and inherited Search generative-AI include/exclude control are documented as authenticated human surfaces, not assumed APIs or ranking levers.
+
+Primary authority reviewed:
+
+- Google Search Console Generative AI Performance report and Search generative AI control.
+- Google AI features and website controls.
+- OpenAI publisher/crawler guidance.
+- Anthropic crawler-role guidance.
+- Perplexity crawler/user-fetch guidance.
+- Cloudflare AI traffic-control documentation.
+
+### Result
+
+PASS — v3.1.0 repository candidate meets the bounded schema-1 release gates. Live-hub activation remains a separate future approval and rehearsal.

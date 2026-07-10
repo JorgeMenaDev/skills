@@ -28,9 +28,9 @@ Only when all four miss do you initiate OAuth (Safe Helper Flow below). Store th
 
 Primary operating loop (Node >= 18; auth setup below):
 
-1. `node scripts/gsc-oauth.mjs` — one-time auth into a credential home or ignored env file (see Safe Helper Flow). Never print token values.
-2. `node scripts/gsc-fetch.mjs --site https://example.com/ --start 2026-01-01 --end 2026-03-31 --output .seo/reports/gsc-2026-03-31.json` — exports `query,page` rows, paginating past the 25k-row API cap.
-3. `node scripts/gsc-opportunities.mjs --input .seo/reports/gsc-2026-03-31.json --brand "acme, acme app" --format report` — drafts the page-2 goldmine, CTR-vs-expected-band, and cannibalization tables. Always pass `--brand` with known branded terms. Use `--format backlog` to emit draft `.seo/backlog.md` rows instead.
+1. `node "$SKILL_DIR/scripts/gsc-oauth.mjs" --help` — review the one-time auth options before writing into a credential home or ignored env file. Never print token values.
+2. `node "$SKILL_DIR/scripts/gsc-fetch.mjs" --site https://example.com/ --start 2026-01-01 --end 2026-03-31 --output "$SITE_WORKSPACE/reports/gsc-2026-03-31.json"` — exports `query,page` rows, paginating past the 25k-row API cap.
+3. `node "$SKILL_DIR/scripts/gsc-opportunities.mjs" --input "$SITE_WORKSPACE/reports/gsc-2026-03-31.json" --brand "acme, acme app" --format report` — drafts the page-2 goldmine, CTR-vs-expected-band, and cannibalization tables. Always pass `--brand` with known branded terms. Use `--format backlog` to emit draft `.seo/backlog.md` rows instead.
 
 Review every generated row before merging; opportunity output is not a full prioritization model. Save opportunity results using `templates/gsc-opportunity.md`.
 
@@ -38,7 +38,7 @@ Review every generated row before merging; opportunity output is not a full prio
 
 - Split branded vs non-branded before diagnosing CTR. Branded queries dominate high-impression lists and skew averages.
 - Judge CTR against position-banded baselines (roughly 25%+ at position 1 falling to under 2% by positions 8-10), never a flat threshold.
-- Impressions up + clicks down is often AI Overviews / SERP-feature driven, not a title problem. GSC folds AI-surface impressions into totals with no breakdown — check SERP appearance for affected queries before rewriting titles.
+- Impressions up + clicks down is a symptom, not a cause. Possible explanations include query mix, rank/CTR change, and SERP composition (including AI features). Standard Performance data includes AI-surface activity but cannot attribute the divergence; require query/page/SERP evidence before rewriting titles or claiming AI causality.
 - Annotate known Google core-update dates when interpreting deltas.
 - For programmatic single-URL checks, the URL Inspection API exists; keep its use bounded (see Bounded Indexing Requests).
 
@@ -47,12 +47,18 @@ Review every generated row before merging; opportunity output is not a full prio
 Route here for the `diagnose` mode ("my traffic dropped", "why did we lose rankings"). Characterize the drop before touching anything:
 
 1. Split branded vs non-branded (see Analysis Rules). A branded-only drop is a brand/PR/demand problem, not organic decay — do not rewrite titles for it.
-2. Impressions up + clicks down → likely a SERP-feature / AI-Overviews shift, not a ranking loss. Check SERP appearance for the affected queries before acting.
+2. Impressions up + clicks down → test competing hypotheses: query mix, average-position change, snippet/title fit, and SERP composition. A live SERP sample or dedicated Generative AI export may support an AI-feature hypothesis; standard Performance alone does not.
 3. Impressions and positions down across many queries at once → suspect a Google core update; annotate known core-update dates inside the window before attributing to on-site changes.
 4. Specific URLs 404/redirect/noindex, dropped from the sitemap, or newly blocked by robots/CDN → technical regression; verify indexability and the deploy/CDN history.
 5. Content-engine articles stopped deploying or the sitemap broke → follow `references/content-engine-webhooks.md`.
 
 Exit: the drop is characterized as branded/non-branded + SERP-feature/AI-Overviews vs core-update vs technical regression, with evidence, and the next action is filed to `.seo/backlog.md`.
+
+## Google Generative AI Surfaces (rollout-limited, June 2026)
+
+- **Generative AI Performance report**: Google is rolling this Search Console UI out to a subset of properties. When visible, it reports generative-AI impressions for AI Overviews/AI Mode by page, country, date, and device and offers chart/table export. Treat the downloaded export as dated UI evidence. Do not assume the property has access or that the data is exposed by the Search Console API. [Official report documentation](https://support.google.com/webmasters/answer/16984139)
+- **Search generative AI control**: also rollout-limited and owner-operated under Search Console Settings. Include/exclude can inherit from a parent property. It governs eligibility for specified Search generative features; it is not a ranking lever, does not control ordinary Search, and does not control model training (Google-Extended is separate). Any change is an authenticated human/admin mutation requiring explicit approval and before/after evidence. [Official control documentation](https://support.google.com/webmasters/answer/16908024)
+- Keep three evidence states distinct: standard Performance (combined totals), dedicated rollout-limited export (AI impressions when available), and unsupported inference (no causal claim).
 
 ## Matrices To Produce
 
@@ -140,19 +146,19 @@ If the OAuth refresh fails, report only the HTTP status and the likely setup iss
 When a Google OAuth client already exists, use the helper instead of manually pasting token responses:
 
 ```bash
-GSC_CLIENT_ID=<client-id> node scripts/gsc-oauth.mjs --print-auth-url
+GSC_CLIENT_ID=<client-id> node "$SKILL_DIR/scripts/gsc-oauth.mjs" --print-auth-url
 ```
 
 Open the URL, grant Search Console read-only access, then copy only the `code` query parameter from the redirect URL. Exchange it into a credential home (preferred) — `client_secret.json` supplies the client, and the helper writes `token.json`:
 
 ```bash
-node scripts/gsc-oauth.mjs --credentials-dir <creds-dir> --code <returned-code>
+node "$SKILL_DIR/scripts/gsc-oauth.mjs" --credentials-dir <creds-dir> --code <returned-code>
 ```
 
 Or, for standalone use, into a repo-ignored env file:
 
 ```bash
-GSC_CLIENT_ID=<client-id> GSC_CLIENT_SECRET=<client-secret> node scripts/gsc-oauth.mjs --code <returned-code> --output .env.local
+GSC_CLIENT_ID=<client-id> GSC_CLIENT_SECRET=<client-secret> node "$SKILL_DIR/scripts/gsc-oauth.mjs" --code <returned-code> --output .env.local
 ```
 
 The credential-home path writes `<creds-dir>/token.json`; the env-file path writes `GSC_CLIENT_ID`, `GSC_CLIENT_SECRET`, and `GSC_REFRESH_TOKEN`. Both print only the file path (0600). Use `--force` only when intentionally replacing a previous token file.

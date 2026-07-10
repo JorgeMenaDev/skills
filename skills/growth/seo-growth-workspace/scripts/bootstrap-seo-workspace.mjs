@@ -1,71 +1,89 @@
 #!/usr/bin/env node
 
-import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { existsSync, readFileSync } from "node:fs";
+import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  GENERATED_WORKSPACE_DIRS,
+  GENERATED_WORKSPACE_FILES,
+  LEGACY_SIGNATURE_MIN,
+  SITE_ID_PATTERN,
+  classifyWorkspace,
+  normalizeHost,
+  planHash,
+  safeRealpath,
+  sha256,
+  stableJson,
+  verifySourceRecords,
+} from "./workspace-state.mjs";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const taxonomyTemplatePath = path.resolve(scriptDir, "../templates/taxonomy.md");
-
-// Keep in sync with SKILL.md frontmatter (validate-skill.mjs asserts they match).
 const SKILL_VERSION = "3.1.0";
-// Workspace layout contract stamped into config.json; bumped only by a
-// documented migration, never by merely running a newer skill.
 const WORKSPACE_SCHEMA_VERSION = 1;
-// A .seo/ without config.json is adoptable as legacy-standalone only when it
-// holds at least this many canonical files (keep in sync with seo-doctor.mjs).
-const CANONICAL_FILES = ["backlog.md", "log.md", "audit.md", "strategy.md"];
-const LEGACY_SIGNATURE_MIN = 3;
+const ACTIONS = new Set(["create", "adopt", "verify", "repair"]);
 
 function usage() {
   return `Usage:
-  node bootstrap-seo-workspace.mjs [target-dir]                 standalone workspace
-  node bootstrap-seo-workspace.mjs --hub [target-dir]           hub skeleton
-  node bootstrap-seo-workspace.mjs --site <slug> [target-dir]   site workspace under a hub
+  node bootstrap-seo-workspace.mjs --plan <file> --action create --domain <host> [--hub] [--site <id>] [target-dir]
+  node bootstrap-seo-workspace.mjs --plan <file> --action adopt --domain <host> [target-dir]
+  node bootstrap-seo-workspace.mjs --plan <file> --action verify --domain <host> [--site <id>] [target-dir]
+  node bootstrap-seo-workspace.mjs --plan <file> --action repair --domain <host> --files <comma,list> [--site <id>] [target-dir]
 
-Standalone (default): creates or verifies the .seo/ workspace (backlog, log, audit, taxonomy,
-strategy, context, backlinks, reports) in the target directory (default: current directory)
-and stamps .seo/config.json with {"mode":"standalone"}.
+Every invocation requires a current, approved plan from seo-doctor.mjs. Create scaffolds
+an absent standalone/hub target. Adopt stamps config.json only on a recognized legacy
+standalone workspace (>=${LEGACY_SIGNATURE_MIN} exact schema-1 signatures). Repair creates
+only the approved missing generated files/directories and never overwrites existing bytes.
+Verify performs zero writes. Mutating actions atomically consume the plan; replay fails.
 
---hub: creates the hub skeleton instead — .seo/{config.json (mode hub), registry.md, sites/}.
-No standalone workspace files are written at the hub root.
-
---site <slug> (slug: lowercase letters/digits with inner hyphens, no leading/trailing hyphen):
-creates a full site workspace at .seo/sites/<slug>/ inside an existing hub (or combined with
---hub in the same run), and prints a REGISTRATION PENDING registry row. The script never edits
-registry.md itself.
-
-Run scripts/seo-doctor.mjs (read-only) first: this script aborts on a .seo/ that has no
-config.json and lacks the legacy signature (>=${LEGACY_SIGNATURE_MIN} of ${CANONICAL_FILES.join("/")}).
-Existing files are never overwritten (an existing config.json is never rewritten), and mode
-conflicts (standalone root given --hub, hub root given a plain run) are hard errors —
-converting a workspace is a manual decision (references/migrate-uninstall.md).
-taxonomy.md is sourced from the skill's templates/taxonomy.md.`;
+Migration is manual in v3.1. A migrate plan is terminal and this script refuses it.`;
 }
 
-// Stub only for degraded installs missing templates/taxonomy.md. No inline taxonomy is
-// restated here: the canonical taxonomy has a single owner (references/ticket-architecture.md).
+function parseArgs(argv) {
+  const options = { plan: null, action: null, domain: null, hub: false, site: null, files: [], root: null };
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i];
+    if (arg === "--help" || arg === "-h") return { help: true };
+    if (arg === "--hub") {
+      options.hub = true;
+      continue;
+    }
+    if (["--plan", "--action", "--domain", "--site", "--files"].includes(arg)) {
+      const value = argv[++i];
+      if (!value || value.startsWith("--")) throw new Error(`Missing value for ${arg}\n\n${usage()}`);
+      if (arg === "--plan") options.plan = value;
+      else if (arg === "--action") options.action = value;
+      else if (arg === "--domain") options.domain = value;
+      else if (arg === "--site") options.site = value;
+      else options.files = value.split(",").map((item) => item.trim()).filter(Boolean);
+      continue;
+    }
+    if (arg.startsWith("-")) throw new Error(`Unknown flag ${arg}\n\n${usage()}`);
+    if (options.root === null) options.root = arg;
+    else throw new Error(`Unexpected extra argument ${arg}\n\n${usage()}`);
+  }
+  if (!options.plan || !options.action || !options.domain) throw new Error(`--plan, --action, and --domain are required\n\n${usage()}`);
+  if (!ACTIONS.has(options.action)) throw new Error(`Invalid --action ${options.action}; migrate is manual in v3.1\n\n${usage()}`);
+  if (options.action === "repair" && options.files.length === 0) throw new Error("repair requires --files");
+  if (options.action !== "repair" && options.files.length > 0) throw new Error("--files is valid only with --action repair");
+  return options;
+}
+
 const taxonomyStub = `# SEO ticket taxonomy (stub)
 
-This install is missing templates/taxonomy.md. Read the canonical taxonomy — priorities, areas,
-evidence standard, and work selection — in the skill's references/ticket-architecture.md, then fill this file in.
+This install is missing templates/taxonomy.md. Read references/ticket-architecture.md and fill this file in.
 `;
 
 async function taxonomyContent() {
   try {
     return await readFile(taxonomyTemplatePath, "utf-8");
   } catch {
-    process.stderr.write(
-      "Warning: templates/taxonomy.md not found next to this script; wrote a stub taxonomy.md. See references/ticket-architecture.md for the canonical taxonomy.\n",
-    );
+    process.stderr.write("Warning: templates/taxonomy.md is missing; writing the documented stub.\n");
     return taxonomyStub;
   }
 }
 
-// One standalone workspace file set, keyed workspace-relative so the same set lands at
-// .seo/ (standalone) or .seo/sites/<slug>/ (hub site). Content is mode-agnostic: inside a
-// workspace, `.seo/X` prose means SITE_WORKSPACE/X (path semantics in SKILL.md).
 function workspaceFiles() {
   return {
     "README.md": `# SEO workspace
@@ -89,7 +107,6 @@ Current focus: none
 
 - Use \`.seo/taxonomy.md\` for priorities, areas, evidence standards, and done criteria.
 - Keep one current focus ticket.
-- Empty Ready/In progress tables do not mean SEO is done; use the operating loop to run the next small evidence-backed checkpoint.
 - Record long evidence in \`.seo/audit.md\` or \`.seo/reports/\`, not in this table.
 
 ## Ready
@@ -173,24 +190,18 @@ Last updated: YYYY-MM-DD
 function hubReadme() {
   return `# SEO hub workspace
 
-This is a hub (orchestrator) SEO workspace managing several sites. See the skill's
-references/hub-mode.md for the operating rules.
+This hub manages several site workspaces. See references/hub-mode.md.
 
-Canonical files:
-
-- \`.seo/registry.md\` maps every managed site to its workspace root.
-- \`.seo/sites/<slug>/\` holds each site's full SEO workspace (backlog, log, reports, ...).
-- \`.seo/portfolio-index.md\` is the cross-site rollup (templates/portfolio-index.md).
-
-One target site per run; never blend workspaces.
+- \`.seo/registry.md\` is the canonical route registry.
+- \`.seo/sites/<id>/\` holds each site's schema-1 workspace.
+- One target site is resolved per run.
 `;
 }
 
 function registrySeed() {
   return `# Portfolio Registry
 
-See the skill's references/portfolio-registry.md for column meanings and reading rules.
-Hub-managed sites use a workspace root of \`sites/<slug>\` (relative to this file's directory).
+See references/portfolio-registry.md. Hub roots are relative to this file.
 
 | Site | Workspace root | GSC property | Credentials | Market / language | Publish gate | Notes |
 |---|---|---|---|---|---|---|
@@ -198,97 +209,65 @@ Hub-managed sites use a workspace root of \`sites/<slug>\` (relative to this fil
 }
 
 function configContent(mode) {
-  const created = new Date().toISOString().slice(0, 10);
-  // skillVersion is created-by provenance (never rewritten by later runs);
-  // workspaceSchemaVersion is the layout contract. Field semantics:
-  // references/hub-mode.md Mode Stamp.
-  return `${JSON.stringify(
-    { mode, created, skillVersion: SKILL_VERSION, workspaceSchemaVersion: WORKSPACE_SCHEMA_VERSION },
-    null,
-    2,
-  )}\n`;
+  return `${JSON.stringify({ mode, created: new Date().toISOString().slice(0, 10), skillVersion: SKILL_VERSION, workspaceSchemaVersion: WORKSPACE_SCHEMA_VERSION }, null, 2)}\n`;
 }
 
-// Returns "standalone" | "hub" | null. A .seo/ without config.json is a legacy
-// standalone workspace only when it carries the legacy signature — at least
-// LEGACY_SIGNATURE_MIN canonical files (back-compat rule in
-// references/hub-mode.md). Anything else aborts: presence alone is not a safe
-// legacy signature (the .seo/ may belong to another tool or be debris).
-function existingMode(seoDir) {
-  const configPath = path.join(seoDir, "config.json");
-  if (existsSync(configPath)) {
-    let parsed;
-    try {
-      parsed = JSON.parse(readFileSync(configPath, "utf-8"));
-    } catch {
-      throw new Error(`Unreadable ${configPath} — fix or remove it before bootstrapping.`);
-    }
-    if (parsed.mode !== "standalone" && parsed.mode !== "hub") {
-      throw new Error(`${configPath} has unknown mode ${JSON.stringify(parsed.mode)}.`);
-    }
-    return parsed.mode;
-  }
-  if (!existsSync(seoDir)) return null;
-  const present = CANONICAL_FILES.filter((file) => existsSync(path.join(seoDir, file)));
-  if (present.length >= LEGACY_SIGNATURE_MIN) return "standalone";
-  throw new Error(
-    `${seoDir} exists without config.json and carries no recognizable legacy workspace signature ` +
-      `(${present.length}/${CANONICAL_FILES.length} of ${CANONICAL_FILES.join("/")}). Not adopting it. ` +
-      `Run node scripts/seo-doctor.mjs ${path.dirname(seoDir)} (read-only), then make an explicit ` +
-      `create/adopt/migrate decision — see references/migrate-uninstall.md.`,
-  );
-}
-
-function parseArgs(argv) {
-  const options = { hub: false, site: null, root: null };
-  for (let i = 0; i < argv.length; i += 1) {
-    const arg = argv[i];
-    if (arg === "--help" || arg === "-h") return { help: true };
-    if (arg === "--hub") {
-      options.hub = true;
-    } else if (arg === "--site") {
-      options.site = argv[i + 1];
-      if (options.site === undefined || options.site.startsWith("-")) {
-        throw new Error(`Missing value for --site\n\n${usage()}`);
-      }
-      i += 1;
-    } else if (arg.startsWith("-")) {
-      throw new Error(`Unknown flag ${arg}\n\n${usage()}`);
-    } else if (options.root === null) {
-      options.root = arg;
-    } else {
-      throw new Error(`Unexpected extra argument ${arg}\n\n${usage()}`);
-    }
-  }
-  if (options.site !== null && !/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/.test(options.site)) {
-    throw new Error(
-      `Invalid site slug ${options.site} (lowercase letters/digits with inner hyphens; ` +
-        `no leading/trailing hyphen)\n\n${usage()}`,
-    );
-  }
-  return options;
-}
-
-async function writeMissing(baseDir, files) {
-  for (const [relativePath, content] of Object.entries(files)) {
-    const absolutePath = path.join(baseDir, relativePath);
-    if (existsSync(absolutePath)) continue;
-    await mkdir(path.dirname(absolutePath), { recursive: true });
-    await writeFile(absolutePath, content);
+async function writeMissing(baseDir, files, allowlist = null) {
+  for (const [relative, content] of Object.entries(files)) {
+    if (allowlist && !allowlist.has(relative)) continue;
+    const absolute = path.join(baseDir, relative);
+    if (existsSync(absolute)) continue;
+    await mkdir(path.dirname(absolute), { recursive: true });
+    await writeFile(absolute, content, { flag: "wx" });
   }
 }
 
-async function createWorkspace(workspaceDir) {
-  const files = {
-    ...workspaceFiles(),
-    "taxonomy.md": await taxonomyContent(),
-  };
-  await Promise.all(
-    ["reports", "scripts", "pseo"].map((dir) =>
-      mkdir(path.join(workspaceDir, dir), { recursive: true }),
-    ),
-  );
-  await writeMissing(workspaceDir, files);
+async function createWorkspace(workspaceDir, allowlist = null) {
+  const directories = ["reports", "scripts", "pseo"];
+  for (const directory of directories) {
+    if (!allowlist || allowlist.has(directory)) await mkdir(path.join(workspaceDir, directory), { recursive: true });
+  }
+  await writeMissing(workspaceDir, { ...workspaceFiles(), "taxonomy.md": await taxonomyContent() }, allowlist);
+}
+
+function loadAndVerifyPlan(options, root) {
+  const planPath = path.resolve(options.plan);
+  let plan;
+  try {
+    plan = JSON.parse(readFileSync(planPath, "utf-8"));
+  } catch (error) {
+    throw new Error(`Cannot read plan ${planPath}: ${error.message}`);
+  }
+  if (plan.contract !== "seo-growth-workspace/bootstrap-plan-v1") throw new Error("Plan contract is missing or unsupported");
+  if (plan.hash !== planHash(plan)) throw new Error("Plan hash mismatch");
+  if (plan.output !== safeRealpath(planPath)) throw new Error("Plan output-path mismatch; copied plans cannot replay");
+  if (Date.now() >= Date.parse(plan.expiresAt)) throw new Error(`Plan expired at ${plan.expiresAt}`);
+  if (plan.root !== root || plan.rootHash !== sha256(root)) throw new Error("Plan root mismatch");
+  const domain = normalizeHost(options.domain);
+  if (plan.domain !== domain || plan.domainHash !== sha256(domain)) throw new Error("Plan domain mismatch");
+  if (plan.site !== options.site) throw new Error("Plan site mismatch");
+  if (plan.searchRootsHash !== sha256(stableJson(plan.searchRoots))) throw new Error("Plan search-root hash mismatch");
+  if (plan.sourcesHash !== sha256(stableJson(plan.sources))) throw new Error("Plan source-list hash mismatch");
+  const sourceMismatches = verifySourceRecords(plan.sources);
+  if (sourceMismatches.length > 0) throw new Error(`Plan source changed: ${sourceMismatches.map((item) => item.path).join(", ")}`);
+  if (!plan.approved || plan.decisionError || plan.unresolvedFindingCodes?.length) throw new Error(`Plan is not approved: ${plan.decisionError ?? plan.unresolvedFindingCodes.join(", ")}`);
+  if (plan.terminal || plan.decision === "migrate") throw new Error("Migration is manual in v3.1; bootstrap refuses migrate plans");
+  if (options.action !== "verify" && plan.decision !== options.action) throw new Error(`Plan decision ${plan.decision} does not match action ${options.action}`);
+  const files = [...new Set(options.files)].sort();
+  if (options.action === "repair" && stableJson(files) !== stableJson(plan.repairFiles)) throw new Error("Repair allowlist does not match the reviewed plan");
+  const targetState = classifyWorkspace(plan.target.workspaceDir, { hubSite: Boolean(options.site) });
+  if (targetState.classification !== plan.target.classification) throw new Error(`Target classification changed: ${plan.target.classification} -> ${targetState.classification}`);
+  if (safeRealpath(plan.chosenWorkspace) !== safeRealpath(plan.target.workspaceDir)) throw new Error("Plan chosen workspace is not the target workspace");
+  if (options.site && !SITE_ID_PATTERN.test(options.site) && plan.legacySiteId !== options.site) throw new Error(`New site IDs must match the 1-64 character slug grammar; ${options.site} is not a grandfathered registered ID`);
+  if (options.action === "create" && options.site && !SITE_ID_PATTERN.test(options.site)) throw new Error("A newly created site ID must match the 1-64 character slug grammar");
+  return { plan, planPath, targetState };
+}
+
+async function consumePlan(planPath, hash) {
+  const consumedPath = `${planPath}.consumed-${hash.slice(0, 12)}`;
+  if (existsSync(consumedPath)) throw new Error(`Plan replay refused; consumption marker exists at ${consumedPath}`);
+  await rename(planPath, consumedPath);
+  return consumedPath;
 }
 
 async function main() {
@@ -297,53 +276,53 @@ async function main() {
     console.log(usage());
     return;
   }
-
-  const root = options.root ? path.resolve(options.root) : process.cwd();
-  const seoDir = path.join(root, ".seo");
-  const mode = existingMode(seoDir);
-
-  if (options.hub || options.site) {
-    if (mode === "standalone") {
-      throw new Error(
-        `${seoDir} is a standalone workspace; converting it to a hub is a manual decision. ` +
-          `Remove or migrate the existing workspace first.`,
-      );
-    }
-    if (options.site && !options.hub && mode !== "hub") {
-      throw new Error(
-        `--site requires an existing hub at ${seoDir} (or pass --hub in the same run).\n\n${usage()}`,
-      );
-    }
-    await mkdir(path.join(seoDir, "sites"), { recursive: true });
-    await writeMissing(seoDir, {
-      "config.json": configContent("hub"),
-      "README.md": hubReadme(),
-      "registry.md": registrySeed(),
-    });
-    if (options.site) {
-      const workspaceDir = path.join(seoDir, "sites", options.site);
-      await createWorkspace(workspaceDir);
-      console.log(`Site workspace verified at ${workspaceDir}`);
-      console.log(
-        `REGISTRATION PENDING: add the row to ${path.join(seoDir, "registry.md")} — this script ` +
-          `never edits it, and scripts/seo-doctor.mjs flags unregistered site folders:\n` +
-          `| ${options.site} | sites/${options.site} | unknown | unknown | unknown | unknown | hub-managed |`,
-      );
-    }
-    console.log(`SEO hub verified at ${root}`);
+  const root = safeRealpath(path.resolve(options.root ?? process.cwd()));
+  const { plan, planPath, targetState } = loadAndVerifyPlan(options, root);
+  if (options.action === "verify") {
+    console.log(`Plan verified: ${plan.hash} (zero writes)`);
     return;
   }
 
-  if (mode === "hub") {
-    throw new Error(
-      `${seoDir} is a hub workspace; use --site <slug> to add a site workspace under it. ` +
-        `Converting a hub to standalone is a manual decision.`,
-    );
-  }
+  const consumedPath = await consumePlan(planPath, plan.hash);
+  const seoDir = path.join(root, ".seo");
+  try {
+    if (options.action === "adopt") {
+      if (targetState.classification !== "legacy-standalone" || targetState.recognized.length < LEGACY_SIGNATURE_MIN) throw new Error("Adopt requires a recognized legacy standalone workspace");
+      await writeFile(path.join(targetState.workspaceDir ?? seoDir, "config.json"), configContent("standalone"), { flag: "wx" });
+      console.log(`Legacy workspace adopted at ${targetState.workspaceDir ?? seoDir}; config.json was the only workspace write`);
+      return;
+    }
 
-  await createWorkspace(seoDir);
-  await writeMissing(seoDir, { "config.json": configContent("standalone") });
-  console.log(`SEO workspace verified at ${root}`);
+    if (options.action === "repair") {
+      if (!new Set(["standalone", "hub-site"]).has(targetState.classification)) throw new Error(`Repair requires schema-1 standalone/hub-site, got ${targetState.classification}`);
+      const allowlist = new Set(options.files);
+      for (const file of allowlist) {
+        if (!GENERATED_WORKSPACE_FILES.has(file) && !GENERATED_WORKSPACE_DIRS.has(file)) throw new Error(`Repair path is not generated: ${file}`);
+        if (existsSync(path.join(plan.target.workspaceDir, file))) throw new Error(`Repair refuses existing path: ${file}`);
+      }
+      await createWorkspace(plan.target.workspaceDir, allowlist);
+      console.log(`Workspace repaired at ${plan.target.workspaceDir}: ${options.files.join(", ")}`);
+      return;
+    }
+
+    if (targetState.classification !== "none") throw new Error(`Create requires an absent target, got ${targetState.classification}`);
+    if (options.hub || options.site) {
+      await mkdir(path.join(seoDir, "sites"), { recursive: true });
+      await writeMissing(seoDir, { "config.json": configContent("hub"), "README.md": hubReadme(), "registry.md": registrySeed() });
+      if (options.site) {
+        const workspaceDir = path.join(seoDir, "sites", options.site);
+        await createWorkspace(workspaceDir);
+        console.log(`REGISTRATION PENDING: | ${options.site} | sites/${options.site} | unknown | unknown | unknown | unknown | hub-managed |`);
+      }
+      console.log(`SEO hub created at ${root}`);
+      return;
+    }
+    await createWorkspace(seoDir);
+    await writeFile(path.join(seoDir, "config.json"), configContent("standalone"), { flag: "wx" });
+    console.log(`SEO workspace created at ${root}`);
+  } catch (error) {
+    throw new Error(`${error.message} (plan remains consumed at ${consumedPath}; rerun doctor before retrying)`);
+  }
 }
 
 main().catch((error) => {

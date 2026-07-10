@@ -15,19 +15,19 @@ The skill has two install modes. The operating behavior — modes, phases, ticke
 - `skillVersion` is **created-by** provenance: the skill version that first stamped the workspace. Later runs never rewrite it, and it does not track upgrades.
 - `workspaceSchemaVersion` is the workspace layout contract (currently `1`). It changes only through an explicit, documented migration — never as a side effect of running a newer skill. Older workspaces missing the field are schema 1.
 - Bootstrap never rewrites an existing `config.json`.
-- **Back-compat rule**: a `.seo/` with no `config.json` is a legacy standalone workspace **only when it carries the legacy signature — at least 3 of `backlog.md`/`log.md`/`audit.md`/`strategy.md`**. Operate it as standalone, and stamp `{"mode": "standalone"}` on the next mutating run (never in no-write runs). A `.seo/` without that signature is unrecognized — the bootstrap aborts on it; run `scripts/seo-doctor.mjs` and make an explicit create/adopt/migrate decision.
+- **Back-compat rule**: a `.seo/` with no `config.json` is a legacy standalone workspace only when at least three files match the exact tolerant schema-1 signatures in `references/migrate-uninstall.md`; filenames alone prove nothing. Adoption requires explicit/canonical-registry identity and a reviewed doctor plan. `--action adopt` writes only `config.json` and preserves every existing byte. Unrecognized state fails closed.
 - Once stamped, never ask the mode question again. Converting a workspace between modes is a human decision, never done silently — the bootstrap script refuses mode conflicts; the workflow is `references/migrate-uninstall.md`.
 
 ## First-Run Mode Selection
 
 When no `.seo/` exists at all:
 
-1. **Doctor first (required)**: run `node <SKILL_DIR>/scripts/seo-doctor.mjs <root> --domain <host>` — read-only. If it reports candidate workspaces for the site, existing skill install copies, or an unrecognized `.seo/`, stop and make an explicit **create / adopt / migrate** decision with the user (`references/migrate-uninstall.md`). Never bootstrap over ambiguity.
+1. **Doctor first (required)**: run `node "$SKILL_DIR/scripts/seo-doctor.mjs" <root> --domain <host>` for read-only diagnosis. Review its findings, then rerun with `--decision create|adopt|repair --plan-output "$PLAN_DIR/bootstrap.json"`; `PLAN_DIR` must be outside every scan root. `decision: migrate` is terminal/manual in v3.1. Never bootstrap from an unresolved, stale, or mismatched plan.
 2. Ask exactly one question:
 
 > Is this a standalone site repo (SEO state lives here, for this one site), or a hub — an orchestrator workspace that manages SEO for several repos/sites?
 
-3. Then run `scripts/bootstrap-seo-workspace.mjs` (standalone) or `scripts/bootstrap-seo-workspace.mjs --hub` (hub); either stamps `config.json`. Unattended runs never ask: per `references/scheduled-operation.md`, a missing workspace exits `blocked` for an interactive first run.
+3. Consume the reviewed plan with `node "$SKILL_DIR/scripts/bootstrap-seo-workspace.mjs" --plan "$PLAN_DIR/bootstrap.json" --action create --domain <host> <root>` (standalone), adding `--hub` for a hub. The script recomputes every bound hash before its first write and atomically consumes mutating plans. Unattended runs never ask: per `references/scheduled-operation.md`, a missing workspace exits `blocked` for an interactive first run.
 
 ## Path Semantics In Hub Mode
 
@@ -50,17 +50,17 @@ When no `.seo/` exists at all:
                         # adapters/, loops/
 ```
 
-- Slugs match `^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$` (lowercase letters/digits, inner hyphens only), derived from the registry Site column hostname (`andy-partner.com` → `andy-partner`).
+- New site IDs are 1–64 characters matching `^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$`. Existing registered IDs outside that grammar are grandfathered only for the exact row/path already registered; they cannot name a new site.
 - The hub root holds no standalone workspace files of its own — hub-level state is only the config, registry, rollup index, and optional hub-level sweep loop state (`HUB_ROOT/loops/`).
 - A registry row may still point at an external workspace root (a repo with its own `.seo/`, or a partner-owned path); `sites/<slug>` is the default for hub-managed sites, not a requirement.
-- Create a new site workspace with `scripts/bootstrap-seo-workspace.mjs --site <slug>` — run `scripts/seo-doctor.mjs --domain <host>` first to prove the site has no workspace elsewhere. The script prints a `REGISTRATION PENDING` row and never edits `registry.md`; add the row yourself in the same pass. Until registered, `seo-doctor.mjs` flags the site folder as a finding.
+- Create a new site workspace only from a reviewed create plan: doctor with `--site <id> --domain <host> --decision create --plan-output <outside-root-file>`, then bootstrap with the same `--site`, domain, root, plan, and `--action create`. The script prints a `REGISTRATION PENDING` row and never edits `registry.md`; add the row yourself in the same pass. Until registered, the doctor flags the folder.
 
 ## Target Resolution
 
 The only behavioral addition in hub mode: **read hub routing state only (`config.json` and `registry.md`), resolve exactly one target site, then read no site state except the resolved target's.**
 
 1. **User names a site** — resolve it to its registry row (`references/portfolio-registry.md` Read-First Rule); the workspace is that row's Workspace root. Relative roots resolve against the registry file's directory.
-2. **No site named** — run `scripts/portfolio-status.mjs --registry .seo/registry.md` and present the ranked table as evidence; confirm one target with the user. Staleness ranking is the tiebreak, not the decision — a cold revenue-critical site outranks a warm experiment.
+2. **No site named** — run `node "$SKILL_DIR/scripts/portfolio-status.mjs" --registry "$HUB_ROOT/registry.md"` and present the ranked table as evidence; confirm one target with the user. Staleness ranking is the tiebreak, not the decision — a cold revenue-critical site outranks a warm experiment.
 3. **Unattended** — the invoking prompt must name the target; otherwise exit `blocked` (`references/scheduled-operation.md`).
 
 After resolution, everything is standalone behavior against the resolved workspace. One target per run; never a blended workspace.

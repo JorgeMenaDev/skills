@@ -59,16 +59,14 @@ Requires `@jorgemenadev/superaseo` >= 0.1.0. The CLI lets an agent configure and
 Auth setup (one human step, then headless):
 
 1. A human signs into superaseo.app → Settings → API keys → "Crear API key" and copies the `sk_live_…` secret (shown once).
-2. Install and log in: `npm i -g @jorgemenadev/superaseo` then `superaseo login <sk_live_...>`. The key persists to `~/.config/superaseo/config.json` (mode 0600); `SUPERASEO_API_KEY` is the env alternative. Never print or commit the key.
+2. Install with `npm i -g @jorgemenadev/superaseo`. Load `SUPERASEO_API_KEY` from the approved credential store into the process environment, then run `superaseo whoami`; the API key never appears in argv, shell history, output, or the repo. Use the CLI's file-backed login only when the installed version offers a credential-file option.
 3. Everything after is headless and scoped to the key's workspace. All commands emit JSON.
 
-Configure and verify the webhook (replaces the dashboard Integrations page):
+Verify an existing webhook from the CLI:
 
 ```bash
 superaseo whoami                       # confirm the key resolves to the right workspace
 superaseo projects list                # find the project <slug>
-superaseo integrations set-webhook --project <slug> \
-  --name <name> --endpoint <url> --access-token <token>
 superaseo integrations get --project <slug>     # confirm endpoint + name
 superaseo integrations test --project <slug>    # fires test_webhook to the receiver
 superaseo integrations delete-webhook --project <slug>   # to unwire
@@ -86,7 +84,7 @@ superaseo articles mark-published --project <slug> --article-id <id> \
 
 Human value gate under CLI publishing: `superaseo articles publish` fires `publish_articles` itself, so the engine-side manual publish button no longer stands as the human gate. The gate must move to an explicit review step before `articles publish` — either an engine-side review status the agent checks first, or a receiver-side draft stage that holds the article until a human approves. Do not run `articles publish` on unreviewed content; record the chosen gate in `.seo/strategy.md`. This preserves the Publish Gate stance in `references/content-ops.md`.
 
-Manual dashboard path (fallback): configure the endpoint, name, and access token on the Integrations page, use the dashboard test and publish buttons, and read delivery status there. Use this when the CLI is unavailable or the workspace has no API key issued.
+Authenticated dashboard path: configure the endpoint, name, and access token on the Integrations page, then use its test button. This is the required setup path while the CLI contract accepts the receiver token only in argv; never place that token in a command. The read/test CLI commands above remain safe after setup.
 
 Receiver notes for this contract: dedupe by article `id`; markdown is the only content format, so the receiver renders it; without a signature, endpoint secrecy and token strength carry the auth; whichever path fires the publish, keep a human value gate — the dashboard button (manual path) or an explicit review step / receiver-side draft stage (CLI path).
 

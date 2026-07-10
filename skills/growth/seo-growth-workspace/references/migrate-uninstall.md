@@ -9,11 +9,22 @@ Path terms (`HUB_ROOT`, `SITE_WORKSPACE`, `TARGET_REPO`, `SKILL_DIR`) are define
 Before mutating anything, run the read-only doctor on both ends:
 
 ```bash
-node <SKILL_DIR>/scripts/seo-doctor.mjs <source-repo> --domain <host>
-node <SKILL_DIR>/scripts/seo-doctor.mjs <hub-repo> --domain <host>
+node "$SKILL_DIR/scripts/seo-doctor.mjs" <source-repo> --domain <host>
+node "$SKILL_DIR/scripts/seo-doctor.mjs" <hub-repo> --domain <host>
 ```
 
 If either run reports candidate workspaces for the site beyond the one being moved, stop: pick the single canonical workspace with the user — an explicit **create / adopt / migrate** decision — before continuing. Two competing histories for one site is the failure this file exists to prevent.
+
+For migration, write a terminal evidence plan with `--decision migrate --plan-output <outside-root-file>`. Bootstrap refuses it: v3.1 migration remains the reviewed manual procedure below. After the move, run a fresh doctor and create/adopt/repair plan for the destination rather than reusing the migration plan.
+
+## Exact Schema-1 Recognition
+
+- `backlog.md`: H1 containing `SEO backlog`, `Current focus`, and at least one Ready/In progress/Blocked/Done heading or table; tables with rows carry an ID column.
+- `log.md`: H1 containing `SEO operating log`, or a dated H2 plus SEO action/evidence text.
+- `audit.md`: H1 containing `SEO audit` plus a Findings heading or finding/evidence table.
+- `strategy.md`: H1 containing `SEO strategy` plus Business context, Tooling, or Decisions.
+
+Adoption needs at least three recognized files, explicit/canonical-registry identity, and a reviewed adopt plan. It stamps `config.json` only. Missing generated defaults are drift and use a separate repair plan with an exact file allowlist; existing audit/log/report history is never rewritten.
 
 ## Standalone → Hub Migration
 

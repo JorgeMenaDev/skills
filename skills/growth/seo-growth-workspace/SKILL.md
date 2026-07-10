@@ -4,7 +4,7 @@ description: "Use when starting, auditing, or operating SEO or organic growth fo
 version: 3.1.0
 license: MIT
 mutating: true
-writes_to: [.seo/]
+writes_to: [".seo/", "operator-declared bootstrap plan path"]
 ---
 
 # SEO Growth Workspace
@@ -62,7 +62,7 @@ The skill installs in one of two modes, stamped in `.seo/config.json` (`{"mode":
 
 Workspace-file prose like `.seo/backlog.md` in this file and the references means `SITE_WORKSPACE/backlog.md`; the same holds inside a workspace's own generated files (README, backlog, templates). Hub state is always written as an explicit HUB_ROOT path.
 
-**Doctor first**: before any bootstrap or migration, run `scripts/seo-doctor.mjs` (read-only) against the target root. If it reports candidate workspaces, skill install copies, or an unrecognized `.seo/`, make an explicit create/adopt/migrate decision (`references/migrate-uninstall.md`) — never bootstrap over ambiguity. On a first run with no `.seo/`, ask which mode applies (once, never unattended) and bootstrap accordingly. A `.seo/` without `config.json` is a legacy standalone workspace only when it holds ≥3 of backlog/log/audit/strategy; otherwise bootstrap aborts and routes to the doctor. In hub mode, read hub routing state only (`config.json`, `registry.md`), resolve exactly one target site, then read only that site's state; everything after resolution is identical to standalone. Rules, layout, and target resolution: `references/hub-mode.md`. Moving a workspace between modes, or out of a repo: `references/migrate-uninstall.md`.
+**Doctor first**: before bootstrap or migration, run `$SKILL_DIR/scripts/seo-doctor.mjs`. It is read-only across scan roots; with `--plan-output` it may write that one caller-declared path only, outside every scan root. Review the diagnosis, then rerun with an explicit `create | adopt | migrate | repair` decision. Bootstrap accepts a current hashed plan and `create | adopt | verify | repair`; it recomputes root/domain/search/source hashes before writing, consumes mutating plans once, and refuses migrate. A legacy workspace is adoptable only when at least three files match the exact tolerant schema-1 signatures and identity is explicit or canonical-registry-proven; filenames alone are insufficient. In hub mode, canonical `.seo/registry.md` routes while `.agents/seo/REGISTRY.md` is inventory only. Full lifecycle and target rules: `references/hub-mode.md` and `references/migrate-uninstall.md`.
 
 ## Choose A Mode
 
@@ -113,13 +113,20 @@ Load only the file needed for the mode or ticket:
 
 Use templates from `templates/` for report shape. Use scripts when deterministic scaffolding or analysis is useful (all run with `node`, no dependencies):
 
-- `scripts/seo-doctor.mjs` is the read-only preflight (never writes): classifies the target workspace, finds other candidate workspaces for the same site (directory scan + registry rows), inventories skill install copies (including dangling symlinks), flags stale doc pointers and unregistered hub site folders. Exit 1 means decide before you mutate. Run it before every bootstrap or migration.
-- `scripts/bootstrap-seo-workspace.mjs` creates the base `.seo/` workspace without overwriting files; `--hub` creates a hub skeleton and `--site <slug>` creates a site workspace under `.seo/sites/` (registry registration stays manual — the script prints a REGISTRATION PENDING row).
+- `scripts/seo-doctor.mjs` classifies exact schema-1 state, canonical/legacy registries, installs/lock/active paths, generated drift, and stat-only credential permissions. Its short-lived plan binds every reviewed source.
+- `scripts/bootstrap-seo-workspace.mjs` consumes that plan: create scaffolds once, adopt writes config only, verify writes nothing, and repair creates only the reviewed missing generated allowlist.
 - `scripts/gsc-oauth.mjs` creates a local refresh-token env file without printing token values.
 - `scripts/gsc-fetch.mjs` fetches Search Console `query,page` rows with pagination using env credentials.
 - `scripts/gsc-opportunities.mjs` turns exported GSC rows into position-banded CTR, page-2, and cannibalization opportunity tables; `--brand` excludes branded queries, `--format backlog` emits draft `.seo/backlog.md` rows for review.
 - `scripts/monthly-report.mjs` builds a one-page monthly SEO report from exported GSC, backlog, keyword, and calendar files.
 - `scripts/portfolio-status.mjs` reads the site registry and each workspace's `.seo/` state into a ranked cross-site "which site deserves the next SEO hour" table.
+
+Check the lifecycle command contracts from any CWD:
+
+```bash
+node "$SKILL_DIR/scripts/seo-doctor.mjs" --help
+node "$SKILL_DIR/scripts/bootstrap-seo-workspace.mjs" --help
+```
 
 ## Core Workflow
 

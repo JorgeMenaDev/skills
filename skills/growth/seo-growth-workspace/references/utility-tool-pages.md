@@ -74,7 +74,7 @@ Before handoff, record evidence in `.seo/audit.md` or `.seo/pseo/plan.md`:
 - Rendered title, H1, meta, canonical, and robots state.
 - Tool interaction works on desktop and mobile.
 - Sitemap includes only indexable tools.
-- Internal links reach all first-batch pages from hub/home/product/blog paths.
+- Internal links reach all first-batch pages from the content hub, homepage, product pages, and blog.
 - Analytics event names or conversion proof.
 - Search Console indexing/request status when available.
 

@@ -24,7 +24,7 @@ Use for schema audits, JSON-LD implementation, and rich-results validation.
 
 ## Deprecated Rich Results
 
-The markup can stay valid — schema still grounds the site's entities for AI answers — but the SERP feature is gone. Do not file tickets or forecast wins on these:
+The markup can stay valid when it accurately describes visible content, but the SERP feature is gone. Do not claim schema grounds AI answers, and do not file tickets or forecast wins on these removed result types:
 
 | Removed  | Rich result                                                                                              |
 | -------- | -------------------------------------------------------------------------------------------------------- |
