@@ -298,7 +298,14 @@ export const vercelSandbox = (options: { env?: Record<string, string> } = {}): I
               await writeFile(hostPath, buffer);
               console.log(`[vercel-provider] exported recorded verification to ${hostPath}`);
             } catch (error) {
-              recordingError = error;
+              const detail = error instanceof Error ? error.message : String(error);
+              const reason = `Recorded verification export failed: ${detail}`;
+              console.error(`[vercel-provider] ${reason}`);
+              const failurePath = join(process.env.OUTPUT_DIR ?? tmpdir(), "failure_reason.txt");
+              await writeFile(failurePath, reason).catch((writeError: unknown) =>
+                console.error(`[vercel-provider] could not write ${failurePath}: ${writeError instanceof Error ? writeError.message : writeError}`)
+              );
+              recordingError = new Error(reason);
             }
           }
           // persistent:false → stop leaves no snapshot; delete drops the record.

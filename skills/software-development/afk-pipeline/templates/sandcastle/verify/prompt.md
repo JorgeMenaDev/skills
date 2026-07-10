@@ -40,7 +40,9 @@ restarted, repeat the entire visible navigation and interaction flow after the
 final restart, using the required output path again. Before stopping, confirm with an
 `agent-browser screenshot` that the feature under test is still visibly in the
 recorded viewport; a video of an idle or off-screen page is a failed criterion
-even if DOM assertions passed. Keep one continuous recording through the
+even if DOM assertions passed. Recording is built into `agent-browser` and does
+not require `ffmpeg`; never skip the WebM because preview tooling is absent.
+Keep one continuous recording through the
 primary user flow, then run `agent-browser record stop`. On any failure path,
 stop the recording before writing the false verdict so partial evidence
 survives. Record no credentials, customer data, notifications, or one-time
