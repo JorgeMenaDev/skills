@@ -4,6 +4,16 @@ Use when a ticket needs competitor evidence: demand gaps, backlink gaps, local p
 
 Profiles are dated snapshots, not living documents. Every claim traces to a saved page or a named data pull; label inferences as inferences.
 
+## Selecting The Competitor Set
+
+When the ticket names the category but not the competitors, build the set before profiling:
+
+- Seed from demand, not memory: run the site's own money queries (from GSC or the keyword plan) through live SERP checks and note which *product* domains recur. Record the queries and date in the report header.
+- Separate product competitors from SERP occupants. Agencies, affiliate listicles, and news sites that rank for the money queries are SERP obstacles, not positioning competitors — exclude them from profiling and say so, or the matrix fills with rows that can't feed any destination.
+- Name the geo caveat: most search tools proxy from one country (often US), so local-market SERPs (es-CL, pt-BR, ...) are approximations. Record the limitation; a deep profile can verify with a true local SERP tool via `references/data-tools.md`.
+- Skip competitors the site already covers with live alternatives/vs content unless the ticket asks to re-audit them — the marginal evidence is small; spend the scan budget on unprofiled players.
+- Cap the set at what the depth budget affords (3–5 for quick scans) and list who was deliberately left out.
+
 ## Depth Contract
 
 | Depth | Scope | When |
@@ -16,6 +26,8 @@ Default to quick scan. Record the depth in the report header.
 ## Snapshots
 
 Save raw evidence to `.seo/reports/competitors/<slug>/<YYYY-MM-DD>/` — one file per captured page (`homepage.md`, `pricing.md`, ...) plus data pulls as JSON. `<slug>` is lowercase, hyphenated. Create a fresh date folder each run; never overwrite earlier dates — the history is the diff. Every profile cites the snapshot folder it was built from.
+
+Quick scans parallelize well: when the runtime supports subagents, run one capture agent per competitor concurrently, each writing its own snapshot folder and returning a summary for synthesis. Give every agent the full no-fabrication contract (record `fetch failed: <url>` instead of paraphrasing; mark `unverified claim`s) — a subagent under output pressure is more tempted to fill gaps from memory than the main loop is. Two capture tips that recur: bot-blocked sites (Cloudflare, AI-crawler blocks) usually still answer `curl` with a browser User-Agent — record the workaround in the snapshot so the block isn't mistaken for a dead site; and a bare-domain 404 may hide a live `www.` host.
 
 ## Page-Type Extraction Matrix
 
