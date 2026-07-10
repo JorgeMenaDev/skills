@@ -44,6 +44,7 @@ const DECISIONS = new Set(["unresolved", "create", "adopt", "migrate", "repair"]
 function usage() {
   return `Usage:
   node seo-doctor.mjs [root] [--site <id>] [--domain <host>]
+    [--hub]
     [--search-root <dir>]... [--plan-output <outside-scan-roots.json>]
     [--decision create|adopt|migrate|repair] [--workspace <path>]
     [--repair-files <comma,separated,paths>] [--format md|json]
@@ -64,6 +65,7 @@ function parseArgs(argv) {
   const options = {
     root: null,
     site: null,
+    hub: false,
     domain: null,
     searchRoots: [],
     planOutput: null,
@@ -75,6 +77,10 @@ function parseArgs(argv) {
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === "--help" || arg === "-h") return { help: true };
+    if (arg === "--hub") {
+      options.hub = true;
+      continue;
+    }
     if (arg === "--search-roots") {
       const value = argv[++i];
       if (!value) throw new Error(`Missing value for ${arg}\n\n${usage()}`);
@@ -259,8 +265,14 @@ function inspectDocs(root, rootClassification) {
 }
 
 function credentialPath(registryPath, raw) {
-  const value = cellValue(raw).replace(/^dir:/, "");
-  if (!value || /^(?:unknown|none(?: yet)?|env:)/i.test(value)) return null;
+  const rawValue = cellValue(raw);
+  if (!rawValue || /^(?:unknown|none(?: yet)?|env:)/i.test(rawValue)) return null;
+  let value = rawValue;
+  const assignment = rawValue.match(/^GSC_CREDENTIALS_DIR=(.+)$/);
+  if (assignment) value = assignment[1].trim().replace(/^(?:"([^"]*)"|'([^']*)')$/, "$1$2");
+  else if (rawValue.includes("=")) return null;
+  else value = rawValue.replace(/^dir:/, "");
+  if (!value || /^<[^>]+>$/.test(value)) return null;
   if (!/[/.~]/.test(value)) return null;
   return path.resolve(path.dirname(registryPath), expandHome(value));
 }
@@ -278,18 +290,25 @@ function permissionFinding(input) {
 function inspectGeneratedSymlinks(workspaceDir) {
   if (!workspaceDir || !existsSync(workspaceDir)) return [];
   const artifacts = [...GENERATED_WORKSPACE_FILES, ...GENERATED_WORKSPACE_DIRS];
+  const checked = new Set();
   return artifacts.flatMap((relative) => {
-    const absolute = path.join(workspaceDir, relative);
-    try {
-      if (!lstatSync(absolute).isSymbolicLink()) return [];
-      const targetRaw = readlinkSync(absolute);
-      const target = path.resolve(path.dirname(absolute), targetRaw);
-      if (!existsSync(target)) return [{ relative, target: targetRaw, issue: "dangling" }];
-      if (!isWithin(realpathSync(target), workspaceDir)) return [{ relative, target: targetRaw, issue: "escape" }];
-      return [];
-    } catch {
-      return [];
-    }
+    const segments = relative.split(path.sep);
+    return segments.flatMap((_, index) => {
+      const ancestor = segments.slice(0, index + 1).join(path.sep);
+      if (checked.has(ancestor)) return [];
+      checked.add(ancestor);
+      const absolute = path.join(workspaceDir, ancestor);
+      try {
+        if (!lstatSync(absolute).isSymbolicLink()) return [];
+        const targetRaw = readlinkSync(absolute);
+        const target = path.resolve(path.dirname(absolute), targetRaw);
+        if (!existsSync(target)) return [{ relative: ancestor, target: targetRaw, issue: "dangling" }];
+        if (!isWithin(realpathSync(target), workspaceDir)) return [{ relative: ancestor, target: targetRaw, issue: "escape" }];
+        return [];
+      } catch {
+        return [];
+      }
+    });
   });
 }
 
@@ -302,10 +321,21 @@ function diagnose(options) {
   const seoDir = path.join(root, ".seo");
   const rootState = classifyWorkspace(seoDir);
   const hub = rootState.classification === "hub" ? seoDir : null;
+  const installMode = rootState.classification === "hub" || options.hub ? "hub" : "standalone";
+  const findings = [];
   let target = { workspaceDir: seoDir, ...rootState };
   if (options.site) {
     const siteDir = path.join(seoDir, "sites", options.site);
     target = { workspaceDir: siteDir, ...classifyWorkspace(siteDir, { hubSite: true }) };
+  }
+  if (options.site && rootState.classification === "standalone") {
+    addFinding(findings, "mode_confusion", `${seoDir} is stamped standalone; a site workspace can be created only under a hub root.`);
+  }
+  if (options.site && rootState.classification === "none" && !options.hub) {
+    addFinding(findings, "mode_confusion", `Creating site ${options.site} under an absent root requires an explicit reviewed --hub decision.`);
+  }
+  if (options.hub && rootState.classification === "standalone") {
+    addFinding(findings, "mode_confusion", `${seoDir} is stamped standalone and cannot be reinterpreted as a hub root.`);
   }
   const defaultSearchRoots = [root, path.dirname(root)];
   const searchRoots = [...new Set([...defaultSearchRoots, ...options.searchRoots.map(expandHome)].map((item) => safeRealpath(path.resolve(item))))];
@@ -320,8 +350,6 @@ function diagnose(options) {
     ...[...canonicalRegistryPaths.values()].map((item) => parseRegistry(item, "canonical")),
     ...[...legacyRegistryPaths.values()].map((item) => parseRegistry(item, "legacy")),
   ];
-  const findings = [];
-
   if (target.classification === "unrecognized") {
     addFinding(findings, "unrecognized_workspace", `${target.workspaceDir} has ${target.present.length} canonical filenames but only ${target.recognized.length} recognized schema-1 files.`);
   }
@@ -365,7 +393,8 @@ function diagnose(options) {
   }
   for (const item of registryInventory) {
     if (!item.workspace) {
-      addFinding(findings, "stale_registry_row", `${item.registryKind} registry row ${item.site} points at a missing workspace (${item.workspaceRaw}); it is inventory, not a candidate.`, { registry: item.registry, site: item.site });
+      const code = item.registryKind === "canonical" ? "stale_canonical_route" : "stale_registry_row";
+      addFinding(findings, code, `${item.registryKind} registry row ${item.site} points at a missing workspace (${item.workspaceRaw}); ${item.registryKind === "canonical" ? "the route is blocking" : "it is inventory, not a candidate"}.`, { registry: item.registry, site: item.site });
     } else if (item.registryKind === "legacy" && !canonicalRoots.has(item.realWorkspace)) {
       addFinding(findings, "unmigrated_legacy_site", `Legacy-only site ${item.site} remains visible at ${item.realWorkspace}.`, { registry: item.registry, site: item.site, workspace: item.realWorkspace });
     }
@@ -435,6 +464,8 @@ function diagnose(options) {
   });
   let decisionError = null;
   if (options.decision === "create" && target.classification !== "none") decisionError = `create requires an absent target, got ${target.classification}`;
+  if (options.site && installMode !== "hub") decisionError = "site actions require a reviewed hub install mode";
+  if (options.site && rootState.classification === "standalone") decisionError = "a stamped standalone root cannot host hub site workspaces";
   if (options.decision === "adopt" && (target.classification !== "legacy-standalone" || target.recognized.length < LEGACY_SIGNATURE_MIN || !normalizedDomain)) decisionError = "adopt requires explicit identity and at least three recognized schema-1 files";
   if (options.decision === "repair" && (!new Set(["standalone", "hub-site"]).has(target.classification) || requestedRepair.length === 0 || invalidRepair.length > 0 || requestedRepair.some((file) => !missing.includes(file)))) decisionError = "repair requires a stamped/registered schema-1 workspace and an exact allowlist of missing generated artifacts";
   if (options.decision === "unresolved") decisionError = "decision remains unresolved";
@@ -474,6 +505,7 @@ function diagnose(options) {
     root,
     generated: new Date().toISOString(),
     site: options.site,
+    installMode,
     legacySiteId,
     domain: domain ?? null,
     normalizedDomain: normalizedDomain || null,
@@ -513,6 +545,7 @@ function diagnose(options) {
       domain: normalizedDomain || null,
       domainHash: sha256(normalizedDomain || ""),
       site: options.site,
+      installMode,
       legacySiteId,
       searchRoots,
       searchRootsHash: sha256(stableJson(searchRoots)),

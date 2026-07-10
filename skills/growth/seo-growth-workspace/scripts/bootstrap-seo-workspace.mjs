@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, lstatSync, readFileSync, realpathSync } from "node:fs";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -10,6 +10,7 @@ import {
   LEGACY_SIGNATURE_MIN,
   SITE_ID_PATTERN,
   classifyWorkspace,
+  isWithin,
   normalizeHost,
   planHash,
   safeRealpath,
@@ -212,22 +213,57 @@ function configContent(mode) {
   return `${JSON.stringify({ mode, created: new Date().toISOString().slice(0, 10), skillVersion: SKILL_VERSION, workspaceSchemaVersion: WORKSPACE_SCHEMA_VERSION }, null, 2)}\n`;
 }
 
-async function writeMissing(baseDir, files, allowlist = null) {
+function assertContained(root, candidate) {
+  if (!isWithin(candidate, root)) throw new Error(`Path escapes reviewed root: ${candidate}`);
+  const relative = path.relative(root, candidate);
+  let cursor = root;
+  for (const segment of relative.split(path.sep).filter(Boolean)) {
+    cursor = path.join(cursor, segment);
+    try {
+      if (!lstatSync(cursor).isSymbolicLink()) continue;
+      let resolved;
+      try {
+        resolved = realpathSync(cursor);
+      } catch {
+        throw new Error(`Path crosses a dangling symlink: ${cursor}`);
+      }
+      if (!isWithin(resolved, root)) throw new Error(`Path crosses a symlink outside the reviewed root: ${cursor}`);
+    } catch (error) {
+      if (error.code === "ENOENT") continue;
+      throw error;
+    }
+  }
+}
+
+async function mkdirContained(root, directory) {
+  assertContained(root, directory);
+  await mkdir(directory, { recursive: true });
+  assertContained(root, directory);
+}
+
+async function writeContained(root, file, content) {
+  assertContained(root, file);
+  await mkdirContained(root, path.dirname(file));
+  assertContained(root, file);
+  await writeFile(file, content, { flag: "wx" });
+  assertContained(root, file);
+}
+
+async function writeMissing(baseDir, files, allowlist = null, root = baseDir) {
   for (const [relative, content] of Object.entries(files)) {
     if (allowlist && !allowlist.has(relative)) continue;
     const absolute = path.join(baseDir, relative);
     if (existsSync(absolute)) continue;
-    await mkdir(path.dirname(absolute), { recursive: true });
-    await writeFile(absolute, content, { flag: "wx" });
+    await writeContained(root, absolute, content);
   }
 }
 
-async function createWorkspace(workspaceDir, allowlist = null) {
+async function createWorkspace(workspaceDir, allowlist = null, root = workspaceDir) {
   const directories = ["reports", "scripts", "pseo"];
   for (const directory of directories) {
-    if (!allowlist || allowlist.has(directory)) await mkdir(path.join(workspaceDir, directory), { recursive: true });
+    if (!allowlist || allowlist.has(directory)) await mkdirContained(root, path.join(workspaceDir, directory));
   }
-  await writeMissing(workspaceDir, { ...workspaceFiles(), "taxonomy.md": await taxonomyContent() }, allowlist);
+  await writeMissing(workspaceDir, { ...workspaceFiles(), "taxonomy.md": await taxonomyContent() }, allowlist, root);
 }
 
 function loadAndVerifyPlan(options, root) {
@@ -246,6 +282,8 @@ function loadAndVerifyPlan(options, root) {
   const domain = normalizeHost(options.domain);
   if (plan.domain !== domain || plan.domainHash !== sha256(domain)) throw new Error("Plan domain mismatch");
   if (plan.site !== options.site) throw new Error("Plan site mismatch");
+  const requestedInstallMode = options.hub || options.site ? "hub" : "standalone";
+  if (plan.installMode !== requestedInstallMode) throw new Error(`Plan install mode ${plan.installMode} does not match requested ${requestedInstallMode} mode`);
   if (plan.searchRootsHash !== sha256(stableJson(plan.searchRoots))) throw new Error("Plan search-root hash mismatch");
   if (plan.sourcesHash !== sha256(stableJson(plan.sources))) throw new Error("Plan source-list hash mismatch");
   const sourceMismatches = verifySourceRecords(plan.sources);
@@ -256,6 +294,9 @@ function loadAndVerifyPlan(options, root) {
   const files = [...new Set(options.files)].sort();
   if (options.action === "repair" && stableJson(files) !== stableJson(plan.repairFiles)) throw new Error("Repair allowlist does not match the reviewed plan");
   const targetState = classifyWorkspace(plan.target.workspaceDir, { hubSite: Boolean(options.site) });
+  const rootState = classifyWorkspace(path.join(root, ".seo"));
+  if (requestedInstallMode === "hub" && rootState.classification === "standalone") throw new Error("A stamped standalone root cannot be used as a hub");
+  if (options.site && rootState.classification === "none" && !options.hub) throw new Error("Creating the first site under an absent root requires --hub");
   if (targetState.classification !== plan.target.classification) throw new Error(`Target classification changed: ${plan.target.classification} -> ${targetState.classification}`);
   if (safeRealpath(plan.chosenWorkspace) !== safeRealpath(plan.target.workspaceDir)) throw new Error("Plan chosen workspace is not the target workspace");
   if (options.site && !SITE_ID_PATTERN.test(options.site) && plan.legacySiteId !== options.site) throw new Error(`New site IDs must match the 1-64 character slug grammar; ${options.site} is not a grandfathered registered ID`);
@@ -288,7 +329,7 @@ async function main() {
   try {
     if (options.action === "adopt") {
       if (targetState.classification !== "legacy-standalone" || targetState.recognized.length < LEGACY_SIGNATURE_MIN) throw new Error("Adopt requires a recognized legacy standalone workspace");
-      await writeFile(path.join(targetState.workspaceDir ?? seoDir, "config.json"), configContent("standalone"), { flag: "wx" });
+      await writeContained(root, path.join(targetState.workspaceDir ?? seoDir, "config.json"), configContent("standalone"));
       console.log(`Legacy workspace adopted at ${targetState.workspaceDir ?? seoDir}; config.json was the only workspace write`);
       return;
     }
@@ -300,25 +341,25 @@ async function main() {
         if (!GENERATED_WORKSPACE_FILES.has(file) && !GENERATED_WORKSPACE_DIRS.has(file)) throw new Error(`Repair path is not generated: ${file}`);
         if (existsSync(path.join(plan.target.workspaceDir, file))) throw new Error(`Repair refuses existing path: ${file}`);
       }
-      await createWorkspace(plan.target.workspaceDir, allowlist);
+      await createWorkspace(plan.target.workspaceDir, allowlist, root);
       console.log(`Workspace repaired at ${plan.target.workspaceDir}: ${options.files.join(", ")}`);
       return;
     }
 
     if (targetState.classification !== "none") throw new Error(`Create requires an absent target, got ${targetState.classification}`);
     if (options.hub || options.site) {
-      await mkdir(path.join(seoDir, "sites"), { recursive: true });
-      await writeMissing(seoDir, { "config.json": configContent("hub"), "README.md": hubReadme(), "registry.md": registrySeed() });
+      await mkdirContained(root, path.join(seoDir, "sites"));
+      await writeMissing(seoDir, { "config.json": configContent("hub"), "README.md": hubReadme(), "registry.md": registrySeed() }, null, root);
       if (options.site) {
         const workspaceDir = path.join(seoDir, "sites", options.site);
-        await createWorkspace(workspaceDir);
+        await createWorkspace(workspaceDir, null, root);
         console.log(`REGISTRATION PENDING: | ${options.site} | sites/${options.site} | unknown | unknown | unknown | unknown | hub-managed |`);
       }
       console.log(`SEO hub created at ${root}`);
       return;
     }
-    await createWorkspace(seoDir);
-    await writeFile(path.join(seoDir, "config.json"), configContent("standalone"), { flag: "wx" });
+    await createWorkspace(seoDir, null, root);
+    await writeContained(root, path.join(seoDir, "config.json"), configContent("standalone"));
     console.log(`SEO workspace created at ${root}`);
   } catch (error) {
     throw new Error(`${error.message} (plan remains consumed at ${consumedPath}; rerun doctor before retrying)`);

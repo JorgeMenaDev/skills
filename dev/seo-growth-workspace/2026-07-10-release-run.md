@@ -113,6 +113,8 @@ PASS — dry run made no install; clean export produced 46 portable files; the e
 
 PASS — crawler roles/consequences now distinguish training, direct discovery, and user-triggered fetch with enforcement caveats; schema is not claimed to ground AI answers; standard Performance data cannot prove AI causality. Google's rollout-limited Generative AI Performance UI/export and inherited Search generative-AI include/exclude control are documented as authenticated human surfaces, not assumed APIs or ranking levers.
 
+The Google-Extended boundary now includes both training/model improvement and grounding in Gemini Apps / Grounding with Google Search on Vertex AI, while preserving Google's explicit statement that it does not affect Google Search inclusion or ranking.
+
 Primary authority reviewed:
 
 - Google Search Console Generative AI Performance report and Search generative AI control.
@@ -125,3 +127,14 @@ Primary authority reviewed:
 ### Result
 
 PASS — v3.1.0 repository candidate meets the bounded schema-1 release gates. Live-hub activation remains a separate future approval and rehearsal.
+
+### Safety re-review remediation
+
+PASS — four reproduced boundary failures are closed with dedicated deterministic fixtures:
+
+- plans bind `installMode`; an existing standalone root cannot become a hub, and an absent root needs reviewed `--hub` before first-site creation;
+- missing canonical routes are blocking, while stale legacy inventory remains non-routing and nonblocking;
+- doctor checks every generated-path ancestor, and bootstrap repeats realpath/symlink containment immediately before each directory creation and file write;
+- permission checks parse and stat only approved credential-location forms, including `GSC_CREDENTIALS_DIR=/absolute/path`, while ignoring arbitrary assignments and credential contents.
+
+Re-run evidence: two validators passed concurrently; command inventory remained 3 executable / 76 illustrative / 0 malformed with 3/3 foreign-CWD passes; evaluator passed 100/100 with zero findings; clean export remained 46 files and its exported copy passed the validator.

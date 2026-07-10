@@ -65,6 +65,10 @@ PASS requires six canonical rows, eight legacy rows, six `stale_registry_row` fi
 
 The existing validator must prove direct bootstrap bypass, expired/tampered/mismatched/source-changed plans, replay, ambiguous identity, schema-ahead state, and generated symlink escape all fail before workspace writes. It must also prove:
 
+- reviewed standalone/hub mode is plan-bound; a stamped standalone root cannot gain hub registry/sites, and the first site under an absent root requires an explicit reviewed `--hub`;
+- a missing canonical route blocks the selected identity while missing legacy inventory remains non-routing;
+- every generated-path ancestor is checked for dangling/escaping symlinks and writes remain inside the reviewed root;
+- only the approved `GSC_CREDENTIALS_DIR=<path>` assignment RHS (or documented path form) is statted; arbitrary assignments and credential content are ignored;
 - `adopt` writes only `config.json` on at least three exactly recognized files;
 - `verify` performs zero writes;
 - `repair` creates only the reviewed missing generated allowlist and preserves all existing/historical bytes;
@@ -103,7 +107,7 @@ For an installed copy, the same scripts under `.agents/skills/seo-growth-workspa
 5. Hub dry run — against a second temporary root:
 
 ```bash
-node "$SKILL_DIR/scripts/seo-doctor.mjs" <hub-root> --site example-com --domain example.com --decision create --plan-output <outside-root-plan>
+node "$SKILL_DIR/scripts/seo-doctor.mjs" <hub-root> --hub --site example-com --domain example.com --decision create --plan-output <outside-root-plan>
 node "$SKILL_DIR/scripts/bootstrap-seo-workspace.mjs" --plan <outside-root-plan> --action create --domain example.com --hub --site example-com <hub-root>
 ```
 

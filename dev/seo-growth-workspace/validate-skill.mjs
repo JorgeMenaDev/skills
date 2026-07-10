@@ -166,10 +166,11 @@ function treeDigest(root) {
   return hash(visit(root).join("\n"));
 }
 
-function makePlan(root, { domain = "example.com", decision, site = null, repairFiles = [], extra = [] }) {
+function makePlan(root, { domain = "example.com", decision, hub = false, site = null, repairFiles = [], extra = [] }) {
   const planDir = mkdtempSync(path.join("/private/tmp", "seo-plan-fixture-"));
   const planPath = path.join(planDir, "plan.json");
   const args = [root, "--domain", domain, "--decision", decision, "--plan-output", planPath, "--format", "json"];
+  if (hub) args.push("--hub");
   if (site) args.push("--site", site);
   if (repairFiles.length) args.push("--repair-files", repairFiles.join(","));
   args.push(...extra);
@@ -178,7 +179,7 @@ function makePlan(root, { domain = "example.com", decision, site = null, repairF
 }
 
 function plannedBootstrap(root, { domain = "example.com", action = "create", hub = false, site = null, files = [] }) {
-  const planned = makePlan(root, { domain, decision: action, site, repairFiles: files });
+  const planned = makePlan(root, { domain, decision: action, hub, site, repairFiles: files });
   if (planned.result.status !== 0) throw new Error(planned.result.stderr || planned.result.stdout);
   const args = ["--plan", planned.planPath, "--action", action, "--domain", domain];
   if (hub) args.push("--hub");
@@ -640,6 +641,55 @@ section("doctor plan and bootstrap action contract", () => {
   }
 });
 
+section("doctor install-mode binding", () => {
+  const container = fixtureTmp("seo-mode-binding-");
+  try {
+    const standalone = path.join(container, "standalone");
+    plannedBootstrap(standalone, { domain: "standalone.example" });
+    const stamped = makePlan(standalone, { domain: "child.example", decision: "create", site: "child-site" });
+    check(stamped.result.status === 1 && stamped.report.plan?.approved === false, "A stamped standalone root must reject site creation plans");
+    check(stamped.report.findings?.some((finding) => finding.code === "mode_confusion"), "Standalone-to-hub reinterpretation must be an explicit mode_confusion finding");
+    check(!existsSync(path.join(standalone, ".seo/registry.md")) && !existsSync(path.join(standalone, ".seo/sites/child-site")), "Rejected site planning must not mutate a standalone workspace");
+    rmSync(stamped.planDir, { recursive: true, force: true });
+
+    const forcedHub = makePlan(standalone, { domain: "child.example", decision: "create", hub: true, site: "child-site" });
+    check(forcedHub.result.status === 1 && forcedHub.report.plan?.approved === false, "--hub must not reinterpret an already stamped standalone root");
+    rmSync(forcedHub.planDir, { recursive: true, force: true });
+
+    const absent = path.join(container, "absent");
+    mkdirSync(absent);
+    const implicitHub = makePlan(absent, { domain: "first.example", decision: "create", site: "first-site" });
+    check(implicitHub.result.status === 1 && implicitHub.report.plan?.approved === false, "The first hub site requires an explicit reviewed --hub plan");
+    check(!existsSync(path.join(absent, ".seo")), "Implicit hub planning must remain read-only");
+    rmSync(implicitHub.planDir, { recursive: true, force: true });
+
+    const standalonePlan = makePlan(absent, { domain: "first.example", decision: "create" });
+    const modeMismatch = spawnSync(process.execPath, [path.join(skillRoot, "scripts/bootstrap-seo-workspace.mjs"), "--plan", standalonePlan.planPath, "--action", "create", "--domain", "first.example", "--hub", absent], { encoding: "utf-8" });
+    check(modeMismatch.status !== 0 && (modeMismatch.stderr ?? "").includes("install mode") && !existsSync(path.join(absent, ".seo")), "Bootstrap must bind and enforce the reviewed install mode before writes");
+    rmSync(standalonePlan.planDir, { recursive: true, force: true });
+  } finally {
+    rmSync(container, { recursive: true, force: true });
+  }
+});
+
+section("doctor selected canonical stale route", () => {
+  const container = fixtureTmp("seo-canonical-stale-");
+  try {
+    const hub = path.join(container, "hub");
+    plannedBootstrap(hub, { domain: "healthy.example", hub: true, site: "healthy-site" });
+    appendFileSync(path.join(hub, ".seo/registry.md"), "| stale.example | sites/missing-site | unknown | unknown | unknown | unknown | missing route |\n");
+    const sibling = path.join(container, "sibling");
+    mkdirSync(sibling);
+    const blocked = makePlan(sibling, { domain: "stale.example", decision: "create" });
+    check(blocked.result.status === 1 && blocked.report.plan?.approved === false, "A missing canonical route for the selected identity must block create");
+    check(blocked.report.findings?.some((finding) => finding.code === "stale_canonical_route" && finding.site === "stale.example"), "The blocking finding must identify the stale canonical route");
+    check(!existsSync(path.join(sibling, ".seo")), "A stale canonical route must not redirect creation into a sibling target");
+    rmSync(blocked.planDir, { recursive: true, force: true });
+  } finally {
+    rmSync(container, { recursive: true, force: true });
+  }
+});
+
 section("doctor schema and filesystem safety", () => {
   const schemaRoot = fixtureTmp("seo-schema-ahead-");
   const symlinkRoot = fixtureTmp("seo-symlink-escape-");
@@ -659,6 +709,15 @@ section("doctor schema and filesystem safety", () => {
     const symlink = spawnSync(process.execPath, [path.join(skillRoot, "scripts/seo-doctor.mjs"), symlinkRoot, "--domain", "symlink.example", "--format", "json"], { encoding: "utf-8" });
     const symlinkJson = JSON.parse(symlink.stdout || "{}");
     check(symlink.status === 1 && symlinkJson.findings?.some((finding) => finding.code === "generated_symlink_escape"), "Generated-file symlink escapes/dangling targets must block mutation");
+
+    const backlinks = path.join(symlinkRoot, ".seo/backlinks");
+    rmSync(backlinks, { recursive: true, force: true });
+    symlinkSync(outside, backlinks);
+    const nested = makePlan(symlinkRoot, { domain: "symlink.example", decision: "repair", repairFiles: ["backlinks/summary.md"] });
+    check(nested.result.status === 1 && nested.report.plan?.approved === false, "A generated ancestor-directory symlink escape must block a repair plan");
+    check(nested.report.findings?.some((finding) => finding.code === "generated_symlink_escape" && finding.file === "backlinks"), "Doctor must report the escaping ancestor segment, not only the requested leaf");
+    check(!existsSync(path.join(outside, "summary.md")), "A rejected nested-symlink repair must not write outside the reviewed root");
+    rmSync(nested.planDir, { recursive: true, force: true });
   } finally {
     rmSync(schemaRoot, { recursive: true, force: true });
     rmSync(symlinkRoot, { recursive: true, force: true });
@@ -697,13 +756,16 @@ section("doctor registry, permission, lock, and non-disclosure findings", () => 
   try {
     const hub = path.join(container, "hub");
     const credential = path.join(container, "credential.env");
+    const ignoredCredential = path.join(container, "ignored-credential.env");
     const marker = "CREDENTIAL_VALUE_MUST_NOT_APPEAR";
     writeFileSync(credential, marker);
+    writeFileSync(ignoredCredential, "IGNORED_SECRET_CONTENT");
     chmodSync(credential, 0o644);
+    chmodSync(ignoredCredential, 0o644);
     plannedBootstrap(hub, { domain: "integrity.example", hub: true, site: "integrity-site" });
     appendFileSync(path.join(hub, ".seo/registry.md"), [
-      `| integrity.example | sites/integrity-site | unknown | dir:${credential} | unknown | unknown | fixture |`,
-      `| integrity.example | sites/integrity-site | unknown | ${marker} | unknown | unknown | duplicate |`,
+      `| integrity.example | sites/integrity-site | unknown | GSC_CREDENTIALS_DIR=${credential} | unknown | unknown | fixture |`,
+      `| integrity.example | sites/integrity-site | unknown | SECRET_PATH=${ignoredCredential} | unknown | unknown | duplicate |`,
       "| malformed | too-few |",
       "",
     ].join("\n"));
@@ -714,6 +776,8 @@ section("doctor registry, permission, lock, and non-disclosure findings", () => 
     const json = JSON.parse(result.stdout || "{}");
     const codes = new Set((json.findings ?? []).map((finding) => finding.code));
     check(result.status === 1 && codes.has("credential_permissions") && codes.has("skills_lock_drift"), "Doctor must report stat-only credential permission and skills-lock drift");
+    const permissionFindings = (json.findings ?? []).filter((finding) => finding.code === "credential_permissions");
+    check(permissionFindings.length === 1 && permissionFindings[0].credentialPath === credential, "Doctor must stat only the approved GSC_CREDENTIALS_DIR assignment RHS and ignore arbitrary assignments");
     check(codes.has("duplicate_registry_site") && codes.has("duplicate_registry_root") && codes.has("malformed_registry"), "Doctor must distinguish duplicate-site, duplicate-root, and malformed registry rows");
     check(!result.stdout.includes(marker) && !result.stderr.includes(marker), "Credential content marker must never enter doctor output");
   } finally {

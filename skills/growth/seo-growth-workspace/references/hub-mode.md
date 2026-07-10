@@ -22,7 +22,7 @@ The skill has two install modes. The operating behavior — modes, phases, ticke
 
 When no `.seo/` exists at all:
 
-1. **Doctor first (required)**: run `node "$SKILL_DIR/scripts/seo-doctor.mjs" <root> --domain <host>` for read-only diagnosis. Review its findings, then rerun with `--decision create|adopt|repair --plan-output "$PLAN_DIR/bootstrap.json"`; `PLAN_DIR` must be outside every scan root. `decision: migrate` is terminal/manual in v3.1. Never bootstrap from an unresolved, stale, or mismatched plan.
+1. **Doctor first (required)**: run `node "$SKILL_DIR/scripts/seo-doctor.mjs" <root> --domain <host>` for read-only diagnosis. Review its findings, then rerun with `--decision create|adopt|repair --plan-output "$PLAN_DIR/bootstrap.json"`; add `--hub` while reviewing creation of a new hub root or its first site. `PLAN_DIR` must be outside every scan root. `decision: migrate` is terminal/manual in v3.1. Never bootstrap from an unresolved, stale, mode-mismatched, or source-mismatched plan.
 2. Ask exactly one question:
 
 > Is this a standalone site repo (SEO state lives here, for this one site), or a hub — an orchestrator workspace that manages SEO for several repos/sites?

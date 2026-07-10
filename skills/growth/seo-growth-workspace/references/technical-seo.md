@@ -36,7 +36,7 @@ Inventory access by purpose — the allow/block consequence differs by what the 
 
 | Purpose | Crawlers | Cost of blocking |
 | --- | --- | --- |
-| Training/model improvement | GPTBot, ClaudeBot, Google-Extended, Applebot-Extended, CCBot, Meta-ExternalAgent, Bytespider | Limits that operator's training/model-improvement use. It does not by itself remove the page from ordinary search or every citation path. Google explicitly says Google-Extended does not affect Google Search. |
+| Training/model improvement | GPTBot, ClaudeBot, Google-Extended, Applebot-Extended, CCBot, Meta-ExternalAgent, Bytespider | Limits that operator's training/model-improvement use. Google-Extended also controls grounding in Gemini Apps and Grounding with Google Search on Vertex AI, while not affecting inclusion or ranking in Google Search. Blocking a training token does not by itself remove the page from ordinary search or every other citation path. |
 | Search/discovery index | OAI-SearchBot, Claude-SearchBot, PerplexityBot | Prevents that crawler from reading the page, reducing direct discovery and full-content citation eligibility. It is not proof that a title/link can never surface through another index or previously known URL. |
 | User-triggered / live fetch | ChatGPT-User, Claude-User, Perplexity-User | Can prevent a fresh answer-time fetch when the agent honors robots. Enforcement differs: Perplexity documents that Perplexity-User generally ignores robots.txt, so WAF/log evidence matters. |
 
