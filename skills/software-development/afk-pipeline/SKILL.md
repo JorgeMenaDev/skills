@@ -1,7 +1,7 @@
 ---
 name: afk-pipeline
 description: Run a dev task as an AFK Task — grill the request, choose Pipeline Flags, write an Agent Brief, and trigger the label-driven pipeline that ends in a draft PR. Use when the user asks for a code change, feature, or fix in a repo listed in the AFK registry, asks which phases a task needs, or wants the pipeline installed in a new repo.
-version: 2.9.3
+version: 2.10.0
 mutating: true
 writes_to: [.agents/afk-pipeline/]
 ---
@@ -25,6 +25,7 @@ _R=.agents/afk-pipeline/REGISTRY.md
 
 - Every dev task in a registered repo goes through an Agent Brief — no inline implementation, no direct pushes, no merges.
 - Phases are fail-safe ON: Pipeline Flags only reduce work; absent flags mean the full pipeline (implement → advisory second-model review → verify → draft PR → recap) on `engine: claude`. **Recap is opt-in at authoring time** (v2.9.3): every brief stamps `recap: off` unless the requester explicitly asked for a recap — the runtime fail-safe stays `recap: on`, so the line is mandatory, never omitted.
+- Recorded browser evidence is opt-in (v2.10.0): every new brief stamps `recording: off` unless the requester asks for video proof. `recording: on` is v1-hosted-only (cloud or Vercel Sandbox), requires verify, uploads the full WebM as a 30-day Actions artifact, and commits only a small GIF preview to the PR.
 - The implementation engine is a brief-stamped contract (v2.9.0): `engine: claude` by default; `engine: codex` runs the four agent phases (implement / review-fix / verify / write-pr) on Codex when the dispatcher has confirmed the target lane can run Codex; `engine: cursor` runs **implement only** on the Cursor Agent CLI, then keeps review-fix / verify / write-pr on Claude because Cursor sessions are non-resumable and structured-output retry needs resume. Cursor v1 is cloud-lane only (`agent:implement`), requires the repo secret `CURSOR_API_KEY`, defaults to model `grok-4.5-xhigh`, and honors a `CURSOR_MODEL` env override. Recap stays Claude. The second-model review defaults to the opposite vendor for Codex (`engine: codex` + absent `review-engine` resolves to `review-engine: claude`); Cursor follows the Claude default review contract. Explicit `review-engine` overrides are honored and visible; no phase silently swaps engines when a requested engine is unavailable.
 - Repos with a Convex backend (`convexDir` in `.sandcastle/config/pipeline.json`) get a **Convex integrity gate**, always-on and not flag-controlled: the pipeline regenerates `_generated` with real codegen against a keyless anonymous local backend; the schema/types not validating fails the RUN, while divergent committed files are **self-healed** (v2.5.1) — the gate commits the canonical codegen output itself (visible `[convex-gate]` commit in the PR) instead of discarding the whole implement run over machine output (a full andyChat slice was lost to this on 2026-07-07). Hand-editing `_generated` is forbidden everywhere. Companion stack policy: merging a Convex change must trigger an automatic backend release (Vercel-coupled build or a main-push deploy workflow) — a repo where merged backend code waits for a manual `convex deploy` is drift.
 - Skip decisions key on **predicted diff shape** — the files and surfaces the change will actually touch — never on how the task is framed.

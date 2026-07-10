@@ -283,9 +283,28 @@ export const vercelSandbox = (options: { env?: Record<string, string> } = {}): I
         },
 
         close: async (): Promise<void> => {
+          let recordingError: unknown;
+          if (process.env.RECORDING_MODE === "on") {
+            const issue = process.env.ISSUE_NUMBER ?? "unknown";
+            const sandboxPath = `${WORKTREE_PATH}/.sandcastle-artifacts/issue-${issue}/interaction.webm`;
+            const hostPath = join(process.env.OUTPUT_DIR ?? tmpdir(), "recording", `issue-${issue}.webm`);
+            try {
+              const buffer = await withRetry(
+                () => sandbox.readFileToBuffer({ path: sandboxPath }),
+                `export recorded verification ${sandboxPath}`
+              );
+              if (!buffer?.length) throw new Error(`recording is missing or empty: ${sandboxPath}`);
+              await mkdir(dirname(hostPath), { recursive: true });
+              await writeFile(hostPath, buffer);
+              console.log(`[vercel-provider] exported recorded verification to ${hostPath}`);
+            } catch (error) {
+              recordingError = error;
+            }
+          }
           // persistent:false → stop leaves no snapshot; delete drops the record.
           await sandbox.stop().catch((e: unknown) => console.error(`[vercel-provider] stop failed: ${e instanceof Error ? e.message : e}`));
           await sandbox.delete().catch(() => {});
+          if (recordingError) throw recordingError;
         },
       };
 

@@ -25,6 +25,20 @@ Do NOT write unit tests — the browser check IS the test.
 Note the profile you ran in the evidence report. Sweep exactly the viewports
 listed above — no more, no fewer.
 
+# RECORDED COMPUTER-USE EVIDENCE
+
+- **Recording:** `{{RECORDING_MODE}}`
+- **Output path:** `{{RECORDING_PATH}}`
+
+If recording is `on`, create the output directory, remove any stale file, set
+the browser to `1440x900`, and run `agent-browser record start {{RECORDING_PATH}}`
+immediately before the first acceptance-criterion interaction. Keep one
+continuous recording through the primary user flow, then run
+`agent-browser record stop`. On any failure path, stop the recording before
+writing the false verdict so partial evidence survives. Record no credentials,
+customer data, notifications, or one-time codes. If recording is `off`, do not
+run any `agent-browser record` command.
+
 # E2E VERIFICATION with agent-browser
 
 Evidence directory{{EVIDENCE_DIR_NOTE}}:
@@ -73,6 +87,7 @@ Write `{{EVIDENCE_DIR}}/issue-{{ISSUE_NUMBER}}/report.md`:
 - one row per acceptance criterion: criterion → verdict → evidence file /
   measured values;
 - {{REPORT_EXTRAS}}
+- recording mode and, when enabled, the user interactions captured in the video artifact;
 - any fixes you applied.
 
 Commit the evidence directory (and any fixes):

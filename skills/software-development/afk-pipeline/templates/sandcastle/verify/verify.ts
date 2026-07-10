@@ -18,6 +18,11 @@ const TOKEN = process.env.CLAUDE_CODE_OAUTH_TOKEN;
 const VERIFY_VIEWPORTS =
   process.env.VERIFY_VIEWPORTS ?? "390x844, 768x1024, 1440x900, 1920x1080";
 const VERIFY_LOCALES = process.env.VERIFY_LOCALES ?? "all";
+const RECORDING_MODE = process.env.RECORDING_MODE ?? "off";
+const RECORDING_HOST_PATH = path.join(OUTPUT_DIR, "recording", `issue-${ISSUE_NUMBER}.webm`);
+const RECORDING_PATH = process.env.SANDCASTLE_SANDBOX === "vercel"
+  ? `.sandcastle-artifacts/issue-${ISSUE_NUMBER}/interaction.webm`
+  : RECORDING_HOST_PATH;
 
 const Verdict = z.object({
   pass: z.boolean(),
@@ -46,6 +51,8 @@ const result = await withTimeout(
       BRANCH,
       VERIFY_VIEWPORTS,
       VERIFY_LOCALES,
+      RECORDING_MODE,
+      RECORDING_PATH,
     },
     output: sandcastle.Output.object({
       tag: "verdict",
@@ -66,6 +73,17 @@ if (!fs.existsSync(evidenceReport)) {
   fail(
     `Verify phase finished without writing ${evidenceReport} — no QA Evidence, so the run cannot be trusted.`
   );
+}
+
+if (RECORDING_MODE === "on") {
+  const size = fs.existsSync(RECORDING_HOST_PATH) ? fs.statSync(RECORDING_HOST_PATH).size : 0;
+  if (size < 1024) {
+    fail(
+      `Recorded verification was requested but ${RECORDING_HOST_PATH} is missing or empty — ` +
+        `the run cannot claim video evidence.`
+    );
+  }
+  console.log(`Recorded verification: ${RECORDING_HOST_PATH} (${size} bytes)`);
 }
 
 console.log(`\nVerify phase verdict: ${result.output.pass ? "PASS" : "FAIL"}`);

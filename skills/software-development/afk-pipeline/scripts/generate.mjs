@@ -20,6 +20,7 @@ import { fileURLToPath } from "node:url";
 const SKILL_DIR = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const TPL = path.join(SKILL_DIR, "templates");
 const VERSION = (fs.readFileSync(path.join(SKILL_DIR, "SKILL.md"), "utf8").match(/^version:\s*(\S+)/m) ?? [])[1] ?? "unknown";
+const AGENT_BROWSER_VERSION = "0.25.5";
 
 const args = process.argv.slice(2);
 const repo = path.resolve(args.includes("--repo") ? args[args.indexOf("--repo") + 1] : ".");
@@ -147,6 +148,7 @@ const TOKENS = {
   "{{PROJECT_NAME}}": req("projectName"),
   "{{IMAGE_NAME}}": req("imageName"),
   "{{BUN_VERSION}}": req("bunVersion"),
+  "{{AGENT_BROWSER_VERSION}}": AGENT_BROWSER_VERSION,
   "{{BASE_BRANCH}}": cfg.baseBranch ?? "main",
   "{{PASSTHROUGH_DOC}}": passthroughDoc,
   "{{PASSTHROUGH_KEYS}}": passthroughArr,
@@ -222,7 +224,7 @@ for (const [tplRel, outRel] of Object.entries(FILES)) {
   const rendered = header(outRel) + render(fs.readFileSync(path.join(TPL, tplRel), "utf8"));
   const leftovers = [...rendered.matchAll(/\{\{[A-Z0-9_]+\}\}/g)]
     .map((m) => m[0])
-    .filter((t) => !["{{ISSUE_NUMBER}}", "{{ISSUE_TITLE}}", "{{BRANCH}}", "{{VERIFY_VIEWPORTS}}", "{{VERIFY_LOCALES}}", "{{VERIFY_MODE}}", "{{VERIFY_REASON}}", "{{FINDINGS}}"].includes(t));
+    .filter((t) => !["{{ISSUE_NUMBER}}", "{{ISSUE_TITLE}}", "{{BRANCH}}", "{{VERIFY_VIEWPORTS}}", "{{VERIFY_LOCALES}}", "{{VERIFY_MODE}}", "{{VERIFY_REASON}}", "{{RECORDING_MODE}}", "{{RECORDING_PATH}}", "{{FINDINGS}}"].includes(t));
   if (leftovers.length) {
     console.error(`Unresolved generator tokens in ${outRel}: ${[...new Set(leftovers)].join(", ")}`);
     process.exit(1);

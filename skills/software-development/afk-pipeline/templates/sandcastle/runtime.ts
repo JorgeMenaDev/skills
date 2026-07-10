@@ -153,7 +153,7 @@ export function sandboxHooks() {
     // steps race each other (bun install hit exit 127 before bun existed).
     const bootstrap = [
       'curl -fsSL https://bun.sh/install | bash >/dev/null 2>&1 && sudo ln -sf "$HOME/.bun/bin/bun" /usr/local/bin/bun && sudo ln -sf "$HOME/.bun/bin/bunx" /usr/local/bin/bunx',
-      'npm i -g @anthropic-ai/claude-code @openai/codex agent-browser --silent && sudo ln -sf "$(command -v claude)" /usr/local/bin/claude && sudo ln -sf "$(command -v codex)" /usr/local/bin/codex && sudo ln -sf "$(command -v agent-browser)" /usr/local/bin/agent-browser',
+      'npm i -g @anthropic-ai/claude-code @openai/codex --silent && bun add -g agent-browser@{{AGENT_BROWSER_VERSION}} --silent && sudo ln -sf "$(command -v claude)" /usr/local/bin/claude && sudo ln -sf "$(command -v codex)" /usr/local/bin/codex && sudo ln -sf "$HOME/.bun/bin/agent-browser" /usr/local/bin/agent-browser',
       "sudo dnf install -y -q nss nspr atk at-spi2-atk cups-libs libdrm libXcomposite libXdamage libXrandr mesa-libgbm alsa-lib pango cairo at-spi2-core libXcursor libXext libXi libXtst libxkbcommon >/dev/null 2>&1",
       "agent-browser install >/dev/null 2>&1",
       "bun install --frozen-lockfile",

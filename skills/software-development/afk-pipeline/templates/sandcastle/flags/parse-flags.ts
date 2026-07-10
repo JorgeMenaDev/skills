@@ -16,11 +16,12 @@
  *   verify: full|slim|off — optional reason
  *   recap:  on|off        — optional reason
  *   review: on|off        — optional reason
+ *   recording: on|off     — optional reason
  *   engine: claude|codex|cursor — optional reason
  *   review-engine: codex|claude — optional reason
  *
  * FAIL-SAFE: an absent section, an unknown key, or an unparseable value ⇒ that
- * flag falls back to its default (`verify: full`, `recap: on`, `review: on`,
+ * flag falls back to its default (`verify: full`, `recap: on`, `review: on`, `recording: off`,
  * `engine: claude`, `review-engine: codex`). Parsing may only
  * reduce work below the default when the body explicitly and legibly says so.
  * `review-engine` defaults to codex unless `engine: codex` is set and
@@ -51,6 +52,7 @@ const DEFAULTS = {
   verify: { value: "full", reason: "", status: "default" as Status, raw: "" },
   recap: { value: "on", reason: "", status: "default" as Status, raw: "" },
   review: { value: "on", reason: "", status: "default" as Status, raw: "" },
+  recording: { value: "off", reason: "", status: "default" as Status, raw: "" },
   engine: { value: "claude", reason: "", status: "default" as Status, raw: "" },
   "review-engine": {
     value: "codex",
@@ -64,6 +66,7 @@ const ALLOWED = {
   verify: new Set(["full", "slim", "off"]),
   recap: new Set(["on", "off"]),
   review: new Set(["on", "off"]),
+  recording: new Set(["on", "off"]),
   engine: new Set(["claude", "codex", "cursor"]),
   "review-engine": new Set(["codex", "claude"]),
 };
@@ -106,6 +109,7 @@ const section = pipelineSection(body);
 const verify = parseFlag("verify", section);
 const recap = parseFlag("recap", section);
 const review = parseFlag("review", section);
+const recording = parseFlag("recording", section);
 const engine = parseFlag("engine", section);
 const parsedReviewEngine = parseFlag("review-engine", section);
 const reviewEngine =
@@ -125,6 +129,9 @@ if (process.env.GITHUB_OUTPUT) {
     `review=${review.value}`,
     `review_status=${review.status}`,
     `review_reason=${review.reason}`,
+    `recording=${recording.value}`,
+    `recording_status=${recording.status}`,
+    `recording_reason=${recording.reason}`,
     `engine=${engine.value}`,
     `engine_status=${engine.status}`,
     `engine_reason=${engine.reason}`,
@@ -157,9 +164,10 @@ console.log(
     line("verify", verify),
     line("recap", recap),
     line("review", review),
+    line("recording", recording),
     line("engine", engine),
     line("review-engine", reviewEngine),
     "",
-    "_Defaults (`verify: full`, `recap: on`, `review: on`, `engine: claude`, `review-engine: codex`) keep today's full pipeline. `engine: cursor` runs implement only on Cursor, then Claude-backed structured phases continue. When `engine: codex` is set and `review-engine` is absent, review defaults to `claude`; retriggering re-reads this body._",
+    "_Defaults (`verify: full`, `recap: on`, `review: on`, `recording: off`, `engine: claude`, `review-engine: codex`) keep today's full pipeline without recording. `engine: cursor` runs implement only on Cursor, then Claude-backed structured phases continue. When `engine: codex` is set and `review-engine` is absent, review defaults to `claude`; retriggering re-reads this body._",
   ].join("\n")
 );
