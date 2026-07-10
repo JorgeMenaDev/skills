@@ -139,4 +139,6 @@ PASS — four reproduced boundary failures are closed with dedicated determinist
 
 The independent replay passed all four and exposed one additional path-traversal boundary. That fifth fixture now passes too: grandfathered IDs reject separators, NUL, `.` and `..`; grandfathering matches only the safe basename of the resolved workspace; and hub-site writes are contained to `.seo/sites`, not merely the repository root.
 
+Official autoreview then closed two final plan/identity edges. Plans now hash the realpath-deduplicated shallow registry catalog, so adding or removing a discoverable canonical or legacy registry invalidates the plan before source verification. Canonical stale routes remain public findings, but only a route matching the selected normalized identity is unresolved/blocking; unrelated stale routes no longer freeze otherwise safe work.
+
 Re-run evidence: two validators passed concurrently; command inventory remained 3 executable / 76 illustrative / 0 malformed with 3/3 foreign-CWD passes; evaluator passed 100/100 with zero findings; clean export remained 46 files and its exported copy passed the validator.

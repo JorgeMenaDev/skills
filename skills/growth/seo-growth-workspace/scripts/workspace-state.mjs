@@ -6,6 +6,7 @@ import {
   readdirSync,
   readlinkSync,
   realpathSync,
+  statSync,
 } from "node:fs";
 import path from "node:path";
 
@@ -65,6 +66,40 @@ export function safeRealpath(input) {
 export function isWithin(candidate, parent) {
   const relative = path.relative(safeRealpath(parent), safeRealpath(candidate));
   return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
+}
+
+function isDirectory(input) {
+  try {
+    return statSync(input).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+function childDirectories(input) {
+  try {
+    return readdirSync(input)
+      .filter((entry) => entry !== ".git" && entry !== "node_modules")
+      .map((entry) => path.join(input, entry))
+      .filter(isDirectory);
+  } catch {
+    return [];
+  }
+}
+
+export function registryDiscoveryFingerprint(searchRoots) {
+  const directories = new Map();
+  for (const searchRoot of searchRoots) {
+    for (const directory of [searchRoot, ...childDirectories(searchRoot)]) directories.set(safeRealpath(directory), directory);
+  }
+  const registries = new Set();
+  for (const directory of directories.values()) {
+    for (const relative of [".seo/registry.md", ".agents/seo/REGISTRY.md"]) {
+      const registry = path.join(directory, relative);
+      if (existsSync(registry)) registries.add(safeRealpath(registry));
+    }
+  }
+  return sha256(stableJson([...registries].sort()));
 }
 
 export function normalizeHost(value) {

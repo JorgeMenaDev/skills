@@ -582,7 +582,7 @@ section("doctor plan and bootstrap action contract", () => {
     check(planned.result.status === 0 && planned.report.plan?.approved === true, "Doctor must emit an approved create plan for an absent unambiguous target");
     check(treeDigest(root) === beforeDoctor, "Doctor plan generation must not write inside any scanned root");
     const plan = JSON.parse(readFileSync(planned.planPath, "utf-8"));
-    check(plan.hash?.length === 64 && plan.sourcesHash?.length === 64 && Date.parse(plan.expiresAt) > Date.now(), "Plan must bind SHA-256 source state and a future expiry");
+    check(plan.hash?.length === 64 && plan.sourcesHash?.length === 64 && plan.registryDiscoveryFingerprint?.length === 64 && Date.parse(plan.expiresAt) > Date.now(), "Plan must bind SHA-256 source/catalog state and a future expiry");
     const copiedPlan = path.join(planned.planDir, "copied-plan.json");
     writeFileSync(copiedPlan, readFileSync(planned.planPath));
     const copied = spawnSync(process.execPath, [path.join(skillRoot, "scripts/bootstrap-seo-workspace.mjs"), "--plan", copiedPlan, "--action", "verify", "--domain", "plan.example", root], { encoding: "utf-8" });
@@ -642,6 +642,26 @@ section("doctor plan and bootstrap action contract", () => {
   }
 });
 
+section("doctor registry discovery race", () => {
+  const container = fixtureTmp("seo-registry-race-");
+  try {
+    const target = path.join(container, "target");
+    mkdirSync(target);
+    const planned = makePlan(target, { domain: "race.example", decision: "create" });
+    check(planned.result.status === 0 && planned.report.plan?.approved === true, "An unambiguous absent target must initially receive an approved plan");
+
+    const sibling = path.join(container, "sibling-hub");
+    plannedBootstrap(sibling, { domain: "race.example", hub: true, site: "race-site" });
+    appendFileSync(path.join(sibling, ".seo/registry.md"), "| race.example | sites/race-site | unknown | unknown | unknown | unknown | late collision |\n");
+    const raced = spawnSync(process.execPath, [path.join(skillRoot, "scripts/bootstrap-seo-workspace.mjs"), "--plan", planned.planPath, "--action", "create", "--domain", "race.example", target], { encoding: "utf-8" });
+    check(raced.status !== 0 && (raced.stderr ?? "").includes("registry discovery changed"), "A newly discoverable sibling registry must invalidate the reviewed plan before source verification");
+    check(!existsSync(path.join(target, ".seo")) && existsSync(planned.planPath), "Registry discovery races must fail before target writes or plan consumption");
+    rmSync(planned.planDir, { recursive: true, force: true });
+  } finally {
+    rmSync(container, { recursive: true, force: true });
+  }
+});
+
 section("doctor install-mode binding", () => {
   const container = fixtureTmp("seo-mode-binding-");
   try {
@@ -686,6 +706,14 @@ section("doctor selected canonical stale route", () => {
     check(blocked.report.findings?.some((finding) => finding.code === "stale_canonical_route" && finding.site === "stale.example"), "The blocking finding must identify the stale canonical route");
     check(!existsSync(path.join(sibling, ".seo")), "A stale canonical route must not redirect creation into a sibling target");
     rmSync(blocked.planDir, { recursive: true, force: true });
+
+    const unrelated = path.join(container, "unrelated");
+    mkdirSync(unrelated);
+    const allowed = makePlan(unrelated, { domain: "fresh.example", decision: "create" });
+    check(allowed.result.status === 0 && allowed.report.plan?.approved === true, "An unrelated canonical stale row must remain visible without blocking another identity");
+    check(allowed.report.findings?.some((finding) => finding.code === "stale_canonical_route" && finding.site === "stale.example"), "Unrelated canonical stale routes must remain public findings");
+    check(!(allowed.report.unresolvedFindings ?? []).some((finding) => finding.code === "stale_canonical_route"), "An unrelated canonical stale route must be excluded only from unresolved findings");
+    rmSync(allowed.planDir, { recursive: true, force: true });
   } finally {
     rmSync(container, { recursive: true, force: true });
   }

@@ -14,6 +14,7 @@ import {
   isWithin,
   normalizeHost,
   planHash,
+  registryDiscoveryFingerprint,
   safeRealpath,
   sha256,
   stableJson,
@@ -287,6 +288,7 @@ function loadAndVerifyPlan(options, root) {
   const requestedInstallMode = options.hub || options.site ? "hub" : "standalone";
   if (plan.installMode !== requestedInstallMode) throw new Error(`Plan install mode ${plan.installMode} does not match requested ${requestedInstallMode} mode`);
   if (plan.searchRootsHash !== sha256(stableJson(plan.searchRoots))) throw new Error("Plan search-root hash mismatch");
+  if (plan.registryDiscoveryFingerprint !== registryDiscoveryFingerprint(plan.searchRoots)) throw new Error("Plan registry discovery changed; rerun doctor");
   if (plan.sourcesHash !== sha256(stableJson(plan.sources))) throw new Error("Plan source-list hash mismatch");
   const sourceMismatches = verifySourceRecords(plan.sources);
   if (sourceMismatches.length > 0) throw new Error(`Plan source changed: ${sourceMismatches.map((item) => item.path).join(", ")}`);

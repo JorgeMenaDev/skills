@@ -68,6 +68,8 @@ The existing validator must prove direct bootstrap bypass, expired/tampered/mism
 - reviewed standalone/hub mode is plan-bound; a stamped standalone root cannot gain hub registry/sites, and the first site under an absent root requires an explicit reviewed `--hub`;
 - grandfathered legacy site IDs are one safe filesystem segment, match the real workspace basename rather than the public Site cell, and all hub-site writes remain inside `.seo/sites`;
 - a missing canonical route blocks the selected identity while missing legacy inventory remains non-routing;
+- newly added or removed shallow-discovery registry paths invalidate a reviewed plan before source verification; existing registry contents remain source-bound;
+- unrelated canonical stale routes stay visible as findings without blocking a different normalized identity; same-identity stale routes remain blocking;
 - every generated-path ancestor is checked for dangling/escaping symlinks and writes remain inside the reviewed root;
 - only the approved `GSC_CREDENTIALS_DIR=<path>` assignment RHS (or documented path form) is statted; arbitrary assignments and credential content are ignored;
 - `adopt` writes only `config.json` on at least three exactly recognized files;

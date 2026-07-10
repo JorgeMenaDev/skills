@@ -26,6 +26,7 @@ import {
   missingGeneratedArtifacts,
   normalizeHost,
   planHash,
+  registryDiscoveryFingerprint,
   safeRealpath,
   sha256,
   skillFolderHash,
@@ -464,6 +465,7 @@ function diagnose(options) {
   const invalidRepair = requestedRepair.filter((file) => !GENERATED_WORKSPACE_FILES.has(file) && !GENERATED_WORKSPACE_DIRS.has(file));
   const unresolved = findings.filter((finding) => {
     if (finding.code === "stale_registry_row") return false;
+    if (finding.code === "stale_canonical_route" && normalizedDomain && normalizeHost(finding.site) !== normalizedDomain) return false;
     if (options.decision === "repair" && finding.code === "workspace_drift") {
       return stableJson(requestedRepair) !== stableJson((finding.files ?? []).filter((file) => requestedRepair.includes(file)).sort());
     }
@@ -557,6 +559,7 @@ function diagnose(options) {
       legacySiteId,
       searchRoots,
       searchRootsHash: sha256(stableJson(searchRoots)),
+      registryDiscoveryFingerprint: registryDiscoveryFingerprint(searchRoots),
       sources,
       sourcesHash: sha256(stableJson(sources)),
       target: {
