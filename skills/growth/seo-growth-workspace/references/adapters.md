@@ -43,7 +43,10 @@ Before content work is considered actionable, create or locate an adapter with:
 | UI proof | Authenticated or public routes that must agree with CLI/API state |
 | Source of truth | Which system owns project, keyword, calendar, article, publish, and reconciliation state |
 | Environment boundary | Local vs production deployment, workspace/team, Convex/Vercel/CMS target, and known mismatch risks |
+| CLI access state | When the engine exposes a CLI: CLI name + version, auth mechanism and its location (env var names / config file paths only, never values), the workspace → project mapping the credential covers, and the probe command (e.g. `whoami`) that proves this installation is authenticated |
 | No-secret rule | Which env var names may be referenced without printing values |
+
+The first run that proves engine-CLI access must record that CLI access state in the site's adapter note and mirror it in the registry Credentials column (hub mode). Later runs answer "does this machine have engine access, and to which projects?" by reading the workspace — never by re-exploring or falling back to the browser.
 
 ## Friction To Record
 

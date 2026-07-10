@@ -1,13 +1,15 @@
 ---
 name: seo-growth-workspace
 description: "Use when starting, auditing, or operating SEO or organic growth for a product or local-business website — technical SEO, Search Console, keyword/content ops, schema, pSEO, local SEO/GBP, backlinks, AI-search visibility, conversion, and monthly reporting. Triggers: \"set up SEO\", \"audit my site\", \"my traffic dropped\", \"why am I not ranking\", \"Search Console opportunities\", \"monthly SEO report\", \"how do we show up in ChatGPT/AI search\". Creates a durable .seo workspace, captures business context, audits live/code/admin evidence, prioritizes a backlog, implements one high-leverage action, verifies reality, and logs handoff notes. Installs in a single site repo (standalone) or in an orchestrator/agent-profile repo managing many sites (hub). For standalone copywriting, paid channels, or email, use a dedicated skill."
-version: 3.1.0
+version: 3.2.0
 license: MIT
 mutating: true
 writes_to: [".seo/", "operator-declared bootstrap plan path"]
 ---
 
 # SEO Growth Workspace
+
+> **🚧 In progress — contribute back.** This skill is open source and under active, top-priority development. Every run is also a dogfooding session: when real work exposes a gap — a stale contract, a missing runbook, a tool the skill doesn't know about — fix the skill and open a pull request to `JorgeMenaDev/skills` in the same session (or record it in the run's handoff log if the session can't). Improving this skill is part of operating it.
 
 Run a durable SEO operating workspace for a product or local-business website. The goal is not generic advice; it is evidence, prioritization, implementation, verification, and continuity.
 

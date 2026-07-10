@@ -54,13 +54,14 @@ A keyword-research and article-scheduling engine with a webhook-first publishing
 
 ### CLI configuration (preferred, agent-side)
 
-Requires `@jorgemenadev/superaseo` >= 0.1.0. The CLI lets an agent configure and drive the engine headlessly, workspace-scoped by an API key — no human in the dashboard except the one-time key issue. It supersedes/complements the existing MCP tools for agents without MCP.
+Requires `@jorgemenadev/superaseo` >= 0.1.0 (>= 0.2.0 for the content-plan commands below). The CLI has full dashboard parity — everything the SuperaSEO UI shows (schedule, planner/calendar, keywords, articles, integrations) is readable and drivable headlessly, workspace-scoped by an API key — no human in the dashboard except the one-time key issue. It supersedes/complements the existing MCP tools for agents without MCP.
 
 Auth setup (one human step, then headless):
 
 1. A human signs into superaseo.app → Settings → API keys → "Crear API key" and copies the `sk_live_…` secret (shown once).
-2. Install with `npm i -g @jorgemenadev/superaseo`. Load `SUPERASEO_API_KEY` from the approved credential store into the process environment, then run `superaseo whoami`; the API key never appears in argv, shell history, output, or the repo. Use the CLI's file-backed login only when the installed version offers a credential-file option.
-3. Everything after is headless and scoped to the key's workspace. All commands emit JSON.
+2. Install with `npm i -g @jorgemenadev/superaseo`. Two supported auth paths: `SUPERASEO_API_KEY` loaded from the approved credential store into the process environment, or the CLI's file-backed login (`superaseo login <sk_live_…>` once, stored in `~/.config/superaseo/config.json`, chmod 600; >= 0.2.0). Env var wins over the config file. The key never appears in argv (except that one `login` call), shell history, output, or the repo.
+3. `superaseo whoami` is the universal access probe — run it before concluding "no CLI access"; a machine can be authenticated via the config file with no env var set anywhere.
+4. Everything after is headless and scoped to the key's workspace: **one key = one workspace = possibly many projects**; select with `--project <slug>`. All commands emit JSON. Record the proven access state (auth location, workspace → project mapping, probe) in the site's adapter note per `references/adapters.md` — never re-discover it.
 
 Verify an existing webhook from the CLI:
 
@@ -82,7 +83,21 @@ superaseo articles mark-published --project <slug> --article-id <id> \
   --published-url <url> [--commit-sha <sha>] [--dry-run]
 ```
 
-Human value gate under CLI publishing: `superaseo articles publish` fires `publish_articles` itself, so the engine-side manual publish button no longer stands as the human gate. The gate must move to an explicit review step before `articles publish` — either an engine-side review status the agent checks first, or a receiver-side draft stage that holds the article until a human approves. Do not run `articles publish` on unreviewed content; record the chosen gate in `.seo/strategy.md`. This preserves the Publish Gate stance in `references/content-ops.md`.
+Content-plan operations (CLI >= 0.2.0) — the scheduler/planner surface, previously dashboard-only:
+
+```bash
+superaseo scheduler get --project <slug>                 # scheduleConfig (enabled, daysOfWeek, hourLocal, autoPublish) + timezone
+superaseo scheduler set --project <slug> --enabled true --days mon,thu --hour 9 --auto-publish false   # MUTATING — owner approval
+superaseo scheduler history --project <slug> [--limit n] # past runs; empty = the cron has never acted on this project
+superaseo calendar list --project <slug> [--status planned|completed] [--lane es|en]   # planner rows
+superaseo calendar reschedule|remove --project <slug> …  # MUTATING — compress or prune a backlog
+superaseo keywords list --project <slug> [--tier p1|p2|p3] [--status <s>]
+superaseo generate start|status --project <slug>
+```
+
+Planner semantics an operator must know: **"Overdue" is a derived dashboard label, not a stored status** — `calendar list` returns `planned|completed` only, and rejects `--status overdue`; compute overdue yourself as planned rows with `scheduledFor < now` on an active project. The usual cause of a large overdue pile is simply a schedule that was never enabled — the engine's cron skips projects with no enabled `scheduleConfig` (confirm with `scheduler history` returning zero runs). The scheduler drains **one article per slot, at most one slot per local day**: generation fires in slot N, publish in slot N+1, so a backlog clears at ~cadence-per-day rate; widen `--days`, or `calendar reschedule|remove` weak rows, to compress.
+
+Human value gate under CLI publishing: `superaseo articles publish` fires `publish_articles` itself, so the engine-side manual publish button no longer stands as the human gate. The gate must move to an explicit review step before `articles publish` — either an engine-side review status the agent checks first, or a receiver-side draft stage that holds the article until a human approves. Do not run `articles publish` on unreviewed content; record the chosen gate in `.seo/strategy.md`. The same stance governs `scheduler set --auto-publish true`: it removes the per-article review step entirely, so it is an explicit owner decision, recorded in `.seo/strategy.md` with a post-publish quality-watch ticket on the first autopublished articles. This preserves the Publish Gate stance in `references/content-ops.md`.
 
 Authenticated dashboard path: configure the endpoint, name, and access token on the Integrations page, then use its test button. This is the required setup path while the CLI contract accepts the receiver token only in argv; never place that token in a command. The read/test CLI commands above remain safe after setup.
 
