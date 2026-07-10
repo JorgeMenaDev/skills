@@ -30,14 +30,20 @@ listed above — no more, no fewer.
 - **Recording:** `{{RECORDING_MODE}}`
 - **Output path:** `{{RECORDING_PATH}}`
 
-If recording is `on`, create the output directory, remove any stale file, set
-the browser to `1440x900`, and run `agent-browser record start {{RECORDING_PATH}}`
-immediately before the first acceptance-criterion interaction. Keep one
-continuous recording through the primary user flow, then run
-`agent-browser record stop`. On any failure path, stop the recording before
-writing the false verdict so partial evidence survives. Record no credentials,
-customer data, notifications, or one-time codes. If recording is `off`, do not
-run any `agent-browser record` command.
+If recording is `on`, create the output directory and remove any stale file.
+`agent-browser record start` creates a fresh recording context: start recording
+first, then set the browser to `1440x900`, open the target URL, navigate/scroll
+the feature visibly into the viewport, and perform the acceptance-criterion
+interactions. Never prepare the page before `record start` and assume that state
+survives. If recording must be restarted, repeat the entire visible navigation
+and interaction flow after the final restart. Before stopping, confirm with an
+`agent-browser screenshot` that the feature under test is still visibly in the
+recorded viewport; a video of an idle or off-screen page is a failed criterion
+even if DOM assertions passed. Keep one continuous recording through the
+primary user flow, then run `agent-browser record stop`. On any failure path,
+stop the recording before writing the false verdict so partial evidence
+survives. Record no credentials, customer data, notifications, or one-time
+codes. If recording is `off`, do not run any `agent-browser record` command.
 
 # E2E VERIFICATION with agent-browser
 
