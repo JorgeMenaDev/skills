@@ -4,10 +4,13 @@
 // Run from anywhere: node dev/seo-growth-workspace/validate-skill.mjs [--skill-dir <path>]
 
 import {
+  appendFileSync,
   existsSync,
+  mkdirSync,
   mkdtempSync,
   readFileSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -36,6 +39,7 @@ const skillRoot = path.resolve(
 const requiredFiles = [
   "SKILL.md",
   "references/hub-mode.md",
+  "references/migrate-uninstall.md",
   "references/phase-architecture.md",
   "references/operating-loop.md",
   "references/business-context.md",
@@ -69,6 +73,7 @@ const requiredFiles = [
   "templates/monthly-report.md",
   "templates/admin-setup.md",
   "templates/portfolio-index.md",
+  "scripts/seo-doctor.mjs",
   "scripts/bootstrap-seo-workspace.mjs",
   "scripts/gsc-oauth.mjs",
   "scripts/gsc-fetch.mjs",
@@ -189,9 +194,14 @@ section("bootstrap smoke test", () => {
     );
     const configPath = path.join(bootstrapRoot, ".seo/config.json");
     check(existsSync(configPath), "Bootstrap did not stamp .seo/config.json");
+    const config = JSON.parse(readFileSync(configPath, "utf-8"));
     check(
-      JSON.parse(readFileSync(configPath, "utf-8")).mode === "standalone",
+      config.mode === "standalone",
       "Default bootstrap must stamp config.json with mode standalone",
+    );
+    check(
+      config.workspaceSchemaVersion === 1,
+      "Bootstrap must stamp config.json with workspaceSchemaVersion 1",
     );
   } finally {
     rmSync(bootstrapRoot, { recursive: true, force: true });
@@ -218,13 +228,31 @@ section("hub bootstrap", () => {
       "--site without an existing hub (or --hub) must exit non-zero",
     );
 
-    run(process.execPath, [
+    // Malformed slugs (leading/trailing hyphen) must be rejected.
+    const badSlug = spawnSync(
+      process.execPath,
+      [
+        path.join(skillRoot, "scripts/bootstrap-seo-workspace.mjs"),
+        "--hub",
+        "--site",
+        "-bad-slug-",
+        hubRoot,
+      ],
+      { encoding: "utf-8" },
+    );
+    check(badSlug.status !== 0, "A slug with leading/trailing hyphens must exit non-zero");
+
+    const siteOutput = run(process.execPath, [
       path.join(skillRoot, "scripts/bootstrap-seo-workspace.mjs"),
       "--hub",
       "--site",
       "example-com",
       hubRoot,
     ]);
+    check(
+      siteOutput.includes("REGISTRATION PENDING"),
+      "--site must print a REGISTRATION PENDING line for the registry row",
+    );
     const config = JSON.parse(
       readFileSync(path.join(hubRoot, ".seo/config.json"), "utf-8"),
     );
@@ -257,6 +285,232 @@ section("hub bootstrap", () => {
     );
   } finally {
     rmSync(hubRoot, { recursive: true, force: true });
+  }
+});
+
+// --- bootstrap-seo-workspace.mjs: legacy-adoption guard ---
+section("legacy adoption guard", () => {
+  const legacyRoot = mkdtempSync(path.join(tmpdir(), "seo-legacy-guard-"));
+  try {
+    // A .seo/ holding only one random file is NOT a legacy workspace: abort, never adopt.
+    mkdirSync(path.join(legacyRoot, ".seo"), { recursive: true });
+    writeFileSync(path.join(legacyRoot, ".seo/random.txt"), "not an SEO workspace\n");
+    const result = spawnSync(
+      process.execPath,
+      [path.join(skillRoot, "scripts/bootstrap-seo-workspace.mjs"), legacyRoot],
+      { encoding: "utf-8" },
+    );
+    check(
+      result.status !== 0,
+      "Bootstrap must abort on a .seo/ without config.json or the legacy signature",
+    );
+    check(
+      (result.stderr ?? "").includes("seo-doctor"),
+      "The legacy-guard abort diagnostic must route the operator to seo-doctor.mjs",
+    );
+    check(
+      !existsSync(path.join(legacyRoot, ".seo/config.json")),
+      "An aborted bootstrap must not stamp config.json",
+    );
+
+    // With >=3 canonical files, the same .seo/ is a signed legacy workspace and adopts.
+    for (const file of ["backlog.md", "log.md", "audit.md"]) {
+      writeFileSync(path.join(legacyRoot, ".seo", file), `# legacy ${file}\n`);
+    }
+    run(process.execPath, [
+      path.join(skillRoot, "scripts/bootstrap-seo-workspace.mjs"),
+      legacyRoot,
+    ]);
+    check(
+      JSON.parse(readFileSync(path.join(legacyRoot, ".seo/config.json"), "utf-8")).mode ===
+        "standalone",
+      "A signed legacy workspace must adopt as standalone",
+    );
+    check(
+      readFileSync(path.join(legacyRoot, ".seo/backlog.md"), "utf-8") === "# legacy backlog.md\n",
+      "Legacy adoption must not overwrite existing files",
+    );
+  } finally {
+    rmSync(legacyRoot, { recursive: true, force: true });
+  }
+});
+
+// --- bootstrap-seo-workspace.mjs: sentinel idempotence (standalone + hub + site) ---
+section("sentinel idempotence", () => {
+  const sentinel = "SENTINEL: operator content — bootstrap must never touch this.\n";
+  const bootstrap = path.join(skillRoot, "scripts/bootstrap-seo-workspace.mjs");
+
+  const standaloneRoot = mkdtempSync(path.join(tmpdir(), "seo-sentinel-standalone-"));
+  const hubRoot = mkdtempSync(path.join(tmpdir(), "seo-sentinel-hub-"));
+  try {
+    run(process.execPath, [bootstrap, standaloneRoot]);
+    writeFileSync(path.join(standaloneRoot, ".seo/backlog.md"), sentinel);
+    const configBefore = readFileSync(path.join(standaloneRoot, ".seo/config.json"), "utf-8");
+    run(process.execPath, [bootstrap, standaloneRoot]);
+    check(
+      readFileSync(path.join(standaloneRoot, ".seo/backlog.md"), "utf-8") === sentinel,
+      "Standalone rerun must preserve preseeded scaffold content byte-for-byte",
+    );
+    check(
+      readFileSync(path.join(standaloneRoot, ".seo/config.json"), "utf-8") === configBefore,
+      "Bootstrap must never rewrite an existing config.json",
+    );
+
+    run(process.execPath, [bootstrap, "--hub", "--site", "sentinel-site", hubRoot]);
+    writeFileSync(path.join(hubRoot, ".seo/registry.md"), sentinel);
+    writeFileSync(path.join(hubRoot, ".seo/sites/sentinel-site/context.md"), sentinel);
+    run(process.execPath, [bootstrap, "--hub", "--site", "sentinel-site", hubRoot]);
+    check(
+      readFileSync(path.join(hubRoot, ".seo/registry.md"), "utf-8") === sentinel,
+      "Hub rerun must preserve a preseeded registry.md byte-for-byte",
+    );
+    check(
+      readFileSync(path.join(hubRoot, ".seo/sites/sentinel-site/context.md"), "utf-8") ===
+        sentinel,
+      "Site rerun must preserve preseeded site scaffold content byte-for-byte",
+    );
+  } finally {
+    rmSync(standaloneRoot, { recursive: true, force: true });
+    rmSync(hubRoot, { recursive: true, force: true });
+  }
+});
+
+// --- seo-doctor.mjs: read-only preflight scenarios ---
+section("doctor clean root", () => {
+  const container = mkdtempSync(path.join(tmpdir(), "seo-doctor-clean-"));
+  try {
+    const target = path.join(container, "site-repo");
+    run(process.execPath, [
+      path.join(skillRoot, "scripts/bootstrap-seo-workspace.mjs"),
+      target,
+    ]);
+    // Default search roots = target + parent (the container): nothing else there.
+    const json = JSON.parse(
+      runScript("scripts/seo-doctor.mjs", [target, "--domain", "example.com", "--format", "json"]),
+    );
+    check(json.clean === true, "Doctor must report a lone standalone workspace as clean");
+    check(
+      json.target?.classification === "standalone",
+      "Doctor must classify a stamped standalone workspace as standalone",
+    );
+    check(
+      (json.candidates ?? []).length === 0,
+      "Doctor must find no candidate workspaces for a clean root",
+    );
+  } finally {
+    rmSync(container, { recursive: true, force: true });
+  }
+});
+
+section("doctor decoy workspace", () => {
+  const container = mkdtempSync(path.join(tmpdir(), "seo-doctor-decoy-"));
+  try {
+    const target = path.join(container, "site-repo");
+    const hub = path.join(container, "hub");
+    const bootstrap = path.join(skillRoot, "scripts/bootstrap-seo-workspace.mjs");
+    run(process.execPath, [bootstrap, target]);
+    // Decoy: a mature hub-managed workspace for the SAME site in a sibling dir,
+    // referenced by a registry row.
+    run(process.execPath, [bootstrap, "--hub", "--site", "example-com", hub]);
+    writeFileSync(
+      path.join(hub, ".seo/sites/example-com/log.md"),
+      "# SEO operating log\n\n## 2026-01-01 - Mature handoff\n\n- Mode: operate.\n",
+    );
+    appendFileSync(
+      path.join(hub, ".seo/registry.md"),
+      "| example.com | sites/example-com | sc-domain:example.com | none yet | UK / en-GB | human approves | decoy |\n",
+    );
+    const result = spawnSync(
+      process.execPath,
+      [
+        path.join(skillRoot, "scripts/seo-doctor.mjs"),
+        target,
+        "--domain",
+        "example.com",
+        "--format",
+        "json",
+      ],
+      { encoding: "utf-8" },
+    );
+    check(
+      result.status === 1,
+      "Doctor must exit 1 when another workspace for the same site exists",
+    );
+    const json = JSON.parse(result.stdout || "{}");
+    check(
+      (json.candidates ?? []).some((candidate) => (candidate.via ?? []).includes("registry")),
+      "Doctor must flag the registry-referenced decoy workspace as a candidate",
+    );
+    check(
+      (json.findings ?? []).some((finding) => finding.includes("Candidate workspace")),
+      "Doctor findings must name the candidate workspace",
+    );
+  } finally {
+    rmSync(container, { recursive: true, force: true });
+  }
+});
+
+section("doctor dangling symlink", () => {
+  const container = mkdtempSync(path.join(tmpdir(), "seo-doctor-symlink-"));
+  try {
+    const target = path.join(container, "site-repo");
+    run(process.execPath, [
+      path.join(skillRoot, "scripts/bootstrap-seo-workspace.mjs"),
+      target,
+    ]);
+    mkdirSync(path.join(target, ".agents/skills"), { recursive: true });
+    symlinkSync(
+      path.join(target, "no-such-skill-dir"),
+      path.join(target, ".agents/skills/seo-growth-workspace"),
+    );
+    const result = spawnSync(
+      process.execPath,
+      [path.join(skillRoot, "scripts/seo-doctor.mjs"), target, "--format", "json"],
+      { encoding: "utf-8" },
+    );
+    check(result.status === 1, "Doctor must exit 1 on a dangling symlink skill copy");
+    const json = JSON.parse(result.stdout || "{}");
+    const install = (json.installs ?? []).find(
+      (entry) => entry.surface === ".agents/skills/seo-growth-workspace",
+    );
+    check(
+      install?.symlink === true && install?.targetExists === false,
+      "Doctor must report the dangling symlink install copy (symlink: true, targetExists: false)",
+    );
+  } finally {
+    rmSync(container, { recursive: true, force: true });
+  }
+});
+
+section("doctor unregistered hub site", () => {
+  const container = mkdtempSync(path.join(tmpdir(), "seo-doctor-unregistered-"));
+  try {
+    const hub = path.join(container, "hub");
+    run(process.execPath, [
+      path.join(skillRoot, "scripts/bootstrap-seo-workspace.mjs"),
+      "--hub",
+      "--site",
+      "orphan-site",
+      hub,
+    ]);
+    // The registry row was never added (bootstrap only prints REGISTRATION PENDING).
+    const result = spawnSync(
+      process.execPath,
+      [path.join(skillRoot, "scripts/seo-doctor.mjs"), hub, "--format", "json"],
+      { encoding: "utf-8" },
+    );
+    check(result.status === 1, "Doctor must exit 1 on an unregistered hub site folder");
+    const json = JSON.parse(result.stdout || "{}");
+    check(
+      (json.unregisteredSites ?? []).includes("orphan-site"),
+      "Doctor must flag hub site folders absent from the registry",
+    );
+    check(
+      (json.findings ?? []).some((finding) => finding.includes("REGISTRATION PENDING")),
+      "The unregistered-site finding must say REGISTRATION PENDING",
+    );
+  } finally {
+    rmSync(container, { recursive: true, force: true });
   }
 });
 

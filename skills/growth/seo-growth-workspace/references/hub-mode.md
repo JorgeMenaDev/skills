@@ -9,23 +9,33 @@ The skill has two install modes. The operating behavior — modes, phases, ticke
 `.seo/config.json` records the install mode. Read it at the start of every run:
 
 ```json
-{ "mode": "standalone | hub", "created": "YYYY-MM-DD", "skillVersion": "3.0.0" }
+{ "mode": "standalone | hub", "created": "YYYY-MM-DD", "skillVersion": "3.1.0", "workspaceSchemaVersion": 1 }
 ```
 
-- **Back-compat rule**: a `.seo/` directory with no `config.json` is a standalone workspace. Operate as standalone, and stamp `{"mode": "standalone"}` on the next mutating run (never in no-write runs).
-- Once stamped, never ask the mode question again. Converting a workspace between modes is a human decision, never done silently — the bootstrap script refuses mode conflicts.
+- `skillVersion` is **created-by** provenance: the skill version that first stamped the workspace. Later runs never rewrite it, and it does not track upgrades.
+- `workspaceSchemaVersion` is the workspace layout contract (currently `1`). It changes only through an explicit, documented migration — never as a side effect of running a newer skill. Older workspaces missing the field are schema 1.
+- Bootstrap never rewrites an existing `config.json`.
+- **Back-compat rule**: a `.seo/` with no `config.json` is a legacy standalone workspace **only when it carries the legacy signature — at least 3 of `backlog.md`/`log.md`/`audit.md`/`strategy.md`**. Operate it as standalone, and stamp `{"mode": "standalone"}` on the next mutating run (never in no-write runs). A `.seo/` without that signature is unrecognized — the bootstrap aborts on it; run `scripts/seo-doctor.mjs` and make an explicit create/adopt/migrate decision.
+- Once stamped, never ask the mode question again. Converting a workspace between modes is a human decision, never done silently — the bootstrap script refuses mode conflicts; the workflow is `references/migrate-uninstall.md`.
 
 ## First-Run Mode Selection
 
-When no `.seo/` exists at all, ask exactly one question before bootstrapping:
+When no `.seo/` exists at all:
+
+1. **Doctor first (required)**: run `node <SKILL_DIR>/scripts/seo-doctor.mjs <root> --domain <host>` — read-only. If it reports candidate workspaces for the site, existing skill install copies, or an unrecognized `.seo/`, stop and make an explicit **create / adopt / migrate** decision with the user (`references/migrate-uninstall.md`). Never bootstrap over ambiguity.
+2. Ask exactly one question:
 
 > Is this a standalone site repo (SEO state lives here, for this one site), or a hub — an orchestrator workspace that manages SEO for several repos/sites?
 
-Then run `scripts/bootstrap-seo-workspace.mjs` (standalone) or `scripts/bootstrap-seo-workspace.mjs --hub` (hub); either stamps `config.json`. Unattended runs never ask: per `references/scheduled-operation.md`, a missing workspace exits `blocked` for an interactive first run.
+3. Then run `scripts/bootstrap-seo-workspace.mjs` (standalone) or `scripts/bootstrap-seo-workspace.mjs --hub` (hub); either stamps `config.json`. Unattended runs never ask: per `references/scheduled-operation.md`, a missing workspace exits `blocked` for an interactive first run.
 
-## Workspace Root Aliasing
+## Path Semantics In Hub Mode
 
-The load-bearing rule: **"workspace root" is `.seo/` in standalone mode and `.seo/sites/<slug>/` in hub mode.** Every `.seo/X` path in `SKILL.md` and the other references means `<workspace root>/X`. After target resolution, run every mode, reference, and script contract verbatim against the resolved workspace.
+`SKILL.md` Install Modes defines the four path terms (`HUB_ROOT`, `SITE_WORKSPACE`, `TARGET_REPO`, `SKILL_DIR`). In hub mode:
+
+- `HUB_ROOT` is the hub's physical `.seo/` — only routing state lives there (`config.json`, `registry.md`, `portfolio-index.md`, `sites/`, optional `loops/`), never site work.
+- `SITE_WORKSPACE` is `HUB_ROOT/sites/<slug>/` for hub-managed sites, or the external root a registry row points at.
+- After target resolution, run every mode, reference, and script contract verbatim against SITE_WORKSPACE; workspace-internal `.seo/X` prose means `SITE_WORKSPACE/X`.
 
 ## Hub Layout
 
@@ -40,14 +50,14 @@ The load-bearing rule: **"workspace root" is `.seo/` in standalone mode and `.se
                         # adapters/, loops/
 ```
 
-- Slugs match `^[a-z0-9-]+$`, derived from the registry Site column hostname (`andy-partner.com` → `andy-partner`).
-- The hub root holds no standalone workspace files of its own — hub-level state is only the config, registry, rollup index, and optional hub-level sweep loop state (`.seo/loops/`).
+- Slugs match `^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$` (lowercase letters/digits, inner hyphens only), derived from the registry Site column hostname (`andy-partner.com` → `andy-partner`).
+- The hub root holds no standalone workspace files of its own — hub-level state is only the config, registry, rollup index, and optional hub-level sweep loop state (`HUB_ROOT/loops/`).
 - A registry row may still point at an external workspace root (a repo with its own `.seo/`, or a partner-owned path); `sites/<slug>` is the default for hub-managed sites, not a requirement.
-- Create a new site workspace with `scripts/bootstrap-seo-workspace.mjs --site <slug>`, then add its registry row yourself — the script prints a suggested row but never edits `registry.md`.
+- Create a new site workspace with `scripts/bootstrap-seo-workspace.mjs --site <slug>` — run `scripts/seo-doctor.mjs --domain <host>` first to prove the site has no workspace elsewhere. The script prints a `REGISTRATION PENDING` row and never edits `registry.md`; add the row yourself in the same pass. Until registered, `seo-doctor.mjs` flags the site folder as a finding.
 
 ## Target Resolution
 
-The only behavioral addition in hub mode: resolve exactly one target site before reading any state.
+The only behavioral addition in hub mode: **read hub routing state only (`config.json` and `registry.md`), resolve exactly one target site, then read no site state except the resolved target's.**
 
 1. **User names a site** — resolve it to its registry row (`references/portfolio-registry.md` Read-First Rule); the workspace is that row's Workspace root. Relative roots resolve against the registry file's directory.
 2. **No site named** — run `scripts/portfolio-status.mjs --registry .seo/registry.md` and present the ranked table as evidence; confirm one target with the user. Staleness ranking is the tiebreak, not the decision — a cold revenue-critical site outranks a warm experiment.
@@ -65,8 +75,8 @@ Hub extension of the Target Boundary in `references/operating-loop.md`: when a p
 
 ## Scripts In Hub Mode
 
-All analysis scripts take explicit paths — pass the resolved workspace: `.seo/sites/<slug>/backlog.md`, `.seo/sites/<slug>/reports/`, and so on. Credentials stay per-site via the registry Credentials column (for example `GSC_CREDENTIALS_DIR`); never a hub-root `.env` shared across sites.
+Bundled scripts run from SKILL_DIR and take explicit paths — pass the resolved SITE_WORKSPACE: `<hub>/.seo/sites/<slug>/backlog.md`, `<hub>/.seo/sites/<slug>/reports/`, and so on. Credentials stay per-site via the registry Credentials column (for example `GSC_CREDENTIALS_DIR`); never a hub-root `.env` shared across sites.
 
 ## Exit Criteria
 
-A hub run exits cleanly when `config.json` was read (or correctly inferred standalone), exactly one target site was resolved through the registry before any state was read, all reads/writes landed in that site's workspace, and sibling site folders were untouched.
+A hub run exits cleanly when `config.json` was read (or correctly inferred standalone), exactly one target site was resolved through the registry before any site state was read, all reads/writes landed in that site's workspace, and sibling site folders were untouched.

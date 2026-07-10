@@ -9,7 +9,14 @@ const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const taxonomyTemplatePath = path.resolve(scriptDir, "../templates/taxonomy.md");
 
 // Keep in sync with SKILL.md frontmatter (validate-skill.mjs asserts they match).
-const SKILL_VERSION = "3.0.0";
+const SKILL_VERSION = "3.1.0";
+// Workspace layout contract stamped into config.json; bumped only by a
+// documented migration, never by merely running a newer skill.
+const WORKSPACE_SCHEMA_VERSION = 1;
+// A .seo/ without config.json is adoptable as legacy-standalone only when it
+// holds at least this many canonical files (keep in sync with seo-doctor.mjs).
+const CANONICAL_FILES = ["backlog.md", "log.md", "audit.md", "strategy.md"];
+const LEGACY_SIGNATURE_MIN = 3;
 
 function usage() {
   return `Usage:
@@ -24,12 +31,16 @@ and stamps .seo/config.json with {"mode":"standalone"}.
 --hub: creates the hub skeleton instead — .seo/{config.json (mode hub), registry.md, sites/}.
 No standalone workspace files are written at the hub root.
 
---site <slug> (slug: lowercase letters, digits, hyphens): creates a full site workspace at
-.seo/sites/<slug>/ inside an existing hub (or combined with --hub in the same run), and prints
-a suggested registry row. The script never edits registry.md itself.
+--site <slug> (slug: lowercase letters/digits with inner hyphens, no leading/trailing hyphen):
+creates a full site workspace at .seo/sites/<slug>/ inside an existing hub (or combined with
+--hub in the same run), and prints a REGISTRATION PENDING registry row. The script never edits
+registry.md itself.
 
-Existing files are never overwritten, and mode conflicts (standalone root given --hub, hub root
-given a plain run) are hard errors — converting a workspace is a manual decision.
+Run scripts/seo-doctor.mjs (read-only) first: this script aborts on a .seo/ that has no
+config.json and lacks the legacy signature (>=${LEGACY_SIGNATURE_MIN} of ${CANONICAL_FILES.join("/")}).
+Existing files are never overwritten (an existing config.json is never rewritten), and mode
+conflicts (standalone root given --hub, hub root given a plain run) are hard errors —
+converting a workspace is a manual decision (references/migrate-uninstall.md).
 taxonomy.md is sourced from the skill's templates/taxonomy.md.`;
 }
 
@@ -53,8 +64,8 @@ async function taxonomyContent() {
 }
 
 // One standalone workspace file set, keyed workspace-relative so the same set lands at
-// .seo/ (standalone) or .seo/sites/<slug>/ (hub site). Content is mode-agnostic: `.seo/X`
-// in prose means `<workspace root>/X` per the aliasing rule in references/hub-mode.md.
+// .seo/ (standalone) or .seo/sites/<slug>/ (hub site). Content is mode-agnostic: inside a
+// workspace, `.seo/X` prose means SITE_WORKSPACE/X (path semantics in SKILL.md).
 function workspaceFiles() {
   return {
     "README.md": `# SEO workspace
@@ -188,11 +199,21 @@ Hub-managed sites use a workspace root of \`sites/<slug>\` (relative to this fil
 
 function configContent(mode) {
   const created = new Date().toISOString().slice(0, 10);
-  return `${JSON.stringify({ mode, created, skillVersion: SKILL_VERSION }, null, 2)}\n`;
+  // skillVersion is created-by provenance (never rewritten by later runs);
+  // workspaceSchemaVersion is the layout contract. Field semantics:
+  // references/hub-mode.md Mode Stamp.
+  return `${JSON.stringify(
+    { mode, created, skillVersion: SKILL_VERSION, workspaceSchemaVersion: WORKSPACE_SCHEMA_VERSION },
+    null,
+    2,
+  )}\n`;
 }
 
 // Returns "standalone" | "hub" | null. A .seo/ without config.json is a legacy
-// standalone workspace (back-compat rule in references/hub-mode.md).
+// standalone workspace only when it carries the legacy signature — at least
+// LEGACY_SIGNATURE_MIN canonical files (back-compat rule in
+// references/hub-mode.md). Anything else aborts: presence alone is not a safe
+// legacy signature (the .seo/ may belong to another tool or be debris).
 function existingMode(seoDir) {
   const configPath = path.join(seoDir, "config.json");
   if (existsSync(configPath)) {
@@ -207,7 +228,15 @@ function existingMode(seoDir) {
     }
     return parsed.mode;
   }
-  return existsSync(seoDir) ? "standalone" : null;
+  if (!existsSync(seoDir)) return null;
+  const present = CANONICAL_FILES.filter((file) => existsSync(path.join(seoDir, file)));
+  if (present.length >= LEGACY_SIGNATURE_MIN) return "standalone";
+  throw new Error(
+    `${seoDir} exists without config.json and carries no recognizable legacy workspace signature ` +
+      `(${present.length}/${CANONICAL_FILES.length} of ${CANONICAL_FILES.join("/")}). Not adopting it. ` +
+      `Run node scripts/seo-doctor.mjs ${path.dirname(seoDir)} (read-only), then make an explicit ` +
+      `create/adopt/migrate decision — see references/migrate-uninstall.md.`,
+  );
 }
 
 function parseArgs(argv) {
@@ -231,9 +260,10 @@ function parseArgs(argv) {
       throw new Error(`Unexpected extra argument ${arg}\n\n${usage()}`);
     }
   }
-  if (options.site !== null && !/^[a-z0-9-]+$/.test(options.site)) {
+  if (options.site !== null && !/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/.test(options.site)) {
     throw new Error(
-      `Invalid site slug ${options.site} (expected lowercase letters, digits, hyphens)\n\n${usage()}`,
+      `Invalid site slug ${options.site} (lowercase letters/digits with inner hyphens; ` +
+        `no leading/trailing hyphen)\n\n${usage()}`,
     );
   }
   return options;
@@ -295,7 +325,8 @@ async function main() {
       await createWorkspace(workspaceDir);
       console.log(`Site workspace verified at ${workspaceDir}`);
       console.log(
-        `Suggested registry row (add to ${path.join(seoDir, "registry.md")} yourself):\n` +
+        `REGISTRATION PENDING: add the row to ${path.join(seoDir, "registry.md")} — this script ` +
+          `never edits it, and scripts/seo-doctor.mjs flags unregistered site folders:\n` +
           `| ${options.site} | sites/${options.site} | unknown | unknown | unknown | unknown | hub-managed |`,
       );
     }
