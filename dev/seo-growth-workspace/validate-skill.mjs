@@ -35,6 +35,7 @@ const skillRoot = path.resolve(
 
 const requiredFiles = [
   "SKILL.md",
+  "references/hub-mode.md",
   "references/phase-architecture.md",
   "references/operating-loop.md",
   "references/business-context.md",
@@ -140,6 +141,21 @@ section("SKILL.md routing", () => {
   }
 });
 
+// --- SKILL.md version matches the bootstrap script's stamp constant ---
+section("version consistency", () => {
+  const skill = readFileSync(path.join(skillRoot, "SKILL.md"), "utf-8");
+  const skillVersion = skill.match(/^version:\s*(\S+)/m)?.[1];
+  const bootstrap = readFileSync(
+    path.join(skillRoot, "scripts/bootstrap-seo-workspace.mjs"),
+    "utf-8",
+  );
+  const stampVersion = bootstrap.match(/SKILL_VERSION = "([^"]+)"/)?.[1];
+  check(
+    skillVersion !== undefined && skillVersion === stampVersion,
+    `SKILL.md version (${skillVersion}) must match bootstrap SKILL_VERSION (${stampVersion})`,
+  );
+});
+
 // --- bootstrap-seo-workspace.mjs ---
 section("bootstrap smoke test", () => {
   const bootstrapRoot = mkdtempSync(path.join(tmpdir(), "seo-skill-"));
@@ -171,8 +187,76 @@ section("bootstrap smoke test", () => {
       taxonomy === template,
       "Bootstrap taxonomy should be sourced verbatim from templates/taxonomy.md",
     );
+    const configPath = path.join(bootstrapRoot, ".seo/config.json");
+    check(existsSync(configPath), "Bootstrap did not stamp .seo/config.json");
+    check(
+      JSON.parse(readFileSync(configPath, "utf-8")).mode === "standalone",
+      "Default bootstrap must stamp config.json with mode standalone",
+    );
   } finally {
     rmSync(bootstrapRoot, { recursive: true, force: true });
+  }
+});
+
+// --- bootstrap-seo-workspace.mjs: hub mode ---
+section("hub bootstrap", () => {
+  const hubRoot = mkdtempSync(path.join(tmpdir(), "seo-hub-"));
+  try {
+    // --site without a hub must fail before creating anything.
+    const orphanSite = spawnSync(
+      process.execPath,
+      [
+        path.join(skillRoot, "scripts/bootstrap-seo-workspace.mjs"),
+        "--site",
+        "example-com",
+        hubRoot,
+      ],
+      { encoding: "utf-8" },
+    );
+    check(
+      orphanSite.status !== 0,
+      "--site without an existing hub (or --hub) must exit non-zero",
+    );
+
+    run(process.execPath, [
+      path.join(skillRoot, "scripts/bootstrap-seo-workspace.mjs"),
+      "--hub",
+      "--site",
+      "example-com",
+      hubRoot,
+    ]);
+    const config = JSON.parse(
+      readFileSync(path.join(hubRoot, ".seo/config.json"), "utf-8"),
+    );
+    check(config.mode === "hub", "Hub bootstrap must stamp config.json with mode hub");
+    check(
+      existsSync(path.join(hubRoot, ".seo/registry.md")),
+      "Hub bootstrap did not seed .seo/registry.md",
+    );
+    for (const file of [
+      ".seo/sites/example-com/backlog.md",
+      ".seo/sites/example-com/log.md",
+      ".seo/sites/example-com/taxonomy.md",
+    ]) {
+      check(existsSync(path.join(hubRoot, file)), `Hub bootstrap did not create ${file}`);
+    }
+    check(
+      !existsSync(path.join(hubRoot, ".seo/backlog.md")),
+      "Hub root must not receive standalone workspace files",
+    );
+
+    // Rerunning plain bootstrap against a hub root must refuse (no silent conversion).
+    const plainOnHub = spawnSync(
+      process.execPath,
+      [path.join(skillRoot, "scripts/bootstrap-seo-workspace.mjs"), hubRoot],
+      { encoding: "utf-8" },
+    );
+    check(
+      plainOnHub.status !== 0,
+      "Plain bootstrap on a hub root must exit non-zero (no silent conversion)",
+    );
+  } finally {
+    rmSync(hubRoot, { recursive: true, force: true });
   }
 });
 
@@ -716,6 +800,72 @@ section("portfolio status", () => {
     );
   } finally {
     rmSync(portfolioRoot, { recursive: true, force: true });
+  }
+});
+
+// --- portfolio-status.mjs: hub layout (registry-relative roots + site-folder workspaces) ---
+section("portfolio status hub layout", () => {
+  const hubRoot = mkdtempSync(path.join(tmpdir(), "seo-hub-status-"));
+  const legacyRoot = mkdtempSync(path.join(tmpdir(), "seo-legacy-"));
+  try {
+    run(process.execPath, [
+      path.join(skillRoot, "scripts/bootstrap-seo-workspace.mjs"),
+      "--hub",
+      "--site",
+      "acme-com",
+      hubRoot,
+    ]);
+    writeFileSync(
+      path.join(hubRoot, ".seo/sites/acme-com/log.md"),
+      "# SEO operating log\n\n## 2026-01-01 - Handoff\n\n- Mode: operate.\n",
+      { flag: "w" },
+    );
+    // Legacy standalone workspace: .seo/ with no config.json.
+    run("mkdir", ["-p", path.join(legacyRoot, ".seo")]);
+    writeFileSync(
+      path.join(legacyRoot, ".seo/log.md"),
+      "# SEO operating log\n\n## 2026-01-01 - Handoff\n\n- Mode: operate.\n",
+    );
+
+    const registryPath = path.join(hubRoot, ".seo/registry.md");
+    writeFileSync(
+      registryPath,
+      [
+        "# Portfolio Registry",
+        "",
+        "| Site | Workspace root | GSC property | Credentials | Market / language | Publish gate | Notes |",
+        "| --- | --- | --- | --- | --- | --- | --- |",
+        "| acme.com | sites/acme-com | unknown | unknown | unknown | unknown | hub-managed |",
+        `| legacy.example | ${legacyRoot} | unknown | unknown | unknown | unknown | standalone repo |`,
+        "",
+      ].join("\n"),
+    );
+
+    // Run from a cwd that is NOT the hub to prove registry-relative resolution.
+    const json = run(
+      process.execPath,
+      [
+        path.join(skillRoot, "scripts/portfolio-status.mjs"),
+        "--registry",
+        registryPath,
+        "--format",
+        "json",
+      ],
+      { cwd: tmpdir() },
+    );
+    const parsed = JSON.parse(json);
+    const bySite = Object.fromEntries(parsed.sites.map((s) => [s.site, s]));
+    check(
+      bySite["acme.com"]?.missing === false,
+      "A hub-relative sites/<slug> row must resolve against the registry directory",
+    );
+    check(
+      bySite["legacy.example"]?.missing === false,
+      "An absolute standalone root (.seo/ without config.json) must still resolve",
+    );
+  } finally {
+    rmSync(hubRoot, { recursive: true, force: true });
+    rmSync(legacyRoot, { recursive: true, force: true });
   }
 });
 

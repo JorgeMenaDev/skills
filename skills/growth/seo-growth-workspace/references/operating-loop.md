@@ -16,7 +16,7 @@ Do not conclude SEO is done because the visible backlog is empty. Apply the Empt
 
 ## State Read Order
 
-Read current state before choosing work:
+`.seo/` here means the resolved workspace root — repo-local `.seo/` in standalone mode, `.seo/sites/<slug>/` in hub mode (`references/hub-mode.md`). Read current state before choosing work:
 
 1. `.seo/backlog.md` for current focus, in-progress work, Ready rows, Blocked rows, and Done history.
 2. `.seo/log.md` for the last action, handoff notes, stale leads, and recheck dates.
@@ -38,7 +38,7 @@ Before continuing a current-focus or blocked ticket, ask whether it is still the
 - blocked on product/business ownership rather than SEO implementation, or
 - outside the surface the user asked to improve.
 
-Label reports with the target surface at the top. When parking a side monitor, record the evidence, owner/surface, and next unblock signal, then continue with the smallest target-owned SEO checkpoint.
+Label reports with the target surface at the top. When parking a side monitor, record the evidence, owner/surface, and next unblock signal, then continue with the smallest target-owned SEO checkpoint. In hub mode, a parked ticket that belongs to another *registered* site may additionally be re-filed into that site's backlog per the Cross-Site Re-Filing rule in `references/hub-mode.md`.
 
 ## Work Selection Order
 

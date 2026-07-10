@@ -8,7 +8,8 @@ An unattended run is a *bounded* operate iteration: it resumes from workspace st
 
 1. Read state in the State Read Order from `references/operating-loop.md` — the workspace is the only memory an unattended run has. Do not rely on conversation context, prior run output, or anything not written down.
 2. Read the run's own loop state (below) to know its cadence, cooldowns, and what it already alerted on.
-3. If `.seo/` is missing, do not bootstrap unattended — exit with status `blocked` and a note that the workspace needs an interactive first run.
+3. If `.seo/` is missing, do not bootstrap unattended — exit with status `blocked` and a note that the workspace needs an interactive first run. Never ask the install-mode question unattended (`references/hub-mode.md`).
+4. In a hub workspace, the invoking prompt must name the target site; without one, exit `blocked` — never pick a target unattended.
 
 ## Bounded Remit
 
@@ -39,7 +40,7 @@ Scheduled runs default to silent: emit the summary payload, and only flag for hu
 
 ## Loop State (dedupe and cooldowns)
 
-Persist per-loop state at `.seo/loops/<loop-name>.json` so repeated runs do not re-alert or re-do work:
+Persist per-loop state at `.seo/loops/<loop-name>.json` — meaning the resolved workspace root, so `.seo/sites/<slug>/loops/` in hub mode; hub-level sweep loops that iterate the registry may keep state at the hub's own `.seo/loops/`. Loop state exists so repeated runs do not re-alert or re-do work:
 
 ```json
 {

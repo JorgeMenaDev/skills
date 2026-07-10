@@ -1,7 +1,7 @@
 ---
 name: seo-growth-workspace
-description: "Use when starting, auditing, or operating SEO or organic growth for a product or local-business website — technical SEO, Search Console, keyword/content ops, schema, pSEO, local SEO/GBP, backlinks, AI-search visibility, conversion, and monthly reporting. Triggers: \"set up SEO\", \"audit my site\", \"my traffic dropped\", \"why am I not ranking\", \"Search Console opportunities\", \"monthly SEO report\", \"how do we show up in ChatGPT/AI search\". Creates a durable .seo workspace, captures business context, audits live/code/admin evidence, prioritizes a backlog, implements one high-leverage action, verifies reality, and logs handoff notes. For standalone copywriting, paid channels, or email, use a dedicated skill."
-version: 2.4.0
+description: "Use when starting, auditing, or operating SEO or organic growth for a product or local-business website — technical SEO, Search Console, keyword/content ops, schema, pSEO, local SEO/GBP, backlinks, AI-search visibility, conversion, and monthly reporting. Triggers: \"set up SEO\", \"audit my site\", \"my traffic dropped\", \"why am I not ranking\", \"Search Console opportunities\", \"monthly SEO report\", \"how do we show up in ChatGPT/AI search\". Creates a durable .seo workspace, captures business context, audits live/code/admin evidence, prioritizes a backlog, implements one high-leverage action, verifies reality, and logs handoff notes. Installs in a single site repo (standalone) or in an orchestrator/agent-profile repo managing many sites (hub). For standalone copywriting, paid channels, or email, use a dedicated skill."
+version: 3.0.0
 license: MIT
 mutating: true
 writes_to: [.seo/]
@@ -27,7 +27,7 @@ Use this skill as a mode router. Load only the reference needed for the selected
 
 ## Required Workspace
 
-Create or verify this structure at the target root:
+Create or verify this structure at the workspace root (see Install Modes for where that is):
 
 ```text
 .seo/
@@ -46,11 +46,20 @@ Create or verify this structure at the target root:
   pseo/
 ```
 
-Use repo-local `.seo/` by default. Use another durable workspace root only when the user explicitly asks for SEO memory outside the repo.
+## Install Modes
+
+The skill installs in one of two modes, stamped in `.seo/config.json` (`{"mode": "standalone" | "hub", ...}`):
+
+- **standalone** — a normal site repo; the workspace root is repo-local `.seo/`. Use another durable workspace root only when the user explicitly asks for SEO memory outside the repo.
+- **hub** — an orchestrator repo (for example an agent profile) that manages SEO for many sites. The hub's `.seo/` holds `config.json`, `registry.md`, `portfolio-index.md`, and one full workspace per managed site under `.seo/sites/<slug>/`.
+
+**Workspace root aliasing**: every `.seo/X` path in this file and the references means `<workspace root>/X` — `.seo/` in standalone mode, `.seo/sites/<slug>/` in hub mode.
+
+On a first run with no `.seo/`, ask which mode applies (once, never unattended) and bootstrap accordingly. A `.seo/` without `config.json` is a standalone workspace (back-compat) — stamp it on the next mutating run. In hub mode, resolve exactly one target site before reading any state; everything after resolution is identical to standalone. Rules, layout, and target resolution: `references/hub-mode.md`.
 
 ## Choose A Mode
 
-Pick the narrowest mode that satisfies the request. If no narrower mode is requested, use `operate`: read existing `.seo/` state, choose the next evidence-backed action, do one useful step, verify it, and log the handoff. If the user asks for a full first run, load `references/phase-architecture.md`, start with `bootstrap`, then continue in `operate`.
+Pick the narrowest mode that satisfies the request. If no narrower mode is requested, use `operate`: read existing `.seo/` state, choose the next evidence-backed action, do one useful step, verify it, and log the handoff. If the user asks for a full first run, load `references/phase-architecture.md`, start with `bootstrap`, then continue in `operate`. In hub mode, resolve the target site first (`references/hub-mode.md`); the modes themselves are unchanged.
 
 | Mode | Use when | Exit criteria |
 | --- | --- | --- |
@@ -67,6 +76,7 @@ Pick the narrowest mode that satisfies the request. If no narrower mode is reque
 
 Load only the file needed for the mode or ticket:
 
+- Install modes, hub layout, and hub target resolution: `references/hub-mode.md`
 - First-run phase architecture and site-type classifier: `references/phase-architecture.md`
 - Operating loop and handoff: `references/operating-loop.md`
 - Business context intake: `references/business-context.md`
@@ -95,7 +105,7 @@ Load only the file needed for the mode or ticket:
 
 Use templates from `templates/` for report shape. Use scripts when deterministic scaffolding or analysis is useful (all run with `node`, no dependencies):
 
-- `scripts/bootstrap-seo-workspace.mjs` creates the base `.seo/` workspace without overwriting files.
+- `scripts/bootstrap-seo-workspace.mjs` creates the base `.seo/` workspace without overwriting files; `--hub` creates a hub skeleton and `--site <slug>` creates a site workspace under `.seo/sites/`.
 - `scripts/gsc-oauth.mjs` creates a local refresh-token env file without printing token values.
 - `scripts/gsc-fetch.mjs` fetches Search Console `query,page` rows with pagination using env credentials.
 - `scripts/gsc-opportunities.mjs` turns exported GSC rows into position-banded CTR, page-2, and cannibalization opportunity tables; `--brand` excludes branded queries, `--format backlog` emits draft `.seo/backlog.md` rows for review.
@@ -104,7 +114,7 @@ Use templates from `templates/` for report shape. Use scripts when deterministic
 
 ## Core Workflow
 
-1. State assumptions, target root, live URL, market, language, and success criteria.
+1. State assumptions, install mode, resolved target workspace, live URL, market, language, and success criteria.
 2. Classify the site type and next phase with `references/phase-architecture.md` when the request is broad, first-run, or ambiguous.
 3. Choose the mode and load only its reference file. For `operate`, load `references/operating-loop.md`, then load the narrow reference required by the chosen ticket.
 4. Create or update `.seo/context.md` using `references/business-context.md`. In no-write runs, use existing context from `.seo/strategy.md`, `.seo/audit.md`, and `.seo/README.md` if `.seo/context.md` is missing, then record workspace drift instead of forcing a write.

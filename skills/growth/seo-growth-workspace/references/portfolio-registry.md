@@ -25,12 +25,20 @@ One row per property. Columns are mandatory even when the value is `unknown` —
 ```
 
 - **Site** — the public hostname (the identity users and reports use).
-- **Workspace root** — where `.seo/` lives: the site's repo, or an external root for partner-owned or repo-less sites (`SKILL.md` workspace rules apply).
+- **Workspace root** — where the site's workspace lives: the site's repo (containing `.seo/`), a hub-relative `sites/<slug>` folder (see Hub Registries), or an external root for partner-owned or repo-less sites (`SKILL.md` workspace rules apply).
 - **GSC property** — the exact property string including its form, `sc-domain:example.com` or `https://example.com/` (the wrong form 403s; see Property String Forms in `references/search-console.md`).
 - **Credentials** — the *location only*: an env var name, a credentials-dir path, or `none yet`. Never a value, never a token. The registry records that access exists and where the scripts should look, nothing more.
 - **Market / language** — primary market and locale(s); multilingual sites list each lane.
 - **Publish gate** — who or what approves outbound content for this site (a human, a review step, or `blocked: no publish path`). Scheduled runs treat this column as part of the mutation ceiling (`references/scheduled-operation.md`).
 - **Notes** — content-engine wiring, adapters, quirks; link the site's `.seo/adapters/` note rather than restating it.
+
+## Hub Registries
+
+In hub mode (`references/hub-mode.md`), the registry is a first-class hub file at `<hub>/.seo/registry.md` (location 2 above). Hub-managed sites set Workspace root to `sites/<slug>` — **relative workspace roots resolve against the registry file's own directory**, so `sites/andy-partner` in `<hub>/.seo/registry.md` means `<hub>/.seo/sites/andy-partner/`. Absolute or `~`-prefixed roots stay valid for sites that keep their own repo-local `.seo/` or live on partner-owned paths.
+
+```md
+| andy-partner.com | sites/andy-partner | sc-domain:andy-partner.com | GSC_CREDENTIALS_DIR=<credential-home>/andy-partner-gsc | CR / es-CR | human approves all publishes | hub-managed |
+```
 
 ## Portfolio Iteration
 

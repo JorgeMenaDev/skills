@@ -68,9 +68,17 @@ For an installed copy, use:
 bun .agents/skills/seo-growth-workspace/scripts/bootstrap-seo-workspace.mjs <target-root>
 ```
 
-3. Verify `.seo/README.md`, `.seo/context.md`, `.seo/backlog.md`, `.seo/audit.md`, `.seo/strategy.md`, `.seo/taxonomy.md`, `.seo/log.md`, `.seo/reports/`, `.seo/scripts/`, `.seo/pseo/`, and `.seo/backlinks/work-log.md`.
+3. Verify `.seo/README.md`, `.seo/context.md`, `.seo/backlog.md`, `.seo/audit.md`, `.seo/strategy.md`, `.seo/taxonomy.md`, `.seo/log.md`, `.seo/reports/`, `.seo/scripts/`, `.seo/pseo/`, `.seo/backlinks/work-log.md`, and `.seo/config.json` with `"mode": "standalone"`.
 4. Confirm the dry run did not overwrite existing files.
-5. Record command output and target type in the release run log.
+5. Hub dry run — against a second temporary root:
+
+```bash
+bun skills/growth/seo-growth-workspace/scripts/bootstrap-seo-workspace.mjs --hub --site example-com <hub-root>
+```
+
+Verify `.seo/config.json` with `"mode": "hub"`, `.seo/registry.md`, the full workspace set under `.seo/sites/example-com/`, and no standalone workspace files at the hub root. Confirm a plain rerun against the hub root refuses (no silent mode conversion).
+
+6. Record command output and target type in the release run log.
 
 ## Manual Review
 

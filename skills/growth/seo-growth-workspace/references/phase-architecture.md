@@ -49,7 +49,7 @@ Use the classifier to route the first useful mode:
 
 | Scenario | Likely first mode | Why |
 | --- | --- | --- |
-| New repo with no `.seo/` | `bootstrap` | Workspace, context, audit, and backlog do not exist yet |
+| New repo with no `.seo/` | `bootstrap` | Workspace, context, audit, and backlog do not exist yet; ask the install-mode question first (`references/hub-mode.md`) |
 | Existing `.seo/` with no narrow ask | `operate` | Continue from current focus, in-progress work, or evidence-backed checkpoint |
 | Public pages broken or invisible | `technical-seo-fix` | Indexability blocks make content and backlink work premature |
 | GSC has query/page data | `technical-seo-fix` or `content-ops` | Data may support metadata, internal-link, content, or cannibalization work |

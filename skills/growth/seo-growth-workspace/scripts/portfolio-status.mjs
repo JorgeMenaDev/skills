@@ -9,16 +9,23 @@ function usage() {
   node portfolio-status.mjs --registry <file> [--format md|json]
 
 Reads the portfolio registry markdown table (references/portfolio-registry.md Row
-Shape) and, for each site, inspects that workspace root's .seo/ state to build a
-ranked "which site deserves the next SEO hour" table. Read-only: no network, no
+Shape) and, for each site, inspects that workspace's state to build a ranked
+"which site deserves the next SEO hour" table. Read-only: no network, no
 secrets, never writes.
 
-Per row it reads (when present):
-  .seo/backlog.md   Ready-table rows -> open P0/P1 count + In progress/Ready/Blocked
-                    counts + top Ready ticket title.
-  .seo/log.md       Most recent "## YYYY-MM-DD" entry -> last-touched date.
-  .seo/reports/     Latest YYYY-MM-DD-dated report file -> folded into last-touched
-                    (a fresh report is a touch even when the log lags).
+Workspace resolution per row: a relative workspace root resolves against the
+registry file's own directory (so a hub row "sites/<slug>" resolves inside the
+hub's .seo/); "~" expands to the home directory. If the resolved root contains a
+.seo/ directory, that is the workspace (a standalone repo — this takes precedence);
+otherwise the root itself is treated as the workspace when it holds backlog.md or
+log.md (a hub site folder). Neither shape present -> flagged "no workspace".
+
+Per workspace it reads (when present):
+  backlog.md   Ready-table rows -> open P0/P1 count + In progress/Ready/Blocked
+               counts + top Ready ticket title.
+  log.md       Most recent "## YYYY-MM-DD" entry -> last-touched date.
+  reports/     Latest YYYY-MM-DD-dated report file -> folded into last-touched
+               (a fresh report is a touch even when the log lags).
 
 Output columns: Site | Last touched | Days stale | Open P0/P1 |
 In progress/Ready/Blocked | Top opportunity | Workspace.
@@ -170,13 +177,31 @@ function daysBetween(fromDate, nowMs) {
   return days < 0 ? 0 : days;
 }
 
-function inspectSite(entry, nowMs) {
+// A root containing .seo/ is a standalone repo (that nested dir is the workspace,
+// and takes precedence); a root that itself holds backlog.md or log.md is already a
+// workspace (a hub's sites/<slug> folder). Anything else is missing.
+function resolveWorkspaceDir(root) {
+  const nested = path.join(root, ".seo");
+  if (existsSync(nested)) return nested;
+  if (
+    existsSync(path.join(root, "backlog.md")) ||
+    existsSync(path.join(root, "log.md"))
+  ) {
+    return root;
+  }
+  return null;
+}
+
+function inspectSite(entry, nowMs, registryDir) {
   const workspaceRaw = entry.workspaceRaw;
   const unresolved =
     !workspaceRaw || workspaceRaw.toLowerCase() === "unknown";
-  const root = unresolved ? null : expandHome(workspacePath(workspaceRaw));
-  const seoDir = root ? path.join(root, ".seo") : null;
-  const missing = !seoDir || !existsSync(seoDir);
+  const expanded = unresolved ? null : expandHome(workspacePath(workspaceRaw));
+  // Relative roots (e.g. a hub row "sites/<slug>") resolve against the registry
+  // file's directory, not the invoker's cwd.
+  const root = expanded === null ? null : path.resolve(registryDir, expanded);
+  const seoDir = root ? resolveWorkspaceDir(root) : null;
+  const missing = seoDir === null;
 
   if (missing) {
     return {
@@ -336,9 +361,10 @@ function main() {
 
   const markdown = readFileSync(registryPath, "utf-8");
   const entries = parseRegistry(markdown);
+  const registryDir = path.dirname(path.resolve(registryPath));
   const nowMs = Date.now();
   const ranked = entries
-    .map((entry) => inspectSite(entry, nowMs))
+    .map((entry) => inspectSite(entry, nowMs, registryDir))
     .sort(rankCompare);
   const generated = new Date(nowMs).toISOString();
 

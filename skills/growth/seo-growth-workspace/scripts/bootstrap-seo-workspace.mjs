@@ -1,20 +1,36 @@
 #!/usr/bin/env node
 
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const taxonomyTemplatePath = path.resolve(scriptDir, "../templates/taxonomy.md");
 
+// Keep in sync with SKILL.md frontmatter (validate-skill.mjs asserts they match).
+const SKILL_VERSION = "3.0.0";
+
 function usage() {
   return `Usage:
-  node bootstrap-seo-workspace.mjs [target-dir]
+  node bootstrap-seo-workspace.mjs [target-dir]                 standalone workspace
+  node bootstrap-seo-workspace.mjs --hub [target-dir]           hub skeleton
+  node bootstrap-seo-workspace.mjs --site <slug> [target-dir]   site workspace under a hub
 
-Creates or verifies the .seo/ workspace (backlog, log, audit, taxonomy, strategy, context,
-backlinks, reports) in the target directory (default: current directory). Existing files are
-never overwritten. .seo/taxonomy.md is sourced from the skill's templates/taxonomy.md.`;
+Standalone (default): creates or verifies the .seo/ workspace (backlog, log, audit, taxonomy,
+strategy, context, backlinks, reports) in the target directory (default: current directory)
+and stamps .seo/config.json with {"mode":"standalone"}.
+
+--hub: creates the hub skeleton instead — .seo/{config.json (mode hub), registry.md, sites/}.
+No standalone workspace files are written at the hub root.
+
+--site <slug> (slug: lowercase letters, digits, hyphens): creates a full site workspace at
+.seo/sites/<slug>/ inside an existing hub (or combined with --hub in the same run), and prints
+a suggested registry row. The script never edits registry.md itself.
+
+Existing files are never overwritten, and mode conflicts (standalone root given --hub, hub root
+given a plain run) are hard errors — converting a workspace is a manual decision.
+taxonomy.md is sourced from the skill's templates/taxonomy.md.`;
 }
 
 // Stub only for degraded installs missing templates/taxonomy.md. No inline taxonomy is
@@ -30,15 +46,18 @@ async function taxonomyContent() {
     return await readFile(taxonomyTemplatePath, "utf-8");
   } catch {
     process.stderr.write(
-      "Warning: templates/taxonomy.md not found next to this script; wrote a stub .seo/taxonomy.md. See references/ticket-architecture.md for the canonical taxonomy.\n",
+      "Warning: templates/taxonomy.md not found next to this script; wrote a stub taxonomy.md. See references/ticket-architecture.md for the canonical taxonomy.\n",
     );
     return taxonomyStub;
   }
 }
 
-function staticFiles() {
+// One standalone workspace file set, keyed workspace-relative so the same set lands at
+// .seo/ (standalone) or .seo/sites/<slug>/ (hub site). Content is mode-agnostic: `.seo/X`
+// in prose means `<workspace root>/X` per the aliasing rule in references/hub-mode.md.
+function workspaceFiles() {
   return {
-    ".seo/README.md": `# SEO workspace
+    "README.md": `# SEO workspace
 
 Canonical files:
 
@@ -50,7 +69,7 @@ Canonical files:
 - \`.seo/reports/\` stores dated reports.
 - \`.seo/backlinks/work-log.md\` stores backlink/citation attempts.
 `,
-    ".seo/backlog.md": `# SEO backlog
+    "backlog.md": `# SEO backlog
 
 Last updated: YYYY-MM-DD
 Current focus: none
@@ -82,11 +101,11 @@ Current focus: none
 | ID | Completed | Verify |
 | --- | --- | --- |
 `,
-    ".seo/log.md": `# SEO operating log
+    "log.md": `# SEO operating log
 
 Use this as the chronological handoff for continuous SEO work. Keep entries short and link to reports or backlog tickets for detail.
 `,
-    ".seo/audit.md": `# SEO audit
+    "audit.md": `# SEO audit
 
 Last updated: YYYY-MM-DD
 
@@ -95,7 +114,7 @@ Last updated: YYYY-MM-DD
 | ID | Priority | Area | Finding | Evidence | Recommended action |
 | --- | --- | --- | --- | --- | --- |
 `,
-    ".seo/strategy.md": `# SEO strategy
+    "strategy.md": `# SEO strategy
 
 Last updated: YYYY-MM-DD
 
@@ -110,16 +129,16 @@ See \`.seo/context.md\`.
 
 ## Decisions
 `,
-    ".seo/backlinks/summary.md": `# Backlink summary
+    "backlinks/summary.md": `# Backlink summary
 
 Last updated: YYYY-MM-DD
 `,
-    ".seo/backlinks/work-log.md": `# Backlink work log
+    "backlinks/work-log.md": `# Backlink work log
 
 | Date | Target | Action | Status | Evidence | Next step |
 | --- | --- | --- | --- | --- | --- |
 `,
-    ".seo/context.md": `# SEO business context
+    "context.md": `# SEO business context
 
 ## Business basics
 
@@ -140,39 +159,159 @@ Last updated: YYYY-MM-DD
   };
 }
 
-async function ensureDir(filePath) {
-  await mkdir(path.dirname(filePath), { recursive: true });
+function hubReadme() {
+  return `# SEO hub workspace
+
+This is a hub (orchestrator) SEO workspace managing several sites. See the skill's
+references/hub-mode.md for the operating rules.
+
+Canonical files:
+
+- \`.seo/registry.md\` maps every managed site to its workspace root.
+- \`.seo/sites/<slug>/\` holds each site's full SEO workspace (backlog, log, reports, ...).
+- \`.seo/portfolio-index.md\` is the cross-site rollup (templates/portfolio-index.md).
+
+One target site per run; never blend workspaces.
+`;
+}
+
+function registrySeed() {
+  return `# Portfolio Registry
+
+See the skill's references/portfolio-registry.md for column meanings and reading rules.
+Hub-managed sites use a workspace root of \`sites/<slug>\` (relative to this file's directory).
+
+| Site | Workspace root | GSC property | Credentials | Market / language | Publish gate | Notes |
+|---|---|---|---|---|---|---|
+`;
+}
+
+function configContent(mode) {
+  const created = new Date().toISOString().slice(0, 10);
+  return `${JSON.stringify({ mode, created, skillVersion: SKILL_VERSION }, null, 2)}\n`;
+}
+
+// Returns "standalone" | "hub" | null. A .seo/ without config.json is a legacy
+// standalone workspace (back-compat rule in references/hub-mode.md).
+function existingMode(seoDir) {
+  const configPath = path.join(seoDir, "config.json");
+  if (existsSync(configPath)) {
+    let parsed;
+    try {
+      parsed = JSON.parse(readFileSync(configPath, "utf-8"));
+    } catch {
+      throw new Error(`Unreadable ${configPath} — fix or remove it before bootstrapping.`);
+    }
+    if (parsed.mode !== "standalone" && parsed.mode !== "hub") {
+      throw new Error(`${configPath} has unknown mode ${JSON.stringify(parsed.mode)}.`);
+    }
+    return parsed.mode;
+  }
+  return existsSync(seoDir) ? "standalone" : null;
+}
+
+function parseArgs(argv) {
+  const options = { hub: false, site: null, root: null };
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i];
+    if (arg === "--help" || arg === "-h") return { help: true };
+    if (arg === "--hub") {
+      options.hub = true;
+    } else if (arg === "--site") {
+      options.site = argv[i + 1];
+      if (options.site === undefined || options.site.startsWith("-")) {
+        throw new Error(`Missing value for --site\n\n${usage()}`);
+      }
+      i += 1;
+    } else if (arg.startsWith("-")) {
+      throw new Error(`Unknown flag ${arg}\n\n${usage()}`);
+    } else if (options.root === null) {
+      options.root = arg;
+    } else {
+      throw new Error(`Unexpected extra argument ${arg}\n\n${usage()}`);
+    }
+  }
+  if (options.site !== null && !/^[a-z0-9-]+$/.test(options.site)) {
+    throw new Error(
+      `Invalid site slug ${options.site} (expected lowercase letters, digits, hyphens)\n\n${usage()}`,
+    );
+  }
+  return options;
+}
+
+async function writeMissing(baseDir, files) {
+  for (const [relativePath, content] of Object.entries(files)) {
+    const absolutePath = path.join(baseDir, relativePath);
+    if (existsSync(absolutePath)) continue;
+    await mkdir(path.dirname(absolutePath), { recursive: true });
+    await writeFile(absolutePath, content);
+  }
+}
+
+async function createWorkspace(workspaceDir) {
+  const files = {
+    ...workspaceFiles(),
+    "taxonomy.md": await taxonomyContent(),
+  };
+  await Promise.all(
+    ["reports", "scripts", "pseo"].map((dir) =>
+      mkdir(path.join(workspaceDir, dir), { recursive: true }),
+    ),
+  );
+  await writeMissing(workspaceDir, files);
 }
 
 async function main() {
-  const arg = process.argv[2];
-  if (arg === "--help" || arg === "-h") {
+  const options = parseArgs(process.argv.slice(2));
+  if (options.help) {
     console.log(usage());
     return;
   }
-  if (arg?.startsWith("-")) {
-    throw new Error(`Unknown flag ${arg}\n\n${usage()}`);
+
+  const root = options.root ? path.resolve(options.root) : process.cwd();
+  const seoDir = path.join(root, ".seo");
+  const mode = existingMode(seoDir);
+
+  if (options.hub || options.site) {
+    if (mode === "standalone") {
+      throw new Error(
+        `${seoDir} is a standalone workspace; converting it to a hub is a manual decision. ` +
+          `Remove or migrate the existing workspace first.`,
+      );
+    }
+    if (options.site && !options.hub && mode !== "hub") {
+      throw new Error(
+        `--site requires an existing hub at ${seoDir} (or pass --hub in the same run).\n\n${usage()}`,
+      );
+    }
+    await mkdir(path.join(seoDir, "sites"), { recursive: true });
+    await writeMissing(seoDir, {
+      "config.json": configContent("hub"),
+      "README.md": hubReadme(),
+      "registry.md": registrySeed(),
+    });
+    if (options.site) {
+      const workspaceDir = path.join(seoDir, "sites", options.site);
+      await createWorkspace(workspaceDir);
+      console.log(`Site workspace verified at ${workspaceDir}`);
+      console.log(
+        `Suggested registry row (add to ${path.join(seoDir, "registry.md")} yourself):\n` +
+          `| ${options.site} | sites/${options.site} | unknown | unknown | unknown | unknown | hub-managed |`,
+      );
+    }
+    console.log(`SEO hub verified at ${root}`);
+    return;
   }
 
-  const root = arg ? path.resolve(arg) : process.cwd();
-  const files = {
-    ...staticFiles(),
-    ".seo/taxonomy.md": await taxonomyContent(),
-  };
-
-  await Promise.all(
-    [".seo/reports", ".seo/scripts", ".seo/pseo"].map((dir) =>
-      mkdir(path.join(root, dir), { recursive: true }),
-    ),
-  );
-
-  for (const [relativePath, content] of Object.entries(files)) {
-    const absolutePath = path.join(root, relativePath);
-    if (existsSync(absolutePath)) continue;
-    await ensureDir(absolutePath);
-    await writeFile(absolutePath, content);
+  if (mode === "hub") {
+    throw new Error(
+      `${seoDir} is a hub workspace; use --site <slug> to add a site workspace under it. ` +
+        `Converting a hub to standalone is a manual decision.`,
+    );
   }
 
+  await createWorkspace(seoDir);
+  await writeMissing(seoDir, { "config.json": configContent("standalone") });
   console.log(`SEO workspace verified at ${root}`);
 }
 

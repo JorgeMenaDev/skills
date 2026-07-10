@@ -8,7 +8,7 @@ The portable skill should stay generic. Project-specific adapters should be expl
 
 Prefer this order:
 
-1. `.seo/adapters/<name>.md` for repo-local operating notes and project-specific bridges.
+1. `.seo/adapters/<name>.md` for repo-local operating notes and project-specific bridges (in hub mode, per-site: `.seo/sites/<slug>/adapters/<name>.md`).
 2. `.seo/strategy.md` for durable decisions and tool ownership.
 3. The repo's own product/positioning doc for product, ICP, positioning, proof, and voice (for example `.agents/product-marketing.md` if the repo keeps one).
 
