@@ -172,8 +172,11 @@ function analyze(rows, { brandTerms, minImpressions }) {
     })
     .sort((a, b) => b.impressions - a.impressions);
 
+  // Check actual positions, not empty page-2/CTR tables: rows ranking 1-10 with
+  // acceptable (or branded-excluded) CTR also produce empty tables and must not be
+  // misclassified as early-stage.
   const earlyStage =
-    eligible.length > 0 && pageTwo.length === 0 && ctrFixes.length === 0;
+    eligible.length > 0 && !eligible.some((row) => row.position <= 20);
 
   return { eligible, pageTwo, ctrFixes, cannibalization, brandedExcluded, clusters, earlyStage };
 }
