@@ -44,7 +44,7 @@ In hub mode (`references/hub-mode.md`), the registry is a first-class hub file a
 
 - One target per run: iterate registry rows as separate runs (or separate script invocations), never one blended workspace. Ticket IDs, logs, and reports stay per-site.
 - Per-site monthly reports follow `references/monthly-reporting.md`; a portfolio pass writes one dated report per site, then one portfolio index from `templates/portfolio-index.md` linking them.
-- For a ranked "which site deserves the next hour" view, run `scripts/portfolio-status.mjs --registry <file>` — it reads each row's workspace and emits a ranked table (last-touched, open P0/P1, staleness, top opportunity). Treat its output as evidence for prioritization, not as the decision itself: a cold workspace on a revenue-critical site outranks a warm one on an experiment.
+- For a ranked "which site deserves the next hour" view, run `node "$SKILL_DIR/scripts/portfolio-status.mjs" --registry <file>` — it reads each row's workspace and emits a ranked table (last-touched, open P0/P1, staleness, top opportunity). Treat its output as evidence for prioritization, not as the decision itself: a cold workspace on a revenue-critical site outranks a warm one on an experiment.
 - Rows with `unknown` credentials or `blocked` publish gates are still iterated for read-only checks; the gaps land in `needs_human`, not silently skipped.
 
 ## Exit Criteria

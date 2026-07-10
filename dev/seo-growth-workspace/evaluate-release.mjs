@@ -303,6 +303,8 @@ function evaluate() {
     "references/competitor-profiling.md",
   ];
   const scripts = [
+    "scripts/workspace-state.mjs",
+    "scripts/seo-doctor.mjs",
     "scripts/bootstrap-seo-workspace.mjs",
     "scripts/gsc-oauth.mjs",
     "scripts/gsc-fetch.mjs",
@@ -324,6 +326,7 @@ function evaluate() {
     path.join(scriptDir, "release-checklist.md"),
     path.join(scriptDir, "fixtures/release-scenarios.json"),
     path.join(scriptDir, "validate-skill.mjs"),
+    path.join(scriptDir, "command-inventory.mjs"),
     path.join(scriptDir, "export-clean-skill.mjs"),
   ];
   const portable = portableFiles();
@@ -363,7 +366,7 @@ function evaluate() {
       ? []
       : [{ file, markers: hits.map(({ label }) => label).join("/") }];
   });
-  const secretExamples = includesAny(allPortable, /(ya29\.|sk-[A-Za-z0-9]|GSC_REFRESH_TOKEN=.*[A-Za-z0-9]{12})/);
+  const secretExamples = includesAny(allPortable, /(ya29\.|\bsk_(?:live|test)_[A-Za-z0-9]|\bsk-(?:live|test|proj)-[A-Za-z0-9]|GSC_REFRESH_TOKEN=.*[A-Za-z0-9]{12})/);
   award(checks, findings, "Portability", 11, contamination.length === 0, `Portable files contain user-specific contamination: ${contamination.map(({ file, markers }) => `${file} (${markers})`).join(", ")}`);
   award(checks, findings, "Portability", 4, secretExamples.length === 0, `Portable files may contain secret-like examples: ${secretExamples.map(({ file }) => file).join(", ")}`);
 
@@ -408,6 +411,7 @@ function evaluate() {
   );
   const score = Number(Object.values(categories).reduce((sum, item) => sum + item.score, 0).toFixed(2));
   const criticalFindings = findings.filter((finding) => finding.severity === "critical");
+  const zeroCategories = Object.entries(categories).filter(([, result]) => result.score === 0).map(([category]) => category);
   const projectProfiles = argValues("--profile-root")
     .filter(Boolean)
     .map((value) => {
@@ -425,8 +429,14 @@ function evaluate() {
     skill: "seo-growth-workspace",
     score,
     maxScore: 100,
-    pass: score >= 85 && criticalFindings.length === 0,
+    pass: score >= 85 && criticalFindings.length === 0 && zeroCategories.length === 0 && findings.length === 0,
     passBar: 85,
+    gates: {
+      minimumScore: score >= 85,
+      zeroCriticalFindings: criticalFindings.length === 0,
+      noZeroCategory: zeroCategories.length === 0,
+      noKnownFindings: findings.length === 0,
+    },
     categories,
     findings,
     scenarioProfiles: scenarioProfiles.map(({ id, siteType, expectedModes, expectedPhases }) => ({

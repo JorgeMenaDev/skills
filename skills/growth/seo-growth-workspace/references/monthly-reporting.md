@@ -37,8 +37,8 @@ Use `templates/monthly-report.md`. Include:
 When exports are available, draft it in one command:
 
 ```bash
-node scripts/monthly-report.mjs --gsc-current <rows.json> --gsc-previous <rows.json> \
-  --backlog .seo/backlog.md --brand "acme,acme app" --keyword-tiers <file> --calendar <file> --output <report.md>
+node "$SKILL_DIR/scripts/monthly-report.mjs" --gsc-current <rows.json> --gsc-previous <rows.json> \
+  --backlog "$SITE_WORKSPACE/backlog.md" --brand "acme,acme app" --keyword-tiers <file> --calendar <file> --output <report.md>
 ```
 
 Always pass `--brand` with known branded terms: branded queries stay in the topline totals but are excluded from problem selection and the single next action, so a branded high-impression low-CTR query is never misdiagnosed as a title problem.
@@ -47,10 +47,10 @@ Missing inputs become recorded gaps, not fabricated numbers. When GSC exports ar
 
 ## Portfolio Reporting
 
-`scripts/monthly-report.mjs` reports one target per run. For a portfolio, do not blend sites into one report:
+`$SKILL_DIR/scripts/monthly-report.mjs` reports one target per run. For a portfolio, do not blend sites into one report:
 
 - Iterate the registry (`references/portfolio-registry.md`), one target per run, writing one dated report per site into that site's `.seo/reports/` (hub mode: `.seo/sites/<slug>/reports/`).
-- Then build one cross-site rollup from `templates/portfolio-index.md`, using `scripts/portfolio-status.mjs --registry <file>` for the ranked table. In hub mode the rollup lives at the hub's `.seo/portfolio-index.md`.
+- Then build one cross-site rollup from `templates/portfolio-index.md`, using `node "$SKILL_DIR/scripts/portfolio-status.mjs" --registry <file>` for the ranked table. In hub mode the rollup lives at the hub's `.seo/portfolio-index.md`.
 - Link the per-site reports from the index; never merge their metrics. Ticket IDs, deltas, and next actions stay per-site.
 
 ## No-Mutation Validation
@@ -64,7 +64,7 @@ In read-only or no-access runs, do not force a monthly report when current/previ
 ## Rules
 
 - Prioritize calls, leads, qualified traffic, indexed pages, and money-page movement over vanity metrics.
-- Impressions can grow while clicks fall when AI Overviews/SERP features absorb clicks. Say why before calling it a loss — zero-click visibility is not automatically a failure.
+- Impressions can grow while clicks fall for several reasons. Separate query mix, ranking/snippet changes, and SERP-composition hypotheses; standard GSC Performance alone cannot prove AI Overviews absorbed the clicks. Use the rollout-limited Generative AI export when the property visibly has it, or label the hypothesis unconfirmed.
 - If conversion tracking is missing, make it a P1 backlog item.
 - Do not over-interpret tiny datasets; label them as baseline or directional.
 - A generated monthly report is a decision draft. Review wins, problems, and the single next action before sharing externally.

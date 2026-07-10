@@ -4,11 +4,11 @@ Use for the `ai-visibility` phase of every first run, for `operate` checkpoints 
 
 No special markup tricks exist for Google AI surfaces: AI Overviews and AI Mode use core Search ranking, and Google says no AI-specific markup or files are required. This workflow is about access, extractability, and honest measurement — not "AEO/GEO" hacks. Keep the framing from the AI Search Note in `references/phase-architecture.md`.
 
-Index backing matters for the non-Google engines (as of mid-2026): ChatGPT search and Copilot draw on Bing's index, Claude on Brave Search, Gemini and AI Overviews on Google's. Not indexed there means not citable there.
+Index backing matters, but engines may combine their own crawlers, partner indexes, and user-triggered fetches. Treat a missing direct-crawler path as reduced eligibility, not proof that a URL can never surface through another source.
 
 ## 1. Crawler Access Inventory
 
-Run the purpose-split AI-crawler access check in `references/technical-seo.md` (training vs search-index vs user-triggered agents, bot names as of mid-2026, including Cloudflare's default-block on new zones). The citation consequence follows the purpose: blocking a search-index or user-triggered crawler (OAI-SearchBot, Claude-SearchBot, PerplexityBot, Amazonbot, ChatGPT-User, Perplexity-User, Claude-User) means that assistant cannot cite the site; blocking a training-only crawler (CCBot, Google-Extended) does not affect citation. Record the decision and rationale in `.seo/strategy.md`.
+Run the purpose-split check in `references/technical-seo.md`. Separate training/model-improvement crawlers from search/discovery crawlers and user-triggered fetchers, then verify both robots and CDN/WAF logs. Blocking a direct discovery/fetch path reduces full-content citation eligibility; it does not prove every title/link path is gone. Training controls are separate: notably, Google-Extended does not control Google Search or its AI features. Record the per-bot decision, enforcement surface, and observed result in `.seo/strategy.md`.
 
 ## 2. Query-Set Visibility Audit
 
@@ -39,7 +39,7 @@ Because Bing's index feeds several assistants, verify Bing Webmaster Tools is se
 
 ## 5. Monthly Spot-Check
 
-Re-run the query set monthly. Log each run to `.seo/reports/ai-visibility-YYYY-MM-DD.md` and compare against the prior report. Track assistant referrals in analytics (referrers such as `chatgpt.com`, `perplexity.ai`, `gemini.google.com`, `copilot.microsoft.com`) — referral traffic is the honest outcome metric; citation screenshots are not. GSC folds AI-surface impressions into normal totals with no AI-specific report; see `references/search-console.md` before interpreting click/impression divergence.
+Re-run the query set monthly. Log each run to `.seo/reports/ai-visibility-YYYY-MM-DD.md` and compare against the prior report. Track assistant referrals in analytics (referrers such as `chatgpt.com`, `perplexity.ai`, `gemini.google.com`, `copilot.microsoft.com`) — referral traffic is an outcome metric; citation screenshots are dated samples. Standard GSC Performance includes AI-surface data but cannot establish AI causality. Some properties also have a rollout-limited Generative AI Performance UI/export; use it only when visibly available and keep the evidence separate (`references/search-console.md`).
 
 ## Exit Criteria
 

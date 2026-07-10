@@ -1,10 +1,10 @@
 ---
 name: seo-growth-workspace
 description: "Use when starting, auditing, or operating SEO or organic growth for a product or local-business website — technical SEO, Search Console, keyword/content ops, schema, pSEO, local SEO/GBP, backlinks, AI-search visibility, conversion, and monthly reporting. Triggers: \"set up SEO\", \"audit my site\", \"my traffic dropped\", \"why am I not ranking\", \"Search Console opportunities\", \"monthly SEO report\", \"how do we show up in ChatGPT/AI search\". Creates a durable .seo workspace, captures business context, audits live/code/admin evidence, prioritizes a backlog, implements one high-leverage action, verifies reality, and logs handoff notes. Installs in a single site repo (standalone) or in an orchestrator/agent-profile repo managing many sites (hub). For standalone copywriting, paid channels, or email, use a dedicated skill."
-version: 3.0.0
+version: 3.1.0
 license: MIT
 mutating: true
-writes_to: [.seo/]
+writes_to: [".seo/", "operator-declared bootstrap plan path"]
 ---
 
 # SEO Growth Workspace
@@ -27,7 +27,7 @@ Use this skill as a mode router. Load only the reference needed for the selected
 
 ## Required Workspace
 
-Create or verify this structure at the workspace root (see Install Modes for where that is):
+Create or verify this structure at SITE_WORKSPACE (see Install Modes for where that is):
 
 ```text
 .seo/
@@ -48,14 +48,21 @@ Create or verify this structure at the workspace root (see Install Modes for whe
 
 ## Install Modes
 
-The skill installs in one of two modes, stamped in `.seo/config.json` (`{"mode": "standalone" | "hub", ...}`):
+The skill installs in one of two modes, stamped in `.seo/config.json` (`{"mode": "standalone" | "hub", ...}` — field semantics in `references/hub-mode.md`):
 
-- **standalone** — a normal site repo; the workspace root is repo-local `.seo/`. Use another durable workspace root only when the user explicitly asks for SEO memory outside the repo.
+- **standalone** — a normal site repo; the workspace is repo-local `.seo/`. Use another durable workspace root only when the user explicitly asks for SEO memory outside the repo.
 - **hub** — an orchestrator repo (for example an agent profile) that manages SEO for many sites. The hub's `.seo/` holds `config.json`, `registry.md`, `portfolio-index.md`, and one full workspace per managed site under `.seo/sites/<slug>/`.
 
-**Workspace root aliasing**: every `.seo/X` path in this file and the references means `<workspace root>/X` — `.seo/` in standalone mode, `.seo/sites/<slug>/` in hub mode.
+**Path semantics** — four terms, used here and in every reference:
 
-On a first run with no `.seo/`, ask which mode applies (once, never unattended) and bootstrap accordingly. A `.seo/` without `config.json` is a standalone workspace (back-compat) — stamp it on the next mutating run. In hub mode, resolve exactly one target site before reading any state; everything after resolution is identical to standalone. Rules, layout, and target resolution: `references/hub-mode.md`.
+- **HUB_ROOT** — the hub's physical `.seo/` directory. Holds only hub routing state (`config.json`, `registry.md`, `portfolio-index.md`, `sites/`, optional `loops/`), never site work.
+- **SITE_WORKSPACE** — the one workspace a run operates: repo-local `.seo/` in standalone mode; `HUB_ROOT/sites/<slug>/` (or an external registry root) in hub mode.
+- **TARGET_REPO** — the repo whose site is being changed (code, deploys, robots, metadata). Contains SITE_WORKSPACE in standalone mode; in hub mode it is usually a different repo.
+- **SKILL_DIR** — the installed skill folder (`references/`, `templates/`, `scripts/`). Invoke bundled scripts from SKILL_DIR with explicit SITE_WORKSPACE paths.
+
+Workspace-file prose like `.seo/backlog.md` in this file and the references means `SITE_WORKSPACE/backlog.md`; the same holds inside a workspace's own generated files (README, backlog, templates). Hub state is always written as an explicit HUB_ROOT path.
+
+**Doctor first**: before bootstrap or migration, run `$SKILL_DIR/scripts/seo-doctor.mjs`. It is read-only across scan roots; with `--plan-output` it may write that one caller-declared path only, outside every scan root. Review the diagnosis, then rerun with an explicit `create | adopt | migrate | repair` decision; new hub roots require an explicit reviewed `--hub`. Bootstrap accepts a current hashed plan and `create | adopt | verify | repair`; it recomputes the bound install mode, root/domain/search roots, discoverable-registry catalog, and source hashes before writing, consumes mutating plans once, and refuses migrate. A legacy workspace is adoptable only when at least three files match the exact tolerant schema-1 signatures and identity is explicit or canonical-registry-proven; filenames alone are insufficient. In hub mode, canonical `.seo/registry.md` routes while `.agents/seo/REGISTRY.md` is inventory only. Full lifecycle and target rules: `references/hub-mode.md` and `references/migrate-uninstall.md`.
 
 ## Choose A Mode
 
@@ -77,6 +84,7 @@ Pick the narrowest mode that satisfies the request. If no narrower mode is reque
 Load only the file needed for the mode or ticket:
 
 - Install modes, hub layout, and hub target resolution: `references/hub-mode.md`
+- Migration (standalone → hub), uninstall, and post-migration hygiene: `references/migrate-uninstall.md`
 - First-run phase architecture and site-type classifier: `references/phase-architecture.md`
 - Operating loop and handoff: `references/operating-loop.md`
 - Business context intake: `references/business-context.md`
@@ -105,12 +113,20 @@ Load only the file needed for the mode or ticket:
 
 Use templates from `templates/` for report shape. Use scripts when deterministic scaffolding or analysis is useful (all run with `node`, no dependencies):
 
-- `scripts/bootstrap-seo-workspace.mjs` creates the base `.seo/` workspace without overwriting files; `--hub` creates a hub skeleton and `--site <slug>` creates a site workspace under `.seo/sites/`.
+- `scripts/seo-doctor.mjs` classifies exact schema-1 state, canonical/legacy registries, installs/lock/active paths, generated drift, and stat-only credential permissions. Its short-lived plan binds every reviewed source.
+- `scripts/bootstrap-seo-workspace.mjs` consumes that plan: create scaffolds once, adopt writes config only, verify writes nothing, and repair creates only the reviewed missing generated allowlist.
 - `scripts/gsc-oauth.mjs` creates a local refresh-token env file without printing token values.
 - `scripts/gsc-fetch.mjs` fetches Search Console `query,page` rows with pagination using env credentials.
 - `scripts/gsc-opportunities.mjs` turns exported GSC rows into position-banded CTR, page-2, and cannibalization opportunity tables; `--brand` excludes branded queries, `--format backlog` emits draft `.seo/backlog.md` rows for review.
 - `scripts/monthly-report.mjs` builds a one-page monthly SEO report from exported GSC, backlog, keyword, and calendar files.
 - `scripts/portfolio-status.mjs` reads the site registry and each workspace's `.seo/` state into a ranked cross-site "which site deserves the next SEO hour" table.
+
+Check the lifecycle command contracts from any CWD:
+
+```bash
+node "$SKILL_DIR/scripts/seo-doctor.mjs" --help
+node "$SKILL_DIR/scripts/bootstrap-seo-workspace.mjs" --help
+```
 
 ## Core Workflow
 

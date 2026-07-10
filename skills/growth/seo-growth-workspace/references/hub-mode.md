@@ -9,23 +9,33 @@ The skill has two install modes. The operating behavior — modes, phases, ticke
 `.seo/config.json` records the install mode. Read it at the start of every run:
 
 ```json
-{ "mode": "standalone | hub", "created": "YYYY-MM-DD", "skillVersion": "3.0.0" }
+{ "mode": "standalone | hub", "created": "YYYY-MM-DD", "skillVersion": "3.1.0", "workspaceSchemaVersion": 1 }
 ```
 
-- **Back-compat rule**: a `.seo/` directory with no `config.json` is a standalone workspace. Operate as standalone, and stamp `{"mode": "standalone"}` on the next mutating run (never in no-write runs).
-- Once stamped, never ask the mode question again. Converting a workspace between modes is a human decision, never done silently — the bootstrap script refuses mode conflicts.
+- `skillVersion` is **created-by** provenance: the skill version that first stamped the workspace. Later runs never rewrite it, and it does not track upgrades.
+- `workspaceSchemaVersion` is the workspace layout contract (currently `1`). It changes only through an explicit, documented migration — never as a side effect of running a newer skill. Older workspaces missing the field are schema 1.
+- Bootstrap never rewrites an existing `config.json`.
+- **Back-compat rule**: a `.seo/` with no `config.json` is a legacy standalone workspace only when at least three files match the exact tolerant schema-1 signatures in `references/migrate-uninstall.md`; filenames alone prove nothing. Adoption requires explicit/canonical-registry identity and a reviewed doctor plan. `--action adopt` writes only `config.json` and preserves every existing byte. Unrecognized state fails closed.
+- Once stamped, never ask the mode question again. Converting a workspace between modes is a human decision, never done silently — the bootstrap script refuses mode conflicts; the workflow is `references/migrate-uninstall.md`.
 
 ## First-Run Mode Selection
 
-When no `.seo/` exists at all, ask exactly one question before bootstrapping:
+When no `.seo/` exists at all:
+
+1. **Doctor first (required)**: run `node "$SKILL_DIR/scripts/seo-doctor.mjs" <root> --domain <host>` for read-only diagnosis. Review its findings, then rerun with `--decision create|adopt|repair --plan-output "$PLAN_DIR/bootstrap.json"`; add `--hub` while reviewing creation of a new hub root or its first site. `PLAN_DIR` must be outside every scan root. `decision: migrate` is terminal/manual in v3.1. Never bootstrap from an unresolved, stale, mode-mismatched, or source-mismatched plan.
+2. Ask exactly one question:
 
 > Is this a standalone site repo (SEO state lives here, for this one site), or a hub — an orchestrator workspace that manages SEO for several repos/sites?
 
-Then run `scripts/bootstrap-seo-workspace.mjs` (standalone) or `scripts/bootstrap-seo-workspace.mjs --hub` (hub); either stamps `config.json`. Unattended runs never ask: per `references/scheduled-operation.md`, a missing workspace exits `blocked` for an interactive first run.
+3. Consume the reviewed plan with `node "$SKILL_DIR/scripts/bootstrap-seo-workspace.mjs" --plan "$PLAN_DIR/bootstrap.json" --action create --domain <host> <root>` (standalone), adding `--hub` for a hub. The script recomputes every bound hash before its first write and atomically consumes mutating plans. Unattended runs never ask: per `references/scheduled-operation.md`, a missing workspace exits `blocked` for an interactive first run.
 
-## Workspace Root Aliasing
+## Path Semantics In Hub Mode
 
-The load-bearing rule: **"workspace root" is `.seo/` in standalone mode and `.seo/sites/<slug>/` in hub mode.** Every `.seo/X` path in `SKILL.md` and the other references means `<workspace root>/X`. After target resolution, run every mode, reference, and script contract verbatim against the resolved workspace.
+`SKILL.md` Install Modes defines the four path terms (`HUB_ROOT`, `SITE_WORKSPACE`, `TARGET_REPO`, `SKILL_DIR`). In hub mode:
+
+- `HUB_ROOT` is the hub's physical `.seo/` — only routing state lives there (`config.json`, `registry.md`, `portfolio-index.md`, `sites/`, optional `loops/`), never site work.
+- `SITE_WORKSPACE` is `HUB_ROOT/sites/<slug>/` for hub-managed sites, or the external root a registry row points at.
+- After target resolution, run every mode, reference, and script contract verbatim against SITE_WORKSPACE; workspace-internal `.seo/X` prose means `SITE_WORKSPACE/X`.
 
 ## Hub Layout
 
@@ -40,17 +50,17 @@ The load-bearing rule: **"workspace root" is `.seo/` in standalone mode and `.se
                         # adapters/, loops/
 ```
 
-- Slugs match `^[a-z0-9-]+$`, derived from the registry Site column hostname (`andy-partner.com` → `andy-partner`).
-- The hub root holds no standalone workspace files of its own — hub-level state is only the config, registry, rollup index, and optional hub-level sweep loop state (`.seo/loops/`).
+- New site IDs are 1–64 characters matching `^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$`. Existing registered IDs outside that grammar are grandfathered only for the exact row/path already registered; they cannot name a new site.
+- The hub root holds no standalone workspace files of its own — hub-level state is only the config, registry, rollup index, and optional hub-level sweep loop state (`HUB_ROOT/loops/`).
 - A registry row may still point at an external workspace root (a repo with its own `.seo/`, or a partner-owned path); `sites/<slug>` is the default for hub-managed sites, not a requirement.
-- Create a new site workspace with `scripts/bootstrap-seo-workspace.mjs --site <slug>`, then add its registry row yourself — the script prints a suggested row but never edits `registry.md`.
+- Create a new site workspace only from a reviewed create plan: doctor with `--site <id> --domain <host> --decision create --plan-output <outside-root-file>`, then bootstrap with the same `--site`, domain, root, plan, and `--action create`. The script prints a `REGISTRATION PENDING` row and never edits `registry.md`; add the row yourself in the same pass. Until registered, the doctor flags the folder.
 
 ## Target Resolution
 
-The only behavioral addition in hub mode: resolve exactly one target site before reading any state.
+The only behavioral addition in hub mode: **read hub routing state only (`config.json` and `registry.md`), resolve exactly one target site, then read no site state except the resolved target's.**
 
 1. **User names a site** — resolve it to its registry row (`references/portfolio-registry.md` Read-First Rule); the workspace is that row's Workspace root. Relative roots resolve against the registry file's directory.
-2. **No site named** — run `scripts/portfolio-status.mjs --registry .seo/registry.md` and present the ranked table as evidence; confirm one target with the user. Staleness ranking is the tiebreak, not the decision — a cold revenue-critical site outranks a warm experiment.
+2. **No site named** — run `node "$SKILL_DIR/scripts/portfolio-status.mjs" --registry "$HUB_ROOT/registry.md"` and present the ranked table as evidence; confirm one target with the user. Staleness ranking is the tiebreak, not the decision — a cold revenue-critical site outranks a warm experiment.
 3. **Unattended** — the invoking prompt must name the target; otherwise exit `blocked` (`references/scheduled-operation.md`).
 
 After resolution, everything is standalone behavior against the resolved workspace. One target per run; never a blended workspace.
@@ -65,8 +75,8 @@ Hub extension of the Target Boundary in `references/operating-loop.md`: when a p
 
 ## Scripts In Hub Mode
 
-All analysis scripts take explicit paths — pass the resolved workspace: `.seo/sites/<slug>/backlog.md`, `.seo/sites/<slug>/reports/`, and so on. Credentials stay per-site via the registry Credentials column (for example `GSC_CREDENTIALS_DIR`); never a hub-root `.env` shared across sites.
+Bundled scripts run from SKILL_DIR and take explicit paths — pass the resolved SITE_WORKSPACE: `<hub>/.seo/sites/<slug>/backlog.md`, `<hub>/.seo/sites/<slug>/reports/`, and so on. Credentials stay per-site via the registry Credentials column (for example `GSC_CREDENTIALS_DIR`); never a hub-root `.env` shared across sites.
 
 ## Exit Criteria
 
-A hub run exits cleanly when `config.json` was read (or correctly inferred standalone), exactly one target site was resolved through the registry before any state was read, all reads/writes landed in that site's workspace, and sibling site folders were untouched.
+A hub run exits cleanly when `config.json` was read (or correctly inferred standalone), exactly one target site was resolved through the registry before any site state was read, all reads/writes landed in that site's workspace, and sibling site folders were untouched.
