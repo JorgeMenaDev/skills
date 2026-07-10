@@ -137,4 +137,6 @@ PASS — four reproduced boundary failures are closed with dedicated determinist
 - doctor checks every generated-path ancestor, and bootstrap repeats realpath/symlink containment immediately before each directory creation and file write;
 - permission checks parse and stat only approved credential-location forms, including `GSC_CREDENTIALS_DIR=/absolute/path`, while ignoring arbitrary assignments and credential contents.
 
+The independent replay passed all four and exposed one additional path-traversal boundary. That fifth fixture now passes too: grandfathered IDs reject separators, NUL, `.` and `..`; grandfathering matches only the safe basename of the resolved workspace; and hub-site writes are contained to `.seo/sites`, not merely the repository root.
+
 Re-run evidence: two validators passed concurrently; command inventory remained 3 executable / 76 illustrative / 0 malformed with 3/3 foreign-CWD passes; evaluator passed 100/100 with zero findings; clean export remained 46 files and its exported copy passed the validator.

@@ -10,6 +10,7 @@ import {
   LEGACY_SIGNATURE_MIN,
   SITE_ID_PATTERN,
   classifyWorkspace,
+  isSafeLegacySiteId,
   isWithin,
   normalizeHost,
   planHash,
@@ -282,6 +283,7 @@ function loadAndVerifyPlan(options, root) {
   const domain = normalizeHost(options.domain);
   if (plan.domain !== domain || plan.domainHash !== sha256(domain)) throw new Error("Plan domain mismatch");
   if (plan.site !== options.site) throw new Error("Plan site mismatch");
+  if (options.site && !isSafeLegacySiteId(options.site)) throw new Error("Site IDs must be exactly one safe filesystem segment");
   const requestedInstallMode = options.hub || options.site ? "hub" : "standalone";
   if (plan.installMode !== requestedInstallMode) throw new Error(`Plan install mode ${plan.installMode} does not match requested ${requestedInstallMode} mode`);
   if (plan.searchRootsHash !== sha256(stableJson(plan.searchRoots))) throw new Error("Plan search-root hash mismatch");
@@ -295,6 +297,8 @@ function loadAndVerifyPlan(options, root) {
   if (options.action === "repair" && stableJson(files) !== stableJson(plan.repairFiles)) throw new Error("Repair allowlist does not match the reviewed plan");
   const targetState = classifyWorkspace(plan.target.workspaceDir, { hubSite: Boolean(options.site) });
   const rootState = classifyWorkspace(path.join(root, ".seo"));
+  const hubSitesDir = path.join(root, ".seo/sites");
+  if (options.site && (!isWithin(hubSitesDir, path.join(root, ".seo")) || !isWithin(plan.target.workspaceDir, hubSitesDir))) throw new Error("Hub site target escapes .seo/sites");
   if (requestedInstallMode === "hub" && rootState.classification === "standalone") throw new Error("A stamped standalone root cannot be used as a hub");
   if (options.site && rootState.classification === "none" && !options.hub) throw new Error("Creating the first site under an absent root requires --hub");
   if (targetState.classification !== plan.target.classification) throw new Error(`Target classification changed: ${plan.target.classification} -> ${targetState.classification}`);
@@ -341,7 +345,7 @@ async function main() {
         if (!GENERATED_WORKSPACE_FILES.has(file) && !GENERATED_WORKSPACE_DIRS.has(file)) throw new Error(`Repair path is not generated: ${file}`);
         if (existsSync(path.join(plan.target.workspaceDir, file))) throw new Error(`Repair refuses existing path: ${file}`);
       }
-      await createWorkspace(plan.target.workspaceDir, allowlist, root);
+      await createWorkspace(plan.target.workspaceDir, allowlist, options.site ? path.join(seoDir, "sites") : root);
       console.log(`Workspace repaired at ${plan.target.workspaceDir}: ${options.files.join(", ")}`);
       return;
     }
@@ -352,7 +356,7 @@ async function main() {
       await writeMissing(seoDir, { "config.json": configContent("hub"), "README.md": hubReadme(), "registry.md": registrySeed() }, null, root);
       if (options.site) {
         const workspaceDir = path.join(seoDir, "sites", options.site);
-        await createWorkspace(workspaceDir, null, root);
+        await createWorkspace(workspaceDir, null, path.join(seoDir, "sites"));
         console.log(`REGISTRATION PENDING: | ${options.site} | sites/${options.site} | unknown | unknown | unknown | unknown | hub-managed |`);
       }
       console.log(`SEO hub created at ${root}`);

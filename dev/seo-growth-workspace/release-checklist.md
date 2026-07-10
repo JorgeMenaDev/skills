@@ -66,6 +66,7 @@ PASS requires six canonical rows, eight legacy rows, six `stale_registry_row` fi
 The existing validator must prove direct bootstrap bypass, expired/tampered/mismatched/source-changed plans, replay, ambiguous identity, schema-ahead state, and generated symlink escape all fail before workspace writes. It must also prove:
 
 - reviewed standalone/hub mode is plan-bound; a stamped standalone root cannot gain hub registry/sites, and the first site under an absent root requires an explicit reviewed `--hub`;
+- grandfathered legacy site IDs are one safe filesystem segment, match the real workspace basename rather than the public Site cell, and all hub-site writes remain inside `.seo/sites`;
 - a missing canonical route blocks the selected identity while missing legacy inventory remains non-routing;
 - every generated-path ancestor is checked for dangling/escaping symlinks and writes remain inside the reviewed root;
 - only the approved `GSC_CREDENTIALS_DIR=<path>` assignment RHS (or documented path form) is statted; arbitrary assignments and credential content are ignored;

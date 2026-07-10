@@ -20,6 +20,7 @@ import {
   SITE_ID_PATTERN,
   classifyWorkspace,
   fingerprintPath,
+  isSafeLegacySiteId,
   isWithin,
   makeSourceRecord,
   missingGeneratedArtifacts,
@@ -319,14 +320,21 @@ function addFinding(findings, code, message, details = {}) {
 function diagnose(options) {
   const root = safeRealpath(path.resolve(expandHome(options.root ?? process.cwd())));
   const seoDir = path.join(root, ".seo");
+  const hubSitesDir = path.join(seoDir, "sites");
   const rootState = classifyWorkspace(seoDir);
   const hub = rootState.classification === "hub" ? seoDir : null;
   const installMode = rootState.classification === "hub" || options.hub ? "hub" : "standalone";
   const findings = [];
   let target = { workspaceDir: seoDir, ...rootState };
   if (options.site) {
-    const siteDir = path.join(seoDir, "sites", options.site);
+    const siteDir = path.join(seoDir, "sites", isSafeLegacySiteId(options.site) ? options.site : "__invalid-site-id__");
     target = { workspaceDir: siteDir, ...classifyWorkspace(siteDir, { hubSite: true }) };
+  }
+  if (options.site && !isSafeLegacySiteId(options.site)) {
+    addFinding(findings, "invalid_site_id", `Site IDs must be one filesystem segment; ${JSON.stringify(options.site)} is unsafe.`);
+  }
+  if (options.site && !isWithin(hubSitesDir, seoDir)) {
+    addFinding(findings, "hub_sites_escape", `${hubSitesDir} resolves outside the reviewed .seo hub root.`);
   }
   if (options.site && rootState.classification === "standalone") {
     addFinding(findings, "mode_confusion", `${seoDir} is stamped standalone; a site workspace can be created only under a hub root.`);
@@ -482,7 +490,7 @@ function diagnose(options) {
     if (input) addSource(input, "stat");
   }
   const sources = [...sourcePathMap.values()].map((source) => makeSourceRecord(source.path, source.policy));
-  const legacySiteId = options.site && !SITE_ID_PATTERN.test(options.site) && registryInventory.some((item) => (item.site === options.site || path.basename(item.realWorkspace ?? "") === options.site) && item.realWorkspace === safeRealpath(target.workspaceDir)) ? options.site : null;
+  const legacySiteId = options.site && isSafeLegacySiteId(options.site) && !SITE_ID_PATTERN.test(options.site) && registryInventory.some((item) => path.basename(item.realWorkspace ?? "") === options.site && item.realWorkspace === safeRealpath(target.workspaceDir)) ? options.site : null;
   const publicTarget = {
     workspaceDir: target.workspaceDir,
     classification: target.classification,

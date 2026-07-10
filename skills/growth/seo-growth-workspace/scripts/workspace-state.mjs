@@ -13,6 +13,10 @@ export const CANONICAL_FILES = ["backlog.md", "log.md", "audit.md", "strategy.md
 export const LEGACY_SIGNATURE_MIN = 3;
 export const SITE_ID_PATTERN = /^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$/;
 
+export function isSafeLegacySiteId(value) {
+  return Boolean(value) && value !== "." && value !== ".." && !/[\\/\0]/.test(value) && path.basename(value) === value;
+}
+
 export const GENERATED_WORKSPACE_FILES = new Set([
   "README.md",
   "context.md",

@@ -21,7 +21,7 @@ import { createHash } from "node:crypto";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const fixturesDir = path.join(scriptDir, "fixtures");
@@ -45,6 +45,7 @@ const skillRoot = path.resolve(
   argValue("--skill-dir") ??
     path.resolve(scriptDir, "../../skills/growth/seo-growth-workspace"),
 );
+const { isSafeLegacySiteId } = await import(pathToFileURL(path.join(skillRoot, "scripts/workspace-state.mjs")).href);
 
 const requiredFiles = [
   "SKILL.md",
@@ -728,6 +729,10 @@ section("doctor schema and filesystem safety", () => {
 section("site ID grammar and exact legacy grandfathering", () => {
   const root = fixtureTmp("seo-site-id-");
   try {
+    check(isSafeLegacySiteId("Legacy_Site"), "A legacy ID may use historical characters when it remains one safe segment");
+    for (const unsafe of ["", ".", "..", "bad/site", "bad\\site", "bad\0site"]) {
+      check(!isSafeLegacySiteId(unsafe), `Legacy ID ${JSON.stringify(unsafe)} must be rejected as an unsafe filesystem segment`);
+    }
     plannedBootstrap(root, { domain: "valid.example", hub: true, site: "valid-site" });
     appendFileSync(path.join(root, ".seo/registry.md"), "| valid.example | sites/valid-site | unknown | unknown | unknown | unknown | fixture |\n");
     const legacyDir = path.join(root, ".seo/sites/Legacy_Site");
@@ -742,12 +747,43 @@ section("site ID grammar and exact legacy grandfathering", () => {
     check(existsSync(path.join(legacyDir, "context.md")), "A grandfathered exact legacy ID may repair its existing workspace");
     rmSync(repair.planDir, { recursive: true, force: true });
 
+    const outsideWorkspace = path.join(root, "outside-workspace");
+    mkdirSync(outsideWorkspace);
+    writeFileSync(path.join(outsideWorkspace, "backlog.md"), "# SEO backlog\n\nCurrent focus: none\n\n## Ready\n\n| ID | Ticket |\n| --- | --- |\n");
+    writeFileSync(path.join(outsideWorkspace, "log.md"), "# SEO operating log\n");
+    writeFileSync(path.join(outsideWorkspace, "audit.md"), "# SEO audit\n\n## Findings\n");
+    appendFileSync(path.join(root, ".seo/registry.md"), "| ../../outside-workspace | ../outside-workspace | unknown | unknown | unknown | unknown | malicious public ID |\n");
+    const traversal = makePlan(root, { domain: "../../outside-workspace", decision: "repair", site: "../../outside-workspace", repairFiles: ["context.md"] });
+    check(traversal.result.status === 1 && traversal.report.plan?.approved === false, "Path-separator site IDs must never be grandfathered by a public registry Site cell");
+    check(traversal.report.findings?.some((finding) => finding.code === "invalid_site_id"), "Traversal IDs must produce a blocking invalid_site_id finding");
+    check(traversal.report.legacySiteId === null && !existsSync(path.join(outsideWorkspace, "context.md")), "Rejected traversal repair must not write outside .seo/sites");
+    rmSync(traversal.planDir, { recursive: true, force: true });
+
     const create = makePlan(root, { domain: "new.example", decision: "create", site: "New_Invalid" });
     const rejected = spawnSync(process.execPath, [path.join(skillRoot, "scripts/bootstrap-seo-workspace.mjs"), "--plan", create.planPath, "--action", "create", "--domain", "new.example", "--site", "New_Invalid", root], { encoding: "utf-8" });
     check(rejected.status !== 0 && !existsSync(path.join(root, ".seo/sites/New_Invalid")), "A new site ID outside the 1-64 slug grammar must fail before writes");
     rmSync(create.planDir, { recursive: true, force: true });
   } finally {
     rmSync(root, { recursive: true, force: true });
+  }
+});
+
+section("hub sites boundary containment", () => {
+  const container = fixtureTmp("seo-hub-sites-boundary-");
+  try {
+    const hub = path.join(container, "hub");
+    const outside = path.join(container, "outside");
+    mkdirSync(outside);
+    plannedBootstrap(hub, { domain: "valid.example", hub: true, site: "valid-site" });
+    rmSync(path.join(hub, ".seo/sites"), { recursive: true, force: true });
+    symlinkSync(outside, path.join(hub, ".seo/sites"));
+    const escaped = makePlan(hub, { domain: "escaped.example", decision: "create", site: "escaped-site" });
+    check(escaped.result.status === 1 && escaped.report.plan?.approved === false, "A symlinked hub sites boundary must block site creation");
+    check(escaped.report.findings?.some((finding) => finding.code === "hub_sites_escape"), "Doctor must identify when .seo/sites itself resolves outside the hub");
+    check(!existsSync(path.join(outside, "escaped-site")), "A rejected hub boundary escape must not create an outside site workspace");
+    rmSync(escaped.planDir, { recursive: true, force: true });
+  } finally {
+    rmSync(container, { recursive: true, force: true });
   }
 });
 
