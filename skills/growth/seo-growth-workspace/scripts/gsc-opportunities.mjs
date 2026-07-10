@@ -24,7 +24,9 @@ Input can be either:
 
 Formats:
   report (default)  Page-2 goldmine, position-banded CTR underperformers, and query
-                    cannibalization tables.
+                    cannibalization tables. When nothing ranks inside positions 1-20
+                    (early-stage sites), an impression-clusters-by-page table is added
+                    so sparse data still yields a next action.
   backlog           Draft .seo/backlog.md Ready rows built from the same analysis.
 
 Options:
@@ -85,6 +87,7 @@ function escapeCell(value) {
 }
 
 function markdownTable(headers, rows) {
+  if (rows.length === 0) return "_None at the current thresholds._";
   return [
     `| ${headers.map(escapeCell).join(" | ")} |`,
     `| ${headers.map(() => "---").join(" | ")} |`,
@@ -145,7 +148,34 @@ function analyze(rows, { brandTerms, minImpressions }) {
     .filter((entry) => entry.pages.length >= 2)
     .sort((a, b) => b.total - a.total);
 
-  return { eligible, pageTwo, ctrFixes, cannibalization, brandedExcluded };
+  // Impression clusters by page: where demand already sees the site, regardless of
+  // rank. This is the primary signal on early-stage sites where nothing ranks inside
+  // positions 1-20 yet and the page-2/CTR tables come back empty.
+  const byPage = new Map();
+  for (const row of eligible) {
+    if (!byPage.has(row.page)) byPage.set(row.page, []);
+    byPage.get(row.page).push(row);
+  }
+  const clusters = [...byPage.entries()]
+    .map(([page, pageRows]) => {
+      const impressions = pageRows.reduce((sum, row) => sum + row.impressions, 0);
+      const clicks = pageRows.reduce((sum, row) => sum + row.clicks, 0);
+      const weightedPosition =
+        impressions === 0
+          ? 0
+          : pageRows.reduce((sum, row) => sum + row.position * row.impressions, 0) /
+            impressions;
+      const topQueries = [...pageRows]
+        .sort((a, b) => b.impressions - a.impressions)
+        .slice(0, 3);
+      return { page, impressions, clicks, weightedPosition, queryCount: pageRows.length, topQueries };
+    })
+    .sort((a, b) => b.impressions - a.impressions);
+
+  const earlyStage =
+    eligible.length > 0 && pageTwo.length === 0 && ctrFixes.length === 0;
+
+  return { eligible, pageTwo, ctrFixes, cannibalization, brandedExcluded, clusters, earlyStage };
 }
 
 function buildReport(analysis, { brandTerms, minImpressions }) {
@@ -194,12 +224,37 @@ function buildReport(analysis, { brandTerms, minImpressions }) {
       ? "No --brand terms provided; branded queries are not excluded. Pass --brand \"term1,term2\" to exclude them."
       : `Branded queries excluded from CTR analysis: ${analysis.brandedExcluded} (terms: ${brandTerms.join(", ")}).`;
 
+  const earlyStageNote = analysis.earlyStage
+    ? `\n**Early-stage profile detected**: no analyzed row ranks inside positions 1-20, so the page-2 and CTR tables are empty by construction, not because there is nothing to do. Use the impression clusters below — they show where search demand already sees the site; the usual lever is content depth and internal anchors on the top clusters, not title/CTR work.\n`
+    : "";
+
+  const clusterSection = analysis.earlyStage
+    ? `\n## Impression clusters by page (early-stage signal)
+
+Eligible rows grouped by page, ranked by total impressions. Position is impression-weighted.
+
+${markdownTable(
+        ["Page", "Queries", "Clicks", "Impressions", "Weighted position", "Top queries"],
+        analysis.clusters.slice(0, 15).map((cluster) => [
+          cluster.page,
+          String(cluster.queryCount),
+          String(cluster.clicks),
+          String(cluster.impressions),
+          cluster.weightedPosition.toFixed(1),
+          cluster.topQueries
+            .map((row) => `${row.query} (${row.impressions} @ ${row.position.toFixed(1)})`)
+            .join("; "),
+        ]),
+      )}
+`
+    : "";
+
   return `# GSC opportunities
 
 Generated: ${new Date().toISOString()}
 
 Rows analyzed: ${analysis.eligible.length} (minimum ${minImpressions} impressions). ${brandNote}
-
+${earlyStageNote}${clusterSection}
 ## Page 2 goldmine
 
 Queries ranking 11-20 with meaningful impressions; small on-page improvements often move these to page 1.
@@ -251,6 +306,21 @@ function buildBacklog(analysis, startId) {
       verify: `GSC CTR for ${row.query} improves from ${asPercent(row.ctr)} (band ${row.band.label} baseline ${asPercent(row.band.baseline)}) on ${row.page}`,
     })),
   ];
+
+  if (tickets.length === 0 && analysis.earlyStage) {
+    tickets.push(
+      ...analysis.clusters.slice(0, 5).map((cluster, index) => {
+        const top = cluster.topQueries[0];
+        return {
+          id: formatId(startId + index),
+          priority: "P3",
+          area: "content",
+          ticket: `Strengthen ${cluster.page} for its impression cluster (top query "${top.query}", ${cluster.impressions} impressions across ${cluster.queryCount} queries, weighted position ${cluster.weightedPosition.toFixed(1)})`,
+          verify: `GSC position for "${top.query}" improves from ${top.position.toFixed(1)} on ${cluster.page} in the next export`,
+        };
+      }),
+    );
+  }
 
   return `# Draft SEO backlog rows from GSC
 
