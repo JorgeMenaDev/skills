@@ -1,14 +1,14 @@
 ---
 name: afk-pipeline
 description: Run a dev task as an AFK Task — grill the request, choose Pipeline Flags, write an Agent Brief, and trigger the label-driven pipeline that ends in a draft PR. Use when the user asks for a code change, feature, or fix in a repo listed in the AFK registry, asks which phases a task needs, or wants the pipeline installed in a new repo.
-version: 2.9.2
+version: 2.9.3
 mutating: true
 writes_to: [.agents/afk-pipeline/]
 ---
 
 # AFK Pipeline
 
-Dev work runs **AFK**: a GitHub-issue label triggers a pipeline that implements the change, verifies it in a real browser, opens a **draft PR** carrying committed QA Evidence, and publishes a visual recap. A human reviews and merges. In a registered repo you never implement product code inline — your deliverable is the **brief, and the brief is the contract**: the pipeline agents get no follow-up questions.
+Dev work runs **AFK**: a GitHub-issue label triggers a pipeline that implements the change, verifies it in a real browser, opens a **draft PR** carrying committed QA Evidence, and — only when the requester asked for one — publishes a visual recap. A human reviews and merges. In a registered repo you never implement product code inline — your deliverable is the **brief, and the brief is the contract**: the pipeline agents get no follow-up questions.
 
 ## Preamble (run FIRST)
 
@@ -24,7 +24,7 @@ _R=.agents/afk-pipeline/REGISTRY.md
 ## Contract
 
 - Every dev task in a registered repo goes through an Agent Brief — no inline implementation, no direct pushes, no merges.
-- Phases are fail-safe ON: Pipeline Flags only reduce work; absent flags mean the full pipeline (implement → advisory second-model review → verify → draft PR → recap) on `engine: claude`.
+- Phases are fail-safe ON: Pipeline Flags only reduce work; absent flags mean the full pipeline (implement → advisory second-model review → verify → draft PR → recap) on `engine: claude`. **Recap is opt-in at authoring time** (v2.9.3): every brief stamps `recap: off` unless the requester explicitly asked for a recap — the runtime fail-safe stays `recap: on`, so the line is mandatory, never omitted.
 - The implementation engine is a brief-stamped contract (v2.9.0): `engine: claude` by default; `engine: codex` runs the four agent phases (implement / review-fix / verify / write-pr) on Codex when the dispatcher has confirmed the target lane can run Codex; `engine: cursor` runs **implement only** on the Cursor Agent CLI, then keeps review-fix / verify / write-pr on Claude because Cursor sessions are non-resumable and structured-output retry needs resume. Cursor v1 is cloud-lane only (`agent:implement`), requires the repo secret `CURSOR_API_KEY`, defaults to model `grok-4.5-xhigh`, and honors a `CURSOR_MODEL` env override. Recap stays Claude. The second-model review defaults to the opposite vendor for Codex (`engine: codex` + absent `review-engine` resolves to `review-engine: claude`); Cursor follows the Claude default review contract. Explicit `review-engine` overrides are honored and visible; no phase silently swaps engines when a requested engine is unavailable.
 - Repos with a Convex backend (`convexDir` in `.sandcastle/config/pipeline.json`) get a **Convex integrity gate**, always-on and not flag-controlled: the pipeline regenerates `_generated` with real codegen against a keyless anonymous local backend; the schema/types not validating fails the RUN, while divergent committed files are **self-healed** (v2.5.1) — the gate commits the canonical codegen output itself (visible `[convex-gate]` commit in the PR) instead of discarding the whole implement run over machine output (a full andyChat slice was lost to this on 2026-07-07). Hand-editing `_generated` is forbidden everywhere. Companion stack policy: merging a Convex change must trigger an automatic backend release (Vercel-coupled build or a main-push deploy workflow) — a repo where merged backend code waits for a manual `convex deploy` is drift.
 - Skip decisions key on **predicted diff shape** — the files and surfaces the change will actually touch — never on how the task is framed.
@@ -40,7 +40,7 @@ _R=.agents/afk-pipeline/REGISTRY.md
 4. **Brief.** Write it per [reference/brief-template.md](reference/brief-template.md), `### Pipeline` section included, and show the user the full body plus your flag reasoning. Every new brief stamps `engine:`. When dispatching a cloud/sandbox codex run, refresh the target repo secret from the mini's current auth **before any label lands, as its own command, and confirm it exited 0**: `base64 < "$HOME/.codex-afk/auth.json" | gh secret set CODEX_AUTH_B64 -R <owner>/<repo>` (`gh secret set` reads stdin — it has NO `--body-file` flag; the flag error is silent doom if compounded). Never chain the seed refresh and the label in one command: if the refresh fails, the label still fires and the run hard-fails at codex auth materialization (andyChat #327, 2026-07-10 — repo had no seed at all; also check `gh secret list` for first-time codex dispatch to a repo).
 5. **STOP — get explicit go-ahead before creating/labeling anything.** The failure this gate prevents: an unattended agent burning a full run on a mis-scoped brief the user never read.
 6. **Trigger.** Create the issue, add the repo's trigger label (lane per registry default). Watch by polling `gh run view <id> --json status` in a loop — never `gh run watch` (unbounded output).
-7. **Deliver.** When the draft PR opens, hand over PR + QA Evidence + recap links, plus the live deploy-preview URL when the repo has a PR-preview integration (e.g. Vercel comments it on the PR) — it's the fastest human review surface, ahead of screenshots. If the diff touches the pipeline itself, say plainly: pipeline changes execute from the default branch, so they can't self-prove — their first validating run is the first run *after* merge.
+7. **Deliver.** When the draft PR opens, hand over PR + QA Evidence + recap links (when a recap was requested), plus the live deploy-preview URL when the repo has a PR-preview integration (e.g. Vercel comments it on the PR) — it's the fastest human review surface, ahead of screenshots. If the diff touches the pipeline itself, say plainly: pipeline changes execute from the default branch, so they can't self-prove — their first validating run is the first run *after* merge.
 
 ## Output format
 

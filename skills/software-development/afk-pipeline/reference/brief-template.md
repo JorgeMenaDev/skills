@@ -15,7 +15,7 @@
 
 ### Pipeline
 verify: full|slim|off — <reason>
-recap: on|off — <reason>
+recap: on|off — <always stamped; `off` unless the requester asked for a recap>
 review: on|off — <reason>
 engine: claude|codex|cursor — <always stamped by the dispatcher; use `engine: claude — override ignored: <reason>` when applicable>
 review-engine: codex|claude — <only when overriding the cross-vendor default; omit otherwise>
@@ -34,6 +34,7 @@ Each repo's workflow implements this parser; the skill only authors the section.
 
 - Heading: `### Pipeline` (parser may accept `## Pipeline` too). Keys `verify:`, `recap:`, `review:`, `engine:`, `review-engine:`, one per line; the value ends at an optional ` — reason` suffix.
 - **Fail-safe:** absent section, unknown key, or unparseable value ⇒ that flag falls back to its default (`verify: full`, `recap: on`, `review: on`, `engine: claude`, `review-engine: codex`). Parsing can only reduce work when the body explicitly and legibly says so.
+- **Recap is opt-in at authoring time** (2026-07-10): the dispatcher stamps `recap: off` on every brief unless the requester explicitly asked for a recap. Because the deployed parsers' fail-safe default is still `recap: on`, the line must never be omitted — leaving it out re-enables the recap.
 - The workflow **echoes the parsed flag set** in its first issue comment; if the echo mismatches intent, fix the body and retrigger — the label re-read picks up the same body.
 - `slim` reaches the verify phase as env (`VERIFY_VIEWPORTS`, `VERIFY_LOCALES`) into a single parameterized verify prompt — one prompt template per repo, never per-profile prompt forks.
 - `verify: off` skips the verify step entirely and sets a degrade mode consumed by write-pr and the completion comment.
