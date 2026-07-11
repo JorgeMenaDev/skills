@@ -195,6 +195,16 @@ function treeDigest(root) {
   return hash(visit(root).join("\n"));
 }
 
+// Mirrored in evaluate-release.mjs: binds a --report to the validator/inventory
+// implementation that produced it, not just to the skill tree it validated.
+function devToolingDigest() {
+  return hash(
+    ["validate-skill.mjs", "command-inventory.mjs"]
+      .map((file) => hash(readFileSync(path.join(scriptDir, file), "utf-8")))
+      .join("\n"),
+  );
+}
+
 function makePlan(root, { domain = "example.com", decision, hub = false, site = null, repairFiles = [], extra = [] }) {
   const planDir = mkdtempSync(path.join("/private/tmp", "seo-plan-fixture-"));
   const planPath = path.join(planDir, "plan.json");
@@ -1566,6 +1576,7 @@ section("release evaluator blocking gates rehearsal", () => {
     skill: "seo-growth-workspace",
     generatedAt: new Date().toISOString(),
     sourceDigest: treeDigest(skillRoot),
+    toolingDigest: devToolingDigest(),
     pass: true,
     sections: inventorySections(),
     commandInventory: {
@@ -1633,6 +1644,13 @@ section("release evaluator blocking gates rehearsal", () => {
     "A wrong-digest validator report must be rejected",
   );
 
+  const wrongToolingDigest = runEvaluator("wrong-tooling-digest", { ...baseReport, toolingDigest: "0".repeat(64) });
+  check(
+    wrongToolingDigest.json.pass === false &&
+      wrongToolingDigest.json.blockingGates?.rejections?.some((reason) => reason.includes("tooling")),
+    "A report from a different validator/inventory implementation must be rejected",
+  );
+
   const duplicate = runEvaluator("duplicate", {
     ...baseReport,
     sections: [...baseReport.sections, ...baseReport.sections],
@@ -1646,6 +1664,13 @@ section("release evaluator blocking gates rehearsal", () => {
   check(
     malformed.json.pass === false && malformed.json.blockingGates?.rejections?.some((reason) => reason.includes("malformed")),
     "A malformed validator report must be rejected",
+  );
+
+  const nullSection = runEvaluator("null-section", { ...baseReport, sections: [null, ...inventorySections()] });
+  check(
+    nullSection.json.pass === false &&
+      nullSection.json.blockingGates?.rejections?.some((reason) => reason.includes("malformed")),
+    "A report with non-object section entries must be rejected, not crash the evaluator",
   );
 
   const missing = runEvaluator("missing", null);
@@ -1685,6 +1710,7 @@ if (reportPath) {
     skill: "seo-growth-workspace",
     generatedAt: new Date().toISOString(),
     sourceDigest: treeDigest(skillRoot),
+    toolingDigest: devToolingDigest(),
     pass: failures.length === 0,
     sections: sectionResults,
     commandInventory: commandInventorySubgate,
