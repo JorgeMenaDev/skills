@@ -425,6 +425,9 @@ const mutate = (path, expectedRevision, conductor, operation, options = {}) => {
     const locator = locatorPath(candidate);
     mkdirSync(dirname(locator), { recursive: true });
     atomicWrite(locator, { runId: candidate.runId, runPath: path, revision: candidate.revision, updatedAt: candidate.updatedAt });
+    for (const stale of locatorCandidates(candidate.repo.path, candidate.repo.identity || repoIdentity(candidate.repo.path))) {
+      if (stale !== locator && readJsonSafe(stale)?.runPath === path) rmSync(stale, { force: true });
+    }
     if (options.afterWrite) options.afterWrite(candidate);
     return candidate;
   } finally {
@@ -557,7 +560,7 @@ if (command === "init") {
   const path = join(root, "run.json");
   if (existsSync(path)) fail(`${path} already exists`);
   const run = normalize(readJson(resolve(args.spec)));
-  const bornResolved = run.deferredGates.filter(({ status }) => status !== "open");
+  const bornResolved = (Array.isArray(run.deferredGates) ? run.deferredGates : []).filter(({ status }) => status !== "open");
   if (bornResolved.length) fail(`new-run deferred gates must begin open: ${bornResolved.map(({ id }) => id).join(", ")}; import in-flight gate state through adopt`);
   const errors = validate(run);
   if (errors.length) fail(errors.join("; "));
@@ -962,7 +965,7 @@ if (command === "start") {
   const path = join(root, "run.json");
   if (existsSync(path)) fail(`${path} already exists; use reconcile + inspect to resume`);
   const run = normalize(spec);
-  const bornResolved = run.deferredGates.filter(({ status }) => status !== "open");
+  const bornResolved = (Array.isArray(run.deferredGates) ? run.deferredGates : []).filter(({ status }) => status !== "open");
   if (bornResolved.length) fail(`new-run deferred gates must begin open: ${bornResolved.map(({ id }) => id).join(", ")}; import in-flight gate state through adopt`);
   const locator = initializeRun(run, path);
   const reconciled = mutate(path, run.revision, run.conductor, reconcileOperation(null), { allowReconciliation: true });
@@ -1114,9 +1117,13 @@ if (command === "archive") {
   const errors = validate(run);
   const state = derived(run);
   if (errors.length || !state.complete) fail("archive requires a valid complete run");
+  const archivedPath = runPath(args);
   const locator = locatorPath(run);
   rmSync(locator, { force: true });
-  process.stdout.write(`ARCHIVED_LOCATOR: ${locator}\nRUN_RETAINED: ${runPath(args)}\n`);
+  for (const candidate of locatorCandidates(run.repo.path, run.repo.identity || repoIdentity(run.repo.path))) {
+    if (readJsonSafe(candidate)?.runPath === archivedPath) rmSync(candidate, { force: true });
+  }
+  process.stdout.write(`ARCHIVED_LOCATOR: ${locator}\nRUN_RETAINED: ${archivedPath}\n`);
   process.exit(0);
 }
 

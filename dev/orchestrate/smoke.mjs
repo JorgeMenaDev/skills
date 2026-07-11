@@ -316,12 +316,23 @@ writeFileSync(legacySpecPath, JSON.stringify(legacySpec, null, 2));
 const startOverLegacy = helper(["start", "--dir", join(root, "run-start-over-legacy"), "--spec", legacySpecPath]);
 check("start sees a legacy path-hashed locator", startOverLegacy.status !== 0 && startOverLegacy.stderr.includes("active run already exists"), startOverLegacy.stderr || startOverLegacy.stdout);
 
+// a mutation on a run with a dangling legacy locator migrates it away
+const staleLegacyLocator = join(env.XDG_STATE_HOME, "orchestrate", "active-runs", `${createHash("sha256").update(git(initRepo, ["rev-parse", "--show-toplevel"])).digest("hex")}.json`);
+writeFileSync(staleLegacyLocator, JSON.stringify({ runId: "init-collision", runPath: join(root, "run-init-collision", "run.json"), revision: 0 }));
+const migrate = helper(["reconcile", "--run", join(root, "run-init-collision", "run.json"), "--expected-revision", "0", ...asConductor]);
+check("mutation migrates a legacy locator for the same run", migrate.status === 0 && !existsSync(staleLegacyLocator), migrate.stderr || migrate.stdout);
+
 // a new run cannot be born with resolved deferred gates
 const bornResolvedSpec = { ...JSON.parse(readFileSync(exampleSpec, "utf8")), runId: "born-resolved", repo: { path: join(root, "no-such-repo-2"), targetBranch: "main", baseSha: "x" }, deferredGates: [{ id: "pre-resolved", description: "x", status: "discharged", evidence: ["e"] }] };
 const bornResolvedPath = join(root, "born-resolved-spec.json");
 writeFileSync(bornResolvedPath, JSON.stringify(bornResolvedSpec, null, 2));
 const bornResolved = helper(["init", "--dir", join(root, "run-born-resolved"), "--spec", bornResolvedPath]);
 check("new-run deferred gates must begin open", bornResolved.status !== 0 && bornResolved.stderr.includes("must begin open"), bornResolved.stderr);
+const nonArrayGates = { ...bornResolvedSpec, runId: "non-array-gates", deferredGates: {} };
+const nonArrayGatesPath = join(root, "non-array-gates-spec.json");
+writeFileSync(nonArrayGatesPath, JSON.stringify(nonArrayGates, null, 2));
+const nonArrayGatesInit = helper(["init", "--dir", join(root, "run-non-array-gates"), "--spec", nonArrayGatesPath]);
+check("non-array deferredGates fails as validation, not a crash", nonArrayGatesInit.status !== 0 && nonArrayGatesInit.stderr.includes("deferredGates must be an array"), nonArrayGatesInit.stderr);
 
 // a linked worktree of the same repository shares the active-run identity
 execFileSync("git", ["-C", seed, "worktree", "add", "--quiet", join(root, "seed-linked"), "-b", "linked-smoke"], { stdio: "ignore" });
