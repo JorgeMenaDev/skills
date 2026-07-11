@@ -109,6 +109,7 @@ Load only the file needed for the mode or ticket:
 - Conversion and CTA audits: `references/conversion-cta.md`
 - Local SEO/GBP/citations: `references/local-seo-gbp.md`
 - Backlinks/entity authority, directories, digital PR: `references/backlinks-entity.md`
+- Image distribution, reuse discovery, and rights-gated attribution outreach: `references/image-rights.md`
 - Comparisons, listicles, affiliate/referral relationships, and commercial disclosures: `references/commercial-integrity.md`
 - E-commerce and marketplace prioritization, page-type, collection, facet/variant/inventory, and commerce-truth decisions: `references/ecommerce-seo.md`
 - Affiliate/referral offers, coupons, promo codes, and commission lifecycle: `references/affiliate-promo-integrity.md`

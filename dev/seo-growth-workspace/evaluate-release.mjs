@@ -480,6 +480,7 @@ function evaluate() {
     "references/conversion-cta.md",
     "references/local-seo-gbp.md",
     "references/backlinks-entity.md",
+    "references/image-rights.md",
     "references/evidence-conventions.md",
     "references/commercial-integrity.md",
     "references/page-evidence.md",

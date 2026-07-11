@@ -93,6 +93,16 @@ Inspect at least these six profiles before release; each row gets its own PASS/F
 | Local-business fixture | Synthetic local-business scenario routes through `local-seo` without requiring a real GBP login |
 | E-commerce fixture | Synthetic e-commerce scenario routes through the classifier to `references/ecommerce-seo.md`; fixture-validated only — not yet exercised against a live operation |
 
+### Fixture-only paths pending Jorge sign-off (rendered into the v4 release log at slice 7)
+
+Accumulating list — each specialist path shipped without a nameable live operation, per the programme's dogfood default. Jorge signs this list in the release log; fixture-only paths are excluded from the v4 "dogfooded" completion claim and are the first defer candidates if v4 slips.
+
+- Community-source pages (`references/community-source-pages.md`) — whole path.
+- Affiliate/promo integrity (`references/affiliate-promo-integrity.md`) — whole path.
+- E-commerce decisions (`references/ecommerce-seo.md`) — whole path.
+- Image rights (`references/image-rights.md`) — the live distribution/outreach play only; the asset-rights master, green-evidence gate, same-funnel routing, current-check stop gate, and enforcement-escalation boundary are structural and unconditional.
+- Platform-license table (#43): excluded under its ratified reverification condition — current official terms could not be reverified at implementation time; a per-asset/run current official-source check ships instead. Shipping it requires release-time reverification and then only as a dated routing aid.
+
 ### Enumerated v4 scenario gates (blocking — cannot be waived)
 
 These gates are executed at the slice-7 release. Record each numbered gate as PASS or FAIL with the evidence path in the canonical gate-results artifact; WAIVED is not permitted.
@@ -186,6 +196,18 @@ These gates are executed at the slice-7 release. Record each numbered gate as PA
    - Expected result: unknown margin remains `Unknown` and is not estimated to force a ranking; the mixed SERP produces an investigation rather than automatic URL creation; collection/product/editorial cannibalization is checked before any new URL decision; the discontinued product receives one evidence-dependent `keep`, `redirect`, `410`, or `replace` decision with rationale and recheck condition; and feed, schema, and rendered landing-page price and availability agree, with any disagreement blocking release and routing to the existing technical/schema owners.
    - Evidence path: a labelled dated fixture report in the existing `.seo/reports/` home, referencing the synthetic profile, dated SERP capture/observation, overlap check, lifecycle evidence and decision, and feed/schema/rendered-page comparison; record those stable artifact paths in the gate-results row. This fixture evidence does not establish live-operation dogfood.
    - PASS/FAIL: PASS only when every expected decision and truth check is recorded, no unknown is estimated, no mixed-SERP URL is auto-created, and any truth disagreement blocks release. FAIL for a forced score, skipped cannibalization check, blanket inventory rule, automatic mixed-SERP URL, inconsistent commerce truth allowed to ship, or a claim that rankings/traffic caused purchases or revenue.
+
+16. **Scenario 10 — rights-gated authority walk (fixture-only inputs)**
+   - Inputs: labelled fixtures for one manually discovered listicle prospect with no paid tool available; one reverse-image match whose asset-rights row begins non-green and later receives sufficient current evidence; and one assessed use whose current license permits use without attribution.
+   - Expected result: record the paid-tool/Ahrefs absence as a limitation and walk the listicle prospect through `discovered → qualified → contacted → replied → won → live/verified`, with separate link-live/indexable facts and completed 30- and 90-day checks; hold the image match at discovery with no contact until its master row is green and the use assessment passes; generate no demand for the permitted unattributed use.
+   - Evidence path: labelled fixture rows in a temporary/scenario `.seo/backlinks/work-log.md` Authority funnel (v4), the linked `.seo/backlinks/asset-rights.md` row and use assessment, and the gate-results row containing those stable paths. Fixture evidence does not establish live image-distribution dogfood.
+   - PASS/FAIL: PASS only when the no-paid-tool prospect reaches live-at-90-days with all required funnel evidence, the match cannot advance before green rights evidence, and permitted unattributed use creates no contact or demand. FAIL for a paid-tool dependency, skipped lifecycle/check, conflated live/indexable fact, pre-gate contact, reverse-match proof claim, or demand for permitted unattributed use.
+
+17. **Authority rental or opaque indexer fails**
+   - Inputs: a labelled fixture proposal to rent third-party authority, publish primarily for host-domain signals, or pay an opaque service to force discovery/indexation.
+   - Expected result: reject the proposal under `references/commercial-integrity.md` without entering or advancing the authority funnel.
+   - Evidence path: the fixture proposal, commercial-integrity decision, blocked funnel state, and gate-results row containing those stable paths.
+   - PASS/FAIL: PASS only when both authority-rental and opaque-indexer variants fail. FAIL if either can qualify, be contacted, be paid, or be reported as an authority outcome.
 
 ## Dry-Run Gates
 
