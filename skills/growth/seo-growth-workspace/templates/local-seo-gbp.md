@@ -12,7 +12,7 @@ Competitors:
 
 ## GBP observation ledger
 
-Visibility status must be `observed`, `not_visible`, `not_checked`, or `unavailable`. For a competitor field that could not be seen, use `not_visible`; never record false, absent, “does not have,” or “no” from non-visibility.
+Visibility status must be `observed`, `not_visible`, `not_checked`, or `unavailable`. Use `not_visible` only for a field you inspected in a reliably loaded public observation where the value was not displayed; a field you did not inspect is `not_checked`, and a blocked, partially loaded, or otherwise unreliable source is `unavailable`. Whatever the state, never record false, absent, “does not have,” or “no” from non-visibility.
 
 Keep evidence classes separate. Use one of `owned_authenticated`, `public_observation`, `official_guidance`, `empirical_correlation`, `anecdote`, `inference`, or `marketing_assertion` per row; create linked rows for different classes.
 
