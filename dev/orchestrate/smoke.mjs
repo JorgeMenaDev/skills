@@ -328,7 +328,7 @@ const bornResolvedPath = join(root, "born-resolved-spec.json");
 writeFileSync(bornResolvedPath, JSON.stringify(bornResolvedSpec, null, 2));
 const bornResolved = helper(["init", "--dir", join(root, "run-born-resolved"), "--spec", bornResolvedPath]);
 check("new-run deferred gates must begin open", bornResolved.status !== 0 && bornResolved.stderr.includes("must begin open"), bornResolved.stderr);
-const nonArrayGates = { ...bornResolvedSpec, runId: "non-array-gates", deferredGates: {} };
+const nonArrayGates = { ...bornResolvedSpec, runId: "non-array-gates", deferredGates: false };
 const nonArrayGatesPath = join(root, "non-array-gates-spec.json");
 writeFileSync(nonArrayGatesPath, JSON.stringify(nonArrayGates, null, 2));
 const nonArrayGatesInit = helper(["init", "--dir", join(root, "run-non-array-gates"), "--spec", nonArrayGatesPath]);

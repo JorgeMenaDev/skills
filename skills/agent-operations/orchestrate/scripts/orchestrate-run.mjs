@@ -501,8 +501,8 @@ const normalize = (spec) => {
     runtimeObservations: spec.runtimeObservations || [],
     preparations: spec.preparations || [],
     knownLessons: spec.knownLessons || [],
-    deferredGates: spec.deferredGates || [],
-    checkpoints: spec.checkpoints || [],
+    deferredGates: spec.deferredGates ?? [],
+    checkpoints: spec.checkpoints ?? [],
     reconciliation: spec.reconciliation || { status: "unknown", at: null, notes: [] },
   };
 };
