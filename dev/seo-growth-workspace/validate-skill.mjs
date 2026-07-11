@@ -2196,6 +2196,150 @@ section("release evaluator blocking gates rehearsal", () => {
   );
 });
 
+// --- evaluate-release.mjs: canonical gate-results artifact consumption ---
+//
+// The single automated seam for the slice-7 gate-results artifact. Feeds the
+// evaluator a synthetic validator report (via --validator-report, so it does not
+// self-execute) plus a synthetic gate-results file (via --gate-results), then proves
+// the evaluator imports the deterministic (a)-rows bound to that report by digest,
+// reads the manual (b)-rows, and REJECTS a missing, stale, wrong-digest, duplicate,
+// malformed, non-PASS, or incomplete artifact.
+//
+// reportVersion coupling: if the validator report schema (reportVersion) changes, bump
+// it in the writer below, in evaluate-release.mjs (VALIDATOR_REPORT_VERSION), and
+// update this section together — the base synthetic pair here restates reportVersion 1.
+section("release evaluator gate-results artifact consumption", () => {
+  const evaluator = path.join(scriptDir, "evaluate-release.mjs");
+  const evaluatorSource = readFileSync(evaluator, "utf-8");
+  const rehearsalDir = fixtureTmp("seo-gate-results-");
+  const digest = treeDigest(skillRoot);
+  const tooling = devToolingDigest();
+  const sectionInventory = [
+    ...readFileSync(fileURLToPath(import.meta.url), "utf-8").matchAll(/^section\(\s*"([^"]+)"/gm),
+  ].map((match) => match[1]);
+  // Single source of truth: the required manual gate IDs live in evaluate-release.mjs.
+  const requiredManualGates = [
+    ...evaluatorSource.matchAll(/^\s*"(b\d\d-[a-z0-9-]+)",\s*$/gm),
+  ].map((match) => match[1]);
+  check(requiredManualGates.length === 17, `Expected 17 required manual gate IDs in evaluate-release.mjs, found ${requiredManualGates.length}`);
+
+  const baseReport = {
+    reportVersion: 1,
+    skill: "seo-growth-workspace",
+    generatedAt: new Date().toISOString(),
+    sourceDigest: digest,
+    toolingDigest: tooling,
+    pass: true,
+    sections: sectionInventory.map((name) => ({ name, result: "PASS", failures: [] })),
+    commandInventory: {
+      command: "node dev/seo-growth-workspace/command-inventory.mjs --verify",
+      exit: 0,
+      result: "PASS",
+    },
+  };
+  const baseGateResults = () => ({
+    artifact: "seo-growth-workspace gate results",
+    gateResultsVersion: 1,
+    boundReportVersion: 1,
+    skill: "seo-growth-workspace",
+    skillVersion: "4.0.0",
+    generatedAt: new Date().toISOString(),
+    operator: "matias/opus-4.8",
+    sourceDigest: digest,
+    toolingDigest: tooling,
+    deterministic: {
+      rows: sectionInventory.map((name) => ({ scenario: name, kind: "a", result: "PASS", sourceDigest: digest })),
+    },
+    manual: requiredManualGates.map((id) => ({
+      id,
+      kind: "b",
+      scenario: id,
+      result: "PASS",
+      evidence: "rehearsal-fixture",
+      date: "2026-07-11",
+      operator: "matias/opus-4.8",
+      sourceDigest: digest,
+    })),
+  });
+
+  const reportPathFor = (name) => {
+    const p = path.join(rehearsalDir, `${name}.report.json`);
+    writeFileSync(p, JSON.stringify(baseReport, null, 2));
+    return p;
+  };
+  const runEval = (name, gateResults) => {
+    const gr = path.join(rehearsalDir, `${name}.gate-results.json`);
+    if (gateResults !== null) {
+      writeFileSync(gr, typeof gateResults === "string" ? gateResults : JSON.stringify(gateResults, null, 2));
+    }
+    const result = spawnCapture(process.execPath, [
+      evaluator, "--json",
+      "--validator-report", reportPathFor(name),
+      "--gate-results", gr,
+    ]);
+    return { status: result.status, json: JSON.parse(result.stdout || "{}") };
+  };
+  const rejectsWith = (name, mutate, needle) => {
+    const gr = baseGateResults();
+    mutate(gr);
+    const out = runEval(name, gr);
+    check(
+      out.json.gateResults?.pass === false &&
+        (out.json.gateResults?.rejections ?? []).some((reason) => reason.includes(needle)),
+      `Gate-results rejection "${needle}" must fire for case ${name}`,
+    );
+  };
+
+  // A fresh, digest-bound, complete, all-PASS artifact satisfies the gate.
+  const valid = runEval("valid", baseGateResults());
+  check(
+    valid.json.gateResults?.pass === true &&
+      valid.json.gateResults?.rejections?.length === 0 &&
+      valid.json.gateResults?.deterministicRows === sectionInventory.length &&
+      valid.json.gateResults?.manualRows === 17 &&
+      valid.json.gates?.gateResultsGreen === true,
+    "A fresh digest-bound all-PASS gate-results artifact must satisfy the release",
+  );
+
+  // Missing / malformed.
+  check(
+    (() => {
+      const out = runEval("missing", null);
+      return out.json.gateResults?.pass === false && out.json.gateResults?.rejections?.some((r) => r.includes("missing gate-results artifact"));
+    })(),
+    "A missing gate-results artifact must be rejected",
+  );
+  check(
+    (() => {
+      const out = runEval("malformed", "{ not json");
+      return out.json.gateResults?.pass === false && out.json.gateResults?.rejections?.some((r) => r.includes("malformed"));
+    })(),
+    "A malformed gate-results artifact must be rejected",
+  );
+
+  // Version coupling.
+  rejectsWith("bad-artifact-version", (gr) => { gr.gateResultsVersion = 99; }, "unsupported gateResultsVersion");
+  rejectsWith("bad-report-coupling", (gr) => { gr.boundReportVersion = 2; }, "boundReportVersion");
+
+  // Stale / wrong-digest at artifact and row level.
+  rejectsWith("stale-artifact", (gr) => { gr.sourceDigest = "0".repeat(64); }, "stale gate-results artifact");
+  rejectsWith("wrong-tooling", (gr) => { gr.toolingDigest = "0".repeat(64); }, "wrong-digest gate-results artifact");
+  rejectsWith("stale-manual-row", (gr) => { gr.manual[0].sourceDigest = "0".repeat(64); }, "stale gate-results manual row");
+  rejectsWith("stale-deterministic-row", (gr) => { gr.deterministic.rows[0].sourceDigest = "0".repeat(64); }, "stale gate-results deterministic row");
+
+  // Import binding: deterministic rows must reproduce the validator report exactly.
+  rejectsWith("omit-section", (gr) => { gr.deterministic.rows.pop(); }, "omit validator section");
+  rejectsWith("unknown-section", (gr) => { gr.deterministic.rows.push({ scenario: "not-a-real-section", kind: "a", result: "PASS", sourceDigest: digest }); }, "not in validator report");
+  rejectsWith("duplicate-deterministic", (gr) => { gr.deterministic.rows.push({ ...gr.deterministic.rows[0] }); }, "duplicate gate-results deterministic row");
+  rejectsWith("non-pass-deterministic", (gr) => { gr.deterministic.rows[0].result = "FAIL"; }, "non-PASS gate-results deterministic row");
+
+  // Manual completeness, duplicates, non-PASS, and shape.
+  rejectsWith("missing-manual", (gr) => { gr.manual.shift(); }, "missing required gate-results manual gate");
+  rejectsWith("duplicate-manual", (gr) => { gr.manual.push({ ...gr.manual[0] }); }, "duplicate gate-results manual row");
+  rejectsWith("non-pass-manual", (gr) => { gr.manual[0].result = "blocked"; }, "non-PASS gate-results manual row");
+  rejectsWith("malformed-manual", (gr) => { delete gr.manual[0].evidence; }, "malformed manual row");
+});
+
 const reportPath = argValue("--report");
 if (reportPath) {
   commandInventorySubgate.result =
