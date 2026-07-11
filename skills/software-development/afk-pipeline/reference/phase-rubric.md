@@ -27,7 +27,7 @@
 - **The Convex integrity gate is not a flag.** On repos with `convexDir` configured it always runs (real codegen + anonymous schema validation, fail-the-run on `_generated` divergence) — no brief line can turn it off, and briefs never need to ask for it.
 - **Renders anywhere ⇒ at least slim.** No exceptions — if it's worth a screenshot, it's worth slim.
 - **Recap is opt-in** (2026-07-10, Jorge's ruling): stamp `recap: off` on every brief unless the requester explicitly asked for a recap on that task. The deployed parsers' fail-safe default is still `recap: on`, so the explicit `recap: off` line must never be omitted — an absent flag turns the recap back on.
-- **Recording is opt-in:** stamp `recording: off` unless the requester asks for video proof. `recording: on` requires browser verify and, in v1, a hosted cloud or Vercel Sandbox lane.
+- **Recording is experimental and opt-in:** stamp `recording: off` unless the requester explicitly asks for video proof. `recording: on` requires browser verify and, in v1, a hosted cloud or Vercel Sandbox lane. Read [experimental-recording.md](experimental-recording.md) before recommending it.
 - When the requester does ask for a recap, stamp `recap: on — requested` and move on; no rubric judgment needed.
 - **The frame trap: task framing lies.** Worked example — a task framed "replace the hero logo strip copy" actually required responsive layout decisions across four viewports and locale-file restructuring; "copy-only → skip verify" would have shipped unverified mobile layout. Predict the diff, don't parse the title. When in doubt, escalate one level.
 - The flag decision is a **recommendation the user confirms**, never an auto-decision; its reason ships in the brief where the PR reviewer can see it.
