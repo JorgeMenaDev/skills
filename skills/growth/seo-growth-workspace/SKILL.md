@@ -97,6 +97,7 @@ Load only the file needed for the mode or ticket:
 - International/multilingual (hreflang): `references/international-seo.md`
 - Search Console opportunity analysis (CLI pipeline, banded CTR, cannibalization): `references/search-console.md`
 - Keywords/blog/content-engine operations (research method, scoring, E-E-A-T): `references/content-ops.md`
+- Page/revision claim, voice, asset, approval, and rendered-citation evidence for new or materially revised SEO pages: `references/page-evidence.md`
 - Utility/free tool pages (calculators, generators, checkers, formatters, templates): `references/utility-tool-pages.md`
 - Content-engine webhook publishing (receive, verify, deploy; includes one worked example): `references/content-engine-webhooks.md`
 - pSEO publish gates and playbook chooser: `references/pseo-gates.md`

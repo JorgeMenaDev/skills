@@ -92,6 +92,12 @@ Check, and build where missing:
 
 A human reviews every published article for added value. Automated calendar publishing without a per-article value check is a policy risk: Google's scaled content abuse policy (March 2024) targets publishing many pages without added value, regardless of how they were produced. Its sibling, the site-reputation-abuse policy (algorithmic enforcement since November 2024), targets third-party or partner content published to exploit a host domain's ranking signals — relevant when running sponsored or partner content across sites.
 
+### Page-evidence publish gate
+
+For every new or materially revised SEO page, apply [Page Evidence](page-evidence.md) before drafting/import and again before publish. Material factual claims must trace to fetched original sources; assistants may discover sources but are not final authority when an original exists. A reachable URL is not proof that it supports a claim. Start with statistics, dates, prices, legal/regulatory assertions, comparative claims, and named third-party assertions; record dated checks for time-sensitive evidence and use short paraphrased support notes or locators, not long copied passages.
+
+The evidence belongs to the exact page revision. Engine-native revision evidence is authoritative when available; otherwise use the dated per-page fallback defined there. Publish only when the page has credible information gain, applicable claim/voice/asset support, an immutable rights snapshot, and human approval. Completion also requires rendered-citation survival through the delivery check. Do not publish, schedule, or auto-publish past a failed gate.
+
 Naturalness self-check before publish:
 
 - Em-dashes: more than ~1 per page reads machine-written; prefer commas/parentheses.
