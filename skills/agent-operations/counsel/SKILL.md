@@ -1,7 +1,7 @@
 ---
 name: counsel
 description: Convene a two-vendor counsel — flagship reviewers from different vendors at high effort — to adversarially review an important architecture/design decision or proposal before committing. Use when the user says "counsel", wants a second opinion on a plan, or a hard-to-reverse decision deserves cross-vendor review.
-version: 1.1.1
+version: 1.1.2
 ---
 
 # Counsel (portable protocol)
@@ -37,7 +37,7 @@ Edit this table when flagships change. Adapters map these seats onto concrete la
 | Seat | Vendor family | Role |
 |---|---|---|
 | openai | OpenAI flagship (default `gpt-5.6-sol`, high effort) | Adversarial reviewer |
-| anthropic | Anthropic flagship (e.g. opus, high/xhigh effort) | Adversarial reviewer |
+| anthropic | Anthropic flagship (default `fable-5`, high effort) | Adversarial reviewer |
 
 ## The loop
 
