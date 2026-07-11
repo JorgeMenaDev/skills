@@ -253,7 +253,58 @@ section("slice 1 shared contracts", () => {
   const expectedCounts = { 32: 6, 33: 8, 34: 20, 35: 12, 36: 18, 37: 13, 38: 11, 39: 15, 40: 16, 41: 10, 42: 12, 43: 12 };
   check(rows.length === 153 && new Set(ids).size === rows.length, "Criterion matrix must contain all 153 unique source criteria");
   check(Object.entries(expectedCounts).every(([issue, count]) => ids.filter((id) => id.startsWith(`C${issue}-`)).length === count), "Criterion matrix per-issue row counts must match the source issue contracts");
-  check(rows.every((line) => /\| \((?:a|b)\) [^|]+ \| (?:open|closed-by-slice-1) \|/.test(line)), "Every criterion row must have exactly one typed scenario and a valid status");
+  check(rows.every((line) => /\| \((?:a|b)\) [^|]+ \| (?:open|closed-by-slice-[12]) \|/.test(line)), "Every criterion row must have exactly one typed scenario and a valid status");
+});
+
+section("slice 2 GBP evidence contracts", () => {
+  const reference = readFileSync(path.join(skillRoot, "references/local-seo-gbp.md"), "utf-8");
+  const template = readFileSync(path.join(skillRoot, "templates/local-seo-gbp.md"), "utf-8");
+  const visibilityStates = ["observed", "not_visible", "not_checked", "unavailable"];
+  const observationFields = ["Observed at", "Source or exact query", "Observer geo", "Locale", "Device / account / session context", "Business or entity", "Field", "Observed value", "Visibility status", "Evidence URL or capture", "Evidence class", "Evidence limitations"];
+  const mutationFields = [
+    "proposed_change",
+    "business_owner_factual_confirmation",
+    "eligibility_confirmation",
+    "before_evidence",
+    "hypothesis",
+    "primary_outcome",
+    "guard_metrics",
+    "concurrent_changes",
+    "changed_at",
+    "actor",
+    "approval_or_review",
+    "recheck_window",
+    "after_evidence",
+    "result",
+    "conclusion_class",
+    "rollback_or_follow_up",
+  ];
+
+  check(visibilityStates.every((state) => reference.includes(`\`${state}\``)), "GBP reference must define all four visibility states");
+  check(visibilityStates.every((state) => template.includes(`\`${state}\``)), "GBP template must define all four visibility states");
+  check(observationFields.every((field) => template.includes(field)), "GBP template must carry every observation-ledger field");
+  check(reference.includes("this is never `false`, absent") && template.includes("never record false, absent"), "Competitor non-visibility must never become a negative fact");
+  check(mutationFields.every((field) => reference.includes(`\`${field}\``)), "GBP reference must define every mutation-ledger field");
+  const mutationColumns = ["Proposed change", "Business-owner factual confirmation", "Eligibility confirmation", "Before evidence", "Hypothesis", "Primary outcome", "Guard metrics", "Concurrent changes", "Changed at", "Actor", "Approval or review", "Recheck window", "After evidence", "Result", "Conclusion class", "Rollback or follow-up"];
+  check(mutationColumns.every((field) => template.includes(field)), "GBP template must carry every mutation-ledger field");
+  check(reference.includes("Never label sequential changes on one profile as an A/B test") && template.includes("never A/B tests"), "Sequential GBP changes must not be labelled A/B tests");
+  check(reference.includes("There is no GBP-specific approval exception") && template.includes("there is no GBP-only exception"), "GBP changes must use the normal approval ceiling");
+  check(reference.includes("`geo-grid scan`") && reference.includes("`manual location sample`") && template.includes("`geo-grid scan`") && template.includes("`manual location sample`"), "Reference and template must define both local measurement evidence classes");
+  check(reference.includes("it emits no grid coverage percentage") && template.includes("must leave top-3 and top-10 coverage blank"), "Manual location samples must not emit coverage percentages");
+  check(reference.includes("reject the pair as a before/after comparison") && template.includes("changed grid geometry must be rejected"), "Changed grid geometry must be rejected as a before/after comparison");
+  check(reference.includes("no bundled script, paid tool, or particular provider is required or endorsed"), "Geo-grid workflow must remain tool-optional and vendor-neutral");
+  check(reference.includes("[Evidence Conventions](evidence-conventions.md)") && template.includes("[Evidence Conventions](../references/evidence-conventions.md)"), "GBP files must cross-link the shared evidence vocabulary");
+
+  const tableBlocks = template.split(/\r?\n/).reduce((blocks, line) => {
+    if (!line.startsWith("|")) return [...blocks, []];
+    const current = blocks.at(-1) ?? [];
+    return [...blocks.slice(0, -1), [...current, line]];
+  }, [[]]).filter((block) => block.length);
+  check(tableBlocks.length === 5, "GBP template must contain five ledger/action tables");
+  for (const block of tableBlocks) {
+    const widths = block.map((line) => line.slice(1, -1).split("|").length);
+    check(block.length >= 2 && widths.every((width) => width === widths[0]), `GBP template table must have matching column counts: ${widths.join(",")}`);
+  }
 });
 
 // --- SKILL.md routes every reference ---

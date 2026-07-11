@@ -92,6 +92,22 @@ Inspect at least these six profiles before release; each row gets its own PASS/F
 | Local or legal-service site | Local SEO, GBP, reviews, NAP, citations, and service pages are first-class when relevant |
 | Local-business fixture | Synthetic local-business scenario routes through `local-seo` without requiring a real GBP login |
 
+### Enumerated v4 scenario gates (blocking — cannot be waived)
+
+These gates are executed at the slice-7 release. Record each numbered gate as PASS or FAIL with the evidence path in the canonical gate-results artifact; WAIVED is not permitted.
+
+1. **GBP `not_visible` + gated mutation**
+   - Inputs: a dated local-business fixture or approved live observation in which one competitor attribute is not publicly visible; a proposed owned-profile category change with before evidence; and a second sequential profile change.
+   - Expected result: the competitor attribute is `not_visible`, never false/absent; the category mutation remains blocked until business-owner factual confirmation, eligibility confirmation, one primary outcome, guard metrics, concurrent changes, actor/approval, recheck window, and rollback are recorded; before and after evidence and the eventual result remain separate; the sequential changes are not labelled an A/B test.
+   - Evidence path: the completed `templates/local-seo-gbp.md` report plus permitted captures referenced by its observation and mutation IDs; record that artifact path in the gate-results row.
+   - PASS/FAIL: PASS only when every expected state and mutation field is present and the approval follows the general authenticated/public-mutation ceiling. FAIL for a negative competitor fact inferred from non-visibility, any missing gate field, premature mutation/publication, a GBP-only approval exception, or A/B language for sequential changes.
+
+2. **Geo-grid comparability**
+   - Inputs: two true geo-grid scan records with materially equivalent parameters; a third scan with changed centre, dimensions, spacing/radius, or coordinate set; and one manual location sample.
+   - Expected result: the equivalent scans may be compared and may report coverage percentages; the changed-geometry scan is rejected as a before/after comparison and reported separately; the manual sample records its locations/context and emits no top-3 or top-10 coverage percentage.
+   - Evidence path: the completed `templates/local-seo-gbp.md` measurement and comparison sections plus stored scan/sample evidence referenced by measurement ID; record that artifact path in the gate-results row.
+   - PASS/FAIL: PASS only when the equivalent pair matches all required context, changed geometry is explicitly rejected, and coverage percentages occur only on true grid scans with documented per-point location control. FAIL if unlike geometries are compared, a manual sample emits coverage percentages, or a paid tool/provider is treated as required or endorsed.
+
 ## Dry-Run Gates
 
 Before deploy, prove at least one repo-local dry run without mutating unrelated files:
