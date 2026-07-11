@@ -4,7 +4,7 @@
 // specs; no test framework. Run: node dev/orchestrate/smoke.mjs
 
 import { execFileSync, spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -140,6 +140,19 @@ check(
 check("adopt reports the downgrades and forces reconciliation", adopt.stdout.includes("ADOPTED_UNKNOWN:") && adopted.reconciliation.status === "unknown", adopt.stdout);
 const adoptInspect = helper(["inspect", "--run", join(adoptDir, "run.json")]);
 check("adopted run is valid with a closed write frontier", adoptInspect.stdout.includes("RUN_VALID: yes") && adoptInspect.stdout.includes("WRITE_FRONTIER: []"), adoptInspect.stdout);
+
+// adopt canonicalizes repo path spellings and requires a live repository
+mkdirSync(join(adoptRepo, "sub"), { recursive: true });
+const aliasSpec = { ...adoptSpec, runId: "adopt-alias", repo: { path: join(adoptRepo, "sub"), targetBranch: "main", baseSha: head } };
+const aliasSpecPath = join(root, "adopt-alias-spec.json");
+writeFileSync(aliasSpecPath, JSON.stringify(aliasSpec, null, 2));
+const adoptAlias = helper(["adopt", "--dir", join(root, "run-adopt-alias"), "--spec", aliasSpecPath]);
+check("adopt canonicalizes aliases and fails closed on the active run", adoptAlias.status !== 0 && adoptAlias.stderr.includes("active run already exists"), adoptAlias.stderr || adoptAlias.stdout);
+const noRepoSpec = { ...adoptSpec, runId: "adopt-norepo", repo: { path: join(root, "not-a-repo"), targetBranch: "main", baseSha: head } };
+const noRepoSpecPath = join(root, "adopt-norepo-spec.json");
+writeFileSync(noRepoSpecPath, JSON.stringify(noRepoSpec, null, 2));
+const adoptMissing = helper(["adopt", "--dir", join(root, "run-adopt-norepo"), "--spec", noRepoSpecPath]);
+check("adopt requires a live git repository", adoptMissing.status !== 0 && adoptMissing.stderr.includes("not a git repository"), adoptMissing.stderr || adoptMissing.stdout);
 
 // regression: init + inspect on the pristine example spec still work
 const initDir = join(root, "run-init");

@@ -856,20 +856,31 @@ if (command === "reconcile") {
   process.exit(0);
 }
 
+const exclusiveWrite = (path, value) => {
+  const descriptor = openSync(path, "wx", 0o600);
+  writeFileSync(descriptor, serialize(value));
+  fsyncSync(descriptor);
+  closeSync(descriptor);
+};
+
 const initializeRun = (run, path) => {
   const errors = validate(run);
   if (errors.length) fail(errors.join("; "));
-  atomicWrite(path, run);
+  try {
+    exclusiveWrite(path, run);
+  } catch {
+    fail(`${path} already exists; use reconcile + inspect to resume`);
+  }
   const locator = locatorPath(run);
   mkdirSync(dirname(locator), { recursive: true });
   const record = { runId: run.runId, runPath: path, revision: run.revision, updatedAt: run.updatedAt };
   try {
-    writeFileSync(locator, serialize(record), { flag: "wx", mode: 0o600 });
+    exclusiveWrite(locator, record);
   } catch {
     const active = existsSync(locator) ? readJson(locator) : null;
     if (active?.runPath && active.runPath !== path && existsSync(active.runPath)) {
       rmSync(path, { force: true });
-      fail(`an active run claimed ${run.repo.path} concurrently: ${active.runPath}`);
+      fail(`an active run already claimed ${run.repo.path}: ${active.runPath}`);
     }
     atomicWrite(locator, record);
   }
@@ -920,6 +931,11 @@ if (command === "adopt") {
   const path = join(root, "run.json");
   if (existsSync(path)) fail(`${path} already exists`);
   const run = normalize(readJson(resolve(args.spec)));
+  try {
+    run.repo.path = git(resolve(run.repo.path), ["rev-parse", "--show-toplevel"]);
+  } catch {
+    fail(`spec.repo.path is not a git repository: ${run.repo.path}; adoption requires the live repo for canonical active-run detection`);
+  }
   const activeLocator = locatorPath(run);
   if (existsSync(activeLocator)) {
     const active = readJson(activeLocator);
