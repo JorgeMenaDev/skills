@@ -143,7 +143,8 @@ function runBlockingGates() {
       typeof report.generatedAt !== "string" ||
       typeof report.sourceDigest !== "string" ||
       typeof report.toolingDigest !== "string" ||
-      typeof report.commandInventory?.result !== "string"
+      typeof report.commandInventory?.result !== "string" ||
+      !(Number.isInteger(report.commandInventory.exit) || report.commandInventory.exit === null)
     ) {
       rejections.push("malformed validator report: missing or malformed required fields");
       report = null;
@@ -174,6 +175,9 @@ function runBlockingGates() {
     const inventorySection = report.sections.find((entry) => entry.name === "command inventory and foreign-CWD matrix");
     if (inventorySection && report.commandInventory.result !== inventorySection.result) {
       rejections.push(`malformed validator report: commandInventory.result ${report.commandInventory.result} disagrees with its section result ${inventorySection.result}`);
+    }
+    if (report.commandInventory.result === "PASS" && report.commandInventory.exit !== 0) {
+      rejections.push(`malformed validator report: commandInventory result PASS with exit ${report.commandInventory.exit}`);
     }
     const expectedDigest = treeDigest(skillRoot);
     if (report.sourceDigest !== expectedDigest) {

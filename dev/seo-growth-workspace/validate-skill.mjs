@@ -1689,6 +1689,16 @@ section("release evaluator blocking gates rehearsal", () => {
     "A report missing the validator's canonical section inventory must be rejected",
   );
 
+  const passExitMismatch = runEvaluator("pass-exit-mismatch", {
+    ...baseReport,
+    commandInventory: { ...baseReport.commandInventory, exit: 1 },
+  });
+  check(
+    passExitMismatch.json.pass === false &&
+      passExitMismatch.json.blockingGates?.rejections?.some((reason) => reason.includes("PASS with exit")),
+    "A commandInventory PASS with a non-zero exit must be rejected",
+  );
+
   const editedSubgate = runEvaluator("edited-subgate", {
     ...baseReport,
     pass: false,
