@@ -2,7 +2,7 @@
 
 > **Dogfood status:** fixture-validated only — not yet exercised against a live operation. Keep this path out of any dogfooded-completion claim until its manual gates pass on a named live target.
 
-Use this contract only for an owned page that synthesizes lawfully and manually accessed forums, Reddit-like communities, Q&A sites, or accessible Discord/Slack archives. Community language used only for demand research remains governed by [Content Operations](content-ops.md).
+Use this contract only for an owned page that synthesizes manually accessed, **publicly accessible** community sources: forums, Reddit-like communities, and Q&A sites readable without membership, login, or invitation. Access-controlled conversations (private Discord/Slack workspaces, members-only forums, closed groups) are NOT publishable sources by default — being a member does not grant republication rights. Access-controlled content may be used only with explicit, recorded authorization from both the author of each used message and the community's owner/administrator, and it still follows every attribution, redaction, and removal rule below. Community language used only for demand research remains governed by [Content Operations](content-ops.md).
 
 Use the vocabulary in [Evidence Conventions](evidence-conventions.md). Use [Page Evidence](page-evidence.md) for substantiation, information gain, revision approval, and the publish gate. When a page has commercial elements, use [Commercial Integrity](commercial-integrity.md) for selection methodology, disclosure, and the anti-authority-rental boundary. Those shared contracts own their rules; this reference adds only community-specific requirements.
 
