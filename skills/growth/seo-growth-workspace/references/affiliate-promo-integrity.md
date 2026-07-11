@@ -29,7 +29,7 @@ Record the affiliate/referral program identity, current terms location, checked 
 
 ## Regulated-category escalation
 
-Finance and financial products, credit, banking/neobanks, investments, cryptoassets, health, insurance, gambling, alcohol, supplements, and similar regulated or high-risk categories require escalation to the operator **before publication**. Record the category flag, target jurisdiction(s), escalation owner and date, materials reviewed, outcome (`approved`, `approved with conditions`, or `rejected`), approver, and conditions/evidence location. `Unknown`, missing, or rejected outcomes block publication.
+Finance and financial products, credit, banking/neobanks, investments, cryptoassets, health, insurance, gambling, alcohol, supplements, and similar regulated or high-risk categories require escalation to the operator **before publication**. Record the category flag, target jurisdiction(s), escalation owner and date, materials reviewed, outcome (`approved`, `approved with conditions`, or `rejected`), approver, and conditions/evidence location. `Unknown`, missing, or rejected outcomes block publication. `approved with conditions` keeps publication blocked until every stated condition has recorded evidence of fulfillment verified against the exact revision to be published (or the approver replaces it with an unconditional approval) — recording a condition is not satisfying it.
 
 This is an escalation and evidence gate, not legal approval. Do not embed jurisdictional legal rules or let generated copy stand in for current review by an appropriately competent or authorised party selected by the operator.
 
