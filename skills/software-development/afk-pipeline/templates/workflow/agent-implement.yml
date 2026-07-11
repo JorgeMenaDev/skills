@@ -156,7 +156,7 @@ jobs:
 
       - name: Parse Pipeline Flags from the Agent Brief
         # Reads the `### Pipeline` section (verify: full|slim|off, recap: on|off,
-        # review/recording: on|off, engine: claude|codex|cursor,
+        # review/recording: on|off, engine: claude|codex|cursor|grok,
         # review-engine: codex|claude)
         # from the issue body and exposes the parsed set as step outputs. The
         # parser is fail-safe: an absent section / unknown key / bad value falls
@@ -217,6 +217,29 @@ jobs:
           [ "$SANDCASTLE_SANDBOX" = "docker-cloud" ] || fail "engine: cursor is cloud-lane only (v1) — use agent:implement; local Docker and Vercel Sandbox are unsupported"
           [ -n "$CURSOR_API_KEY" ] || fail "Cursor preflight failed: CURSOR_API_KEY repo secret is missing for engine=cursor."
 
+      - name: Pre-flight Grok engine + materialize auth seed
+        # Grok Build CLI (v2.12.0) is cloud-lane only. Auth is a GROK_AUTH_B64
+        # seed of the dispatch host's ~/.grok/auth.json (OAuth; tokens
+        # auto-refresh, so the seed is re-cut at dispatch like CODEX_AUTH_B64).
+        # Materialized to $RUNNER_TEMP/grok-home, which runtime.ts bind-mounts
+        # at /home/agent/.grok inside the per-phase container.
+        if: steps.preflight.outputs.refused != 'true' && steps.flags.outputs.engine == 'grok'
+        env:
+          GROK_AUTH_B64: ${{ steps.flags.outputs.engine == 'grok' && secrets.GROK_AUTH_B64 || '' }}
+        run: |
+          set -euo pipefail
+          fail() {
+            echo "$1" > "${RUNNER_TEMP}/failure_reason.txt"
+            echo "$1" >&2
+            exit 1
+          }
+          [ "$SANDCASTLE_SANDBOX" = "docker-cloud" ] || fail "engine: grok is cloud-lane only (v1) — use agent:implement; local Docker and Vercel Sandbox are unsupported"
+          [ -n "$GROK_AUTH_B64" ] || fail "Grok preflight failed: GROK_AUTH_B64 repo secret is missing for engine=grok."
+          mkdir -p "${RUNNER_TEMP}/grok-home"
+          printf "%s" "$GROK_AUTH_B64" | base64 -d > "${RUNNER_TEMP}/grok-home/auth.json" \
+            || fail "Grok preflight failed: GROK_AUTH_B64 is not valid base64."
+          chmod 600 "${RUNNER_TEMP}/grok-home/auth.json"
+
       - name: Install dependencies
         if: steps.preflight.outputs.refused != 'true'
         run: bun install --frozen-lockfile
@@ -242,6 +265,7 @@ jobs:
         if: steps.preflight.outputs.refused != 'true'
         env:
           INSTALL_CURSOR: ${{ steps.flags.outputs.engine == 'cursor' && '1' || '0' }}
+          INSTALL_GROK: ${{ steps.flags.outputs.engine == 'grok' && '1' || '0' }}
         run: |
           agent_uid=$(id -u)
           agent_gid=$(id -g)
@@ -249,6 +273,7 @@ jobs:
             --build-arg "AGENT_UID=$agent_uid"
             --build-arg "AGENT_GID=$agent_gid"
             --build-arg "INSTALL_CURSOR=$INSTALL_CURSOR"
+            --build-arg "INSTALL_GROK=$INSTALL_GROK"
           )
           if [ "$SANDCASTLE_SANDBOX" = "docker" ]; then
             image_json=$(docker image inspect {{IMAGE_NAME}} 2>/dev/null || true)
@@ -360,6 +385,35 @@ jobs:
           grep -F "$target_model" "${RUNNER_TEMP}/cursor-models.txt" >/dev/null \
             || fail "cursor auth/model failure: target model '$target_model' was not listed by agent models."
 
+      - name: Grok auth smoke
+        # A real (tiny) chat call inside the trusted image, with the seeded home
+        # mounted exactly as implement will see it. A models listing is NOT a
+        # valid smoke here: grok's models endpoint answers without the chat
+        # entitlement, while chat 403s (observed 2026-07-12) — only a chat call
+        # proves the seed can implement.
+        if: steps.preflight.outputs.refused != 'true' && steps.flags.outputs.engine == 'grok'
+        env:
+          GROK_MODEL: ${{ vars.GROK_MODEL || 'grok-4.5' }}
+        run: |
+          set -euo pipefail
+          fail() {
+            echo "$1" > "${RUNNER_TEMP}/failure_reason.txt"
+            echo "$1" >&2
+            exit 1
+          }
+          if ! docker run --rm --entrypoint sh \
+            --user "$(id -u):$(id -g)" \
+            -v "${RUNNER_TEMP}/grok-home:/home/agent/.grok" \
+            {{IMAGE_NAME}} \
+            -c "timeout 180 grok -p 'Reply OK' --model ${GROK_MODEL:-grok-4.5} --effort low --output-format json" \
+            > "${RUNNER_TEMP}/grok-smoke.json" 2> "${RUNNER_TEMP}/grok-smoke.err"; then
+            tail -n 40 "${RUNNER_TEMP}/grok-smoke.err" >&2 || true
+            if grep -q "403" "${RUNNER_TEMP}/grok-smoke.err" "${RUNNER_TEMP}/grok-smoke.json" 2>/dev/null; then
+              fail "Grok auth smoke failed with 403 permission-denied: the seeded account lost its chat entitlement (SuperGrok / X Premium+ lapsed?) or the seed is stale. Re-cut GROK_AUTH_B64 from a working ~/.grok/auth.json and retrigger."
+            fi
+            fail "Grok auth smoke failed before implement. Check GROK_AUTH_B64 seed freshness and the grok CLI install."
+          fi
+
       - name: Run implement phase
         if: steps.preflight.outputs.refused != 'true'
         env:
@@ -367,6 +421,8 @@ jobs:
           CODEX_AUTH_B64: ${{ steps.flags.outputs.engine == 'codex' && github.event.label.name != 'agent:implement-local' && secrets.CODEX_AUTH_B64 || '' }}
           CURSOR_API_KEY: ${{ steps.flags.outputs.engine == 'cursor' && secrets.CURSOR_API_KEY || '' }}
           CURSOR_MODEL: ${{ vars.CURSOR_MODEL || 'grok-4.5-xhigh' }}
+          GROK_MODEL: ${{ vars.GROK_MODEL || 'grok-4.5' }}
+          GROK_EFFORT: ${{ vars.GROK_EFFORT || 'high' }}
           ENGINE: ${{ steps.flags.outputs.engine }}
           BRANCH: ${{ steps.branch.outputs.name }}
           OUTPUT_DIR: ${{ runner.temp }}
@@ -507,9 +563,9 @@ jobs:
         if: steps.preflight.outputs.refused != 'true' && steps.review.outputs.has_findings == 'true'
         continue-on-error: true
         env:
-          CLAUDE_CODE_OAUTH_TOKEN: ${{ (steps.flags.outputs.engine == 'claude' || steps.flags.outputs.engine == 'cursor') && secrets.CLAUDE_CODE_OAUTH_TOKEN || '' }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ (steps.flags.outputs.engine == 'claude' || steps.flags.outputs.engine == 'cursor' || steps.flags.outputs.engine == 'grok') && secrets.CLAUDE_CODE_OAUTH_TOKEN || '' }}
           CODEX_AUTH_B64: ${{ steps.flags.outputs.engine == 'codex' && github.event.label.name != 'agent:implement-local' && secrets.CODEX_AUTH_B64 || '' }}
-          ENGINE: ${{ steps.flags.outputs.engine == 'cursor' && 'claude' || steps.flags.outputs.engine }}
+          ENGINE: ${{ (steps.flags.outputs.engine == 'cursor' || steps.flags.outputs.engine == 'grok') && 'claude' || steps.flags.outputs.engine }}
           BRANCH: ${{ steps.branch.outputs.name }}
           OUTPUT_DIR: ${{ runner.temp }}
         run: bun .sandcastle/review/review-fix.ts
@@ -555,9 +611,9 @@ jobs:
         # env — never a per-profile prompt file.
         if: steps.preflight.outputs.refused != 'true' && steps.flags.outputs.verify != 'off'
         env:
-          CLAUDE_CODE_OAUTH_TOKEN: ${{ (steps.flags.outputs.engine == 'claude' || steps.flags.outputs.engine == 'cursor') && secrets.CLAUDE_CODE_OAUTH_TOKEN || '' }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ (steps.flags.outputs.engine == 'claude' || steps.flags.outputs.engine == 'cursor' || steps.flags.outputs.engine == 'grok') && secrets.CLAUDE_CODE_OAUTH_TOKEN || '' }}
           CODEX_AUTH_B64: ${{ steps.flags.outputs.engine == 'codex' && github.event.label.name != 'agent:implement-local' && secrets.CODEX_AUTH_B64 || '' }}
-          ENGINE: ${{ steps.flags.outputs.engine == 'cursor' && 'claude' || steps.flags.outputs.engine }}
+          ENGINE: ${{ (steps.flags.outputs.engine == 'cursor' || steps.flags.outputs.engine == 'grok') && 'claude' || steps.flags.outputs.engine }}
           BRANCH: ${{ steps.branch.outputs.name }}
           OUTPUT_DIR: ${{ runner.temp }}
           VERIFY_MODE: ${{ steps.flags.outputs.verify }}
@@ -683,9 +739,9 @@ jobs:
       - name: Write PR title and description
         if: steps.preflight.outputs.refused != 'true' && success()
         env:
-          CLAUDE_CODE_OAUTH_TOKEN: ${{ (steps.flags.outputs.engine == 'claude' || steps.flags.outputs.engine == 'cursor') && secrets.CLAUDE_CODE_OAUTH_TOKEN || '' }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ (steps.flags.outputs.engine == 'claude' || steps.flags.outputs.engine == 'cursor' || steps.flags.outputs.engine == 'grok') && secrets.CLAUDE_CODE_OAUTH_TOKEN || '' }}
           CODEX_AUTH_B64: ${{ steps.flags.outputs.engine == 'codex' && github.event.label.name != 'agent:implement-local' && secrets.CODEX_AUTH_B64 || '' }}
-          ENGINE: ${{ steps.flags.outputs.engine == 'cursor' && 'claude' || steps.flags.outputs.engine }}
+          ENGINE: ${{ (steps.flags.outputs.engine == 'cursor' || steps.flags.outputs.engine == 'grok') && 'claude' || steps.flags.outputs.engine }}
           BRANCH: ${{ steps.branch.outputs.name }}
           OUTPUT_DIR: ${{ runner.temp }}
           # Degrade mode: when verify was skipped by design there is no QA

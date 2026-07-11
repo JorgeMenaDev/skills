@@ -84,6 +84,16 @@ RUN curl -fsSL https://claude.ai/install.sh | bash
 # `engine: cursor` on the hosted `agent:implement` lane.
 ARG INSTALL_CURSOR=0
 RUN if [ "$INSTALL_CURSOR" = "1" ]; then curl -fsS https://cursor.com/install | bash; fi
+# Grok Build CLI is optional and cloud-only (`engine: grok`, v2.12.0). Its
+# installer targets ~/.grok — the same path the runtime shadows with the seeded
+# auth bind mount — so the binary moves onto PATH and the installer home is
+# dropped; the mount owns ~/.grok at run time.
+ARG INSTALL_GROK=0
+RUN if [ "$INSTALL_GROK" = "1" ]; then \
+  curl -fsSL https://x.ai/cli/install.sh | bash \
+  && mkdir -p /home/agent/.local/bin \
+  && cp /home/agent/.grok/bin/grok /home/agent/.local/bin/grok \
+  && rm -rf /home/agent/.grok; fi
 ENV PATH="/home/agent/.local/bin:${PATH}"
 
 # Sandcastle matches the container process to the runner UID/GID so bind mounts

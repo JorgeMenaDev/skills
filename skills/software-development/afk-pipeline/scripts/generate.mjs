@@ -203,6 +203,7 @@ const FILES = {
   "sandcastle/runtime.ts": ".sandcastle/runtime.ts",
   "sandcastle/salvage.sh": ".sandcastle/salvage.sh",
   "sandcastle/vercel/provider.ts": ".sandcastle/vercel/provider.ts",
+  "sandcastle/grok/provider.ts": ".sandcastle/grok/provider.ts",
   "sandcastle/retry-feedback.ts": ".sandcastle/retry-feedback.ts",
   "sandcastle/run-with-retry.ts": ".sandcastle/run-with-retry.ts",
   "sandcastle/flags/parse-flags.ts": ".sandcastle/flags/parse-flags.ts",

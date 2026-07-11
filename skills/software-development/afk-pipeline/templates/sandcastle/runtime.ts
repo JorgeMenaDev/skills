@@ -2,6 +2,7 @@ import * as sandcastle from "@ai-hero/sandcastle";
 import { docker } from "@ai-hero/sandcastle/sandboxes/docker";
 import { noSandbox } from "@ai-hero/sandcastle/sandboxes/no-sandbox";
 import { vercelSandbox } from "./vercel/provider";
+import { grok } from "./grok/provider";
 
 /**
  * Lane switch. The workflow sets SANDCASTLE_SANDBOX per trigger label:
@@ -23,7 +24,9 @@ const ENGINE =
     ? "codex"
     : process.env.ENGINE === "cursor"
       ? "cursor"
-      : "claude";
+      : process.env.ENGINE === "grok"
+        ? "grok"
+        : "claude";
 const CODEX_HOST_HOME = "~/.codex-afk";
 const CODEX_SANDBOX_HOME = "/home/agent/.codex";
 const CODEX_CLOUD_HOME = `${process.env.RUNNER_TEMP ?? "/tmp"}/codex-home`;
@@ -31,9 +34,21 @@ const CODEX_DOCKER_HOST_HOME = useHostedDocker ? CODEX_CLOUD_HOME : CODEX_HOST_H
 const CURSOR_MODEL = process.env.CURSOR_MODEL || "grok-4.5-xhigh";
 const CURSOR_LANE_ERROR =
   "engine: cursor is cloud-lane only (v1) — use agent:implement; local Docker and Vercel Sandbox are unsupported";
+// Grok Build CLI (native xAI, v2.12.0). Auth is the GROK_AUTH_B64 seed the
+// workflow materializes to $RUNNER_TEMP/grok-home/auth.json; runtime mounts it
+// at /home/agent/.grok inside the per-phase container (codex-home pattern).
+const GROK_MODEL = process.env.GROK_MODEL || "grok-4.5";
+const GROK_EFFORT = (["low", "medium", "high"] as const).find((e) => e === process.env.GROK_EFFORT) ?? "high";
+const GROK_CLOUD_HOME = `${process.env.RUNNER_TEMP ?? "/tmp"}/grok-home`;
+const GROK_SANDBOX_HOME = "/home/agent/.grok";
+const GROK_LANE_ERROR =
+  "engine: grok is cloud-lane only (v1) — use agent:implement; local Docker and Vercel Sandbox are unsupported";
 
 if (ENGINE === "cursor" && (!useHostedDocker || useVercel)) {
   throw new Error(CURSOR_LANE_ERROR);
+}
+if (ENGINE === "grok" && (!useHostedDocker || useVercel)) {
+  throw new Error(GROK_LANE_ERROR);
 }
 
 /**
@@ -85,6 +100,8 @@ function sandboxEnv(token?: string): Record<string, string> {
     const cursorApiKey = process.env.CURSOR_API_KEY;
     if (!cursorApiKey) throw new Error("CURSOR_API_KEY is required when ENGINE=cursor");
     env.CURSOR_API_KEY = cursorApiKey;
+  } else if (ENGINE === "grok") {
+    // Auth rides the ~/.grok bind mount (GROK_AUTH_B64 seed), not the env.
   } else {
     if (!token) throw new Error("CLAUDE_CODE_OAUTH_TOKEN is required for Claude-backed phases");
     env.CLAUDE_CODE_OAUTH_TOKEN = token;
@@ -119,6 +136,10 @@ export function chooseImplementAgent(token?: string, claudeOptions: { effort?: "
       env: cursorAgentEnv(),
     });
   }
+  if (ENGINE === "grok") {
+    // docker-cloud only (lane guard above); auth is mounted, so no agent env.
+    return grok(GROK_MODEL, { effort: GROK_EFFORT });
+  }
   return chooseAgent(token, claudeOptions);
 }
 
@@ -146,6 +167,11 @@ export function chooseSandbox(token?: string) {
       delete process.env.CLAUDE_CODE_OAUTH_TOKEN;
       delete process.env.CODEX_API_KEY;
       delete process.env.OPENAI_API_KEY;
+    } else if (ENGINE === "grok") {
+      delete process.env.CLAUDE_CODE_OAUTH_TOKEN;
+      delete process.env.CURSOR_API_KEY;
+      delete process.env.CODEX_API_KEY;
+      delete process.env.OPENAI_API_KEY;
     } else {
       delete process.env.CURSOR_API_KEY;
       delete process.env.CODEX_API_KEY;
@@ -168,9 +194,15 @@ export function chooseSandbox(token?: string) {
     cpus: {{DOCKER_CPUS}},
     env: sandboxEnv(token),
   };
-  return ENGINE === "codex"
-    ? docker({ ...options, mounts: [{ hostPath: CODEX_DOCKER_HOST_HOME, sandboxPath: CODEX_SANDBOX_HOME }] })
-    : docker(options);
+  if (ENGINE === "codex") {
+    return docker({ ...options, mounts: [{ hostPath: CODEX_DOCKER_HOST_HOME, sandboxPath: CODEX_SANDBOX_HOME }] });
+  }
+  if (ENGINE === "grok") {
+    // Seeded grok home (auth.json) rides a bind mount; the CLI needs it
+    // writable for token refresh, session files, and lock files.
+    return docker({ ...options, mounts: [{ hostPath: GROK_CLOUD_HOME, sandboxPath: GROK_SANDBOX_HOME }] });
+  }
+  return docker(options);
 }
 
 /**

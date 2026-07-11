@@ -17,7 +17,7 @@
  *   recap:  on|off        — optional reason
  *   review: on|off        — optional reason
  *   recording: on|off     — optional reason
- *   engine: claude|codex|cursor — optional reason
+ *   engine: claude|codex|cursor|grok — optional reason
  *   review-engine: codex|claude — optional reason
  *
  * FAIL-SAFE: an absent section, an unknown key, or an unparseable value ⇒ that
@@ -26,9 +26,9 @@
  * reduce work below the default when the body explicitly and legibly says so.
  * `review-engine` defaults to codex unless `engine: codex` is set and
  * `review-engine` itself was not set; then it resolves to claude to keep the
- * implement/review engines cross-vendor. `engine: cursor` is implement-only
- * and follows the Claude default. Explicit old briefs carry their
- * `review-engine: codex` contract forward.
+ * implement/review engines cross-vendor. `engine: cursor` and `engine: grok`
+ * are implement-only and follow the Claude default. Explicit old briefs carry
+ * their `review-engine: codex` contract forward.
  *
  * Lives in the `.sandcastle` layer (not inline YAML) so it travels with the
  * pipeline to other repos. Uses only Node/Bun builtins — no `bun install`
@@ -67,7 +67,7 @@ const ALLOWED = {
   recap: new Set(["on", "off"]),
   review: new Set(["on", "off"]),
   recording: new Set(["on", "off"]),
-  engine: new Set(["claude", "codex", "cursor"]),
+  engine: new Set(["claude", "codex", "cursor", "grok"]),
   "review-engine": new Set(["codex", "claude"]),
 };
 
