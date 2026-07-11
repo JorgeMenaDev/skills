@@ -270,7 +270,7 @@ section("slice 3 page-evidence contracts", () => {
   check(reference.includes("Evidence depth is proportional to materiality") && reference.includes("minor wording or metadata change") && reference.includes("YMYL"), "Page evidence must scale depth with materiality");
   check(rightsFields.every((field) => combined.includes(field)), "Page evidence must snapshot material rights values and the asset-master row version/hash");
   check(reference.includes("Engine-native revision evidence") && reference.includes("do not create this fallback or any duplicate provenance ledger"), "Engine-native revision evidence must remain authoritative without duplicate records");
-  check(reference.includes("SITE_WORKSPACE/reports/content/<slug>/<YYYY-MM-DD>-evidence.md"), "No-engine evidence must have a deterministic dated per-page path");
+  check(reference.includes("SITE_WORKSPACE/reports/content/<slug>/<YYYY-MM-DD>-<revision-id>-evidence.md") && reference.includes("two-digit sequence"), "No-engine evidence must have a deterministic revision-unique dated per-page path");
   check(reference.includes("Missing information gain") || reference.includes("information gain is missing"), "Missing information gain must block drafting or publication");
   check(!reference.includes(".seo/research/sources.md"), "Page-evidence reference must not introduce a global sources ledger path");
 

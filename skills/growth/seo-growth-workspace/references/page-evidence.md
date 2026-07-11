@@ -11,10 +11,10 @@ Evidence depth is proportional to materiality. A minor wording or metadata chang
 Engine-native revision evidence is authoritative when a content engine holds it. Record its location in the adapter and do not create this fallback or any duplicate provenance ledger. Without a provenance-capable engine, copy `templates/page-evidence.md` to:
 
 ```text
-SITE_WORKSPACE/reports/content/<slug>/<YYYY-MM-DD>-evidence.md
+SITE_WORKSPACE/reports/content/<slug>/<YYYY-MM-DD>-<revision-id>-evidence.md
 ```
 
-The fallback file is the evidence record, not a pointer to a site-wide source library. Never create a global or site-wide source ledger. Apply this contract to new or materially revised pages only; do not parse legacy pages to invent claim mappings.
+Use the record's own stable revision identifier as `<revision-id>`. When no engine revision ID exists, assign a two-digit sequence (`01`, `02`, ...) within that page and date so every material revision has a unique immutable filename. The fallback file is the evidence record, not a pointer to a site-wide source library. Never create a global or site-wide source ledger. Apply this contract to new or materially revised pages only; do not parse legacy pages to invent claim mappings.
 
 ## Evidence brief before drafting
 
@@ -46,4 +46,4 @@ At publish time, snapshot the material rights values approved for that revision 
 
 A named human records approval, decision, date, and notes for the exact revision. Publication fails if applicable evidence is absent, a material claim lacks actual source support, information gain is missing, voice or asset authorization is unresolved, or approval is absent.
 
-After delivery, verify the public rendered revision: every intended inline citation remains present, points to the intended destination, is associated with the supported claim, and works in the rendered page rather than only in source/payload. Record the live URL, checked-at date, checker, citation locators/results, and any mismatch. The target proves citation survival; it does not reproduce the engine's research ledger. A failed rendered check blocks completion and routes back to the authoritative revision record.
+Verify the rendered revision before public publication whenever the delivery pipeline offers a preview or staged render: every intended inline citation must remain present, point to the intended destination, stay associated with the supported claim, and work in the render rather than only in source/payload. When no preview or staged render exists, run the same check immediately upon delivery. Record the preview/live URL, checked-at date, checker, citation locators/results, and any mismatch. The target proves citation survival; it does not reproduce the engine's research ledger. A failed check blocks public publication from staging; after direct delivery it requires immediate rollback/unpublish or fix-forward of that revision. The revision is not publish-complete and must not remain public in a failed state.
