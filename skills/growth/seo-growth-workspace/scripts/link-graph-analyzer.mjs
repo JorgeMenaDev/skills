@@ -2,7 +2,7 @@
 
 import { readFile, stat } from "node:fs/promises";
 
-const LIMITS = { inputBytes: 5_000_000, pages: 50_000, links: 500_000 };
+const LIMITS = { inputBytes: 5_000_000, pages: 50_000, links: 500_000, siteOrigins: 200 };
 const DAMPING = 0.85;
 const ITERATIONS = 20;
 
@@ -63,6 +63,11 @@ const text = (value, field) => {
   return value;
 };
 
+const requiredText = (value, field) => {
+  if (typeof value !== "string") throw new Error(`${field} is required and must be a string (empty string allowed for an explicitly empty value).`);
+  return value;
+};
+
 const boolean = (value, field) => {
   if (typeof value !== "boolean") throw new Error(`${field} must be true or false.`);
   return value;
@@ -102,20 +107,23 @@ const validate = (input) => {
   if (input.siteOrigins !== undefined && (!Array.isArray(input.siteOrigins) || input.siteOrigins.some((value) => typeof value !== "string"))) {
     throw new Error("siteOrigins[] must be an array of absolute URL prefixes when supplied.");
   }
+  if (input.siteOrigins !== undefined && input.siteOrigins.length > LIMITS.siteOrigins) {
+    throw new Error(`siteOrigins[] exceeds the ${LIMITS.siteOrigins}-prefix limit; consolidate prefixes.`);
+  }
   const siteOrigins = input.siteOrigins === undefined
     ? [...new Set(pages.map((page) => new URL(page.url).origin))].sort()
     : [...new Set(input.siteOrigins.map((value, index) => normalizeUrl(value, `siteOrigins[${index}]`)))].sort();
   if (!siteOrigins.length) throw new Error("Internal scope requires siteOrigins[] or at least one pages[] origin.");
   const links = input.links.map((link, index) => {
     if (!link || Array.isArray(link) || typeof link !== "object") throw new Error(`links[${index}] must be an object.`);
-    const rel = link.rel === undefined ? [] : link.rel;
-    if (!Array.isArray(rel) || rel.some((item) => typeof item !== "string")) throw new Error(`links[${index}].rel must be an array of strings.`);
+    const rel = link.rel;
+    if (!Array.isArray(rel) || rel.some((item) => typeof item !== "string")) throw new Error(`links[${index}].rel is required and must be an array of strings (empty array allowed).`);
     return {
       id: index + 1,
       source: normalizeUrl(link.source, `links[${index}].source`),
       target: normalizeUrl(link.target, `links[${index}].target`),
-      anchor: text(link.anchor, `links[${index}].anchor`),
-      placement: text(link.placement, `links[${index}].placement`),
+      anchor: requiredText(link.anchor, `links[${index}].anchor`),
+      placement: requiredText(link.placement, `links[${index}].placement`),
       rel: [...new Set(rel.map((item) => item.trim().toLowerCase()).filter(Boolean))].sort(),
     };
   });
@@ -125,21 +133,33 @@ const validate = (input) => {
 const classify = ({ pages, links, siteOrigins }) => {
   const byUrl = new Map(pages.map((page) => [page.url, page]));
   const eligible = (page) => page && page.status >= 200 && page.status < 300 && page.indexable && (!page.canonicalUrl || page.canonicalUrl === page.url);
-  const internal = (target) => siteOrigins.some((prefix) => {
-    const targetUrl = new URL(target);
+  const prefixesByOrigin = new Map();
+  for (const prefix of siteOrigins) {
     const prefixUrl = new URL(prefix);
-    if (targetUrl.origin !== prefixUrl.origin) return false;
-    if (prefixUrl.pathname === "/") return true;
-    return targetUrl.pathname === prefixUrl.pathname || targetUrl.pathname.startsWith(`${prefixUrl.pathname.replace(/\/$/, "")}/`);
-  });
+    const list = prefixesByOrigin.get(prefixUrl.origin) ?? [];
+    list.push(prefixUrl.pathname);
+    prefixesByOrigin.set(prefixUrl.origin, list);
+  }
+  const internalCache = new Map();
+  const internal = (target) => {
+    const cached = internalCache.get(target);
+    if (cached !== undefined) return cached;
+    const targetUrl = new URL(target);
+    const list = prefixesByOrigin.get(targetUrl.origin);
+    const result = Boolean(list && list.some((pathname) => pathname === "/" || targetUrl.pathname === pathname || targetUrl.pathname.startsWith(`${pathname.replace(/\/$/, "")}/`)));
+    internalCache.set(target, result);
+    return result;
+  };
   return links.map((link) => {
     const sourcePage = byUrl.get(link.source);
     const suppliedTarget = byUrl.get(link.target);
     const external = !internal(link.target);
+    const externalSource = !internal(link.source);
     const selfLink = link.source === link.target;
     let resolvedTarget = link.target;
     const reasons = [];
     if (!sourcePage) reasons.push("source absent from pages[]");
+    if (externalSource) reasons.push("external source");
     if (external) reasons.push("external");
     else if (!suppliedTarget) reasons.push("broken target: internal target absent from pages[]");
     if (selfLink) reasons.push("self-link");
@@ -153,13 +173,15 @@ const classify = ({ pages, links, siteOrigins }) => {
       resolvedTarget = resolvedPage.canonicalUrl;
     }
     const finalPage = byUrl.get(resolvedTarget);
+    const resolvedExternal = !internal(resolvedTarget);
+    if (resolvedExternal && !external) reasons.push("resolved target outside internal scope");
     if (suppliedTarget && !suppliedTarget.indexable) reasons.push("noindex target");
     if (link.rel.includes("nofollow")) reasons.push("nofollow edge");
     if (sourcePage && !eligible(sourcePage)) reasons.push("ineligible source");
     if (finalPage && !eligible(finalPage)) reasons.push("ineligible resolved target");
     if (resolvedTarget !== link.target && !finalPage) reasons.push("resolved target absent from pages[]");
-    const traversable = Boolean(!external && !selfLink && eligible(sourcePage) && eligible(finalPage) && !link.rel.includes("nofollow"));
-    return { ...link, resolvedTarget, traversable, classification: selfLink ? "self-link" : external ? "external" : "internal", handling: reasons.length ? reasons.join("; ") : "included unchanged" };
+    const traversable = Boolean(!external && !externalSource && !resolvedExternal && !selfLink && eligible(sourcePage) && eligible(finalPage) && !link.rel.includes("nofollow"));
+    return { ...link, resolvedTarget, traversable, classification: selfLink ? "self-link" : external || externalSource || resolvedExternal ? "external" : "internal", handling: reasons.length ? reasons.join("; ") : "included unchanged" };
   });
 };
 
