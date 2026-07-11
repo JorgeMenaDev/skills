@@ -34,10 +34,10 @@ A webhook delivery is not "published" until:
 - The live route returns 200 with rendered title, meta description, and body.
 - The post is in `sitemap.xml` and linked from the blog hub, so a crawl path exists.
 - Rendered metadata/schema match the payload without invented facts.
-- When the pipeline offers a preview or staged render, every intended public inline citation from the authoritative article revision is verified there before public publication. It must survive delivery and rendering, point to the intended destination, and remain associated with the claim it supports. Without preview/staging, verify immediately upon delivery. Record the preview/live URL, checked-at time, checker, citation locators/results, and mismatches in the native revision evidence; the target does not duplicate the research ledger.
+- At webhook delivery, run the [Page Evidence](page-evidence.md) publish-and-delivery gate: verify every intended public inline citation from the authoritative article revision in preview/staging before public publication (or immediately upon delivery when no preview exists), and record the result in the native revision evidence. Page Evidence owns the recorded citation fields and the failed-citation handling; this section only triggers that gate for the webhook path.
 - The `.seo/backlog.md` content ticket and the engine's dashboard state agree. Backend/UI disagreement is a blocker, not a success.
 
-Citation reachability alone is not proof of claim support: support is decided by the authoritative revision evidence under [Page Evidence](page-evidence.md). A missing, transformed, detached, or wrong-destination rendered citation blocks publication from staging. After direct public delivery, it requires immediate rollback/unpublish or fix-forward of that revision; the revision is not publish-complete and must not remain public in a failed state.
+Citation reachability alone is not proof of claim support: claim support is decided by the authoritative revision evidence under [Page Evidence](page-evidence.md), not by a citation returning 200.
 
 One worked example follows; your engine will differ — record its contract in `.seo/adapters/<engine>.md`.
 
