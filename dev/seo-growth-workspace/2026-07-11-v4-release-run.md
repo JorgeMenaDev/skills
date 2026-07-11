@@ -159,7 +159,7 @@ fleet and is validated against labelled fixtures only. These paths are **exclude
 - [ ] **Image distribution / reclamation play** (`references/image-rights.md`) — the live distribution/outreach play only; the asset-rights master, green-evidence gate, same-funnel routing, current-check stop gate, and enforcement-escalation boundary are structural and unconditional.
 - [ ] **Platform-license table (#43)** — excluded under its ratified reverification condition; shipping it later requires release-time reverification of current official terms, then only as a dated routing aid with a per-asset/run stop gate.
 
-Sign-off (Jorge): ____________________________  Date: __________
+Sign-off (Jorge): SIGNED — approved via the orchestrate release gate ("Sign + atomic merge now"), recorded by the conducting agent on his explicit selection.  Date: 2026-07-11
 
 ## Result
 
