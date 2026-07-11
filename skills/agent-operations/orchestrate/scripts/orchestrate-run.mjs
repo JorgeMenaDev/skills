@@ -295,8 +295,8 @@ const validate = (run, previous = null) => {
     if (!gate.id || gateIds.has(gate.id) || !gateStatuses.has(gate.status) || !gate.description) errors.push(`invalid or duplicate deferred gate ${gate.id || "<empty>"}`);
     gateIds.add(gate.id);
     if (gate.sliceId && !ids.has(gate.sliceId)) errors.push(`${gate.id}: unknown slice ${gate.sliceId}`);
-    if (["discharged", "authorized"].includes(gate.status) && (!Array.isArray(gate.evidence) || !gate.evidence.length)) errors.push(`${gate.id}: ${gate.status} requires evidence`);
-    if (gate.status === "authorized" && !gate.approvedBy) errors.push(`${gate.id}: authorized requires an approver`);
+    if (["discharged", "authorized"].includes(gate.status) && (!Array.isArray(gate.evidence) || !gate.evidence.length || !gate.evidence.every((item) => typeof item === "string" && item.trim()))) errors.push(`${gate.id}: ${gate.status} requires non-empty evidence identifiers`);
+    if (gate.status === "authorized" && (typeof gate.approvedBy !== "string" || !gate.approvedBy.trim())) errors.push(`${gate.id}: authorized requires a named approver`);
   }
 
   if (previous) {
@@ -453,7 +453,14 @@ const render = (run, path) => {
 };
 
 const stateRoot = () => resolve(process.env.XDG_STATE_HOME || join(homedir(), ".local", "state"), "orchestrate");
-const locatorPath = (run) => join(stateRoot(), "active-runs", `${createHash("sha256").update(resolve(run.repo.path)).digest("hex")}.json`);
+const repoIdentity = (repoPath) => {
+  try {
+    return git(repoPath, ["rev-parse", "--path-format=absolute", "--git-common-dir"]);
+  } catch {
+    return resolve(repoPath);
+  }
+};
+const locatorPath = (run) => join(stateRoot(), "active-runs", `${createHash("sha256").update(run.repo.identity || resolve(run.repo.path)).digest("hex")}.json`);
 const mutexPath = (resourceId) => join(stateRoot(), "mutexes", `${createHash("sha256").update(resourceId).digest("hex")}.lock`);
 
 const normalize = (spec) => {
@@ -493,7 +500,7 @@ const command = process.argv[2];
 const args = parseArgs(process.argv.slice(3));
 
 if (!command || ["help", "--help", "-h"].includes(command)) {
-  process.stdout.write(`orchestrate-run.mjs commands:\n  preflight --repo DIR\n  classify --slices N --dependencies yes|no --integration-branch yes|no --shared-resource yes|no [--one-liner yes]\n  start --dir DIR --spec FILE            (preflight + init + locator + reconcile + first frontier)\n  adopt --dir DIR --spec FILE            (conservative import of an in-flight prose run; unproved state -> UNKNOWN)\n  checkpoint --run FILE --expected-revision N [--reason TEXT] [--observations FILE] --conductor-id ID --conductor-epoch N\n  init --dir DIR --spec FILE\n  update --run FILE --expected-revision N --patch FILE --conductor-id ID --conductor-epoch N\n  probe --run FILE --expected-revision N --resource ID --slice ID --action acquire|release --conductor-id ID --conductor-epoch N\n  reconcile --run FILE --expected-revision N [--observations FILE] --conductor-id ID --conductor-epoch N\n  takeover --run FILE --expected-revision N --conductor-id OLD --conductor-epoch N --new-conductor-id NEW\n  recover-lock --run FILE --conductor-id ID --conductor-epoch N --confirm-stale\n  recover-mutex --run FILE --expected-revision N --resource ID --conductor-id ID --conductor-epoch N --confirm-stale\n  inspect --run FILE\n  render --run FILE\n  assert-complete --run FILE\n  archive --run FILE --conductor-id ID --conductor-epoch N\n`);
+  process.stdout.write(`orchestrate-run.mjs commands:\n  preflight --repo DIR\n  classify --slices N --dependencies yes|no --integration-branch yes|no --shared-resource yes|no [--one-liner yes]\n  start --dir DIR --spec FILE            (preflight + init + locator + reconcile + first frontier)\n  adopt --dir DIR --spec FILE            (conservative import of an in-flight prose run; unproved state -> UNKNOWN)\n  checkpoint --run FILE --expected-revision N [--reason TEXT] [--observations FILE] --conductor-id ID --conductor-epoch N\n  checkpoint --run FILE --render-only     (regenerate RESUME.md from the committed ledger; no mutation)\n  init --dir DIR --spec FILE\n  update --run FILE --expected-revision N --patch FILE --conductor-id ID --conductor-epoch N\n  probe --run FILE --expected-revision N --resource ID --slice ID --action acquire|release --conductor-id ID --conductor-epoch N\n  reconcile --run FILE --expected-revision N [--observations FILE] --conductor-id ID --conductor-epoch N\n  takeover --run FILE --expected-revision N --conductor-id OLD --conductor-epoch N --new-conductor-id NEW\n  recover-lock --run FILE --conductor-id ID --conductor-epoch N --confirm-stale\n  recover-mutex --run FILE --expected-revision N --resource ID --conductor-id ID --conductor-epoch N --confirm-stale\n  inspect --run FILE\n  render --run FILE\n  assert-complete --run FILE\n  archive --run FILE --conductor-id ID --conductor-epoch N\n`);
   process.exit(0);
 }
 
@@ -519,7 +526,7 @@ if (command === "preflight") {
       override = "malformed";
     }
   }
-  const activeLocator = join(stateRoot(), "active-runs", `${createHash("sha256").update(root).digest("hex")}.json`);
+  const activeLocator = join(stateRoot(), "active-runs", `${createHash("sha256").update(repoIdentity(root)).digest("hex")}.json`);
   const skillRoots = [join(root, ".agents", "skills"), join(homedir(), ".agents", "skills"), join(homedir(), ".claude", "skills")];
   const adapters = ["codex-cli-runtime", "claude-cli-runtime", "cursor-subagent", "opencode-subagent"].filter((name) => skillRoots.some((skillRoot) => existsSync(join(skillRoot, name, "SKILL.md"))));
   process.stdout.write(`REPO: ${root}\nBRANCH: ${branch}\nDIRTY: ${dirty}\nBASE_SHA: ${head}\nACTIVE_RUN: ${existsSync(activeLocator) ? activeLocator : "none"}\nHELPER_SCHEMA: 1\nENGINE_OVERRIDE: ${override}\nNATIVE_EXECUTOR: runtime-owned\nNON_NATIVE_ADAPTERS: ${JSON.stringify(adapters)}\n`);
@@ -927,7 +934,8 @@ if (command === "start") {
   } catch {
     fail(`spec.repo.path is not a git repository: ${spec.repo.path}`);
   }
-  const activeLocator = join(stateRoot(), "active-runs", `${createHash("sha256").update(repoRoot).digest("hex")}.json`);
+  const identity = repoIdentity(repoRoot);
+  const activeLocator = join(stateRoot(), "active-runs", `${createHash("sha256").update(identity).digest("hex")}.json`);
   const activeStart = readJsonSafe(activeLocator);
   if (activeStart?.runPath && existsSync(activeStart.runPath)) fail(`an active run already exists for ${repoRoot}: ${activeStart.runPath}; resume it (reconcile + inspect) or archive it first`);
   let liveHead;
@@ -937,6 +945,7 @@ if (command === "start") {
     fail(`target branch not found in ${repoRoot}: ${spec.repo.targetBranch}`);
   }
   spec.repo.path = repoRoot;
+  spec.repo.identity = identity;
   if (!spec.repo.baseSha || spec.repo.baseSha === "auto") spec.repo.baseSha = liveHead;
   if (!spec.repo.expectedHead || spec.repo.expectedHead === "auto") spec.repo.expectedHead = liveHead;
   const root = resolve(args.dir);
@@ -964,6 +973,7 @@ if (command === "adopt") {
   } catch {
     fail(`spec.repo.path is not a git repository: ${run.repo.path}; adoption requires the live repo for canonical active-run detection`);
   }
+  run.repo.identity = repoIdentity(run.repo.path);
   const activeLocator = locatorPath(run);
   const activeAdopt = readJsonSafe(activeLocator);
   if (activeAdopt?.runPath && existsSync(activeAdopt.runPath)) fail(`an active run already exists for ${run.repo.path}: ${activeAdopt.runPath}; resume it instead of adopting`);
@@ -1016,6 +1026,17 @@ const renderResume = (run, path, resumePath) => {
   writeDoc(resumePath, content);
   return state;
 };
+
+if (command === "checkpoint" && args["render-only"] === true) {
+  const path = runPath(args);
+  const run = readJson(path);
+  const errors = validate(run);
+  if (errors.length) fail(errors.join("; "));
+  const resumePath = join(dirname(path), "RESUME.md");
+  renderResume(run, path, resumePath);
+  process.stdout.write(`CHECKPOINT_RENDERED: ${resumePath}\nSOURCE_REVISION: ${run.revision}\n`);
+  process.exit(0);
+}
 
 if (command === "checkpoint") {
   if (args["expected-revision"] === undefined) fail("checkpoint requires --expected-revision");

@@ -86,6 +86,14 @@ check(
   resume.includes(`- Revision: ${readRun(startDir).revision}`) && resume.includes(digestOf(readRun(startDir))),
   resume.slice(0, 400),
 );
+rmSync(join(startDir, "RESUME.md"));
+const checkpointCountBefore = readRun(startDir).checkpoints.length;
+const renderOnly = helper(["checkpoint", "--run", join(startDir, "run.json"), "--render-only"]);
+check(
+  "checkpoint --render-only regenerates RESUME.md without mutating the ledger",
+  renderOnly.status === 0 && existsSync(join(startDir, "RESUME.md")) && readRun(startDir).checkpoints.length === checkpointCountBefore,
+  renderOnly.stderr || renderOnly.stdout,
+);
 
 // deferred gates: open gate blocks completion; malformed gate fails closed
 const gatePatch = join(root, "gate-patch.json");
@@ -109,6 +117,9 @@ check("deferred gate removal fails closed", removeGate.status !== 0 && (removeGa
 writeFileSync(gatePatch, JSON.stringify({ deferredGates: [{ id: "provider-oauth", sliceId: "review", description: "Real provider OAuth proof deferred", status: "open", evidence: [] }, { id: "pre-discharged", description: "x", status: "discharged", evidence: ["e"] }] }));
 const bornDischarged = helper(["update", "--run", join(startDir, "run.json"), "--expected-revision", String(readRun(startDir).revision), "--patch", gatePatch, ...asConductor]);
 check("a new deferred gate must begin open", bornDischarged.status !== 0 && (bornDischarged.stderr + bornDischarged.stdout).includes("must begin open"), bornDischarged.stderr);
+writeFileSync(gatePatch, JSON.stringify({ deferredGates: [{ id: "provider-oauth", sliceId: "review", description: "Real provider OAuth proof deferred", status: "discharged", evidence: [""] }] }));
+const emptyEvidence = helper(["update", "--run", join(startDir, "run.json"), "--expected-revision", String(readRun(startDir).revision), "--patch", gatePatch, ...asConductor]);
+check("discharge with empty evidence fails closed", emptyEvidence.status !== 0 && (emptyEvidence.stderr + emptyEvidence.stdout).includes("non-empty evidence"), emptyEvidence.stderr);
 writeFileSync(gatePatch, JSON.stringify({ deferredGates: [{ id: "provider-oauth", sliceId: "review", description: "Real provider OAuth proof deferred", status: "discharged", evidence: ["oauth-smoke.log"] }] }));
 const discharge = helper(["update", "--run", join(startDir, "run.json"), "--expected-revision", String(readRun(startDir).revision), "--patch", gatePatch, ...asConductor]);
 check("an open gate discharges with evidence", discharge.status === 0, discharge.stderr);
@@ -265,8 +276,8 @@ const reclaim = helper(["start", "--dir", join(root, "run-start-3"), "--spec", s
 check("start reclaims a stale active-run locator", reclaim.status === 0 && reclaim.stdout.includes("RECONCILIATION: clean"), reclaim.stderr || reclaim.stdout);
 
 // stale-locator reclamation is serialized by an exclusive claim
-const seedRoot = git(seed, ["rev-parse", "--show-toplevel"]);
-const seedLocator = join(env.XDG_STATE_HOME, "orchestrate", "active-runs", `${createHash("sha256").update(seedRoot).digest("hex")}.json`);
+const seedIdentity = git(seed, ["rev-parse", "--path-format=absolute", "--git-common-dir"]);
+const seedLocator = join(env.XDG_STATE_HOME, "orchestrate", "active-runs", `${createHash("sha256").update(seedIdentity).digest("hex")}.json`);
 rmSync(join(root, "run-start-3"), { recursive: true, force: true });
 mkdirSync(`${seedLocator}.claim`, { recursive: true });
 const blockedReclaim = helper(["start", "--dir", join(root, "run-start-4"), "--spec", specPath]);
@@ -280,6 +291,14 @@ rmSync(join(root, "run-start-4"), { recursive: true, force: true });
 writeFileSync(seedLocator, "");
 const truncatedReclaim = helper(["start", "--dir", join(root, "run-start-5"), "--spec", specPath]);
 check("a truncated locator is reclaimed instead of crashing start", truncatedReclaim.status === 0 && truncatedReclaim.stdout.includes("RECONCILIATION: clean"), truncatedReclaim.stderr || truncatedReclaim.stdout);
+
+// a linked worktree of the same repository shares the active-run identity
+execFileSync("git", ["-C", seed, "worktree", "add", "--quiet", join(root, "seed-linked"), "-b", "linked-smoke"], { stdio: "ignore" });
+const linkedSpec = { ...JSON.parse(readFileSync(exampleSpec, "utf8")), runId: "linked-worktree", repo: { path: join(root, "seed-linked"), targetBranch: "main", baseSha: "auto" } };
+const linkedSpecPath = join(root, "linked-spec.json");
+writeFileSync(linkedSpecPath, JSON.stringify(linkedSpec, null, 2));
+const linkedStart = helper(["start", "--dir", join(root, "run-linked"), "--spec", linkedSpecPath]);
+check("a linked worktree cannot mint a second active run", linkedStart.status !== 0 && linkedStart.stderr.includes("active run already exists"), linkedStart.stderr || linkedStart.stdout);
 
 rmSync(root, { recursive: true, force: true });
 process.stdout.write(failures ? `\n${failures} failure(s)\n` : "\nall smoke checks passed\n");

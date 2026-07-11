@@ -60,7 +60,7 @@ node <skill>/scripts/orchestrate-run.mjs checkpoint --run <run.json> \
   --conductor-id <id> --conductor-epoch <n>
 ```
 
-`checkpoint` reconciles, appends a checkpoint record to the ledger, and renders `RESUME.md`: frontiers, per-slice branch/base/attempt/correction state, active runtime identities, held resources, unresolved effects, open deferred gates, and the next safe act. Checkpoint at every wave boundary on multi-hour runs — one conductor context is a single point of failure even when workers are isolated.
+`checkpoint` reconciles, appends a checkpoint record to the ledger, and renders `RESUME.md`: frontiers, per-slice branch/base/attempt/correction state, active runtime identities, held resources, unresolved effects, open deferred gates, and the next safe act. Checkpoint at every wave boundary on multi-hour runs — one conductor context is a single point of failure even when workers are isolated. If a crash separates a committed checkpoint from its resume document, `checkpoint --render-only` regenerates `RESUME.md` from the committed ledger without reconciling or appending a record.
 
 Rotate the conductor when time, wave count, or context growth crosses the threshold recorded in the plan — at a clean wave boundary only, never during an executing irreversible effect or unresolved integration. The incoming conductor reads `RESUME.md` plus the source issues, runs `takeover`, then re-reconciles before any write; the outgoing conductor's stale epoch fails closed. A checkpoint is never dispatch authority by itself.
 
