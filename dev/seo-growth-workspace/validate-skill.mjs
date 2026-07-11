@@ -76,6 +76,7 @@ const requiredFiles = [
   "references/commercial-integrity.md",
   "references/page-evidence.md",
   "references/community-source-pages.md",
+  "references/affiliate-promo-integrity.md",
   "references/monthly-reporting.md",
   "references/ai-search-visibility.md",
   "references/data-tools.md",
@@ -379,6 +380,26 @@ section("slice 3 community-source page contract", () => {
   check(reference.includes("publicly accessible") && reference.includes("does not grant republication rights") && reference.includes("explicit, recorded authorization"), "Access-controlled community content must require explicit author and community-owner authorization");
   check(reference.includes("fixture-validated only — not yet exercised against a live operation"), "Community specialist path must carry the fixture-only dogfood caveat");
   check(router.includes("Owned pages synthesizing forums, Q&A, or other community sources: `references/community-source-pages.md`"), "SKILL.md must progressively route community-source publishing");
+});
+
+section("slice 3 affiliate and promo integrity contract", () => {
+  const reference = readFileSync(path.join(skillRoot, "references/affiliate-promo-integrity.md"), "utf-8");
+  const router = readFileSync(path.join(skillRoot, "SKILL.md"), "utf-8");
+  const businessContext = readFileSync(path.join(skillRoot, "references/business-context.md"), "utf-8");
+  const offerFields = ["Program/source", "Authorization basis", "Verbatim terms", "Start date", "expiry date", "checked-at date", "verification method", "next recheck"];
+  const statuses = ["verified-active", "expiring", "expired", "revoked", "unverified"];
+
+  check(offerFields.every((field) => reference.toLowerCase().includes(field.toLowerCase())), "Affiliate offers must record source, authorization, verbatim terms, dates, verification, and recheck evidence");
+  check(statuses.every((status) => reference.includes(`\`${status}\``)), "Affiliate offers must define the complete specialist status vocabulary");
+  check(reference.includes("Only `verified-active` offers may be published") && reference.includes("inside its scheduled pre-expiry review window") && reference.includes("At expiry, promptly remove, unpublish, or update") && reference.includes("Never describe a dated offer as evergreen"), "Only verified-active offers may publish and dated offers must follow the expiry workflow");
+  check(reference.includes("program identity") && reference.includes("trademark bidding") && reference.includes("QR codes") && reference.includes("link shortening") && reference.includes("self-referrals"), "Affiliate evidence must capture program identity and recorded brand, bidding, and promotional constraints");
+  check(reference.includes("require escalation to the operator **before publication**") && reference.includes("category flag") && reference.includes("target jurisdiction(s)") && reference.includes("`approved with conditions`") && reference.includes("Do not embed jurisdictional legal rules"), "Regulated categories must record pre-publication escalation without embedding legal rules");
+  check(reference.includes("`tracked conversion` → `merchant validation` → `confirmed/approved conversion` → `paid commission` → `net revenue`") && reference.includes("A tracked click is not a conversion") && reference.includes("never call pending commission revenue") && reference.includes("shared non-causal outcome ladder"), "Affiliate reporting must distinguish tracked, validated, approved, paid, and net lifecycle states without causal upgrades");
+  check(reference.includes("every commission-bearing relationship") && reference.includes("commission-bearing link without it fails publication"), "Commission-bearing relationships must structurally require commercial-integrity disclosure");
+  check(reference.includes("workspace holds the evidence pointer, not the secret") && reference.includes("Do not store private or negotiated codes") && reference.includes("stable secret/evidence ID"), "Sensitive codes and terms must be referenced by secure evidence pointer rather than stored in Markdown");
+  check(reference.includes("fixture-validated only — not yet exercised against a live operation"), "Affiliate specialist path must carry the fixture-only dogfood caveat");
+  check(router.includes("Affiliate/referral offers, coupons, promo codes, and commission lifecycle: `references/affiliate-promo-integrity.md`"), "SKILL.md must progressively route affiliate and promo integrity");
+  check(businessContext.includes("affiliate/referral relationships to `references/affiliate-promo-integrity.md`"), "Business-context journey routing must name affiliate-promo integrity");
 });
 
 section("slice 2 GBP evidence contracts", () => {
