@@ -74,6 +74,7 @@ const requiredFiles = [
   "references/backlinks-entity.md",
   "references/evidence-conventions.md",
   "references/commercial-integrity.md",
+  "references/page-evidence.md",
   "references/monthly-reporting.md",
   "references/ai-search-visibility.md",
   "references/data-tools.md",
@@ -85,6 +86,7 @@ const requiredFiles = [
   "templates/local-seo-gbp.md",
   "templates/backlink-gap.md",
   "templates/content-plan.md",
+  "templates/page-evidence.md",
   "templates/pseo-plan.md",
   "templates/gsc-opportunity.md",
   "templates/monthly-report.md",
@@ -253,7 +255,35 @@ section("slice 1 shared contracts", () => {
   const expectedCounts = { 32: 6, 33: 8, 34: 20, 35: 12, 36: 18, 37: 13, 38: 11, 39: 15, 40: 16, 41: 10, 42: 12, 43: 12 };
   check(rows.length === 153 && new Set(ids).size === rows.length, "Criterion matrix must contain all 153 unique source criteria");
   check(Object.entries(expectedCounts).every(([issue, count]) => ids.filter((id) => id.startsWith(`C${issue}-`)).length === count), "Criterion matrix per-issue row counts must match the source issue contracts");
-  check(rows.every((line) => /\| \((?:a|b)\) [^|]+ \| (?:open|closed-by-slice-[12]) \|/.test(line)), "Every criterion row must have exactly one typed scenario and a valid status");
+  check(rows.every((line) => /\| \((?:a|b)\) [^|]+ \| (?:open|closed-by-slice-[1-7]) \|/.test(line)), "Every criterion row must have exactly one typed scenario and a valid status");
+});
+
+section("slice 3 page-evidence contracts", () => {
+  const reference = readFileSync(path.join(skillRoot, "references/page-evidence.md"), "utf-8");
+  const template = readFileSync(path.join(skillRoot, "templates/page-evidence.md"), "utf-8");
+  const combined = `${reference}\n${template}`;
+  const recordFields = ["Page / revision ID", "Claim-to-source support", "Fetched / checked date", "Authorized voice inputs", "Human approval", "rendered-citation survival"];
+  const rightsFields = ["Asset ID", "Approved license + version", "Attribution duty", "Release / consent state", "Rights checked at", "Exceptions / caveats", "Master-row version / hash"];
+
+  check(recordFields.every((field) => combined.toLowerCase().includes(field.toLowerCase())), "Page-evidence files must define revision identity, claim support, dated checks, voice inputs, approval, and rendered citation survival");
+  check(reference.includes("One record belongs to one page revision") && reference.includes("A later revision gets a new record"), "Page evidence must be immutable and revision-scoped");
+  check(reference.includes("Evidence depth is proportional to materiality") && reference.includes("minor wording or metadata change") && reference.includes("YMYL"), "Page evidence must scale depth with materiality");
+  check(rightsFields.every((field) => combined.includes(field)), "Page evidence must snapshot material rights values and the asset-master row version/hash");
+  check(reference.includes("Engine-native revision evidence") && reference.includes("do not create this fallback or any duplicate provenance ledger"), "Engine-native revision evidence must remain authoritative without duplicate records");
+  check(reference.includes("SITE_WORKSPACE/reports/content/<slug>/<YYYY-MM-DD>-evidence.md"), "No-engine evidence must have a deterministic dated per-page path");
+  check(reference.includes("Missing information gain") || reference.includes("information gain is missing"), "Missing information gain must block drafting or publication");
+  check(!reference.includes(".seo/research/sources.md"), "Page-evidence reference must not introduce a global sources ledger path");
+
+  const tableBlocks = template.split(/\r?\n/).reduce((blocks, line) => {
+    if (!line.startsWith("|")) return [...blocks, []];
+    const current = blocks.at(-1) ?? [];
+    return [...blocks.slice(0, -1), [...current, line]];
+  }, [[]]).filter((block) => block.length);
+  check(tableBlocks.length === 6, "Page-evidence template must contain six record tables");
+  for (const block of tableBlocks) {
+    const widths = block.map((line) => line.slice(1, -1).split("|").length);
+    check(block.length >= 2 && widths.every((width) => width === widths[0]), `Page-evidence template table must have matching column counts: ${widths.join(",")}`);
+  }
 });
 
 section("slice 2 GBP evidence contracts", () => {

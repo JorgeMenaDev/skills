@@ -108,6 +108,30 @@ These gates are executed at the slice-7 release. Record each numbered gate as PA
    - Evidence path: the completed `templates/local-seo-gbp.md` measurement and comparison sections plus stored scan/sample evidence referenced by measurement ID; record that artifact path in the gate-results row.
    - PASS/FAIL: PASS only when the equivalent pair matches all required context, changed geometry is explicitly rejected, and coverage percentages occur only on true grid scans with documented per-point location control. FAIL if unlike geometries are compared, a manual sample emits coverage percentages, or a paid tool/provider is treated as required or endorsed.
 
+3. **Content-engine page with native revision evidence**
+   - Inputs: one approved content-engine article revision with mapped material claims and public citations; its adapter mapping; the delivered live page; and the engine/admin revision view.
+   - Expected result: the engine-native revision is the sole authoritative evidence record; claim support, dated checks, applicable voice/asset authorization and immutable rights snapshots, information gain, and exact-revision human approval pass before publication; every intended citation survives delivery beside its supported claim and engine/admin state agrees with the live page.
+   - Evidence path: the native revision evidence locator, adapter note, permitted engine/admin capture, and dated live-render capture or inspection log; record all paths in the gate-results row.
+   - PASS/FAIL: PASS only when the native record covers the exact published revision, no fallback or duplicate ledger exists, and every citation survives with the intended destination and claim association. FAIL for missing support/approval, duplicate provenance, backend/render disagreement, or any missing, detached, transformed, or wrong-destination citation.
+
+4. **No-engine page via fallback evidence**
+   - Inputs: one new or materially revised article with no provenance-capable content engine; a completed dated `templates/page-evidence.md` copy at `SITE_WORKSPACE/reports/content/<slug>/<YYYY-MM-DD>-evidence.md`; and its rendered page.
+   - Expected result: the fallback is the sole revision-scoped evidence record; its depth matches materiality; it contains the pre-draft brief, claim mappings/checks, applicable authorized inputs and rights snapshots, human approval, and rendered-citation result.
+   - Evidence path: the completed fallback record and dated live-render capture or inspection log referenced from it; record the artifact path in the gate-results row.
+   - PASS/FAIL: PASS only when the record is complete for the exact revision and every applicable publish/delivery gate passes. FAIL for a global/site-wide source ledger, missing applicable fields, invented legacy back-fill, absent approval, or failed rendered citations.
+
+5. **Reachable-but-unsupported citation fails**
+   - Inputs: a page revision whose cited URL returns successfully but whose source text does not substantiate one material claim, plus the claim mapping and proposed rendered page.
+   - Expected result: the mapping is marked unsupported and the revision remains blocked; URL reachability does not satisfy substantiation and the page is not published/completed.
+   - Evidence path: the authoritative revision record with the claim/source locator, dated source check, reviewer decision, and blocked publish result; record that path in the gate-results row.
+   - PASS/FAIL: PASS only when the unsupported claim causes a non-publish result until removed, qualified, or genuinely supported. FAIL if reachability, citation presence, or a discovery assistant is treated as proof of support.
+
+6. **Missing information gain fails**
+   - Inputs: a proposed page brief with audience/query/SERP observations and no credible unique contribution or first-hand proof plan.
+   - Expected result: the decision is `defer`, `update existing page`, or `choose another page type`; automatic drafting, importing, scheduling, and publishing remain blocked.
+   - Evidence path: the authoritative native revision brief or dated fallback record containing the information-gain assessment and decision; record that path in the gate-results row.
+   - PASS/FAIL: PASS only when the missing information gain produces a recorded non-publish outcome. FAIL if competitor averages, word counts, entity quotas, proprietary scores, or mere indexation potential permit drafting or publication.
+
 ## Dry-Run Gates
 
 Before deploy, prove at least one repo-local dry run without mutating unrelated files:
