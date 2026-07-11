@@ -75,6 +75,7 @@ const requiredFiles = [
   "references/evidence-conventions.md",
   "references/commercial-integrity.md",
   "references/page-evidence.md",
+  "references/community-source-pages.md",
   "references/monthly-reporting.md",
   "references/ai-search-visibility.md",
   "references/data-tools.md",
@@ -359,6 +360,25 @@ section("slice 3 discovery-journey contract", () => {
   check(reference.includes("Do not turn the matrix into an omni-channel mode") && reference.includes("create per-channel ledgers") && reference.includes("calculate a surface score"), "Discovery-journey guidance must prohibit omni-channel mode, per-channel ledgers, and scoring formulas");
   check(!/(?:mandatory|required) (?:discovery[- ]journey |journey )?matrix/i.test(reference), "Discovery-journey matrix must not be mandatory");
   check(!/(?:score|weight|points?)\s*[=+*/]/i.test(reference), "Discovery-journey contract must not contain a scoring formula");
+});
+
+section("slice 3 community-source page contract", () => {
+  const reference = readFileSync(path.join(skillRoot, "references/community-source-pages.md"), "utf-8");
+  const router = readFileSync(path.join(skillRoot, "SKILL.md"), "utf-8");
+  const attributionFields = ["Platform or community", "Thread title and direct thread/permalink", "Public author handle", "Date accessed"];
+
+  check(attributionFields.every((field) => reference.includes(field)), "Community sources must carry platform, permalink, author handle, and access-date attribution");
+  check(["**Quote**", "**Paraphrase**", "**Publisher analysis**"].every((label) => reference.includes(label)), "Community pages must explicitly separate quote, paraphrase, and publisher analysis");
+  check(reference.includes("source-removal workflow") && reference.includes("2 business days") && reference.includes("5 business days") && reference.includes("Record the completed action, outcome"), "Community pages must define a timed deletion/removal workflow and record outcomes");
+  check(reference.includes("1–3 pages maximum") && reference.includes("No expansion past three pages"), "Community pilot must be capped at one to three pages before approved expansion");
+  check(["week 2", "week 4", "week 8", "week 12"].every((week) => reference.includes(`**${week}**`)), "Community pilot must pre-register week 2, 4, 8, and 12 reviews");
+  check(reference.includes("cannot be redefined after results are seen") && reference.includes("explicit operator approval"), "Community pilot gates must be immutable after results and expansion must require operator approval");
+  check(["No scraping", "No covert participation", "No parasite publishing"].every((rule) => reference.includes(rule)), "Community contract must prohibit scraping, covert participation, and parasite publishing");
+  check(reference.includes("Anti-token-swap assertion") && reference.includes("page-specific source set") && reference.includes("page-specific analysis") && reference.includes("page-specific information gain"), "Community pages must reject token-swapped variants with interchangeable sources, analysis, or information gain");
+  check(reference.includes("does not endorse the publisher") && reference.includes("publisher's relationship to the product") && reference.includes("regardless of whether it is classified as commercial"), "Community pages must require affirmative non-endorsement and relationship disclosures on every page");
+  check(reference.includes("publicly accessible") && reference.includes("does not grant republication rights") && reference.includes("explicit, recorded authorization"), "Access-controlled community content must require explicit author and community-owner authorization");
+  check(reference.includes("fixture-validated only — not yet exercised against a live operation"), "Community specialist path must carry the fixture-only dogfood caveat");
+  check(router.includes("Owned pages synthesizing forums, Q&A, or other community sources: `references/community-source-pages.md`"), "SKILL.md must progressively route community-source publishing");
 });
 
 section("slice 2 GBP evidence contracts", () => {

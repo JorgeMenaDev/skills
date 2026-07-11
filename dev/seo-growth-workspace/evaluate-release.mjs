@@ -483,6 +483,7 @@ function evaluate() {
     "references/evidence-conventions.md",
     "references/commercial-integrity.md",
     "references/page-evidence.md",
+    "references/community-source-pages.md",
     "references/monthly-reporting.md",
     "references/ai-search-visibility.md",
     "references/data-tools.md",
