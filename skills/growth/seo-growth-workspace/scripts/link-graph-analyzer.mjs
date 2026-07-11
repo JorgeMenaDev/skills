@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { readFile } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 
 const LIMITS = { inputBytes: 5_000_000, pages: 50_000, links: 500_000 };
 const DAMPING = 0.85;
@@ -99,6 +99,13 @@ const validate = (input) => {
     if (urls.has(page.url)) throw new Error(`Duplicate normalized page URL: ${page.url}.`);
     urls.add(page.url);
   }
+  if (input.siteOrigins !== undefined && (!Array.isArray(input.siteOrigins) || input.siteOrigins.some((value) => typeof value !== "string"))) {
+    throw new Error("siteOrigins[] must be an array of absolute URL prefixes when supplied.");
+  }
+  const siteOrigins = input.siteOrigins === undefined
+    ? [...new Set(pages.map((page) => new URL(page.url).origin))].sort()
+    : [...new Set(input.siteOrigins.map((value, index) => normalizeUrl(value, `siteOrigins[${index}]`)))].sort();
+  if (!siteOrigins.length) throw new Error("Internal scope requires siteOrigins[] or at least one pages[] origin.");
   const links = input.links.map((link, index) => {
     if (!link || Array.isArray(link) || typeof link !== "object") throw new Error(`links[${index}] must be an object.`);
     const rel = link.rel === undefined ? [] : link.rel;
@@ -112,19 +119,30 @@ const validate = (input) => {
       rel: [...new Set(rel.map((item) => item.trim().toLowerCase()).filter(Boolean))].sort(),
     };
   });
-  return { coverage, pages: pages.sort((a, b) => a.url.localeCompare(b.url)), links };
+  return { coverage, pages: pages.sort((a, b) => a.url.localeCompare(b.url)), links, siteOrigins };
 };
 
-const classify = ({ pages, links }) => {
+const classify = ({ pages, links, siteOrigins }) => {
   const byUrl = new Map(pages.map((page) => [page.url, page]));
   const eligible = (page) => page && page.status >= 200 && page.status < 300 && page.indexable && (!page.canonicalUrl || page.canonicalUrl === page.url);
+  const internal = (target) => siteOrigins.some((prefix) => {
+    const targetUrl = new URL(target);
+    const prefixUrl = new URL(prefix);
+    if (targetUrl.origin !== prefixUrl.origin) return false;
+    if (prefixUrl.pathname === "/") return true;
+    return targetUrl.pathname === prefixUrl.pathname || targetUrl.pathname.startsWith(`${prefixUrl.pathname.replace(/\/$/, "")}/`);
+  });
   return links.map((link) => {
     const sourcePage = byUrl.get(link.source);
     const suppliedTarget = byUrl.get(link.target);
+    const external = !internal(link.target);
+    const selfLink = link.source === link.target;
     let resolvedTarget = link.target;
     const reasons = [];
     if (!sourcePage) reasons.push("source absent from pages[]");
-    if (!suppliedTarget) reasons.push("broken target: absent from pages[]");
+    if (external) reasons.push("external");
+    else if (!suppliedTarget) reasons.push("broken target: internal target absent from pages[]");
+    if (selfLink) reasons.push("self-link");
     if (suppliedTarget?.status >= 300 && suppliedTarget.status < 400) {
       reasons.push(`redirected target (${suppliedTarget.status})`);
       if (suppliedTarget.finalUrl) resolvedTarget = suppliedTarget.finalUrl;
@@ -140,8 +158,8 @@ const classify = ({ pages, links }) => {
     if (sourcePage && !eligible(sourcePage)) reasons.push("ineligible source");
     if (finalPage && !eligible(finalPage)) reasons.push("ineligible resolved target");
     if (resolvedTarget !== link.target && !finalPage) reasons.push("resolved target absent from pages[]");
-    const traversable = Boolean(eligible(sourcePage) && eligible(finalPage) && !link.rel.includes("nofollow"));
-    return { ...link, resolvedTarget, traversable, handling: reasons.length ? reasons.join("; ") : "included unchanged" };
+    const traversable = Boolean(!external && !selfLink && eligible(sourcePage) && eligible(finalPage) && !link.rel.includes("nofollow"));
+    return { ...link, resolvedTarget, traversable, classification: selfLink ? "self-link" : external ? "external" : "internal", handling: reasons.length ? reasons.join("; ") : "included unchanged" };
   });
 };
 
@@ -187,9 +205,9 @@ const graph = (pages, edges) => {
 };
 
 const neutralize = (value) => {
-  let output = String(value ?? "").replace(/\r?\n/g, " ");
+  let output = String(value ?? "").replace(/\r\n?|\n/g, " ");
   if (/^\s*[=+\-@]/.test(output)) output = `'${output}`;
-  return output.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\|/g, "\\|");
+  return output.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/([\[\]()])/g, "\\$1").replace(/\|/g, "\\|");
 };
 
 const table = (headers, rows, empty = "_None._") => rows.length ? [
@@ -214,10 +232,10 @@ const report = (input, stamp) => {
   });
   const anchorCounts = new Map();
   for (const edge of edges) {
-    const key = JSON.stringify([edge.source, edge.target, edge.anchor, edge.placement, edge.rel.join(" ")]);
+    const key = JSON.stringify([edge.source, edge.target, edge.anchor, edge.placement, edge.rel.join(" "), edge.classification]);
     anchorCounts.set(key, (anchorCounts.get(key) ?? 0) + 1);
   }
-  const anchors = [...anchorCounts].map(([key, count]) => [...JSON.parse(key), count]).sort((a, b) => a.slice(0, 5).join("\0").localeCompare(b.slice(0, 5).join("\0")));
+  const anchors = [...anchorCounts].map(([key, count]) => [...JSON.parse(key), count]).sort((a, b) => a.slice(0, 6).join("\0").localeCompare(b.slice(0, 6).join("\0")));
   const lines = [
     "# Offline internal-link graph report",
     "",
@@ -228,9 +246,10 @@ const report = (input, stamp) => {
     `- Coverage note: ${neutralize(input.coverage.note || "—")}`,
     `- Orphan result: ${orphanStatus}`,
     `- Records: ${input.pages.length} pages; ${input.links.length} link edges (duplicates preserved)` ,
+    `- Internal scope prefixes: ${input.siteOrigins.map(neutralize).join(", ")}`,
     `- Entry points: ${state.entryPoints.length ? state.entryPoints.map(neutralize).join(", ") : "none declared"}`,
     `- Declared money pages: ${state.moneyPages.length ? state.moneyPages.map(neutralize).join(", ") : "none declared"}`,
-    "- Policy: click depth and authority use followed edges between supplied, indexable 2xx self-canonical pages; redirects resolve only through declared finalUrl; canonicalized targets resolve only through declared canonicalUrl; nofollow edges remain inventoried but are excluded; noindex pages remain reported as edge cases but are excluded from the graph.",
+    "- Policy: click depth and authority use followed non-self edges between supplied, indexable 2xx self-canonical pages; self-links and external links remain inventoried but are excluded; redirects resolve only through declared finalUrl; canonicalized targets resolve only through declared canonicalUrl; nofollow edges remain inventoried but are excluded; noindex pages remain reported as edge cases but are excluded from the graph.",
     `- heuristic internal authority: damping ${DAMPING}; fixed iterations ${ITERATIONS} (minimum ${ITERATIONS}, maximum ${ITERATIONS}); duplicate followed edges retain weight; not Google PageRank and not a ranking prediction.`,
     "",
     "## Page evidence",
@@ -243,7 +262,7 @@ const report = (input, stamp) => {
     "",
     "## Anchor inventory",
     "",
-    table(["Source", "Target", "Anchor", "Placement", "Rel", "Occurrences"], anchors),
+    table(["Source", "Target", "Anchor", "Placement", "Rel", "Classification", "Occurrences"], anchors),
     "",
     "## Audit-matrix evidence mapping",
     "",
@@ -267,8 +286,9 @@ try {
     const inputPath = option("--input");
     const stamp = option("--stamp");
     if (!inputPath) throw new Error(`--input is required.\n\n${usage()}`);
+    const file = await stat(inputPath);
+    if (file.size > LIMITS.inputBytes) throw new Error(`Input is ${file.size} bytes, above the ${LIMITS.inputBytes}-byte limit; split or narrow the approved export.`);
     const bytes = await readFile(inputPath);
-    if (bytes.byteLength > LIMITS.inputBytes) throw new Error(`Input is ${bytes.byteLength} bytes, above the ${LIMITS.inputBytes}-byte limit; split or narrow the approved export.`);
     let parsed;
     try {
       parsed = JSON.parse(bytes.toString("utf-8"));
