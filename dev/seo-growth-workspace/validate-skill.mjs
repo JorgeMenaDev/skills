@@ -72,6 +72,7 @@ const requiredFiles = [
   "references/conversion-cta.md",
   "references/local-seo-gbp.md",
   "references/backlinks-entity.md",
+  "references/image-rights.md",
   "references/evidence-conventions.md",
   "references/commercial-integrity.md",
   "references/page-evidence.md",
@@ -428,6 +429,25 @@ section("slice 4 e-commerce decision contract", () => {
   check(classifier.includes("Ecommerce / marketplace") && classifier.includes("load `references/ecommerce-seo.md` for commerce decisions"), "Site-type classifier must route e-commerce targets to the commerce reference");
   check(router.includes("E-commerce and marketplace prioritization, page-type, collection, facet/variant/inventory, and commerce-truth decisions: `references/ecommerce-seo.md`"), "SKILL.md must progressively route e-commerce decisions");
   check(ecommerceProfile?.siteType === "ecommerce" && ecommerceProfile?.expectedReference === "references/ecommerce-seo.md" && ecommerceProfile?.dogfoodStatus === "fixture-validated only — not yet exercised against a live operation", "Release fixtures must include a synthetic e-commerce classifier route and fixture-only caveat");
+});
+
+section("slice 5 rights-gated authority contracts", () => {
+  const backlinks = readFileSync(path.join(skillRoot, "references/backlinks-entity.md"), "utf-8");
+  const rights = readFileSync(path.join(skillRoot, "references/image-rights.md"), "utf-8");
+  const bootstrap = readFileSync(path.join(skillRoot, "scripts/bootstrap-seo-workspace.mjs"), "utf-8");
+  const router = readFileSync(path.join(skillRoot, "SKILL.md"), "utf-8");
+  const funnelFields = ["Lifecycle", "Query", "Market/geo", "Source URL", "Qualification", "Reply disposition", "Paid request", "Amount", "Link live", "Indexable", "30-day check", "90-day check", "Referral", "Qualified conversion", "Cost", "Limitations"];
+  const reproducibilityFields = ["Query", "Market/geo", "Source URL", "Qualification result", "Limitations", "Date"];
+
+  check(bootstrap.includes("discovered → qualified → contacted → replied → won → live/verified → lost/expired") && funnelFields.every((field) => bootstrap.includes(field)), "Authority funnel scaffold must contain the complete lifecycle and v4 fields");
+  check(reproducibilityFields.every((field) => backlinks.includes(`**${field}**`)), "Listicle prospecting must require every reproducibility field");
+  check(backlinks.includes("declare a prospect cap and a review threshold") && backlinks.includes("explicitly approves the next bounded batch"), "Manual-first outreach must stop for review before another bounded batch");
+  check(rights.includes("No image distribution and no rights-based outreach/contact may start unless the asset row is **green: sufficient, current ownership/license evidence**"), "The asset-rights master must structurally gate distribution and contact on green evidence");
+  check(rights.includes("Reverse-image matches are **discovery leads only**") && rights.includes("a match never proves") && rights.includes("Permitted unattributed use generates no demand"), "Reverse-image matches must remain discovery leads and permitted unattributed use must generate no demand");
+  check(rights.includes("Current-check stop gate") && rights.includes("no frozen platform-license table"), "Volatile platform terms must use a per-asset/run current-check stop gate without a frozen table");
+  check(rights.includes("Legal enforcement escalates out") && rights.includes("never sends DMCA notices, takedown demands, or legal threats"), "Legal enforcement must escalate outside the skill");
+  check(rights.includes("Fixture-validated only — not yet exercised against a live operation") && rights.includes("applies only to the live image-distribution/outreach play"), "Only the live image distribution play must carry the fixture-only caveat");
+  check(router.includes("Image distribution, reuse discovery, and rights-gated attribution outreach: `references/image-rights.md`"), "SKILL.md must progressively route image-rights work");
 });
 
 section("slice 2 GBP evidence contracts", () => {

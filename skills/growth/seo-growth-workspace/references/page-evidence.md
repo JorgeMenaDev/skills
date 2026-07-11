@@ -42,6 +42,8 @@ For every material asset, record its asset ID, source and stable URL/path, creat
 
 At publish time, snapshot the material rights values approved for that revision from `SITE_WORKSPACE/backlinks/asset-rights.md`: license and version, attribution duty and permitted destination, model/property/trademark release and consent state, checked-at date, and exceptions/caveats, plus the consulted master-row version/hash. The master answers whether the asset may be used now; the immutable page snapshot records what this revision was approved under. A later master change requires a recheck before future use and never rewrites an older snapshot.
 
+For image distribution or rights-based outreach, route the current master row through `references/image-rights.md`; the page snapshot never substitutes for that current-state gate.
+
 ## Publish and delivery gate
 
 A named human records approval, decision, date, and notes for the exact revision. Publication fails if applicable evidence is absent, a material claim lacks actual source support, information gain is missing, voice or asset authorization is unresolved, or approval is absent.
