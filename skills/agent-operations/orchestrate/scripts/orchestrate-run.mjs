@@ -331,6 +331,15 @@ const validate = (run, previous = null) => {
       if (oldGate.status !== gate.status && !(oldGate.status === "open" && ["discharged", "authorized"].includes(gate.status))) errors.push(`${id}: illegal deferred gate transition ${oldGate.status} -> ${gate.status}`);
     }
     for (const [id, gate] of currentGates) if (!previousGates.has(id) && gate.status !== "open") errors.push(`${id}: a new deferred gate must begin open`);
+    const previousCheckpoints = Array.isArray(previous.checkpoints) ? previous.checkpoints : [];
+    const currentCheckpoints = Array.isArray(run.checkpoints) ? run.checkpoints : [];
+    if (currentCheckpoints.length < previousCheckpoints.length) errors.push("checkpoint history is append-only");
+    else for (let index = 0; index < previousCheckpoints.length; index += 1) {
+      if (serialize(previousCheckpoints[index]) !== serialize(currentCheckpoints[index])) {
+        errors.push("checkpoint records are immutable");
+        break;
+      }
+    }
   }
   return [...new Set(errors)];
 };
@@ -945,7 +954,7 @@ if (command === "adopt") {
   run.effects = run.effects.map((effect) => ["observed", "cancelled"].includes(effect.status) ? effect : { ...effect, status: "unknown", reason: `adopted with unproved status ${effect.status}; outcome needs a ruling` });
   run.resources = run.resources.map((resource) => resource.status === "acquired" && (!resource.ownerSlice || !resource.externalIdentity) ? { ...resource, status: "unknown" } : resource);
   const downgraded = new Set();
-  for (let pass = 0; pass < 4; pass += 1) {
+  for (let pass = 0; pass <= run.slices.length; pass += 1) {
     const errors = validate(run);
     let changed = false;
     for (const slice of run.slices) {

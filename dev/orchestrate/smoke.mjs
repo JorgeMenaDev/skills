@@ -115,6 +115,11 @@ writeFileSync(badCheckpointsPath, JSON.stringify(badCheckpoints, null, 2));
 const badCheckpointsInit = helper(["init", "--dir", join(root, "run-badck"), "--spec", badCheckpointsPath]);
 check("non-array checkpoints fails closed", badCheckpointsInit.status !== 0 && badCheckpointsInit.stderr.includes("checkpoints must be an array"), badCheckpointsInit.stderr);
 
+// checkpoint history is append-only and immutable
+writeFileSync(gatePatch, JSON.stringify({ checkpoints: [] }));
+const wipeCheckpoints = helper(["update", "--run", join(startDir, "run.json"), "--expected-revision", String(readRun(startDir).revision), "--patch", gatePatch, ...asConductor]);
+check("checkpoint history cannot be erased by update", wipeCheckpoints.status !== 0 && (wipeCheckpoints.stderr + wipeCheckpoints.stdout).includes("append-only"), wipeCheckpoints.stderr);
+
 // adopt: progressed prose state without ledger proof downgrades to UNKNOWN
 const adoptRepo = fixtureRepo("adopt-repo");
 const adoptSpec = JSON.parse(readFileSync(exampleSpec, "utf8"));
@@ -153,6 +158,76 @@ const noRepoSpecPath = join(root, "adopt-norepo-spec.json");
 writeFileSync(noRepoSpecPath, JSON.stringify(noRepoSpec, null, 2));
 const adoptMissing = helper(["adopt", "--dir", join(root, "run-adopt-norepo"), "--spec", noRepoSpecPath]);
 check("adopt requires a live git repository", adoptMissing.status !== 0 && adoptMissing.stderr.includes("not a git repository"), adoptMissing.stderr || adoptMissing.stdout);
+
+// adopt reaches a fixed point on a downgrade cascade deeper than any fixed pass cap:
+// slice 0 claims TERMINAL/merged with no merge effect (downgrades on pass 1); slices
+// 1..5 are individually valid TERMINAL slices whose start edge only breaks after the
+// predecessor's downgrade, so each pass invalidates exactly one more slice.
+const chainRepo = fixtureRepo("chain-repo");
+const chainDepth = 6;
+const chainSpec = {
+  runId: "adopt-chain",
+  title: "Deep cascade adoption",
+  mode: "autopilot",
+  repo: { path: chainRepo, targetBranch: "main", baseSha: head },
+  conductor: { id: "conductor-example", epoch: 1 },
+  parentCriteria: [],
+  slices: [],
+  edges: [],
+  resources: [],
+  effects: [],
+  runtimeObservations: [],
+  knownLessons: [],
+};
+for (let index = 0; index < chainDepth; index += 1) {
+  const id = `chain-${index}`;
+  const attemptKey = `adopt-chain:${id}:1`;
+  chainSpec.slices.push({
+    id,
+    lane: "dev-subagent",
+    executor: { constraints: [], verified: { executor: "native", vendor: "unknown", model: "unknown", effort: "unknown" }, fallback: [] },
+    state: "TERMINAL",
+    outcome: "merged",
+    terminalProof: `PR #${index}`,
+    attempt: 1,
+    criteria: [{ id: `${id}-done`, text: "done", status: "passed", evidence: ["log"] }],
+    handoff: { commit: "a".repeat(40) },
+    reviews: { conductor: { verdict: "pass" }, independent: { verdict: "pass" }, correctionCount: 0, interventions: { scope: 0, defect: 0, safety: 0, decision: 0 } },
+  });
+  chainSpec.effects.push({
+    id: `dispatch:${attemptKey}`,
+    type: "dispatch",
+    sliceId: id,
+    status: "observed",
+    ownerEpoch: 1,
+    attemptKey,
+    reconcile: { kind: "runtime", locator: `session-${index}`, expected: attemptKey },
+    observation: { identity: `session-${index}` },
+  });
+  if (index > 0) {
+    chainSpec.edges.push({ id: `chain-${index - 1}-before-${index}`, type: "start", source: `chain-${index - 1}`, target: id, gatedTransition: "ACTIVE", reason: "chain", cleared: false, evidence: [] });
+    chainSpec.effects.push({
+      id: `merge:${attemptKey}`,
+      type: "merge",
+      sliceId: id,
+      status: "observed",
+      ownerEpoch: 1,
+      attemptKey,
+      reconcile: { kind: "merge", locator: "origin/main", expected: `${"a".repeat(39)}${index}`, sourceKind: "git_ancestor" },
+      observation: { identity: `${"b".repeat(39)}${index}` },
+    });
+  }
+}
+const chainSpecPath = join(root, "adopt-chain-spec.json");
+writeFileSync(chainSpecPath, JSON.stringify(chainSpec, null, 2));
+const chainDir = join(root, "run-adopt-chain");
+const adoptChain = helper(["adopt", "--dir", chainDir, "--spec", chainSpecPath]);
+const chainRun = adoptChain.status === 0 ? readRun(chainDir) : null;
+check(
+  "adopt downgrades a deep cascade to a valid fixed point",
+  adoptChain.status === 0 && chainRun.slices.every(({ state }) => state === "UNKNOWN"),
+  adoptChain.stderr || adoptChain.stdout,
+);
 
 // regression: init + inspect on the pristine example spec still work
 const initDir = join(root, "run-init");
