@@ -4,6 +4,7 @@ import { readFile, stat } from "node:fs/promises";
 
 const LIMITS = { inputBytes: 5_000_000, pages: 50_000, links: 500_000, siteOrigins: 200 };
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
+const byCodePoint = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
 const DAMPING = 0.85;
 const ITERATIONS = 20;
 
@@ -51,7 +52,7 @@ const normalizeUrl = (value, field) => {
   url.hash = "";
   url.hostname = url.hostname.toLowerCase();
   if ((url.protocol === "http:" && url.port === "80") || (url.protocol === "https:" && url.port === "443")) url.port = "";
-  const params = [...url.searchParams.entries()].sort(([ak, av], [bk, bv]) => ak.localeCompare(bk) || av.localeCompare(bv));
+  const params = [...url.searchParams.entries()].sort(([ak, av], [bk, bv]) => byCodePoint(ak, bk) || byCodePoint(av, bv));
   url.search = "";
   for (const [key, item] of params) url.searchParams.append(key, item);
   if (url.pathname !== "/") url.pathname = url.pathname.replace(/\/+$/, "");
@@ -137,7 +138,7 @@ const validate = (input) => {
       rel: [...new Set(rel.map((item) => item.trim().toLowerCase()).filter(Boolean))].sort(),
     };
   });
-  return { coverage, pages: pages.sort((a, b) => a.url.localeCompare(b.url)), links, siteOrigins };
+  return { coverage, pages: pages.sort((a, b) => byCodePoint(a.url, b.url)), links, siteOrigins };
 };
 
 const buildScope = (siteOrigins) => {
@@ -277,7 +278,7 @@ const report = (input, stamp) => {
     const key = JSON.stringify([edge.source, edge.target, edge.anchor, edge.placement, edge.rel.join(" "), edge.classification]);
     anchorCounts.set(key, (anchorCounts.get(key) ?? 0) + 1);
   }
-  const anchors = [...anchorCounts].map(([key, count]) => [...JSON.parse(key), count]).sort((a, b) => a.slice(0, 6).join("\0").localeCompare(b.slice(0, 6).join("\0")));
+  const anchors = [...anchorCounts].map(([key, count]) => [...JSON.parse(key), count]).sort((a, b) => byCodePoint(a.slice(0, 6).join("\0"), b.slice(0, 6).join("\0")));
   const lines = [
     "# Offline internal-link graph report",
     "",
