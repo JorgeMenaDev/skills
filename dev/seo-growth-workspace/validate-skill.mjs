@@ -303,6 +303,8 @@ section("slice 3 AI observation and portrayal contracts", () => {
     "Declared repeat count",
   ];
   const portrayalFields = [
+    "Citation state",
+    "Cited source",
     "Concise portrayal sentence",
     "Factual accuracy",
     "Missing material qualifier",
@@ -314,12 +316,17 @@ section("slice 3 AI observation and portrayal contracts", () => {
     "Action route",
     "Route reason",
   ];
+  const gapFields = ["Opportunity class", "Rationale", "Action route", "Route reason"];
 
   check(observationFields.every((field) => reference.includes(field)), "AI observation rows must carry platform/model, prompt, verbatim query, locale/personalization/device/account state, and repeat context");
   check(["**Mention**", "**Recommendation**", "**Citation**"].every((semantic) => reference.includes(semantic)), "AI observation contract must distinguish mention, recommendation, and citation per row");
   check(reference.includes("one row per answer run") && reference.includes("x of y completed runs") && reference.includes("never rankings"), "AI observations must be dated reproducible samples with recurrence bounded to the declared sample");
+  check(gapFields.every((field) => reference.includes(field)), "AI source-page gaps must carry an opportunity class, rationale, action route, and route reason");
+  check(reference.includes("| Opportunity class | Rationale | Action route | Route reason |"), "AI source-page gap rows must include classification and bounded routing as separate fields");
+  check(reference.includes("opportunity class is the inference; the action route is its bounded consequence") && reference.includes("Every material gap gets exactly one action route"), "Every material AI source-page gap must route exactly once as a bounded consequence of its classification");
   check(portrayalFields.every((field) => reference.includes(field)), "AI portrayal records must separate factual portrayal, sentiment, buyer stage, and bounded action routing");
-  check(reference.includes("Portrayal is not sentiment") && reference.includes("exactly one existing destination"), "Portrayal must differ from sentiment and every finding must have exactly one route");
+  check(reference.includes("| Brand mention | Recommendation | Citation state | Cited source |") && !reference.includes("Citation + cited source"), "AI portrayal rows must keep citation state and cited source as independent fields");
+  check(reference.includes("Portrayal is not sentiment") && reference.includes("Every material gap and every portrayal finding routes to exactly one existing destination"), "Portrayal must differ from sentiment and gaps and portrayal findings must each have exactly one route");
   const routes = ["`content backlog`", "`backlink work-log`", "`commercial disclosure review`", "`no action`"];
   check(routes.every((route) => reference.includes(route)), "AI portrayal routing must include the four bounded destinations");
   check(reference.includes(".seo/backlog.md") && reference.includes(".seo/backlinks/work-log.md") && reference.includes("commercial-integrity.md"), "AI findings must route only to existing backlog, backlink, and commercial-review homes");

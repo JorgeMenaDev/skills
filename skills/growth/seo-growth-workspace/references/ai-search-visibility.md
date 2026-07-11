@@ -46,21 +46,21 @@ Visibility observations alone cannot establish causal AI selection, Map Pack, ci
 
 Normalize repeated domains/pages only inside the declared observation sample. A source-page gap is an interpretation linked to observation rows, not an assistant ranking or a claim about exact query fan-out.
 
-| Gap ID | Observation IDs | Platform + model/version | Prompt ID + verbatim query | Buyer stage | Locale + location/account/personalization/device state | Cited domain | Cited URL | Source type | Brand mentioned | Competitors mentioned | Direct citation | Recurrence in declared sample | Observation period | Opportunity class | Rationale | Evidence owner | Next/recheck date | Limitations |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `GAP-001` | run IDs | transcribed identifiers | stable ID + exact input | shared stage or `Unknown` | row-context summary | domain | public URL | owned/independent/editorial/commercial/other | observed state | observed names | yes/no/not visible | `x of y` within named sample | dates | one class below | evidence-based reason | person/role | date | access and sample limits |
+| Gap ID | Observation IDs | Platform + model/version | Prompt ID + verbatim query | Buyer stage | Locale + location/account/personalization/device state | Cited domain | Cited URL | Source type | Brand mentioned | Competitors mentioned | Direct citation | Recurrence in declared sample | Observation period | Opportunity class | Rationale | Action route | Route reason | Evidence owner | Next/recheck date | Limitations |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `GAP-001` | run IDs | transcribed identifiers | stable ID + exact input | shared stage or `Unknown` | row-context summary | domain | public URL | owned/independent/editorial/commercial/other | observed state | observed names | yes/no/not visible | `x of y` within named sample | dates | one class below | evidence-based reason | exactly one route below | why this is the sole route | person/role | date | access and sample limits |
 
-Choose exactly one opportunity class for every material gap: `owned-content deficiency`, `legitimate editorial/earned-media opportunity`, `commercial relationship requiring disclosure/link review`, `irrelevant`, `unattainable`, or `insufficient evidence`. The class is an inference; it does not authorize contact or publication.
+Choose exactly one opportunity class for every material gap: `owned-content deficiency`, `legitimate editorial/earned-media opportunity`, `commercial relationship requiring disclosure/link review`, `irrelevant`, `unattainable`, or `insufficient evidence`. The opportunity class is the inference; the action route is its bounded consequence. Every material gap gets exactly one action route from the same destination set below. The class alone does not authorize contact or publication.
 
 ### Factual-accuracy and portrayal record
 
 Create a distinct portrayal record when the answer describes the business, even if the observation also contains a recommendation. Portrayal means what the answer asserts or implies about the business; sentiment means an optional positive/neutral/negative judgement under a declared rubric. Portrayal is not sentiment, and favourable sentiment does not make a portrayal accurate.
 
-| Portrayal ID | Observation ID | Brand mention | Recommendation | Citation + cited source | Concise portrayal sentence | Factual accuracy | Supporting/contradicting evidence | Missing material qualifier | Outdated information | Unsupported claim | Entity confusion | Sentiment | Sentiment rubric | Buyer stage | Action route | Route reason | Owner | Next/recheck date | Limitations |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `POR-001` | run ID | separate observed field | separate observed field | URL + claim association | faithful concise rendering | accurate/inaccurate/mixed/insufficient evidence | public URL, record, or artifact | exact omission or `none observed` | exact issue or `none observed` | exact issue or `none observed` | confused entity or `none observed` | optional label or `not assessed` | required if assessed | shared stage or `Unknown` | exactly one route below | why this is the sole route | person/role | date | access and sample limits |
+| Portrayal ID | Observation ID | Brand mention | Recommendation | Citation state | Cited source | Concise portrayal sentence | Factual accuracy | Supporting/contradicting evidence | Missing material qualifier | Outdated information | Unsupported claim | Entity confusion | Sentiment | Sentiment rubric | Buyer stage | Action route | Route reason | Owner | Next/recheck date | Limitations |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `POR-001` | run ID | separate observed field | separate observed field | observed yes/no/not visible | URL + which claim it supports, or `none observed` | faithful concise rendering | accurate/inaccurate/mixed/insufficient evidence | public URL, record, or artifact | exact omission or `none observed` | exact issue or `none observed` | exact issue or `none observed` | confused entity or `none observed` | optional label or `not assessed` | required if assessed | shared stage or `Unknown` | exactly one route below | why this is the sole route | person/role | date | access and sample limits |
 
-Every portrayal finding routes to exactly one existing destination:
+Every material gap and every portrayal finding routes to exactly one existing destination:
 
 1. `content backlog` → `.seo/backlog.md` for an owned-content deficiency or factual correction.
 2. `backlink work-log` → `.seo/backlinks/work-log.md` for a legitimate, manually reviewed editorial/earned-media opportunity.
@@ -97,7 +97,7 @@ Re-run the maintained prompt set monthly or at the declared cadence. Log each ru
 
 - Crawler allow/block decision recorded in `.seo/strategy.md`.
 - Dated observation rows and maintained prompt set saved to `.seo/reports/ai-visibility-YYYY-MM-DD.md`.
-- Every material source gap has one opportunity class; every portrayal finding has exactly one bounded action route.
+- Every material source gap has one opportunity class and exactly one bounded action route; every portrayal finding also has exactly one bounded action route.
 - Extractability/source-footprint findings are filed into existing tickets or explicitly given `no action` with a reason.
 - Assistant-referral tracking exists in analytics, or the blocker is documented with an owner.
 
