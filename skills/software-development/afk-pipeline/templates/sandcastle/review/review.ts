@@ -33,13 +33,15 @@ const SANDCASTLE_SANDBOX = process.env.SANDCASTLE_SANDBOX ?? "none";
 const CODEX_CLOUD_HOME = path.join(process.env.RUNNER_TEMP ?? OUTPUT_DIR, "codex-home");
 
 function out(kv: Record<string, string>) {
-  if (!process.env.GITHUB_OUTPUT) return;
-  fs.appendFileSync(
-    process.env.GITHUB_OUTPUT,
+  const body =
     Object.entries(kv)
       .map(([k, v]) => `${k}=${v}`)
-      .join("\n") + "\n"
-  );
+      .join("\n") + "\n";
+  if (process.env.GITHUB_OUTPUT) {
+    fs.appendFileSync(process.env.GITHUB_OUTPUT, body);
+  } else {
+    fs.writeFileSync(path.join(OUTPUT_DIR, "review-result.env"), body);
+  }
 }
 
 function summary(text: string) {
@@ -69,10 +71,10 @@ const engine =
 if (!onPath(engine)) {
   const hint =
     engine === "codex"
-      ? "Install `codex` on this runner, or explicitly override with `review-engine: claude` in the brief's `### Pipeline` section and retrigger."
-      : "Install `claude` on this runner and retrigger.";
+      ? "Install `codex` in the trusted review image, or explicitly override with `review-engine: claude` in the brief's `### Pipeline` section and retrigger."
+      : "Install `claude` in the trusted review image and retrigger.";
   summary(
-    `### 🔍 Second-model review\n\n**Skipped: \`${engine}\` is not on the runner host's PATH — no review ran.** No engine fallback by design: a second-model review must be a different vendor than the implementer. ${hint}`
+    `### 🔍 Second-model review\n\n**Skipped: \`${engine}\` is not on the trusted review image's PATH — no review ran.** No engine fallback by design: a second-model review must be a different vendor than the implementer. ${hint}`
   );
   finish("skipped_no_engine", "none", false);
 }
@@ -83,6 +85,10 @@ const childEnv = { ...process.env };
 delete childEnv.CODEX_AUTH_B64;
 delete childEnv.GH_TOKEN;
 delete childEnv.GITHUB_TOKEN;
+delete childEnv.GITHUB_OUTPUT;
+delete childEnv.GITHUB_ENV;
+delete childEnv.GITHUB_PATH;
+delete childEnv.GITHUB_STEP_SUMMARY;
 delete childEnv.VERCEL_SANDBOX_TOKEN;
 delete childEnv.PLAN_RECAP_TOKEN;
 delete childEnv.PLAN_RECAP_APP_URL;
@@ -102,16 +108,27 @@ if (engine === "codex" && SANDCASTLE_SANDBOX !== "docker") {
     finish("skipped_missing_auth", "codex", false);
   }
 }
+if (engine === "claude" && !childEnv.CLAUDE_CODE_OAUTH_TOKEN) {
+  summary(
+    "### 🔍 Second-model review\n\n**Skipped: Claude auth was not available, so no review ran.** Set `CLAUDE_CODE_OAUTH_TOKEN` or use a provisioned Codex review; advisory review outages never fail the pipeline."
+  );
+  finish("skipped_missing_auth", "claude", false);
+}
 
 // --- run the review ----------------------------------------------------------
-// Ensure the base ref exists for the diff (single-branch checkouts miss it).
+// The trusted workflow host fetches the base ref before mounting this checkout
+// read-only. Keep a fallback for direct/local invocation only.
 try {
-  execSync(
-    `git fetch --no-tags origin ${BASE_BRANCH}:refs/remotes/origin/${BASE_BRANCH}`,
-    { stdio: "ignore" }
-  );
+  execSync(`git rev-parse --verify origin/${BASE_BRANCH}`, { stdio: "ignore" });
 } catch {
-  /* already present */
+  try {
+    execSync(
+      `git fetch --no-tags origin ${BASE_BRANCH}:refs/remotes/origin/${BASE_BRANCH}`,
+      { stdio: "ignore" }
+    );
+  } catch {
+    /* the review command will report a missing base honestly */
+  }
 }
 
 const reportPath = path.join(OUTPUT_DIR, "review-report.json");

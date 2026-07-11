@@ -24,6 +24,8 @@ const RECORDING_MODE = process.env.RECORDING_MODE ?? "off";
 const RECORDING_HOST_PATH = path.join(OUTPUT_DIR, "recording", `issue-${ISSUE_NUMBER}.webm`);
 const RECORDING_PATH = process.env.SANDCASTLE_SANDBOX === "vercel"
   ? `/vercel/sandbox/workspace/.sandcastle/.sandcastle-artifacts/issue-${ISSUE_NUMBER}/interaction.webm`
+  : process.env.SANDCASTLE_SANDBOX === "docker-cloud"
+    ? `.sandcastle/.sandcastle-artifacts/issue-${ISSUE_NUMBER}/interaction.webm`
   : RECORDING_HOST_PATH;
 
 const Verdict = z.object({

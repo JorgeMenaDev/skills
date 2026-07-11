@@ -18,8 +18,9 @@ env:
 
 jobs:
   implement:
-    # Three lanes, one pipeline: `agent:implement` → cloud-hosted VM (noSandbox),
-    # `agent:implement-local` → self-hosted Mac mini (agent inside Docker),
+    # Three lanes, one pipeline: `agent:implement` → cloud-hosted VM with the
+    # agent inside per-phase Docker, `agent:implement-local` → self-hosted Mac
+    # mini with the agent inside per-phase Docker,
     # `agent:implement-sandbox` → cloud-hosted runner + Vercel Sandbox microVM
     # (the AGENT runs inside via sandcastle's isolated provider — workspace
     # syncs in/out by git bundle/format-patch, so every workflow step here
@@ -57,9 +58,10 @@ jobs:
       ISSUE_BODY: ${{ github.event.issue.body }}
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       GH_REPO: ${{ github.repository }}
-      SANDCASTLE_SANDBOX: ${{ github.event.label.name == 'agent:implement-local' && 'docker' || (github.event.label.name == 'agent:implement-sandbox' && 'vercel' || 'none') }}
-      # Sandbox lane auth is present only on the Vercel lane. Runtime scrubs
-      # workflow-only credentials before any noSandbox agent child is launched.
+      SANDCASTLE_SANDBOX: ${{ github.event.label.name == 'agent:implement-local' && 'docker' || (github.event.label.name == 'agent:implement-sandbox' && 'vercel' || 'docker-cloud') }}
+      # Sandbox lane auth is present only on the Vercel lane. Cloud and local
+      # agents run in per-phase Docker containers; deterministic orchestration
+      # and repository credentials remain host-side.
       # Team/project IDs are baked into the generated provider.
       VERCEL_SANDBOX_TOKEN: ${{ github.event.label.name == 'agent:implement-sandbox' && secrets.VERCEL_SANDBOX_TOKEN || '' }}
 
@@ -212,66 +214,15 @@ jobs:
             echo "$1" >&2
             exit 1
           }
-          [ "$SANDCASTLE_SANDBOX" = "none" ] || fail "engine: cursor is cloud-lane only (v1) — local Docker images and the microVM bootstrap lack the Cursor CLI"
+          [ "$SANDCASTLE_SANDBOX" = "docker-cloud" ] || fail "engine: cursor is cloud-lane only (v1) — use agent:implement; local Docker and Vercel Sandbox are unsupported"
           [ -n "$CURSOR_API_KEY" ] || fail "Cursor preflight failed: CURSOR_API_KEY repo secret is missing for engine=cursor."
 
       - name: Install dependencies
         if: steps.preflight.outputs.refused != 'true'
         run: bun install --frozen-lockfile
 
-      - name: Install Claude Code (hosted lanes needing host Claude)
-        if: steps.preflight.outputs.refused != 'true' && env.SANDCASTLE_SANDBOX != 'docker' && (env.SANDCASTLE_SANDBOX == 'none' || steps.flags.outputs.review_engine == 'claude')
-        run: |
-          set -euo pipefail
-          npm install -g --include=optional @anthropic-ai/claude-code
-          node "$(npm root -g)/@anthropic-ai/claude-code/install.cjs"
-          claude --version
-
-      - name: Install Codex CLI + implementation auth (hosted lanes needing Codex)
-        if: steps.preflight.outputs.refused != 'true' && (steps.flags.outputs.engine == 'codex' || steps.flags.outputs.review_engine == 'codex') && env.SANDCASTLE_SANDBOX != 'docker'
-        env:
-          CODEX_AUTH_B64: ${{ steps.flags.outputs.engine == 'codex' && github.event.label.name != 'agent:implement-local' && secrets.CODEX_AUTH_B64 || '' }}
-          ENGINE: ${{ steps.flags.outputs.engine }}
-        run: |
-          set -euo pipefail
-          fail() {
-            echo "$1" > "${RUNNER_TEMP}/failure_reason.txt"
-            echo "$1" >&2
-            exit 1
-          }
-          npm i -g @openai/codex
-          if [ -n "$CODEX_AUTH_B64" ]; then
-            mkdir -p "${RUNNER_TEMP}/codex-home"
-            printf "%s" "$CODEX_AUTH_B64" | base64 -d > "${RUNNER_TEMP}/codex-home/auth.json" \
-              || fail "Codex setup failed: CODEX_AUTH_B64 is not valid base64."
-            chmod 600 "${RUNNER_TEMP}/codex-home/auth.json"
-          elif [ "$ENGINE" = "codex" ]; then
-            fail "Codex setup failed: CODEX_AUTH_B64 repo secret is missing for this hosted codex lane."
-          else
-            echo "Codex review auth is deferred until after implementation."
-          fi
-
-      - name: Install Cursor CLI (cloud cursor lane)
-        if: steps.preflight.outputs.refused != 'true' && steps.flags.outputs.engine == 'cursor'
-        run: |
-          set -euo pipefail
-          curl https://cursor.com/install -fsS | bash
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-
-      - name: Install agent-browser + Chrome (cloud lane)
-        if: steps.preflight.outputs.refused != 'true' && env.SANDCASTLE_SANDBOX == 'none'
-        run: |
-          bun add -g "agent-browser@${AGENT_BROWSER_VERSION}"
-          agent-browser install --with-deps
-
-      - name: Ensure sandbox image (local lane)
-        if: steps.preflight.outputs.refused != 'true' && env.SANDCASTLE_SANDBOX == 'docker'
-        run: |
-          docker image inspect {{IMAGE_NAME}} > /dev/null 2>&1 \
-            || docker build -t {{IMAGE_NAME}} .sandcastle/
-
-      - name: Pre-flight Codex engine
-        if: steps.preflight.outputs.refused != 'true' && steps.flags.outputs.engine == 'codex'
+      - name: Materialize hosted Codex implementation auth
+        if: steps.preflight.outputs.refused != 'true' && steps.flags.outputs.engine == 'codex' && env.SANDCASTLE_SANDBOX != 'docker'
         env:
           CODEX_AUTH_B64: ${{ github.event.label.name != 'agent:implement-local' && secrets.CODEX_AUTH_B64 || '' }}
         run: |
@@ -281,15 +232,58 @@ jobs:
             echo "$1" >&2
             exit 1
           }
+          [ -n "$CODEX_AUTH_B64" ] || fail "Codex setup failed: CODEX_AUTH_B64 repo secret is missing for this hosted codex lane."
+          mkdir -p "${RUNNER_TEMP}/codex-home"
+          printf "%s" "$CODEX_AUTH_B64" | base64 -d > "${RUNNER_TEMP}/codex-home/auth.json" \
+            || fail "Codex setup failed: CODEX_AUTH_B64 is not valid base64."
+          chmod 600 "${RUNNER_TEMP}/codex-home/auth.json"
+
+      - name: Ensure trusted model-process sandbox image
+        if: steps.preflight.outputs.refused != 'true'
+        env:
+          INSTALL_CURSOR: ${{ steps.flags.outputs.engine == 'cursor' && '1' || '0' }}
+        run: |
+          agent_uid=$(id -u)
+          agent_gid=$(id -g)
+          build_args=(
+            --build-arg "AGENT_UID=$agent_uid"
+            --build-arg "AGENT_GID=$agent_gid"
+            --build-arg "INSTALL_CURSOR=$INSTALL_CURSOR"
+          )
           if [ "$SANDCASTLE_SANDBOX" = "docker" ]; then
-            [ -f "$HOME/.codex-afk/auth.json" ] || fail "Codex preflight failed: local lane missing $HOME/.codex-afk/auth.json. Seed it with a one-time CODEX_HOME=$HOME/.codex-afk codex login."
-            [ -r "$HOME/.codex-afk/auth.json" ] || fail "Codex preflight failed: $HOME/.codex-afk/auth.json is not readable by the runner user."
-            [ -w "$HOME/.codex-afk" ] || fail "Codex preflight failed: $HOME/.codex-afk is not writable by the runner user."
-            docker run --rm --entrypoint sh {{IMAGE_NAME}} -lc 'command -v codex >/dev/null' \
-              || fail "Codex preflight failed: codex CLI is missing from the local sandbox image. Rebuild {{IMAGE_NAME}} from .sandcastle/Dockerfile."
+            image_json=$(docker image inspect {{IMAGE_NAME}} 2>/dev/null || true)
+            cached_version=$(printf '%s' "$image_json" | jq -r '.[0].Config.Labels["dev.hermes.afk-pipeline.version"] // ""' 2>/dev/null || true)
+            cached_uid=$(printf '%s' "$image_json" | jq -r '.[0].Config.Labels["dev.hermes.afk-pipeline.agent-uid"] // ""' 2>/dev/null || true)
+            cached_gid=$(printf '%s' "$image_json" | jq -r '.[0].Config.Labels["dev.hermes.afk-pipeline.agent-gid"] // ""' 2>/dev/null || true)
+            if [ "$cached_version" != "{{AFK_VERSION}}" ] || [ "$cached_uid" != "$agent_uid" ] || [ "$cached_gid" != "$agent_gid" ]; then
+              docker build "${build_args[@]}" -t {{IMAGE_NAME}} .sandcastle/
+            fi
           else
-            [ -n "$CODEX_AUTH_B64" ] || fail "Codex preflight failed: CODEX_AUTH_B64 repo secret is missing for this hosted codex lane."
+            # Hosted caches are not a trust boundary: always build the image
+            # from the immutable default-branch control plane.
+            docker build "${build_args[@]}" -t {{IMAGE_NAME}} .sandcastle/
           fi
+
+      - name: Pre-flight Codex engine
+        if: steps.preflight.outputs.refused != 'true' && steps.flags.outputs.engine == 'codex'
+        run: |
+          set -euo pipefail
+          fail() {
+            echo "$1" > "${RUNNER_TEMP}/failure_reason.txt"
+            echo "$1" >&2
+            exit 1
+          }
+          if [ "$SANDCASTLE_SANDBOX" = "docker" ]; then
+            codex_home="$HOME/.codex-afk"
+            missing="local lane missing $HOME/.codex-afk/auth.json; seed it with CODEX_HOME=$HOME/.codex-afk codex login"
+          else
+            codex_home="${RUNNER_TEMP}/codex-home"
+            missing="hosted lane missing materialized CODEX_AUTH_B64"
+          fi
+          [ -r "$codex_home/auth.json" ] || fail "Codex preflight failed: $missing."
+          [ -w "$codex_home" ] || fail "Codex preflight failed: $codex_home is not writable by the runner user."
+          docker run --rm --entrypoint sh {{IMAGE_NAME}} -c 'command -v codex >/dev/null' \
+            || fail "Codex preflight failed: codex CLI is missing from {{IMAGE_NAME}}."
 
       - name: Acquire Codex host lock (local lane)
         if: steps.preflight.outputs.refused != 'true' && steps.flags.outputs.engine == 'codex' && env.SANDCASTLE_SANDBOX == 'docker'
@@ -323,23 +317,21 @@ jobs:
             exit 1
           }
           if [ "$SANDCASTLE_SANDBOX" = "docker" ]; then
-            if ! docker run --rm --entrypoint sh \
-              -v "$HOME/.codex-afk:/home/agent/.codex" \
-              -v "$PWD:/workspace" \
-              -w /workspace \
-              -e CODEX_HOME=/home/agent/.codex \
-              {{IMAGE_NAME}} \
-              -lc 'timeout 120 codex exec --json "Reply OK"' \
-              > "${RUNNER_TEMP}/codex-smoke.json" 2> "${RUNNER_TEMP}/codex-smoke.err"; then
-              tail -n 40 "${RUNNER_TEMP}/codex-smoke.err" >&2 || true
-              fail "Codex auth smoke failed before implement. Check CODEX_HOME auth; 401/auth failures require reseeding ~/.codex-afk or CODEX_AUTH_B64."
-            fi
+            codex_home="$HOME/.codex-afk"
           else
-            if ! CODEX_HOME="${RUNNER_TEMP}/codex-home" timeout 120 codex exec --json "Reply OK" \
-              > "${RUNNER_TEMP}/codex-smoke.json" 2> "${RUNNER_TEMP}/codex-smoke.err"; then
-              tail -n 40 "${RUNNER_TEMP}/codex-smoke.err" >&2 || true
-              fail "Codex auth smoke failed before implement. Check CODEX_AUTH_B64; 401/auth failures require rerunning dispatch to reseed the secret."
-            fi
+            codex_home="${RUNNER_TEMP}/codex-home"
+          fi
+          if ! docker run --rm --entrypoint sh \
+            --user "$(id -u):$(id -g)" \
+            -v "$codex_home:/home/agent/.codex" \
+            -v "$PWD:/workspace" \
+            -w /workspace \
+            -e CODEX_HOME=/home/agent/.codex \
+            {{IMAGE_NAME}} \
+            -c 'timeout 120 codex exec --json "Reply OK"' \
+            > "${RUNNER_TEMP}/codex-smoke.json" 2> "${RUNNER_TEMP}/codex-smoke.err"; then
+            tail -n 40 "${RUNNER_TEMP}/codex-smoke.err" >&2 || true
+            fail "Codex auth smoke failed before implement. Check the selected lane's Codex auth; 401 failures require reseeding before dispatch."
           fi
 
       - name: Cursor auth/model smoke
@@ -355,11 +347,15 @@ jobs:
             exit 1
           }
           target_model="${CURSOR_MODEL:-grok-4.5-xhigh}"
-          [ "$SANDCASTLE_SANDBOX" = "none" ] || fail "engine: cursor is cloud-lane only (v1) — local Docker images and the microVM bootstrap lack the Cursor CLI"
+          [ "$SANDCASTLE_SANDBOX" = "docker-cloud" ] || fail "engine: cursor is cloud-lane only (v1) — use agent:implement; local Docker and Vercel Sandbox are unsupported"
           [ -n "$CURSOR_API_KEY" ] || fail "cursor auth/model failure: CURSOR_API_KEY repo secret is missing for engine=cursor."
-          if ! agent models > "${RUNNER_TEMP}/cursor-models.txt" 2> "${RUNNER_TEMP}/cursor-models.err"; then
+          if ! docker run --rm --entrypoint sh \
+            -e CURSOR_API_KEY \
+            {{IMAGE_NAME}} \
+            -c 'agent models' \
+            > "${RUNNER_TEMP}/cursor-models.txt" 2> "${RUNNER_TEMP}/cursor-models.err"; then
             tail -n 40 "${RUNNER_TEMP}/cursor-models.err" >&2 || true
-            fail "cursor auth/model failure: agent models failed. Check CURSOR_API_KEY and Cursor CLI auth."
+            fail "cursor auth/model failure: agent models failed inside the trusted image. Check CURSOR_API_KEY and Cursor CLI auth."
           fi
           grep -F "$target_model" "${RUNNER_TEMP}/cursor-models.txt" >/dev/null \
             || fail "cursor auth/model failure: target model '$target_model' was not listed by agent models."
@@ -375,6 +371,33 @@ jobs:
           BRANCH: ${{ steps.branch.outputs.name }}
           OUTPUT_DIR: ${{ runner.temp }}
         run: bun .sandcastle/implement/implement.ts
+
+      - name: Assert pipeline control plane unchanged after implement
+        if: steps.preflight.outputs.refused != 'true'
+        run: |
+          set -euo pipefail
+          trusted=$(mktemp -d "${RUNNER_TEMP}/afk-control-plane.XXXXXX")
+          trap 'rm -rf "$trusted"' EXIT
+          GIT_NO_REPLACE_OBJECTS=1 /usr/bin/git archive "$GITHUB_SHA" .sandcastle .github/workflows/agent-implement.yml | /usr/bin/tar -x -C "$trusted"
+          compare() {
+            local output="$1"
+            shift
+            if /usr/bin/diff "$@" > "$output"; then
+              return 0
+            else
+              local status=$?
+              [ "$status" -eq 1 ] || { echo "Control-plane comparison failed with diff status $status" >&2; exit 1; }
+            fi
+          }
+          compare "$trusted/sandcastle.diff" -qr "$trusted/.sandcastle" .sandcastle
+          compare "$trusted/workflow.diff" -q "$trusted/.github/workflows/agent-implement.yml" .github/workflows/agent-implement.yml
+          changes=$(printf '%s\n%s' "$(cat "$trusted/sandcastle.diff")" "$(cat "$trusted/workflow.diff")" | sed '/^$/d')
+          if [ -n "$changes" ]; then
+            reason="Pipeline control plane changed during implement; refusing to execute agent-modifiable orchestration code with provider or repository credentials."
+            printf '%s\n' "$changes" >&2
+            printf '%s\n' "$reason" > "${RUNNER_TEMP}/failure_reason.txt"
+            exit 1
+          fi
 
       - name: Materialize hosted Codex review auth
         if: steps.preflight.outputs.refused != 'true' && steps.flags.outputs.review != 'off' && steps.flags.outputs.review_engine == 'codex' && steps.flags.outputs.engine != 'codex' && env.SANDCASTLE_SANDBOX != 'docker'
@@ -417,14 +440,57 @@ jobs:
           BRANCH: ${{ steps.branch.outputs.name }}
           OUTPUT_DIR: ${{ runner.temp }}
           REVIEW_ENGINE: ${{ steps.flags.outputs.review_engine }}
-        run: bun .sandcastle/review/review.ts
+        run: |
+          set -euo pipefail
+          review_output="${RUNNER_TEMP}/review-output"
+          rm -rf "$review_output"
+          mkdir -p "$review_output"
+          auth=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 | tr -d '\n')
+          /usr/bin/git -c http.https://github.com/.extraheader="AUTHORIZATION: basic $auth" \
+            fetch --no-tags origin {{BASE_BRANCH}}:refs/remotes/origin/{{BASE_BRANCH}}
+          args=(
+            --rm --entrypoint sh
+            --user "$(id -u):$(id -g)"
+            -v "$PWD:/workspace:ro"
+            -v "$review_output:/review-output"
+            -w /workspace
+            -e HOME=/home/agent
+            -e OUTPUT_DIR=/review-output
+            -e REVIEW_ENGINE
+            -e BRANCH
+            -e SANDCASTLE_SANDBOX=docker
+          )
+          if [ "$REVIEW_ENGINE" = "codex" ]; then
+            if [ "$SANDCASTLE_SANDBOX" = "docker" ]; then
+              codex_home="$HOME/.codex-afk"
+            else
+              codex_home="${RUNNER_TEMP}/codex-home"
+            fi
+            args+=(-v "$codex_home:/home/agent/.codex" -e CODEX_HOME=/home/agent/.codex)
+          else
+            args+=(-e CLAUDE_CODE_OAUTH_TOKEN)
+          fi
+          docker run "${args[@]}" {{IMAGE_NAME}} -c 'bun .sandcastle/review/review.ts'
+
+          result="$review_output/review-result.env"
+          test -s "$result"
+          outcome=$(sed -n 's/^outcome=//p' "$result")
+          engine=$(sed -n 's/^engine=//p' "$result")
+          has_findings=$(sed -n 's/^has_findings=//p' "$result")
+          case "$outcome" in clean|findings|skipped_missing_skill|skipped_no_engine|skipped_missing_auth|engine_error) ;; *) echo "Invalid review outcome: $outcome" >&2; exit 1 ;; esac
+          case "$engine" in codex|claude|none) ;; *) echo "Invalid review engine: $engine" >&2; exit 1 ;; esac
+          case "$has_findings" in true|false) ;; *) echo "Invalid review finding flag: $has_findings" >&2; exit 1 ;; esac
+          printf 'outcome=%s\nengine=%s\nhas_findings=%s\n' "$outcome" "$engine" "$has_findings" >> "$GITHUB_OUTPUT"
+          for file in review-summary.md review-findings.md; do
+            [ ! -f "$review_output/$file" ] || cp "$review_output/$file" "${RUNNER_TEMP}/$file"
+          done
 
       - name: Remove cross-vendor Codex review auth
         if: always() && steps.preflight.outputs.refused != 'true' && steps.flags.outputs.review_engine == 'codex' && steps.flags.outputs.engine != 'codex' && env.SANDCASTLE_SANDBOX != 'docker'
         run: rm -rf "${RUNNER_TEMP}/codex-home"
 
       - name: Restore Codex implementation auth after hosted Claude review
-        if: always() && steps.preflight.outputs.refused != 'true' && steps.flags.outputs.review != 'off' && steps.flags.outputs.engine == 'codex' && steps.flags.outputs.review_engine == 'claude' && env.SANDCASTLE_SANDBOX != 'docker'
+        if: steps.preflight.outputs.refused != 'true' && steps.flags.outputs.review != 'off' && steps.flags.outputs.engine == 'codex' && steps.flags.outputs.review_engine == 'claude' && env.SANDCASTLE_SANDBOX != 'docker'
         env:
           CODEX_AUTH_B64: ${{ github.event.label.name != 'agent:implement-local' && secrets.CODEX_AUTH_B64 || '' }}
         run: |
@@ -447,6 +513,33 @@ jobs:
           BRANCH: ${{ steps.branch.outputs.name }}
           OUTPUT_DIR: ${{ runner.temp }}
         run: bun .sandcastle/review/review-fix.ts
+
+      - name: Assert pipeline control plane unchanged after review disposition
+        if: steps.preflight.outputs.refused != 'true'
+        run: |
+          set -euo pipefail
+          trusted=$(mktemp -d "${RUNNER_TEMP}/afk-control-plane.XXXXXX")
+          trap 'rm -rf "$trusted"' EXIT
+          GIT_NO_REPLACE_OBJECTS=1 /usr/bin/git archive "$GITHUB_SHA" .sandcastle .github/workflows/agent-implement.yml | /usr/bin/tar -x -C "$trusted"
+          compare() {
+            local output="$1"
+            shift
+            if /usr/bin/diff "$@" > "$output"; then
+              return 0
+            else
+              local status=$?
+              [ "$status" -eq 1 ] || { echo "Control-plane comparison failed with diff status $status" >&2; exit 1; }
+            fi
+          }
+          compare "$trusted/sandcastle.diff" -qr "$trusted/.sandcastle" .sandcastle
+          compare "$trusted/workflow.diff" -q "$trusted/.github/workflows/agent-implement.yml" .github/workflows/agent-implement.yml
+          changes=$(printf '%s\n%s' "$(cat "$trusted/sandcastle.diff")" "$(cat "$trusted/workflow.diff")" | sed '/^$/d')
+          if [ -n "$changes" ]; then
+            reason="Pipeline control plane changed during review disposition; refusing to execute agent-modifiable orchestration code with provider or repository credentials."
+            printf '%s\n' "$changes" >&2
+            printf '%s\n' "$reason" > "${RUNNER_TEMP}/failure_reason.txt"
+            exit 1
+          fi
 
       - name: Comment review outcome on the issue
         if: steps.preflight.outputs.refused != 'true' && steps.flags.outputs.review != 'off'
@@ -477,6 +570,46 @@ jobs:
           # a failed run on andesphere #26). The generator keeps both in sync.
 {{VERIFY_SECRETS_ENV}}
         run: bun .sandcastle/verify/verify.ts
+
+      - name: Move cloud-Docker recording to host artifact storage
+        if: always() && steps.preflight.outputs.refused != 'true' && steps.flags.outputs.recording == 'on' && env.SANDCASTLE_SANDBOX == 'docker-cloud'
+        run: |
+          source_path=".sandcastle/.sandcastle-artifacts/issue-${ISSUE_NUMBER}/interaction.webm"
+          target_dir="${RUNNER_TEMP}/recording"
+          if [ -s "$source_path" ]; then
+            mkdir -p "$target_dir"
+            mv "$source_path" "$target_dir/issue-${ISSUE_NUMBER}.webm"
+          else
+            echo "No cloud-Docker recording was produced before verification stopped." >&2
+          fi
+          rm -rf .sandcastle/.sandcastle-artifacts
+
+      - name: Assert pipeline control plane unchanged after verify
+        if: steps.preflight.outputs.refused != 'true'
+        run: |
+          set -euo pipefail
+          trusted=$(mktemp -d "${RUNNER_TEMP}/afk-control-plane.XXXXXX")
+          trap 'rm -rf "$trusted"' EXIT
+          GIT_NO_REPLACE_OBJECTS=1 /usr/bin/git archive "$GITHUB_SHA" .sandcastle .github/workflows/agent-implement.yml | /usr/bin/tar -x -C "$trusted"
+          compare() {
+            local output="$1"
+            shift
+            if /usr/bin/diff "$@" > "$output"; then
+              return 0
+            else
+              local status=$?
+              [ "$status" -eq 1 ] || { echo "Control-plane comparison failed with diff status $status" >&2; exit 1; }
+            fi
+          }
+          compare "$trusted/sandcastle.diff" -qr "$trusted/.sandcastle" .sandcastle
+          compare "$trusted/workflow.diff" -q "$trusted/.github/workflows/agent-implement.yml" .github/workflows/agent-implement.yml
+          changes=$(printf '%s\n%s' "$(cat "$trusted/sandcastle.diff")" "$(cat "$trusted/workflow.diff")" | sed '/^$/d')
+          if [ -n "$changes" ]; then
+            reason="Pipeline control plane changed during verify; refusing to execute agent-modifiable orchestration code with provider or repository credentials."
+            printf '%s\n' "$changes" >&2
+            printf '%s\n' "$reason" > "${RUNNER_TEMP}/failure_reason.txt"
+            exit 1
+          fi
 
       - name: Convex integrity gate (real codegen + anonymous schema validation)
         # Regenerates Convex _generated with REAL codegen against a keyless
@@ -699,15 +832,11 @@ jobs:
             rm -rf "$lock"
           fi
 
-      - name: Reap sandcastle containers on cancel/failure (docker lane)
+      - name: Reap sandcastle containers on cancel/failure (Docker lanes)
         # Neither cancelling a run nor a phase failure stops the phase's docker
-        # container — an orphan kept squatting the mini for 11h after a cancel
-        # (superaseo #55, 2026-07-04/05) and can keep mutating the shared
-        # verify backend with stale branch code; verify's internal timeout
-        # (v2.2.2) exits the phase process while its container is still live.
-        # Kill every container from this repo's sandcastle image: the
-        # one-pipeline-per-repo rule means they can only belong to this run.
-        if: (cancelled() || failure()) && env.SANDCASTLE_SANDBOX == 'docker'
+        # container — reap on both the self-hosted and hosted Docker lanes.
+        # The one-pipeline-per-repo rule means matching containers belong here.
+        if: (cancelled() || failure()) && (env.SANDCASTLE_SANDBOX == 'docker' || env.SANDCASTLE_SANDBOX == 'docker-cloud')
         run: docker ps -q --filter "ancestor={{IMAGE_NAME}}" | xargs -r docker rm -f
       # No vercel teardown step needed: sandcastle closes each phase's microVM
       # (stop + delete, persistent:false) when run() ends; the create-time

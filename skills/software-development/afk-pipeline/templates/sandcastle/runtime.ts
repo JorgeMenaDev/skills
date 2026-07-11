@@ -5,8 +5,8 @@ import { vercelSandbox } from "./vercel/provider";
 
 /**
  * Lane switch. The workflow sets SANDCASTLE_SANDBOX per trigger label:
- * - `none`   (`agent:implement` → GitHub-hosted VM, noSandbox — the VM is the
- *   sandbox; ADR 0002)
+ * - `docker-cloud` (`agent:implement` → GitHub/Blacksmith-hosted VM, agent
+ *   isolated in a per-phase Docker container; ADR 0002 hardening)
  * - `docker` (`agent:implement-local` → self-hosted Mac mini runner, agent
  *   isolated in Docker; ADR 0003)
  * - `vercel` (`agent:implement-sandbox` → GitHub-hosted driver, agent isolated
@@ -15,7 +15,8 @@ import { vercelSandbox } from "./vercel/provider";
  *   (sandcastle-owned), so push/salvage/artifacts stay host-side like docker.
  */
 const LANE = process.env.SANDCASTLE_SANDBOX ?? "none";
-const useDocker = LANE === "docker";
+const useHostedDocker = LANE === "docker-cloud";
+const useDocker = LANE === "docker" || useHostedDocker;
 const useVercel = LANE === "vercel";
 const ENGINE =
   process.env.ENGINE === "codex"
@@ -26,11 +27,12 @@ const ENGINE =
 const CODEX_HOST_HOME = "~/.codex-afk";
 const CODEX_SANDBOX_HOME = "/home/agent/.codex";
 const CODEX_CLOUD_HOME = `${process.env.RUNNER_TEMP ?? "/tmp"}/codex-home`;
+const CODEX_DOCKER_HOST_HOME = useHostedDocker ? CODEX_CLOUD_HOME : CODEX_HOST_HOME;
 const CURSOR_MODEL = process.env.CURSOR_MODEL || "grok-4.5-xhigh";
 const CURSOR_LANE_ERROR =
-  "engine: cursor is cloud-lane only (v1) — local Docker images and the microVM bootstrap lack the Cursor CLI";
+  "engine: cursor is cloud-lane only (v1) — use agent:implement; local Docker and Vercel Sandbox are unsupported";
 
-if (ENGINE === "cursor" && (useDocker || useVercel)) {
+if (ENGINE === "cursor" && (!useHostedDocker || useVercel)) {
   throw new Error(CURSOR_LANE_ERROR);
 }
 
@@ -68,7 +70,7 @@ export function agentEnv(token?: string): Record<string, string> {
 }
 
 function cursorAgentEnv(): Record<string, string> {
-  if (useDocker || useVercel) throw new Error(CURSOR_LANE_ERROR);
+  if (useDocker || useVercel) return {};
   const cursorApiKey = process.env.CURSOR_API_KEY;
   if (!cursorApiKey) throw new Error("CURSOR_API_KEY is required when ENGINE=cursor");
   return { CURSOR_API_KEY: cursorApiKey, ...passthroughEnv() };
@@ -79,6 +81,10 @@ function sandboxEnv(token?: string): Record<string, string> {
   if (useVercel) delete env.CODEX_AUTH_B64;
   if (ENGINE === "codex") {
     env.CODEX_HOME = CODEX_SANDBOX_HOME;
+  } else if (ENGINE === "cursor") {
+    const cursorApiKey = process.env.CURSOR_API_KEY;
+    if (!cursorApiKey) throw new Error("CURSOR_API_KEY is required when ENGINE=cursor");
+    env.CURSOR_API_KEY = cursorApiKey;
   } else {
     if (!token) throw new Error("CLAUDE_CODE_OAUTH_TOKEN is required for Claude-backed phases");
     env.CLAUDE_CODE_OAUTH_TOKEN = token;
@@ -99,7 +105,7 @@ export function chooseAgent(token?: string, claudeOptions: { effort?: "medium" |
       effort: "high",
       env: agentEnv(token),
       sessionStorage: {
-        hostSessionsDir: `${CODEX_HOST_HOME}/sessions`,
+        hostSessionsDir: `${CODEX_DOCKER_HOST_HOME}/sessions`,
         sandboxSessionsDir: `${CODEX_SANDBOX_HOME}/sessions`,
       },
     });
@@ -149,10 +155,11 @@ export function chooseSandbox(token?: string) {
   }
   const options = {
     imageName: "{{IMAGE_NAME}}",
-    // Image agent user is UID/GID 1000; the macOS host user is not. Docker
-    // Desktop's VM handles bind-mount ownership, so pin the container user.
-    containerUid: 1000,
-    containerGid: 1000,
+    // Match the runner identity so bind-mounted workspace and hosted Codex auth
+    // remain readable/writable across GitHub, Blacksmith, and the Mac mini. The
+    // image makes /home/agent writable for arbitrary runner UIDs.
+    containerUid: process.getuid?.() ?? 1000,
+    containerGid: process.getgid?.() ?? 1000,
     // Cap each phase container's CPUs so concurrent local-lane runs can't
     // starve the runner host (v2.7.0 — the mini crawled under 3-4 parallel
     // jobs). RAM stays the harder ceiling: the cap curbs thrash, it doesn't
@@ -162,7 +169,7 @@ export function chooseSandbox(token?: string) {
     env: sandboxEnv(token),
   };
   return ENGINE === "codex"
-    ? docker({ ...options, mounts: [{ hostPath: CODEX_HOST_HOME, sandboxPath: CODEX_SANDBOX_HOME }] })
+    ? docker({ ...options, mounts: [{ hostPath: CODEX_DOCKER_HOST_HOME, sandboxPath: CODEX_SANDBOX_HOME }] })
     : docker(options);
 }
 

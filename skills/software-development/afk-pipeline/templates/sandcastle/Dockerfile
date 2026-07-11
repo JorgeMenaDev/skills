@@ -1,7 +1,13 @@
-# Local-lane sandbox image (`agent:implement-local` on the Mac mini runner).
+# Per-phase Docker sandbox image (local mini and hosted cloud runners).
 # Build: docker build -t {{IMAGE_NAME}} .sandcastle/
 # Canonical sandbox image (bun app tooling + agent-browser + Chromium).
 FROM node:22-bookworm
+
+ARG AGENT_UID=1000
+ARG AGENT_GID=1000
+LABEL dev.hermes.afk-pipeline.version="{{AFK_VERSION}}" \
+  dev.hermes.afk-pipeline.agent-uid="$AGENT_UID" \
+  dev.hermes.afk-pipeline.agent-gid="$AGENT_GID"
 
 RUN apt-get update && apt-get install -y \
   git \
@@ -62,18 +68,30 @@ RUN curl -fsSL https://bun.sh/install | bash \
 # agent-browser + Codex CLIs (native binaries fetched by npm postinstall)
 RUN npm install -g agent-browser @openai/codex
 
-RUN groupmod -n agent node \
-  && usermod -d /home/agent -m -l agent -g agent node \
+RUN groupmod -o -g "$AGENT_GID" -n agent node \
+  && usermod -o -u "$AGENT_UID" -d /home/agent -m -l agent -g "$AGENT_GID" node \
   && touch /home/agent/.gitconfig \
   && chown -R agent:agent /home/agent \
   && chmod -R a+rwX /home/agent
 
-USER agent
+USER ${AGENT_UID}:${AGENT_GID}
 WORKDIR /home/agent
 
 # Claude Code CLI (as the agent user → /home/agent/.local/bin)
 RUN curl -fsSL https://claude.ai/install.sh | bash
+# Cursor is optional and cloud-only. Claude/Codex image builds must not depend
+# on Cursor's installer/CDN; the workflow enables this layer only for
+# `engine: cursor` on the hosted `agent:implement` lane.
+ARG INSTALL_CURSOR=0
+RUN if [ "$INSTALL_CURSOR" = "1" ]; then curl -fsS https://cursor.com/install | bash; fi
 ENV PATH="/home/agent/.local/bin:${PATH}"
+
+# Sandcastle matches the container process to the runner UID/GID so bind mounts
+# and hosted auth remain usable. Normalize permissions *after* both installers,
+# which create new 0755-owned directories under /home/agent.
+USER root
+RUN chmod -R a+rwX /home/agent
+USER ${AGENT_UID}:${AGENT_GID}
 
 # Point agent-browser at the system chromium (no Chrome-for-Testing on arm64).
 ENV AGENT_BROWSER_EXECUTABLE_PATH=/usr/bin/chromium

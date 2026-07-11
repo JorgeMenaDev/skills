@@ -145,6 +145,7 @@ not an imagined one.`
   : "";
 
 const TOKENS = {
+  "{{AFK_VERSION}}": VERSION,
   "{{PROJECT_NAME}}": req("projectName"),
   "{{IMAGE_NAME}}": req("imageName"),
   "{{BUN_VERSION}}": req("bunVersion"),
