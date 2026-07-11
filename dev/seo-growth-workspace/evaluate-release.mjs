@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, lstatSync, mkdtempSync, readFileSync, readdirSync, readlinkSync, statSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { tmpdir } from "node:os";
 import path from "node:path";
+import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
@@ -13,10 +16,16 @@ const args = process.argv.slice(2);
 
 function usage() {
   return `Usage:
-  node dev/seo-growth-workspace/evaluate-release.mjs [--json] [--profile-root name=/path/to/repo]
+  node dev/seo-growth-workspace/evaluate-release.mjs [--json] [--validator-report <path>] [--profile-root name=/path/to/repo]
 
 Scores the portable seo-growth-workspace release candidate and optionally inspects
-real repo profiles without modifying them. Higher score is better.`;
+real repo profiles without modifying them. Higher score is better.
+
+Blocking gates: by default the evaluator executes validate-skill.mjs once with a
+report path and consumes its machine-readable report; pass requires both the
+validator and its command-inventory subgate green. --validator-report consumes an
+existing report instead (rejected when missing, stale, wrong-digest, duplicate,
+or malformed).`;
 }
 
 function argValues(name) {
@@ -53,6 +62,122 @@ function read(relativePath) {
 
 function exists(relativePath) {
   return existsSync(path.join(skillRoot, relativePath));
+}
+
+const VALIDATOR_REPORT_VERSION = 1;
+const VALIDATOR_REPORT_MAX_AGE_MS = 15 * 60 * 1000;
+const VALIDATOR_REPORT_MAX_FUTURE_SKEW_MS = 2 * 60 * 1000;
+
+function hash(value) {
+  return createHash("sha256").update(String(value)).digest("hex");
+}
+
+// Byte-for-byte the same digest validate-skill.mjs stamps into its report:
+// both sides must agree on what "the current skill source" hashes to.
+function treeDigest(root) {
+  const visit = (dir, relative = "") => readdirSync(dir).sort().flatMap((entry) => {
+    const absolute = path.join(dir, entry);
+    const next = path.join(relative, entry);
+    const stats = lstatSync(absolute);
+    if (stats.isSymbolicLink()) return [`${next}:link:${readlinkSync(absolute)}`];
+    if (stats.isDirectory()) return [`${next}:dir`, ...visit(absolute, next)];
+    return [`${next}:file:${hash(readFileSync(absolute))}`];
+  });
+  return hash(visit(root).join("\n"));
+}
+
+function runBlockingGates() {
+  const explicitReport = argValues("--validator-report")[0] ?? null;
+  const validatorScript = path.join(scriptDir, "validate-skill.mjs");
+  const reportPath =
+    explicitReport ??
+    path.join(mkdtempSync(path.join(tmpdir(), "seo-release-eval-")), "validator-report.json");
+  let validatorExit = null;
+  if (!explicitReport) {
+    const validatorRun = spawnSync(process.execPath, [validatorScript, "--report", reportPath], {
+      encoding: "utf-8",
+    });
+    validatorExit = validatorRun.error ? null : validatorRun.status;
+  }
+
+  const rejections = [];
+  let report = null;
+  if (!existsSync(reportPath)) {
+    rejections.push(`missing validator report at ${reportPath}`);
+  } else {
+    try {
+      report = JSON.parse(readFileSync(reportPath, "utf-8"));
+    } catch (error) {
+      rejections.push(`malformed validator report: ${error.message}`);
+    }
+  }
+  if (report) {
+    if (report.reportVersion !== VALIDATOR_REPORT_VERSION) {
+      rejections.push(`malformed validator report: unsupported reportVersion ${JSON.stringify(report.reportVersion)}`);
+      report = null;
+    } else if (
+      !Array.isArray(report.sections) ||
+      typeof report.pass !== "boolean" ||
+      typeof report.generatedAt !== "string" ||
+      typeof report.sourceDigest !== "string" ||
+      typeof report.commandInventory?.result !== "string"
+    ) {
+      rejections.push("malformed validator report: missing required fields");
+      report = null;
+    }
+  }
+  let failedSections = [];
+  if (report) {
+    const generated = Date.parse(report.generatedAt);
+    if (!Number.isFinite(generated)) {
+      rejections.push(`malformed validator report: unparseable generatedAt ${JSON.stringify(report.generatedAt)}`);
+    } else {
+      const age = Date.now() - generated;
+      if (age > VALIDATOR_REPORT_MAX_AGE_MS || age < -VALIDATOR_REPORT_MAX_FUTURE_SKEW_MS) {
+        rejections.push(`stale validator report: generatedAt ${report.generatedAt} is outside the accepted window`);
+      }
+    }
+    const sectionNames = report.sections.map((entry) => entry.name);
+    if (new Set(sectionNames).size !== sectionNames.length) {
+      rejections.push("duplicate section entries in validator report");
+    }
+    const expectedDigest = treeDigest(skillRoot);
+    if (report.sourceDigest !== expectedDigest) {
+      rejections.push(`wrong-digest validator report: report attests ${report.sourceDigest}, current skill source digest is ${expectedDigest}`);
+    }
+    failedSections = report.sections.filter((entry) => entry.result !== "PASS").map((entry) => entry.name);
+    if (report.pass && failedSections.length > 0) {
+      rejections.push(`malformed validator report: pass is true but sections failed (${failedSections.join(", ")})`);
+    }
+    if (!explicitReport && validatorExit !== (report.pass ? 0 : 1)) {
+      rejections.push(`malformed validator report: validator exit ${validatorExit} disagrees with report pass ${report.pass}`);
+    }
+  }
+
+  const gates = [];
+  if (report && rejections.length === 0) {
+    gates.push({
+      gate: "validate-skill",
+      command: "node dev/seo-growth-workspace/validate-skill.mjs",
+      exit: validatorExit ?? (report.pass ? 0 : 1),
+      result: report.pass ? "PASS" : "FAIL",
+      failedSections,
+    });
+    gates.push({
+      gate: "command-inventory",
+      command: report.commandInventory.command,
+      exit: report.commandInventory.exit,
+      result: report.commandInventory.result === "PASS" ? "PASS" : "FAIL",
+    });
+  }
+
+  return {
+    reportPath,
+    selfExecuted: !explicitReport,
+    rejections,
+    gates,
+    pass: rejections.length === 0 && gates.length === 2 && gates.every((gate) => gate.result === "PASS"),
+  };
 }
 
 function addFinding(findings, category, severity, message, file = null) {
@@ -277,8 +402,24 @@ function profileFindings(profile) {
 function evaluate() {
   const findings = [];
   const checks = {};
+  const blockingGates = runBlockingGates();
+  for (const rejection of blockingGates.rejections) {
+    addFinding(findings, "Blocking gates", "critical", rejection);
+  }
+  for (const gate of blockingGates.gates) {
+    if (gate.result !== "PASS") {
+      addFinding(
+        findings,
+        "Blocking gates",
+        "critical",
+        `blocking gate ${gate.gate} failed (exit ${gate.exit})${gate.failedSections?.length ? `: ${gate.failedSections.join(", ")}` : ""}`,
+      );
+    }
+  }
   const skill = read("SKILL.md");
   const references = [
+    "references/hub-mode.md",
+    "references/migrate-uninstall.md",
     "references/phase-architecture.md",
     "references/operating-loop.md",
     "references/business-context.md",
@@ -289,6 +430,7 @@ function evaluate() {
     "references/content-ops.md",
     "references/content-engine-webhooks.md",
     "references/pseo-gates.md",
+    "references/utility-tool-pages.md",
     "references/ticket-architecture.md",
     "references/internal-linking.md",
     "references/schema-rich-results.md",
@@ -301,6 +443,8 @@ function evaluate() {
     "references/data-tools.md",
     "references/international-seo.md",
     "references/competitor-profiling.md",
+    "references/scheduled-operation.md",
+    "references/portfolio-registry.md",
   ];
   const scripts = [
     "scripts/workspace-state.mjs",
@@ -429,13 +573,20 @@ function evaluate() {
     skill: "seo-growth-workspace",
     score,
     maxScore: 100,
-    pass: score >= 85 && criticalFindings.length === 0 && zeroCategories.length === 0 && findings.length === 0,
+    pass: score >= 85 && criticalFindings.length === 0 && zeroCategories.length === 0 && findings.length === 0 && blockingGates.pass,
     passBar: 85,
     gates: {
       minimumScore: score >= 85,
       zeroCriticalFindings: criticalFindings.length === 0,
       noZeroCategory: zeroCategories.length === 0,
       noKnownFindings: findings.length === 0,
+      blockingGatesGreen: blockingGates.pass,
+    },
+    blockingGates: {
+      reportPath: blockingGates.reportPath,
+      selfExecuted: blockingGates.selfExecuted,
+      rejections: blockingGates.rejections,
+      gates: blockingGates.gates,
     },
     categories,
     findings,
@@ -450,10 +601,18 @@ function evaluate() {
 }
 
 function printMarkdown(result) {
+  const gateLines = [
+    ...result.blockingGates.rejections.map((reason) => `- report rejected: ${reason}`),
+    ...result.blockingGates.gates.map((gate) => `- ${gate.gate}: ${gate.result} (exit ${gate.exit})${gate.failedSections?.length ? ` — ${gate.failedSections.join(", ")}` : ""}`),
+  ];
   console.log(`# SEO growth workspace release evaluation
 
 Score: ${result.score}/${result.maxScore}
 Pass: ${result.pass ? "yes" : "no"}
+
+## Blocking gates
+
+${gateLines.join("\n")}
 
 ## Categories
 
