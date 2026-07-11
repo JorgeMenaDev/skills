@@ -502,6 +502,7 @@ function evaluate() {
     "scripts/gsc-oauth.mjs",
     "scripts/gsc-fetch.mjs",
     "scripts/gsc-opportunities.mjs",
+    "scripts/link-graph-analyzer.mjs",
     "scripts/monthly-report.mjs",
   ];
   const templates = [

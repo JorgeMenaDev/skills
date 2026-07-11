@@ -102,6 +102,7 @@ const requiredFiles = [
   "scripts/gsc-oauth.mjs",
   "scripts/gsc-fetch.mjs",
   "scripts/gsc-opportunities.mjs",
+  "scripts/link-graph-analyzer.mjs",
   "scripts/monthly-report.mjs",
   "scripts/portfolio-status.mjs",
 ];
@@ -1232,6 +1233,96 @@ section("eight-row legacy / six-row hub rehearsal", () => {
     check(new Set(json.registries.map((registry) => registry.path)).size === json.registries.length, "Registry discovery must deduplicate paths by realpath");
   } finally {
     rmSync(container, { recursive: true, force: true });
+  }
+});
+
+// --- gsc-opportunities.mjs: report format + golden file ---
+section("offline link-graph analyzer", () => {
+  const root = fixtureTmp("seo-link-graph-");
+  const inputPath = path.join(root, "graph.json");
+  const derivedScopePath = path.join(root, "derived-scope.json");
+  const incompletePath = path.join(root, "incomplete.json");
+  const overLimitPath = path.join(root, "over-limit.json");
+  const byteLimitPath = path.join(root, "byte-limit.json");
+  const analyzer = path.join(skillRoot, "scripts/link-graph-analyzer.mjs");
+  const page = (url, extra = {}) => ({
+    url,
+    status: 200,
+    canonicalUrl: url,
+    indexable: true,
+    entryPoint: false,
+    moneyPage: false,
+    ...extra,
+  });
+  const graphFixture = {
+    coverage: { complete: true, note: "All rendered routes | hostile <note>." },
+    siteOrigins: ["https://example.test/"],
+    pages: [
+      page("https://example.test/", { entryPoint: true }),
+      page("https://example.test/money", { moneyPage: true }),
+      page("https://example.test/weak", { moneyPage: true }),
+      page("https://example.test/near"),
+      page("https://example.test/orphan"),
+      page("https://example.test/redirect", { status: 301, finalUrl: "https://example.test/money", indexable: false }),
+      page("https://example.test/canonical-copy", { canonicalUrl: "https://example.test/money", indexable: false }),
+      page("https://example.test/noindex", { indexable: false }),
+    ],
+    links: [
+      { source: "https://example.test/", target: "https://example.test/money", anchor: "=SUM(1|2)\n<script>", placement: "+nav", rel: [] },
+      { source: "https://example.test/", target: "https://example.test/money", anchor: "-duplicate anchor", placement: "@body", rel: [] },
+      { source: "https://example.test/", target: "https://example.test/near", anchor: "Near", placement: "body", rel: [] },
+      { source: "https://example.test/", target: "https://example.test/redirect", anchor: "Redirect", placement: "body", rel: [] },
+      { source: "https://example.test/", target: "https://example.test/canonical-copy", anchor: "Canonical", placement: "body", rel: [] },
+      { source: "https://example.test/", target: "https://example.test/noindex", anchor: "Noindex", placement: "body", rel: [] },
+      { source: "https://example.test/", target: "https://example.test/weak", anchor: "Weak", placement: "body", rel: ["nofollow"] },
+      { source: "https://example.test/", target: "https://example.test/missing", anchor: "Broken", placement: "body", rel: [] },
+      { source: "https://example.test/orphan", target: "https://example.test/orphan#fragment", anchor: "Self", placement: "body", rel: [] },
+      { source: "https://example.test/", target: "https://outside.test/pixel", anchor: "![pixel](https://outside.test/pixel)\r[link](https://outside.test/)", placement: "body", rel: [] },
+    ],
+  };
+
+  try {
+    writeFileSync(inputPath, JSON.stringify(graphFixture));
+    const help = spawnCapture(process.execPath, [analyzer, "--help"]);
+    check(help.status === 0 && help.stdout.includes("JSON is the only v1 input"), "Analyzer --help must exit 0 and document JSON-only v1 input");
+
+    const first = spawnCapture(process.execPath, [analyzer, "--input", inputPath, "--stamp", "fixture-stamp"]);
+    const second = spawnCapture(process.execPath, [analyzer, "--input", inputPath, "--stamp", "fixture-stamp"]);
+    check(first.status === 0 && first.stdout === second.stdout, "Analyzer output must be byte-identical for identical input and arguments");
+    const output = first.stdout;
+    check(output.includes("duplicates preserved") && output.includes("-duplicate anchor"), "Analyzer must preserve duplicate anchored edges");
+    check(["redirected target", "canonicalized target", "non-indexable target", "nofollow edge", "broken target: internal target absent"].every((value) => output.includes(value)), "Analyzer must explain redirect, canonical, noindex, nofollow, and broken-target handling");
+    check(output.includes("excluded; self-link") && /\| https:\/\/example\.test\/orphan \| unreachable \| unreachable \| 0 \| 0 \| false \| orphan \|/.test(output), "Self-links must remain inventoried without inbound support or graph propagation");
+    check(output.includes("https://outside.test/pixel") && output.includes("excluded; external") && output.match(/broken target:/g)?.length === 1, "External links must remain counted without becoming broken-target findings");
+    check(output.includes("orphan") && output.includes("near-orphan") && output.includes("weak declared money page"), "Analyzer must explain orphan, near-orphan, and weak declared money-page findings");
+    check(output.includes("heuristic internal authority") && output.includes("damping 0.85") && output.includes("maximum 20"), "Analyzer must label authority and record damping/iteration bounds");
+    check(output.includes("\\|") && output.includes("&lt;script&gt;") && !output.includes("<script>"), "Analyzer must flatten/escape hostile Markdown and HTML values");
+    check(output.includes("'=SUM") && output.includes("'-duplicate") && output.includes("'+nav") && output.includes("'@body"), "Analyzer must neutralize all spreadsheet formula prefixes");
+    check(output.includes("!\\[pixel\\]\\(https://outside.test/pixel\\)") && output.includes("\\[link\\]\\(https://outside.test/\\)") && !output.includes("![pixel]("), "Analyzer must flatten lone CR and neutralize Markdown image/link payloads");
+
+    const { siteOrigins, ...derivedScopeFixture } = graphFixture;
+    writeFileSync(derivedScopePath, JSON.stringify(derivedScopeFixture));
+    const derivedScope = spawnCapture(process.execPath, [analyzer, "--input", derivedScopePath]);
+    check(derivedScope.status === 0 && derivedScope.stdout.includes("excluded; external") && derivedScope.stdout.match(/broken target:/g)?.length === 1, "Absent siteOrigins[] must derive internal scope from pages[] origins");
+
+    writeFileSync(incompletePath, JSON.stringify({ ...graphFixture, coverage: { complete: false, note: "Dynamic routes unsupported." } }));
+    const incomplete = spawnCapture(process.execPath, [analyzer, "--input", incompletePath]);
+    check(incomplete.status === 0 && incomplete.stdout.includes("Orphan result: insufficient input coverage") && !incomplete.stdout.includes("| orphan |"), "Incomplete coverage must return insufficient input coverage without false orphan findings");
+
+    writeFileSync(overLimitPath, JSON.stringify({ coverage: { complete: true, note: "" }, pages: Array(50_001).fill(null), links: [] }));
+    const overLimit = spawnCapture(process.execPath, [analyzer, "--input", overLimitPath]);
+    check(overLimit.status !== 0 && overLimit.stderr.includes("pages[] exceeds the 50000-record limit") && overLimit.stderr.includes("split or narrow"), "Over-limit analyzer input must fail with the bound and an actionable remedy");
+
+    writeFileSync(byteLimitPath, "x".repeat(5_000_001));
+    const byteLimit = spawnCapture(process.execPath, [analyzer, "--input", byteLimitPath]);
+    check(byteLimit.status !== 0 && byteLimit.stderr.includes("5000001 bytes") && byteLimit.stderr.includes("5000000-byte limit"), "Analyzer must reject an oversized file from metadata before parsing or full-file allocation");
+
+    const source = readFileSync(analyzer, "utf-8");
+    check(!/\bfetch\s*\(|node:child_process|from\s+["'](?!node:)|\breaddir|\bopendir|\bglob\b|\bwalk\s*\(/.test(source), "Analyzer source must contain no fetch, child process, external dependencies, or filesystem traversal");
+    check(/^import \{ readFile, stat \} from "node:fs\/promises";/m.test(source), "Analyzer may inspect and read only its explicitly named input file");
+    check(source.indexOf("const file = await stat(inputPath)") < source.indexOf("const bytes = await readFile(inputPath)"), "Analyzer must enforce the byte limit before reading the full input file");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
   }
 });
 
