@@ -110,6 +110,7 @@ Load only the file needed for the mode or ticket:
 - Local SEO/GBP/citations: `references/local-seo-gbp.md`
 - Backlinks/entity authority, directories, digital PR: `references/backlinks-entity.md`
 - Comparisons, listicles, affiliate/referral relationships, and commercial disclosures: `references/commercial-integrity.md`
+- E-commerce and marketplace prioritization, page-type, collection, facet/variant/inventory, and commerce-truth decisions: `references/ecommerce-seo.md`
 - Affiliate/referral offers, coupons, promo codes, and commission lifecycle: `references/affiliate-promo-integrity.md`
 - Competitor profiling and dated snapshots: `references/competitor-profiling.md`
 - Third-party keyword/SERP/backlink data tools: `references/data-tools.md`

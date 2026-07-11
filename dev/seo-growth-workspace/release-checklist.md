@@ -91,6 +91,7 @@ Inspect at least these six profiles before release; each row gets its own PASS/F
 | Authenticated SaaS repo | Admin/auth evidence is captured before relying on dashboards, schedulers, or private data |
 | Local or legal-service site | Local SEO, GBP, reviews, NAP, citations, and service pages are first-class when relevant |
 | Local-business fixture | Synthetic local-business scenario routes through `local-seo` without requiring a real GBP login |
+| E-commerce fixture | Synthetic e-commerce scenario routes through the classifier to `references/ecommerce-seo.md`; fixture-validated only — not yet exercised against a live operation |
 
 ### Enumerated v4 scenario gates (blocking — cannot be waived)
 
@@ -179,6 +180,12 @@ These gates are executed at the slice-7 release. Record each numbered gate as PA
    - Expected result: publication is rejected until the commission-bearing relationship appears in the required disclosure and that disclosure survives the applicable rendered/mobile review; pending or unearned commission does not remove the disclosure requirement.
    - Evidence path: the fixture page/revision evidence, affiliate relationship record, commercial-integrity disclosure review, rendered/mobile inspection evidence when available, and blocked/fixed publish decision; record those paths in the gate-results row.
    - PASS/FAIL: PASS only when the undisclosed commission-bearing link fails publication and the corrected revision is reconsidered through the shared disclosure gate. FAIL if a footer, generic policy, pending status, or lack of paid revenue permits the hidden relationship to publish.
+
+15. **Commerce truth and lifecycle walk (fixture-only)**
+   - Inputs: the synthetic e-commerce profile; a prioritization set with unknown margin; a dated mixed collection/product/editorial live-SERP observation; existing collection, product, and editorial targeting records; one discontinued product with demand, successor, link, inventory, and retained-value evidence; and current feed, structured-data, and rendered landing-page price/availability facts.
+   - Expected result: unknown margin remains `Unknown` and is not estimated to force a ranking; the mixed SERP produces an investigation rather than automatic URL creation; collection/product/editorial cannibalization is checked before any new URL decision; the discontinued product receives one evidence-dependent `keep`, `redirect`, `410`, or `replace` decision with rationale and recheck condition; and feed, schema, and rendered landing-page price and availability agree, with any disagreement blocking release and routing to the existing technical/schema owners.
+   - Evidence path: a labelled dated fixture report in the existing `.seo/reports/` home, referencing the synthetic profile, dated SERP capture/observation, overlap check, lifecycle evidence and decision, and feed/schema/rendered-page comparison; record those stable artifact paths in the gate-results row. This fixture evidence does not establish live-operation dogfood.
+   - PASS/FAIL: PASS only when every expected decision and truth check is recorded, no unknown is estimated, no mixed-SERP URL is auto-created, and any truth disagreement blocks release. FAIL for a forced score, skipped cannibalization check, blanket inventory rule, automatic mixed-SERP URL, inconsistent commerce truth allowed to ship, or a claim that rankings/traffic caused purchases or revenue.
 
 ## Dry-Run Gates
 

@@ -485,6 +485,7 @@ function evaluate() {
     "references/page-evidence.md",
     "references/community-source-pages.md",
     "references/affiliate-promo-integrity.md",
+    "references/ecommerce-seo.md",
     "references/monthly-reporting.md",
     "references/ai-search-visibility.md",
     "references/data-tools.md",
