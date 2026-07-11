@@ -46,6 +46,20 @@ Before content work is considered actionable, create or locate an adapter with:
 | CLI access state | When the engine exposes a CLI: CLI name + version, auth mechanism and its location (env var names / config file paths only, never values), the workspace → project mapping the credential covers, and the probe command (e.g. `whoami`) that proves this installation is authenticated |
 | No-secret rule | Which env var names may be referenced without printing values |
 
+### Provenance adapter fields
+
+For new or materially revised SEO pages, the adapter must also map the provider-neutral [Page Evidence](page-evidence.md) contract:
+
+| Field | Required detail |
+| --- | --- |
+| Provenance system of record | The engine-native revision store and stable revision locator; if none exists, state that the dated no-engine fallback is authoritative |
+| Verification / publish gate | How claim support, information gain, authorized inputs, rights snapshots, and exact-revision human approval block publication |
+| Public citation transport | How citations move from the authoritative revision through payload/storage to the rendered page |
+| Reverification owner | Who or what rechecks time-sensitive claims and failed/stale evidence, including trigger and destination |
+| Legacy behavior | How pages with unavailable provenance are represented without invented mappings or mandatory back-fill |
+
+When the engine has native revision evidence, keep it authoritative and do not create a second Markdown record. The adapter maps local field names to the contract; the portable contract does not require vendor-specific field names or unproven structured webhook fields.
+
 The first run that proves engine-CLI access must record that CLI access state in the site's adapter note and mirror it in the registry Credentials column (hub mode). Later runs answer "does this machine have engine access, and to which projects?" by reading the workspace — never by re-exploring or falling back to the browser.
 
 ## Friction To Record

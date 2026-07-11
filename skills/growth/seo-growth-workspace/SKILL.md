@@ -1,7 +1,7 @@
 ---
 name: seo-growth-workspace
 description: "Use when starting, auditing, or operating SEO or organic growth for a product or local-business website — technical SEO, Search Console, keyword/content ops, schema, pSEO, local SEO/GBP, backlinks, AI-search visibility, conversion, and monthly reporting. Triggers: \"set up SEO\", \"audit my site\", \"my traffic dropped\", \"why am I not ranking\", \"Search Console opportunities\", \"monthly SEO report\", \"how do we show up in ChatGPT/AI search\". Creates a durable .seo workspace, captures business context, audits live/code/admin evidence, prioritizes a backlog, implements one high-leverage action, verifies reality, and logs handoff notes. Installs in a single site repo (standalone) or in an orchestrator/agent-profile repo managing many sites (hub). For standalone copywriting, paid channels, or email, use a dedicated skill."
-version: 3.4.0
+version: 4.0.0
 license: MIT
 mutating: true
 writes_to: [".seo/", "operator-declared bootstrap plan path"]
@@ -41,6 +41,7 @@ Create or verify this structure at SITE_WORKSPACE (see Install Modes for where t
   audit.md
   taxonomy.md
   backlinks/
+    asset-rights.md   # optional: scaffolded on create; existing workspaces add it via create-optional, absence is not drift
     summary.md
     work-log.md
   reports/
@@ -96,6 +97,8 @@ Load only the file needed for the mode or ticket:
 - International/multilingual (hreflang): `references/international-seo.md`
 - Search Console opportunity analysis (CLI pipeline, banded CTR, cannibalization): `references/search-console.md`
 - Keywords/blog/content-engine operations (research method, scoring, E-E-A-T): `references/content-ops.md`
+- Owned pages synthesizing forums, Q&A, or other community sources: `references/community-source-pages.md`
+- Page/revision claim, voice, asset, approval, and rendered-citation evidence for new or materially revised SEO pages: `references/page-evidence.md`
 - Utility/free tool pages (calculators, generators, checkers, formatters, templates): `references/utility-tool-pages.md`
 - Content-engine webhook publishing (receive, verify, deploy; includes one worked example): `references/content-engine-webhooks.md`
 - pSEO publish gates and playbook chooser: `references/pseo-gates.md`
@@ -106,6 +109,10 @@ Load only the file needed for the mode or ticket:
 - Conversion and CTA audits: `references/conversion-cta.md`
 - Local SEO/GBP/citations: `references/local-seo-gbp.md`
 - Backlinks/entity authority, directories, digital PR: `references/backlinks-entity.md`
+- Image distribution, reuse discovery, and rights-gated attribution outreach: `references/image-rights.md`
+- Comparisons, listicles, affiliate/referral relationships, and commercial disclosures: `references/commercial-integrity.md`
+- E-commerce and marketplace prioritization, page-type, collection, facet/variant/inventory, and commerce-truth decisions: `references/ecommerce-seo.md`
+- Affiliate/referral offers, coupons, promo codes, and commission lifecycle: `references/affiliate-promo-integrity.md`
 - Competitor profiling and dated snapshots: `references/competitor-profiling.md`
 - Third-party keyword/SERP/backlink data tools: `references/data-tools.md`
 - AI/LLM search visibility (ChatGPT, Perplexity, AI Overviews): `references/ai-search-visibility.md`
@@ -116,7 +123,7 @@ Load only the file needed for the mode or ticket:
 Use templates from `templates/` for report shape. Use scripts when deterministic scaffolding or analysis is useful (all run with `node`, no dependencies):
 
 - `scripts/seo-doctor.mjs` classifies exact schema-1 state, canonical/legacy registries, installs/lock/active paths, generated drift, and stat-only credential permissions. Its short-lived plan binds every reviewed source.
-- `scripts/bootstrap-seo-workspace.mjs` consumes that plan: create scaffolds once, adopt writes config only, verify writes nothing, and repair creates only the reviewed missing generated allowlist.
+- `scripts/bootstrap-seo-workspace.mjs` consumes that plan: create scaffolds once, adopt writes config only, verify writes nothing, repair creates only the reviewed missing generated allowlist, and create-optional creates only a reviewed absent optional artifact.
 - `scripts/gsc-oauth.mjs` creates a local refresh-token env file without printing token values.
 - `scripts/gsc-fetch.mjs` fetches Search Console `query,page` rows with pagination using env credentials.
 - `scripts/gsc-opportunities.mjs` turns exported GSC rows into position-banded CTR, page-2, and cannibalization opportunity tables; on early-stage data with nothing inside positions 1-20 it falls back to impression-clusters-by-page so sparse exports still yield a next action. `--brand` excludes branded queries, `--format backlog` emits draft `.seo/backlog.md` rows for review.

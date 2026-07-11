@@ -20,7 +20,7 @@ Seed sources, strongest evidence first:
 1. First-party GSC data: `node "$SKILL_DIR/scripts/gsc-opportunities.mjs" --input "$SITE_WORKSPACE/reports/gsc-latest.json" --format backlog` — queries already earning impressions.
 2. Competitor demand gaps (matrix below).
 3. Utility/tool opportunities: calculators, generators, checkers, formatters, templates, and public datasets where the SERP intent is task completion; load `utility-tool-pages.md` before planning these.
-4. Community mining: `site:reddit.com <topic>` and `site:quora.com <topic>` — questions, frustrations, upvoted answers.
+4. Community demand research: manually inspect relevant forums and Q&A sources for questions and frustrations. This is research input only; publishing an owned synthesis of community material is a separate specialist surface governed by [Community-source Pages](community-source-pages.md).
 5. Support tickets and sales-call questions/objections.
 
 Validate each candidate against the live SERP: what ranks, in what format (guide, listicle, tool, comparison), which SERP features. Write only where the format matches intent and you can add information gain.
@@ -91,6 +91,12 @@ Check, and build where missing:
 ## Publish Gate
 
 A human reviews every published article for added value. Automated calendar publishing without a per-article value check is a policy risk: Google's scaled content abuse policy (March 2024) targets publishing many pages without added value, regardless of how they were produced. Its sibling, the site-reputation-abuse policy (algorithmic enforcement since November 2024), targets third-party or partner content published to exploit a host domain's ranking signals — relevant when running sponsored or partner content across sites.
+
+### Page-evidence publish gate
+
+For every new or materially revised SEO page, apply [Page Evidence](page-evidence.md) before drafting/import and again before publish. Material factual claims must trace to fetched original sources; assistants may discover sources but are not final authority when an original exists. A reachable URL is not proof that it supports a claim. Start with statistics, dates, prices, legal/regulatory assertions, comparative claims, and named third-party assertions; record dated checks for time-sensitive evidence and use short paraphrased support notes or locators, not long copied passages.
+
+The evidence belongs to the exact page revision. Engine-native revision evidence is authoritative when available; otherwise use the dated per-page fallback defined there. Publish only when the page has credible information gain, applicable claim/voice/asset support, an immutable rights snapshot, and human approval. Completion also requires rendered-citation survival through the delivery check. Do not publish, schedule, or auto-publish past a failed gate.
 
 Naturalness self-check before publish:
 

@@ -34,7 +34,10 @@ A webhook delivery is not "published" until:
 - The live route returns 200 with rendered title, meta description, and body.
 - The post is in `sitemap.xml` and linked from the blog hub, so a crawl path exists.
 - Rendered metadata/schema match the payload without invented facts.
+- At webhook delivery, run the [Page Evidence](page-evidence.md) publish-and-delivery gate: verify every intended public inline citation from the authoritative article revision in preview/staging before public publication (or immediately upon delivery when no preview exists), and record the result in the native revision evidence. Page Evidence owns the recorded citation fields and the failed-citation handling; this section only triggers that gate for the webhook path.
 - The `.seo/backlog.md` content ticket and the engine's dashboard state agree. Backend/UI disagreement is a blocker, not a success.
+
+Citation reachability alone is not proof of claim support: claim support is decided by the authoritative revision evidence under [Page Evidence](page-evidence.md), not by a citation returning 200.
 
 One worked example follows; your engine will differ — record its contract in `.seo/adapters/<engine>.md`.
 

@@ -218,8 +218,179 @@ function runBlockingGates() {
     selfExecuted: !explicitReport,
     rejections,
     gates,
+    report,
     pass: rejections.length === 0 && gates.length === 2 && gates.every((gate) => gate.result === "PASS"),
   };
+}
+
+// --- Canonical gate-results artifact (deliverable of the slice-7 release) ---
+//
+// One versioned JSON holds EVERY release scenario row. Deterministic (a)-rows are
+// imported from the validator's --report output and bound to it by digest; manual
+// (b)-rows carry the same fields plus the source path-digest each attests. The
+// Markdown release log is a *rendering* of this file, never an alternate source of
+// truth. This evaluator self-executes the validator (runBlockingGates), imports the
+// report's section rows, reads the manual rows, and REJECTS a missing, stale,
+// wrong-digest, duplicate, malformed, or non-PASS-required artifact.
+//
+// reportVersion coupling: the artifact restates the validator's reportVersion. If the
+// validator report schema changes, bump VALIDATOR_REPORT_VERSION (already shared with
+// runBlockingGates) AND the validator's "gate-results artifact consumption rehearsal"
+// section together — the artifact is rejected when its boundReportVersion drifts.
+const GATE_RESULTS_VERSION = 1;
+const GATE_RESULTS_FILENAME = "gate-results-4.0.0.json";
+
+// The 17 enumerated manual (b)-gates from release-checklist.md § Enumerated v4
+// scenario gates. Every one must be present exactly once and PASS; blocked/partial
+// or a missing row fails the release.
+const REQUIRED_MANUAL_GATES = [
+  "b01-gbp-not-visible-gated-mutation",
+  "b02-geo-grid-comparability",
+  "b03-content-engine-native-revision-evidence",
+  "b04-no-engine-fallback-evidence",
+  "b05-unsupported-citation-fails",
+  "b06-missing-information-gain-fails",
+  "b07-local-personalized-ai-observation",
+  "b08-predicted-ai-lift-fails",
+  "b09-sparse-discovery-journey",
+  "b10-community-source-pilot",
+  "b11-token-swapped-community-pages-fail",
+  "b12-affiliate-expiry-regulated-escalation",
+  "b13-unauthorized-expired-code-fails",
+  "b14-hidden-commission-fails",
+  "b15-commerce-truth-lifecycle",
+  "b16-rights-gated-authority-walk",
+  "b17-authority-rental-opaque-indexer-fails",
+];
+
+function gateResultsPath() {
+  return argValues("--gate-results")[0] ?? path.join(scriptDir, GATE_RESULTS_FILENAME);
+}
+
+// Consumes the canonical gate-results artifact against the fresh validator report
+// (report) already produced by runBlockingGates. Returns rejection reasons; an empty
+// list means the artifact is fresh, digest-bound, complete, and all required rows PASS.
+function consumeGateResults(report) {
+  const artifactPath = gateResultsPath();
+  const rejections = [];
+  const summary = { path: artifactPath, deterministicRows: 0, manualRows: 0, manualPass: 0, manualFail: 0 };
+
+  if (!existsSync(artifactPath)) {
+    rejections.push(`missing gate-results artifact at ${artifactPath}`);
+    return { ...summary, rejections, pass: false };
+  }
+
+  let artifact = null;
+  try {
+    artifact = JSON.parse(readFileSync(artifactPath, "utf-8"));
+  } catch (error) {
+    rejections.push(`malformed gate-results artifact: ${error.message}`);
+    return { ...summary, rejections, pass: false };
+  }
+
+  if (!artifact || typeof artifact !== "object" || Array.isArray(artifact)) {
+    rejections.push("malformed gate-results artifact: not a JSON object");
+    return { ...summary, rejections, pass: false };
+  }
+  if (artifact.gateResultsVersion !== GATE_RESULTS_VERSION) {
+    rejections.push(`malformed gate-results artifact: unsupported gateResultsVersion ${JSON.stringify(artifact.gateResultsVersion)}`);
+  }
+  if (artifact.boundReportVersion !== VALIDATOR_REPORT_VERSION) {
+    rejections.push(`malformed gate-results artifact: boundReportVersion ${JSON.stringify(artifact.boundReportVersion)} does not match validator reportVersion ${VALIDATOR_REPORT_VERSION}`);
+  }
+  const shippedVersion = read("SKILL.md").match(/^version:\s*(\S+)/m)?.[1];
+  if (shippedVersion && artifact.skillVersion !== shippedVersion) {
+    rejections.push(`stale gate-results artifact: skillVersion ${JSON.stringify(artifact.skillVersion)} does not match shipped SKILL.md version ${shippedVersion}`);
+  }
+  const deterministic = artifact.deterministic;
+  const manual = artifact.manual;
+  if (!deterministic || !Array.isArray(deterministic.rows) || !Array.isArray(manual)) {
+    rejections.push("malformed gate-results artifact: missing deterministic.rows or manual array");
+    return { ...summary, rejections, pass: false };
+  }
+
+  const expectedDigest = treeDigest(skillRoot);
+  const expectedToolingDigest = devToolingDigest();
+  if (artifact.sourceDigest !== expectedDigest) {
+    rejections.push(`stale gate-results artifact: attests source ${artifact.sourceDigest}, current skill source digest is ${expectedDigest}`);
+  }
+  if (artifact.toolingDigest !== expectedToolingDigest) {
+    rejections.push(`wrong-digest gate-results artifact: attests tooling ${artifact.toolingDigest}, current validator/inventory implementation digest is ${expectedToolingDigest}`);
+  }
+
+  // Deterministic (a)-rows: imported from the validator report and bound to it. The
+  // artifact must reproduce the report's section inventory exactly — every section
+  // once, no unknown/extra rows — with matching results and the attested digest.
+  summary.deterministicRows = deterministic.rows.length;
+  if (report && Array.isArray(report.sections)) {
+    const reportResults = new Map(report.sections.map((entry) => [entry.name, entry.result]));
+    const seen = new Set();
+    for (const row of deterministic.rows) {
+      if (!row || typeof row !== "object" || typeof row.scenario !== "string" || typeof row.result !== "string") {
+        rejections.push("malformed gate-results artifact: malformed deterministic row");
+        continue;
+      }
+      if (seen.has(row.scenario)) {
+        rejections.push(`duplicate gate-results deterministic row: ${row.scenario}`);
+        continue;
+      }
+      seen.add(row.scenario);
+      if (!reportResults.has(row.scenario)) {
+        rejections.push(`gate-results deterministic row not in validator report: ${row.scenario}`);
+        continue;
+      }
+      if (row.result !== reportResults.get(row.scenario)) {
+        rejections.push(`gate-results deterministic row ${row.scenario} attests ${row.result} but validator report says ${reportResults.get(row.scenario)}`);
+      }
+      if (row.result !== "PASS") {
+        rejections.push(`non-PASS gate-results deterministic row: ${row.scenario} is ${row.result}`);
+      }
+      if (row.sourceDigest !== expectedDigest) {
+        rejections.push(`stale gate-results deterministic row ${row.scenario}: attests ${row.sourceDigest}`);
+      }
+    }
+    for (const name of reportResults.keys()) {
+      if (!seen.has(name)) rejections.push(`gate-results deterministic rows omit validator section: ${name}`);
+    }
+  } else {
+    rejections.push("cannot bind gate-results deterministic rows: no validator report available");
+  }
+
+  // Manual (b)-rows: the 17 enumerated non-waivable gates. Each must appear once,
+  // carry the source digest it attests, and PASS. blocked/partial/FAIL blocks release.
+  summary.manualRows = manual.length;
+  const seenManual = new Set();
+  for (const row of manual) {
+    if (
+      !row || typeof row !== "object" ||
+      typeof row.id !== "string" ||
+      typeof row.result !== "string" ||
+      typeof row.evidence !== "string" ||
+      typeof row.date !== "string" ||
+      typeof row.operator !== "string"
+    ) {
+      rejections.push("malformed gate-results artifact: malformed manual row (needs id/result/evidence/date/operator)");
+      continue;
+    }
+    if (seenManual.has(row.id)) {
+      rejections.push(`duplicate gate-results manual row: ${row.id}`);
+      continue;
+    }
+    seenManual.add(row.id);
+    if (row.result === "PASS") summary.manualPass += 1;
+    else summary.manualFail += 1;
+    if (row.result !== "PASS") {
+      rejections.push(`non-PASS gate-results manual row: ${row.id} is ${row.result} (blocked/partial/FAIL cannot satisfy a required gate)`);
+    }
+    if (row.sourceDigest !== expectedDigest) {
+      rejections.push(`stale gate-results manual row ${row.id}: attests ${row.sourceDigest}, current skill source digest is ${expectedDigest}`);
+    }
+  }
+  for (const id of REQUIRED_MANUAL_GATES) {
+    if (!seenManual.has(id)) rejections.push(`missing required gate-results manual gate: ${id}`);
+  }
+
+  return { ...summary, rejections, pass: rejections.length === 0 };
 }
 
 function addFinding(findings, category, severity, message, file = null) {
@@ -458,6 +629,10 @@ function evaluate() {
       );
     }
   }
+  const gateResults = consumeGateResults(blockingGates.report);
+  for (const rejection of gateResults.rejections) {
+    addFinding(findings, "Gate results", "critical", rejection, gateResults.path);
+  }
   const skill = read("SKILL.md");
   const references = [
     "references/hub-mode.md",
@@ -480,6 +655,13 @@ function evaluate() {
     "references/conversion-cta.md",
     "references/local-seo-gbp.md",
     "references/backlinks-entity.md",
+    "references/image-rights.md",
+    "references/evidence-conventions.md",
+    "references/commercial-integrity.md",
+    "references/page-evidence.md",
+    "references/community-source-pages.md",
+    "references/affiliate-promo-integrity.md",
+    "references/ecommerce-seo.md",
     "references/monthly-reporting.md",
     "references/ai-search-visibility.md",
     "references/data-tools.md",
@@ -495,12 +677,15 @@ function evaluate() {
     "scripts/gsc-oauth.mjs",
     "scripts/gsc-fetch.mjs",
     "scripts/gsc-opportunities.mjs",
+    "scripts/link-graph-analyzer.mjs",
+    "scripts/rendered-link-export.mjs",
     "scripts/monthly-report.mjs",
   ];
   const templates = [
     "templates/admin-setup.md",
     "templates/gsc-opportunity.md",
     "templates/content-plan.md",
+    "templates/page-evidence.md",
     "templates/local-seo-gbp.md",
     "templates/backlink-gap.md",
     "templates/monthly-report.md",
@@ -518,7 +703,8 @@ function evaluate() {
   const portable = portableFiles();
   const allPortable = scanPortableFiles(portable);
   const combinedPortableText = allPortable.map(({ text }) => text).join("\n").toLowerCase();
-  const allReferencesLinked = references.filter((file) => skill.includes(file)).length;
+  const routedReferences = references.filter((file) => file !== "references/evidence-conventions.md");
+  const allReferencesLinked = routedReferences.filter((file) => skill.includes(file)).length;
   const scenarioProfiles = loadScenarioFixture(findings);
   const phaseArchitecture = exists("references/phase-architecture.md")
     ? read("references/phase-architecture.md").toLowerCase()
@@ -530,7 +716,7 @@ function evaluate() {
 
   award(checks, findings, "Structure", 2, /^---[\s\S]*name:\s*seo-growth-workspace[\s\S]*description:/m.test(skill), "SKILL.md frontmatter should include name and description", "SKILL.md");
   awardRatio(checks, findings, "Structure", 7, [...references, ...scripts, ...templates].filter(exists).length, references.length + scripts.length + templates.length, "Required runtime files present");
-  awardRatio(checks, findings, "Structure", 3, allReferencesLinked, references.length, "SKILL.md links current references");
+  awardRatio(checks, findings, "Structure", 3, allReferencesLinked, routedReferences.length, "SKILL.md links current routed references");
   awardRatio(checks, findings, "Structure", 3, releaseToolingFiles.filter((file) => existsSync(file)).length, releaseToolingFiles.length, "Release tooling files present in dev/seo-growth-workspace");
 
   // Generic contamination patterns: no personal names or private project markers —
@@ -615,7 +801,7 @@ function evaluate() {
     skill: "seo-growth-workspace",
     score,
     maxScore: 100,
-    pass: score >= 85 && criticalFindings.length === 0 && zeroCategories.length === 0 && findings.length === 0 && blockingGates.pass,
+    pass: score >= 85 && criticalFindings.length === 0 && zeroCategories.length === 0 && findings.length === 0 && blockingGates.pass && gateResults.pass,
     passBar: 85,
     gates: {
       minimumScore: score >= 85,
@@ -623,12 +809,22 @@ function evaluate() {
       noZeroCategory: zeroCategories.length === 0,
       noKnownFindings: findings.length === 0,
       blockingGatesGreen: blockingGates.pass,
+      gateResultsGreen: gateResults.pass,
     },
     blockingGates: {
       reportPath: blockingGates.reportPath,
       selfExecuted: blockingGates.selfExecuted,
       rejections: blockingGates.rejections,
       gates: blockingGates.gates,
+    },
+    gateResults: {
+      path: gateResults.path,
+      deterministicRows: gateResults.deterministicRows,
+      manualRows: gateResults.manualRows,
+      manualPass: gateResults.manualPass,
+      manualFail: gateResults.manualFail,
+      rejections: gateResults.rejections,
+      pass: gateResults.pass,
     },
     categories,
     findings,
@@ -655,6 +851,14 @@ Pass: ${result.pass ? "yes" : "no"}
 ## Blocking gates
 
 ${gateLines.join("\n")}
+
+## Gate results artifact
+
+- artifact: ${result.gateResults.path}
+- deterministic rows: ${result.gateResults.deterministicRows}
+- manual rows: ${result.gateResults.manualRows} (PASS ${result.gateResults.manualPass} / FAIL ${result.gateResults.manualFail})
+- pass: ${result.gateResults.pass ? "yes" : "no"}
+${result.gateResults.rejections.map((reason) => `- rejected: ${reason}`).join("\n")}
 
 ## Categories
 

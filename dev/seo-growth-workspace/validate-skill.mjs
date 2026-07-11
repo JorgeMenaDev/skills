@@ -72,6 +72,13 @@ const requiredFiles = [
   "references/conversion-cta.md",
   "references/local-seo-gbp.md",
   "references/backlinks-entity.md",
+  "references/image-rights.md",
+  "references/evidence-conventions.md",
+  "references/commercial-integrity.md",
+  "references/page-evidence.md",
+  "references/community-source-pages.md",
+  "references/affiliate-promo-integrity.md",
+  "references/ecommerce-seo.md",
   "references/monthly-reporting.md",
   "references/ai-search-visibility.md",
   "references/data-tools.md",
@@ -83,6 +90,7 @@ const requiredFiles = [
   "templates/local-seo-gbp.md",
   "templates/backlink-gap.md",
   "templates/content-plan.md",
+  "templates/page-evidence.md",
   "templates/pseo-plan.md",
   "templates/gsc-opportunity.md",
   "templates/monthly-report.md",
@@ -94,8 +102,14 @@ const requiredFiles = [
   "scripts/gsc-oauth.mjs",
   "scripts/gsc-fetch.mjs",
   "scripts/gsc-opportunities.mjs",
+  "scripts/link-graph-analyzer.mjs",
+  "scripts/rendered-link-export.mjs",
   "scripts/monthly-report.mjs",
   "scripts/portfolio-status.mjs",
+];
+
+const requiredDevFiles = [
+  "fixtures/release-scenarios.json",
 ];
 
 const failures = [];
@@ -205,13 +219,14 @@ function devToolingDigest() {
   );
 }
 
-function makePlan(root, { domain = "example.com", decision, hub = false, site = null, repairFiles = [], extra = [] }) {
+function makePlan(root, { domain = "example.com", decision, hub = false, site = null, repairFiles = [], optionalFiles = [], extra = [] }) {
   const planDir = mkdtempSync(path.join("/private/tmp", "seo-plan-fixture-"));
   const planPath = path.join(planDir, "plan.json");
   const args = [root, "--domain", domain, "--decision", decision, "--plan-output", planPath, "--format", "json"];
   if (hub) args.push("--hub");
   if (site) args.push("--site", site);
   if (repairFiles.length) args.push("--repair-files", repairFiles.join(","));
+  if (optionalFiles.length) args.push("--optional-files", optionalFiles.join(","));
   args.push(...extra);
   const result = spawnCapture(process.execPath, [path.join(skillRoot, "scripts/seo-doctor.mjs"), ...args]);
   return { planDir, planPath, result, report: JSON.parse(result.stdout || "{}") };
@@ -235,14 +250,266 @@ section("file inventory", () => {
   for (const file of requiredFiles) {
     check(existsSync(path.join(skillRoot, file)), `Missing ${file}`);
   }
+  for (const file of requiredDevFiles) {
+    check(existsSync(path.join(scriptDir, file)), `Missing dev/seo-growth-workspace/${file}`);
+  }
+  check(existsSync(path.join(scriptDir, "criterion-matrix.md")), "Missing dev/seo-growth-workspace/criterion-matrix.md");
+});
+
+section("slice 1 shared contracts", () => {
+  const evidence = readFileSync(path.join(skillRoot, "references/evidence-conventions.md"), "utf-8");
+  const commercial = readFileSync(path.join(skillRoot, "references/commercial-integrity.md"), "utf-8");
+  const matrix = readFileSync(path.join(scriptDir, "criterion-matrix.md"), "utf-8");
+  check(["Reported", "Observed", "Third-party estimate", "Inference", "Action completed", "Outcome"].every((state) => evidence.includes(`**${state}**`)), "Evidence conventions must define the six shared evidence states");
+  check(evidence.includes("Unknown") && evidence.includes("exposure → mention → citation") && evidence.includes("qualified conversion"), "Evidence conventions must include buyer-stage Unknown and the non-causal outcome ladder");
+  check(commercial.includes("typical mobile viewport") && commercial.includes("directly to each named alternative") && commercial.includes("Anti-authority-rental boundary"), "Commercial integrity must define disclosure visibility, direct alternative links, and the anti-authority-rental boundary");
+  const rows = matrix.split(/\r?\n/).filter((line) => /^\| C\d+-\d{2} \|/.test(line));
+  const ids = rows.map((line) => line.split("|")[1].trim());
+  const expectedCounts = { 32: 6, 33: 8, 34: 20, 35: 12, 36: 18, 37: 13, 38: 11, 39: 15, 40: 16, 41: 10, 42: 12, 43: 12 };
+  check(rows.length === 153 && new Set(ids).size === rows.length, "Criterion matrix must contain all 153 unique source criteria");
+  check(Object.entries(expectedCounts).every(([issue, count]) => ids.filter((id) => id.startsWith(`C${issue}-`)).length === count), "Criterion matrix per-issue row counts must match the source issue contracts");
+  check(rows.every((line) => /\| \((?:a|b)\) [^|]+ \| (?:open|closed-by-slice-[1-7]) \|/.test(line)), "Every criterion row must have exactly one typed scenario and a valid status");
+});
+
+section("slice 3 page-evidence contracts", () => {
+  const reference = readFileSync(path.join(skillRoot, "references/page-evidence.md"), "utf-8");
+  const template = readFileSync(path.join(skillRoot, "templates/page-evidence.md"), "utf-8");
+  const combined = `${reference}\n${template}`;
+  const recordFields = ["Page / revision ID", "Claim-to-source support", "Fetched / checked date", "Authorized voice inputs", "Human approval", "rendered-citation survival"];
+  const rightsFields = ["Asset ID", "Approved license + version", "Attribution duty", "Release / consent state", "Rights checked at", "Exceptions / caveats", "Master-row version / hash"];
+
+  check(recordFields.every((field) => combined.toLowerCase().includes(field.toLowerCase())), "Page-evidence files must define revision identity, claim support, dated checks, voice inputs, approval, and rendered citation survival");
+  check(reference.includes("One record belongs to one page revision") && reference.includes("A later revision gets a new record"), "Page evidence must be immutable and revision-scoped");
+  check(reference.includes("Evidence depth is proportional to materiality") && reference.includes("minor wording or metadata change") && reference.includes("YMYL"), "Page evidence must scale depth with materiality");
+  check(rightsFields.every((field) => combined.includes(field)), "Page evidence must snapshot material rights values and the asset-master row version/hash");
+  check(reference.includes("Engine-native revision evidence") && reference.includes("do not create this fallback or any duplicate provenance ledger"), "Engine-native revision evidence must remain authoritative without duplicate records");
+  check(reference.includes("SITE_WORKSPACE/reports/content/<slug>/<YYYY-MM-DD>-<revision-id>-evidence.md") && reference.includes("two-digit sequence"), "No-engine evidence must have a deterministic revision-unique dated per-page path");
+  check(reference.includes("Missing information gain") || reference.includes("information gain is missing"), "Missing information gain must block drafting or publication");
+  check(!reference.includes(".seo/research/sources.md"), "Page-evidence reference must not introduce a global sources ledger path");
+
+  const tableBlocks = template.split(/\r?\n/).reduce((blocks, line) => {
+    if (!line.startsWith("|")) return [...blocks, []];
+    const current = blocks.at(-1) ?? [];
+    return [...blocks.slice(0, -1), [...current, line]];
+  }, [[]]).filter((block) => block.length);
+  check(tableBlocks.length === 6, "Page-evidence template must contain six record tables");
+  for (const block of tableBlocks) {
+    const widths = block.map((line) => line.slice(1, -1).split("|").length);
+    check(block.length >= 2 && widths.every((width) => width === widths[0]), `Page-evidence template table must have matching column counts: ${widths.join(",")}`);
+  }
+});
+
+section("slice 3 AI observation and portrayal contracts", () => {
+  const reference = readFileSync(path.join(skillRoot, "references/ai-search-visibility.md"), "utf-8");
+  const observationFields = [
+    "Platform",
+    "Visible model/version",
+    "Surface/mode",
+    "Prompt ID + version",
+    "Verbatim query",
+    "Country + locale",
+    "City/coordinates + location method",
+    "Login/account state",
+    "Personalization/memory state",
+    "Device/app",
+    "Run number",
+    "Declared repeat count",
+  ];
+  const portrayalFields = [
+    "Citation state",
+    "Cited source",
+    "Concise portrayal sentence",
+    "Factual accuracy",
+    "Missing material qualifier",
+    "Outdated information",
+    "Unsupported claim",
+    "Entity confusion",
+    "Sentiment rubric",
+    "Buyer stage",
+    "Action route",
+    "Route reason",
+  ];
+  const gapFields = ["Opportunity class", "Rationale", "Action route", "Route reason"];
+
+  check(observationFields.every((field) => reference.includes(field)), "AI observation rows must carry platform/model, prompt, verbatim query, locale/personalization/device/account state, and repeat context");
+  check(["**Mention**", "**Recommendation**", "**Citation**"].every((semantic) => reference.includes(semantic)), "AI observation contract must distinguish mention, recommendation, and citation per row");
+  check(reference.includes("one row per answer run") && reference.includes("x of y completed runs") && reference.includes("never rankings"), "AI observations must be dated reproducible samples with recurrence bounded to the declared sample");
+  check(gapFields.every((field) => reference.includes(field)), "AI source-page gaps must carry an opportunity class, rationale, action route, and route reason");
+  check(reference.includes("| Opportunity class | Rationale | Action route | Route reason |"), "AI source-page gap rows must include classification and bounded routing as separate fields");
+  check(reference.includes("opportunity class is the inference; the action route is its bounded consequence") && reference.includes("Every material gap gets exactly one action route"), "Every material AI source-page gap must route exactly once as a bounded consequence of its classification");
+  check(portrayalFields.every((field) => reference.includes(field)), "AI portrayal records must separate factual portrayal, sentiment, buyer stage, and bounded action routing");
+  check(reference.includes("| Brand mention | Recommendation | Citation state | Cited source |") && !reference.includes("Citation + cited source"), "AI portrayal rows must keep citation state and cited source as independent fields");
+  check(reference.includes("Portrayal is not sentiment") && reference.includes("Every material gap and every portrayal finding routes to exactly one existing destination"), "Portrayal must differ from sentiment and gaps and portrayal findings must each have exactly one route");
+  const routes = ["`content backlog`", "`backlink work-log`", "`commercial disclosure review`", "`no action`"];
+  check(routes.every((route) => reference.includes(route)), "AI portrayal routing must include the four bounded destinations");
+  check(reference.includes(".seo/backlog.md") && reference.includes(".seo/backlinks/work-log.md") && reference.includes("commercial-integrity.md"), "AI findings must route only to existing backlog, backlink, and commercial-review homes");
+  check(reference.includes("No scraping, provider dependency, outreach automation") && reference.includes("never promise, project, or calculate AI-visibility lift"), "AI guidance must prohibit scraping, provider/outreach machinery, and predicted lift");
+  check(!/route.{0,80}(?:GEO mode|GEO backlog)/is.test(reference), "AI contract must not define a GEO-mode or GEO-backlog route");
+  check(!/(?:will|expected to|projected to|should) (?:increase|improve|lift).{0,50}AI.visibility/i.test(reference), "AI contract must not promise or project AI-visibility lift");
+});
+
+section("slice 3 discovery-journey contract", () => {
+  const reference = readFileSync(path.join(skillRoot, "references/business-context.md"), "utf-8");
+  const fields = [
+    "Surface",
+    "Customer-evidence basis",
+    "Evidence state",
+    "Provenance / limitations",
+    "Buyer stage(s)",
+    "Customer job / query or task",
+    "Current-presence observation",
+    "Activation decision",
+    "Asset / outcome / next action",
+    "Execution route",
+  ];
+
+  check(fields.every((field) => reference.includes(field)), "Discovery-journey rows must carry customer evidence, provenance, buyer stages, presence, activation, action, and routing fields");
+  check(reference.includes("only when identified customer evidence is `Reported` or `Observed`") && reference.includes("When no qualifying evidence exists, create no matrix"), "Discovery-journey creation must require reported or observed customer evidence and treat no matrix as correct without it");
+  check(reference.includes("`.seo/context.md`") && reference.includes("Do not create another required workspace file"), "Discovery-journey matrix must live in existing context/strategy/report homes without a required workspace artifact");
+  check(reference.includes("`active`; `rejected — <reason>`; or `Unknown`") && reference.includes("Leave the decision `Unknown`"), "Discovery-journey activation must preserve active, reasoned rejection, and Unknown decisions");
+  check(reference.includes("Route social, video, newsletter, and marketplace execution to dedicated capabilities outside this skill"), "Social, video, newsletter, and marketplace execution must route outside the SEO skill");
+  check(reference.includes("Customer recall remains `Reported`") && reference.includes("Do not infer channel causality or revenue/ARR contribution"), "Discovery-journey evidence must keep recall reported and prohibit causal revenue claims");
+  check(reference.includes("Do not turn the matrix into an omni-channel mode") && reference.includes("create per-channel ledgers") && reference.includes("calculate a surface score"), "Discovery-journey guidance must prohibit omni-channel mode, per-channel ledgers, and scoring formulas");
+  check(!/(?:mandatory|required) (?:discovery[- ]journey |journey )?matrix/i.test(reference), "Discovery-journey matrix must not be mandatory");
+  check(!/(?:score|weight|points?)\s*[=+*/]/i.test(reference), "Discovery-journey contract must not contain a scoring formula");
+});
+
+section("slice 3 community-source page contract", () => {
+  const reference = readFileSync(path.join(skillRoot, "references/community-source-pages.md"), "utf-8");
+  const router = readFileSync(path.join(skillRoot, "SKILL.md"), "utf-8");
+  const attributionFields = ["Platform or community", "Thread title and direct thread/permalink", "Public author handle", "Date accessed"];
+
+  check(attributionFields.every((field) => reference.includes(field)), "Community sources must carry platform, permalink, author handle, and access-date attribution");
+  check(["**Quote**", "**Paraphrase**", "**Publisher analysis**"].every((label) => reference.includes(label)), "Community pages must explicitly separate quote, paraphrase, and publisher analysis");
+  check(reference.includes("source-removal workflow") && reference.includes("2 business days") && reference.includes("5 business days") && reference.includes("Record the completed action, outcome"), "Community pages must define a timed deletion/removal workflow and record outcomes");
+  check(reference.includes("1–3 pages maximum") && reference.includes("No expansion past three pages"), "Community pilot must be capped at one to three pages before approved expansion");
+  check(["week 2", "week 4", "week 8", "week 12"].every((week) => reference.includes(`**${week}**`)), "Community pilot must pre-register week 2, 4, 8, and 12 reviews");
+  check(reference.includes("cannot be redefined after results are seen") && reference.includes("explicit operator approval"), "Community pilot gates must be immutable after results and expansion must require operator approval");
+  check(["No scraping", "No covert participation", "No parasite publishing"].every((rule) => reference.includes(rule)), "Community contract must prohibit scraping, covert participation, and parasite publishing");
+  check(reference.includes("Anti-token-swap assertion") && reference.includes("page-specific source set") && reference.includes("page-specific analysis") && reference.includes("page-specific information gain"), "Community pages must reject token-swapped variants with interchangeable sources, analysis, or information gain");
+  check(reference.includes("does not endorse the publisher") && reference.includes("publisher's relationship to the product") && reference.includes("regardless of whether it is classified as commercial"), "Community pages must require affirmative non-endorsement and relationship disclosures on every page");
+  check(reference.includes("publicly accessible") && reference.includes("does not grant republication rights") && reference.includes("explicit, recorded authorization"), "Access-controlled community content must require explicit author and community-owner authorization");
+  check(reference.includes("fixture-validated only — not yet exercised against a live operation"), "Community specialist path must carry the fixture-only dogfood caveat");
+  check(router.includes("Owned pages synthesizing forums, Q&A, or other community sources: `references/community-source-pages.md`"), "SKILL.md must progressively route community-source publishing");
+});
+
+section("slice 3 affiliate and promo integrity contract", () => {
+  const reference = readFileSync(path.join(skillRoot, "references/affiliate-promo-integrity.md"), "utf-8");
+  const router = readFileSync(path.join(skillRoot, "SKILL.md"), "utf-8");
+  const businessContext = readFileSync(path.join(skillRoot, "references/business-context.md"), "utf-8");
+  const offerFields = ["Program/source", "Authorization basis", "Verbatim terms", "Start date", "expiry date", "checked-at date", "verification method", "next recheck"];
+  const statuses = ["verified-active", "expiring", "expired", "revoked", "unverified"];
+
+  check(offerFields.every((field) => reference.toLowerCase().includes(field.toLowerCase())), "Affiliate offers must record source, authorization, verbatim terms, dates, verification, and recheck evidence");
+  check(statuses.every((status) => reference.includes(`\`${status}\``)), "Affiliate offers must define the complete specialist status vocabulary");
+  check(reference.includes("inside its scheduled pre-expiry review window **and its recheck is pending**") && reference.includes("explicitly transitions the offer back to `verified-active`") && reference.includes("that transition overrides the time-based `expiring` state") && reference.includes("Only `verified-active` offers may be published") && reference.includes("At expiry, promptly remove, unpublish, or update") && reference.includes("Never describe a dated offer as evergreen") && reference.includes("passes without successful reverification becomes `unverified`"), "Only verified-active offers may publish and expiring offers must have an unambiguous recheck transition and expiry workflow");
+  check(reference.includes("program identity") && reference.includes("trademark bidding") && reference.includes("QR codes") && reference.includes("link shortening") && reference.includes("self-referrals"), "Affiliate evidence must capture program identity and recorded brand, bidding, and promotional constraints");
+  check(reference.includes("require escalation to the operator **before publication**") && reference.includes("category flag") && reference.includes("target jurisdiction(s)") && reference.includes("`approved with conditions`") && reference.includes("recording a condition is not satisfying it") && reference.includes("Do not embed jurisdictional legal rules"), "Regulated categories must record pre-publication escalation without embedding legal rules");
+  check(reference.includes("`tracked conversion` → `merchant validation` → `confirmed/approved conversion` → `approved commission` → `paid commission` → `reversed/adjusted` → `net revenue`") && reference.includes("conversion approval is never evidence of commission approval") && reference.includes("separately identified amount") && reference.includes("must never show only a figure netted into revenue") && reference.includes("A tracked click is not a conversion") && reference.includes("never call pending commission revenue") && reference.includes("shared non-causal outcome ladder"), "Affiliate reporting must distinguish tracked, validated, approved, paid, reversed/adjusted, and net lifecycle states without net-only reversals or causal upgrades");
+  check(reference.includes("every commission-bearing relationship") && reference.includes("commission-bearing link without it fails publication"), "Commission-bearing relationships must structurally require commercial-integrity disclosure");
+  check(reference.includes("workspace holds the evidence pointer, not the secret") && reference.includes("Do not store private or negotiated codes") && reference.includes("stable secret/evidence ID"), "Sensitive codes and terms must be referenced by secure evidence pointer rather than stored in Markdown");
+  check(reference.includes("fixture-validated only — not yet exercised against a live operation"), "Affiliate specialist path must carry the fixture-only dogfood caveat");
+  check(router.includes("Affiliate/referral offers, coupons, promo codes, and commission lifecycle: `references/affiliate-promo-integrity.md`"), "SKILL.md must progressively route affiliate and promo integrity");
+  check(businessContext.includes("affiliate/referral relationships to `references/affiliate-promo-integrity.md`"), "Business-context journey routing must name affiliate-promo integrity");
+});
+
+section("slice 4 e-commerce decision contract", () => {
+  const reference = readFileSync(path.join(skillRoot, "references/ecommerce-seo.md"), "utf-8");
+  const router = readFileSync(path.join(skillRoot, "SKILL.md"), "utf-8");
+  const classifier = readFileSync(path.join(skillRoot, "references/phase-architecture.md"), "utf-8");
+  const fixturePath = path.join(scriptDir, "fixtures/release-scenarios.json");
+  const fixture = JSON.parse(readFileSync(fixturePath, "utf-8"));
+  const ecommerceProfile = fixture.profiles?.find(({ id }) => id === "synthetic-ecommerce");
+
+  check(reference.includes("## Commerce decision contract"), "E-commerce reference must define its commerce decision contract");
+  check(reference.includes("Unknown margin stays `Unknown`") && reference.includes("never estimate it or substitute points to force a ranking"), "Unknown commerce value must stay Unknown and never be estimated to force ranking");
+  check(reference.includes("A mixed SERP triggers investigation, never automatic URL creation"), "Mixed commerce SERPs must trigger investigation rather than URL creation");
+  check(["`keep`", "`redirect`", "`410`", "`replace`"].every((decision) => reference.includes(decision)) && reference.includes("never apply a blanket rule"), "Discontinued inventory must use the complete evidence-dependent lifecycle decision set");
+  check(reference.includes("product feed, structured data, and rendered landing page must agree") && reference.includes("Any disagreement is a blocker"), "Feed, schema, and rendered landing-page truth must agree or block release");
+  check(reference.includes("no Merchant Center adapters") && reference.includes("no provider integrations"), "Commerce contract must exclude Merchant Center adapters and provider integrations");
+  check(reference.includes("fixture-validated only — not yet exercised against a live operation"), "Commerce specialist path must carry the fixture-only dogfood caveat");
+  check(classifier.includes("Ecommerce / marketplace") && classifier.includes("load `references/ecommerce-seo.md` for commerce decisions"), "Site-type classifier must route e-commerce targets to the commerce reference");
+  check(router.includes("E-commerce and marketplace prioritization, page-type, collection, facet/variant/inventory, and commerce-truth decisions: `references/ecommerce-seo.md`"), "SKILL.md must progressively route e-commerce decisions");
+  check(ecommerceProfile?.siteType === "ecommerce" && ecommerceProfile?.expectedReference === "references/ecommerce-seo.md" && ecommerceProfile?.dogfoodStatus === "fixture-validated only — not yet exercised against a live operation", "Release fixtures must include a synthetic e-commerce classifier route and fixture-only caveat");
+});
+
+section("slice 5 rights-gated authority contracts", () => {
+  const backlinks = readFileSync(path.join(skillRoot, "references/backlinks-entity.md"), "utf-8");
+  const rights = readFileSync(path.join(skillRoot, "references/image-rights.md"), "utf-8");
+  const bootstrap = readFileSync(path.join(skillRoot, "scripts/bootstrap-seo-workspace.mjs"), "utf-8");
+  const router = readFileSync(path.join(skillRoot, "SKILL.md"), "utf-8");
+  const funnelFields = ["Lifecycle", "Query", "Market/geo", "Source URL", "Qualification", "Reply disposition", "Paid request", "Amount", "Link live", "Indexable", "30-day check", "90-day check", "Referral", "Qualified conversion", "Cost", "Limitations"];
+  const reproducibilityFields = ["Query", "Market/geo", "Source URL", "Qualification result", "Limitations", "Date"];
+
+  check(bootstrap.includes("discovered → qualified → contacted → replied → won → live/verified → lost/expired") && funnelFields.every((field) => bootstrap.includes(field)), "Authority funnel scaffold must contain the complete lifecycle and v4 fields");
+  check(reproducibilityFields.every((field) => backlinks.includes(`**${field}**`)), "Listicle prospecting must require every reproducibility field");
+  check(backlinks.includes("declare a prospect cap and a review threshold") && backlinks.includes("explicitly approves the next bounded batch"), "Manual-first outreach must stop for review before another bounded batch");
+  check(rights.includes("No image distribution and no rights-based outreach/contact may start unless the asset row is **green: sufficient, current ownership/license evidence**"), "The asset-rights master must structurally gate distribution and contact on green evidence");
+  check(rights.includes("Reverse-image matches are **discovery leads only**") && rights.includes("a match never proves") && rights.includes("Permitted unattributed use generates no demand"), "Reverse-image matches must remain discovery leads and permitted unattributed use must generate no demand");
+  check(rights.includes("Current-check stop gate") && rights.includes("no frozen platform-license table") && rights.includes("not applicable (directly owned, no platform license)"), "Volatile platform terms must use a per-asset/run current-check stop gate without a frozen table, with a directly-owned not-applicable basis");
+  check(rights.includes("Legal enforcement escalates out") && rights.includes("never sends DMCA notices, takedown demands, or legal threats"), "Legal enforcement must escalate outside the skill");
+  check(rights.includes("Fixture-validated only — not yet exercised against a live operation") && rights.includes("applies only to the live image-distribution/outreach play"), "Only the live image distribution play must carry the fixture-only caveat");
+  check(router.includes("Image distribution, reuse discovery, and rights-gated attribution outreach: `references/image-rights.md`"), "SKILL.md must progressively route image-rights work");
+});
+
+section("slice 2 GBP evidence contracts", () => {
+  const reference = readFileSync(path.join(skillRoot, "references/local-seo-gbp.md"), "utf-8");
+  const template = readFileSync(path.join(skillRoot, "templates/local-seo-gbp.md"), "utf-8");
+  const visibilityStates = ["observed", "not_visible", "not_checked", "unavailable"];
+  const observationFields = ["Observed at", "Source or exact query", "Observer geo", "Locale", "Device / account / session context", "Business or entity", "Field", "Observed value", "Visibility status", "Evidence URL or capture", "Evidence class", "Evidence limitations"];
+  const mutationFields = [
+    "proposed_change",
+    "business_owner_factual_confirmation",
+    "eligibility_confirmation",
+    "before_evidence",
+    "hypothesis",
+    "primary_outcome",
+    "guard_metrics",
+    "concurrent_changes",
+    "changed_at",
+    "actor",
+    "approval_or_review",
+    "recheck_window",
+    "after_evidence",
+    "result",
+    "conclusion_class",
+    "rollback_or_follow_up",
+  ];
+
+  check(visibilityStates.every((state) => reference.includes(`\`${state}\``)), "GBP reference must define all four visibility states");
+  check(visibilityStates.every((state) => template.includes(`\`${state}\``)), "GBP template must define all four visibility states");
+  check(observationFields.every((field) => template.includes(field)), "GBP template must carry every observation-ledger field");
+  check(reference.includes("this is never `false`, absent") && template.includes("never record false, absent"), "Competitor non-visibility must never become a negative fact");
+  check(mutationFields.every((field) => reference.includes(`\`${field}\``)), "GBP reference must define every mutation-ledger field");
+  const mutationColumns = ["Proposed change", "Business-owner factual confirmation", "Eligibility confirmation", "Before evidence", "Hypothesis", "Primary outcome", "Guard metrics", "Concurrent changes", "Changed at", "Actor", "Approval or review", "Recheck window", "After evidence", "Result", "Conclusion class", "Rollback or follow-up"];
+  check(mutationColumns.every((field) => template.includes(field)), "GBP template must carry every mutation-ledger field");
+  check(reference.includes("Never label sequential changes on one profile as an A/B test") && template.includes("never A/B tests"), "Sequential GBP changes must not be labelled A/B tests");
+  check(reference.includes("There is no GBP-specific approval exception") && template.includes("there is no GBP-only exception"), "GBP changes must use the normal approval ceiling");
+  check(reference.includes("`geo-grid scan`") && reference.includes("`manual location sample`") && template.includes("`geo-grid scan`") && template.includes("`manual location sample`"), "Reference and template must define both local measurement evidence classes");
+  check(reference.includes("it emits no grid coverage percentage") && template.includes("must leave top-3 and top-10 coverage blank"), "Manual location samples must not emit coverage percentages");
+  check(reference.includes("reject the pair as a before/after comparison") && template.includes("changed grid geometry must be rejected"), "Changed grid geometry must be rejected as a before/after comparison");
+  check(reference.includes("no bundled script, paid tool, or particular provider is required or endorsed"), "Geo-grid workflow must remain tool-optional and vendor-neutral");
+  check(reference.includes("[Evidence Conventions](evidence-conventions.md)") && template.includes("`references/evidence-conventions.md`") && !template.includes("](../references/"), "GBP reference cross-links the shared vocabulary; the copied template names it without relative links");
+
+  const tableBlocks = template.split(/\r?\n/).reduce((blocks, line) => {
+    if (!line.startsWith("|")) return [...blocks, []];
+    const current = blocks.at(-1) ?? [];
+    return [...blocks.slice(0, -1), [...current, line]];
+  }, [[]]).filter((block) => block.length);
+  check(tableBlocks.length === 5, "GBP template must contain five ledger/action tables");
+  for (const block of tableBlocks) {
+    const widths = block.map((line) => line.slice(1, -1).split("|").length);
+    check(block.length >= 2 && widths.every((width) => width === widths[0]), `GBP template table must have matching column counts: ${widths.join(",")}`);
+  }
 });
 
 // --- SKILL.md routes every reference ---
 section("SKILL.md routing", () => {
   const skill = readFileSync(path.join(skillRoot, "SKILL.md"), "utf-8");
-  for (const file of requiredFiles.filter((f) => f.startsWith("references/"))) {
+  for (const file of requiredFiles.filter((f) => f.startsWith("references/") && f !== "references/evidence-conventions.md")) {
     check(skill.includes(file), `SKILL.md does not reference ${file}`);
   }
+  check(!skill.includes("references/evidence-conventions.md"), "Evidence conventions must be reached through consumer cross-links, not routed from SKILL.md");
 });
 
 // --- SKILL.md version matches the bootstrap script's stamp constant ---
@@ -270,6 +537,7 @@ section("bootstrap smoke test", () => {
       ".seo/log.md",
       ".seo/context.md",
       ".seo/backlog.md",
+      ".seo/backlinks/asset-rights.md",
     ]) {
       check(
         existsSync(path.join(bootstrapRoot, file)),
@@ -299,6 +567,10 @@ section("bootstrap smoke test", () => {
       config.workspaceSchemaVersion === 1,
       "Bootstrap must stamp config.json with workspaceSchemaVersion 1",
     );
+    const workLog = readFileSync(path.join(bootstrapRoot, ".seo/backlinks/work-log.md"), "utf-8");
+    const legacyTable = "| Date | Target | Action | Status | Evidence | Next step |\n| --- | --- | --- | --- | --- | --- |";
+    check(workLog.includes(legacyTable), "Bootstrap must preserve the legacy six-column backlink table byte-for-byte");
+    check(workLog.includes("## Authority funnel (v4)") && workLog.includes("Link live | Indexable") && workLog.includes("explicit operator opt-in only"), "Bootstrap must append the separate v4 authority funnel and migration opt-in note");
   } finally {
     rmSync(bootstrapRoot, { recursive: true, force: true });
   }
@@ -634,6 +906,18 @@ section("doctor plan and bootstrap action contract", () => {
 
     run(process.execPath, [path.join(skillRoot, "scripts/bootstrap-seo-workspace.mjs"), "--plan", planned.planPath, "--action", "create", "--domain", "plan.example", root]);
     check(existsSync(path.join(root, ".seo/config.json")) && !existsSync(planned.planPath), "Create must scaffold once and atomically consume its plan");
+    const assetRights = path.join(root, ".seo/backlinks/asset-rights.md");
+    check(existsSync(assetRights), "New workspaces must scaffold the optional asset-rights ledger");
+    rmSync(assetRights);
+    const optionalMissing = spawnCapture(process.execPath, [path.join(skillRoot, "scripts/seo-doctor.mjs"), root, "--domain", "plan.example", "--format", "json"]);
+    check(optionalMissing.status === 0 && JSON.parse(optionalMissing.stdout || "{}").clean === true, "An absent optional ledger must be excluded from workspace drift");
+    const optional = makePlan(root, { domain: "plan.example", decision: "create-optional", optionalFiles: ["backlinks/asset-rights.md"] });
+    check(optional.result.status === 0 && optional.report.plan?.approved === true && optional.report.optionalFiles?.[0] === "backlinks/asset-rights.md", "Doctor must emit an approved, allowlist-bound create-optional plan");
+    run(process.execPath, [path.join(skillRoot, "scripts/bootstrap-seo-workspace.mjs"), "--plan", optional.planPath, "--action", "create-optional", "--domain", "plan.example", "--files", "backlinks/asset-rights.md", root]);
+    check(existsSync(assetRights), "Create-optional must create the reviewed absent asset-rights ledger");
+    const optionalReplay = spawnSync(process.execPath, [path.join(skillRoot, "scripts/bootstrap-seo-workspace.mjs"), "--plan", optional.planPath, "--action", "create-optional", "--domain", "plan.example", "--files", "backlinks/asset-rights.md", root], { encoding: "utf-8" });
+    check(optionalReplay.status !== 0, "A consumed create-optional plan must not replay");
+    rmSync(optional.planDir, { recursive: true, force: true });
     const replay = spawnSync(process.execPath, [path.join(skillRoot, "scripts/bootstrap-seo-workspace.mjs"), "--plan", planned.planPath, "--action", "create", "--domain", "plan.example", root], { encoding: "utf-8" });
     check(replay.status !== 0, "A consumed plan must not replay");
     rmSync(planned.planDir, { recursive: true, force: true });
@@ -953,6 +1237,204 @@ section("eight-row legacy / six-row hub rehearsal", () => {
   }
 });
 
+section("Next App Router rendered-link exporter", () => {
+  const root = fixtureTmp("seo-rendered-export-");
+  const buildDir = path.join(root, ".next");
+  const appDir = path.join(buildDir, "server", "app");
+  const outputPath = path.join(root, "export.json");
+  const oversizedPath = path.join(root, "oversized.json");
+  const exporter = path.join(skillRoot, "scripts/rendered-link-export.mjs");
+  try {
+    mkdirSync(path.join(appDir, "nested"), { recursive: true });
+    writeFileSync(path.join(buildDir, "prerender-manifest.json"), JSON.stringify({
+      routes: { "/": { srcRoute: "/" }, "/missing": { srcRoute: "/missing" }, "/nested/page": { srcRoute: "/nested/page" } },
+      dynamicRoutes: {},
+    }));
+    writeFileSync(path.join(buildDir, "app-path-routes-manifest.json"), JSON.stringify({
+      "/page": "/",
+      "/nested/page/page": "/nested/page",
+      "/account/[id]/page": "/account/[id]",
+      "/missing/page": "/missing",
+    }));
+    writeFileSync(path.join(appDir, "index.html"), '<html><head><link rel="canonical" href="/"><script type="application/ld+json">{"text":"<a href=\'/phantom-jsonld\'>Phantom</a>"}</script><style>.sample::after { content: "<a href=\'/phantom-style\'>Phantom</a>"; }</style></head><body><template><a href="/phantom-template">Phantom</a></template><nav><a rel="nofollow sponsored" href="/nested/page"><strong> Nested </strong> page</a><a href="#skip">Fragment</a><a href="mailto:a@example.test">Mail</a></nav></body></html>');
+    writeFileSync(path.join(appDir, "nested", "page.html"), '<html><head><meta content="noindex, follow" name="robots"></head><body><main><a href="../">Home</a></main></body></html>');
+
+    const help = spawnCapture(process.execPath, [exporter, "--help"]);
+    check(help.status === 0 && help.stdout.includes("Next.js App Router"), "Exporter --help must exit 0 and state its framework boundary");
+    const args = [exporter, "--build-dir", buildDir, "--origin", "https://example.test", "--stamp", "fixture-date"];
+    const first = spawnCapture(process.execPath, args);
+    const second = spawnCapture(process.execPath, args);
+    check(first.status === 0 && first.stdout === second.stdout, "Exporter output must be byte-identical for identical build input and arguments");
+    const json = JSON.parse(first.stdout);
+    check(json.coverage?.complete === false && json.coverage?.note.includes("2 routes without complete prerendered HTML (dynamic, fallback-rendered, or partial-prerender shells): /account/[id], /missing") && json.coverage?.note.includes("1 declared prerender routes had missing HTML: /missing"), "Exporter must count and name manifest page routes and declared prerenders missing HTML");
+    check(json.provenance?.framework === "next-app-router" && json.provenance?.exportDate === "fixture-date" && json.provenance?.fileCount === 2 && json.provenance?.routeCount === 4, "Exporter must record deterministic provenance and count represented-plus-missing route identities as a union");
+    check(json.pages.find((page) => page.url === "https://example.test/nested/page")?.indexable === false, "Exporter must set indexable false from a rendered noindex robots meta tag");
+    check(json.links.some((link) => link.target === "https://example.test/nested/page" && link.anchor === "Nested page" && link.placement === "nav" && link.rel.join(" ") === "nofollow sponsored"), "Exporter must extract nested anchor text, root-relative targets, landmark placement, and rel tokens");
+    check(json.links.some((link) => link.source === "https://example.test/nested/page" && link.target === "https://example.test/" && link.placement === "main"), "Exporter must resolve relative hrefs against the source route");
+    check(json.links.length === 2 && !json.links.some((link) => link.target.includes("phantom")), "Exporter must skip fragment-only, mailto, and anchor-shaped content inside script, style, and template elements");
+
+    const analyzerInput = { ...json, coverage: { complete: true, note: "Synthetic complete override for contract acceptance." } };
+    writeFileSync(outputPath, JSON.stringify(analyzerInput));
+    const accepted = spawnCapture(process.execPath, [path.join(skillRoot, "scripts/link-graph-analyzer.mjs"), "--input", outputPath]);
+    check(accepted.status === 0, "Analyzer must accept exporter provenance and the emitted pages[]/links[] contract");
+
+    writeFileSync(path.join(appDir, "nested", "page.html"), "x".repeat(5_000_001));
+    const oversized = spawnCapture(process.execPath, [exporter, "--build-dir", buildDir, "--origin", "https://example.test", "--output", oversizedPath]);
+    check(oversized.status !== 0 && oversized.stderr.includes("5000001 bytes") && oversized.stderr.includes("5000000-byte limit"), "Exporter must refuse an HTML file over 5 MB with an actionable bound");
+
+    const source = readFileSync(exporter, "utf8");
+    check(!/\bfetch\s*\(|node:child_process|from\s+["'](?!node:)/.test(source), "Exporter source must contain no fetch, child process, or external dependencies");
+    check(source.includes("files: 50_000") && source.includes("fileBytes: 5_000_000"), "Exporter source must retain both declared traversal bounds");
+
+    const missingManifestDir = path.join(root, "missing-manifest", ".next");
+    mkdirSync(path.join(missingManifestDir, "server", "app"), { recursive: true });
+    const missingManifest = spawnCapture(process.execPath, [exporter, "--build-dir", missingManifestDir, "--origin", "https://example.test"]);
+    check(missingManifest.status !== 0 && missingManifest.stderr.includes("prerender-manifest.json") && missingManifest.stderr.includes("Cannot read manifest"), "Exporter must fail actionably when a required route manifest is absent");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+section("Next App Router exporter basePath, PPR-shell, and redirect handling", () => {
+  const root = fixtureTmp("seo-rendered-export-modes-");
+  const buildDir = path.join(root, ".next");
+  const appDir = path.join(buildDir, "server", "app");
+  const exporter = path.join(skillRoot, "scripts/rendered-link-export.mjs");
+  const analyzer = path.join(skillRoot, "scripts/link-graph-analyzer.mjs");
+  const outputPath = path.join(root, "export.json");
+  try {
+    mkdirSync(appDir, { recursive: true });
+    writeFileSync(path.join(buildDir, "routes-manifest.json"), JSON.stringify({ basePath: "/docs" }));
+    writeFileSync(path.join(buildDir, "prerender-manifest.json"), JSON.stringify({
+      routes: {
+        "/": { srcRoute: "/" },
+        "/redirect": { srcRoute: "/redirect", initialStatus: 308, initialHeaders: { location: "/docs/target" } },
+        "/shell": { srcRoute: "/shell", experimentalPPR: true },
+      },
+      dynamicRoutes: {},
+    }));
+    writeFileSync(path.join(buildDir, "app-path-routes-manifest.json"), JSON.stringify({
+      "/page": "/",
+      "/redirect/page": "/redirect",
+      "/shell/page": "/shell",
+    }));
+    writeFileSync(path.join(appDir, "index.html"), '<html><head><link rel="canonical" href="/docs"></head><body><main><a href="/docs/redirect">Redirect</a></main></body></html>');
+    writeFileSync(path.join(appDir, "redirect.html"), '<html><head></head><body><main>Redirecting…</main></body></html>');
+    writeFileSync(path.join(appDir, "shell.html"), '<html><head></head><body><main>Shell</main></body></html>');
+
+    const args = [exporter, "--build-dir", buildDir, "--origin", "https://example.test", "--stamp", "fixture-date"];
+    const first = spawnCapture(process.execPath, args);
+    const second = spawnCapture(process.execPath, args);
+    check(first.status === 0 && first.stdout === second.stdout, "basePath/PPR/redirect exporter output must be byte-identical for identical build input and arguments");
+    const json = JSON.parse(first.stdout);
+
+    check(json.pages.some((page) => page.url === "https://example.test/docs" && page.entryPoint === true), "Exporter must prefix a routes-manifest basePath onto the root page URL");
+    check(json.pages.some((page) => page.url === "https://example.test/docs/redirect"), "Exporter must prefix a routes-manifest basePath onto nested page URLs");
+
+    check(!json.pages.some((page) => page.url === "https://example.test/docs/shell") && json.coverage?.complete === false && json.coverage?.note.includes("/shell"), "A partial-prerender shell must be named in the coverage note and never emitted as a covered page");
+
+    const redirect = json.pages.find((page) => page.url === "https://example.test/docs/redirect");
+    check(redirect?.status === 308 && redirect?.indexable === false && redirect?.finalUrl === "https://example.test/docs/target", "A redirect route must carry its manifest status, finalUrl from the Location header, and indexable false");
+
+    const analyzerInput = { ...json, coverage: { complete: true, note: "Synthetic complete override for contract acceptance." } };
+    writeFileSync(outputPath, JSON.stringify(analyzerInput));
+    const accepted = spawnCapture(process.execPath, [analyzer, "--input", outputPath]);
+    check(accepted.status === 0, "Analyzer must accept exporter output carrying basePath URLs and redirect finalUrl targets");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+// --- link-graph-analyzer.mjs: contract + deterministic report ---
+section("offline link-graph analyzer", () => {
+  const root = fixtureTmp("seo-link-graph-");
+  const inputPath = path.join(root, "graph.json");
+  const derivedScopePath = path.join(root, "derived-scope.json");
+  const incompletePath = path.join(root, "incomplete.json");
+  const overLimitPath = path.join(root, "over-limit.json");
+  const byteLimitPath = path.join(root, "byte-limit.json");
+  const analyzer = path.join(skillRoot, "scripts/link-graph-analyzer.mjs");
+  const page = (url, extra = {}) => ({
+    url,
+    status: 200,
+    canonicalUrl: url,
+    indexable: true,
+    entryPoint: false,
+    moneyPage: false,
+    ...extra,
+  });
+  const graphFixture = {
+    coverage: { complete: true, note: "All rendered routes | hostile <note>." },
+    siteOrigins: ["https://example.test/"],
+    pages: [
+      page("https://example.test/", { entryPoint: true }),
+      page("https://example.test/money", { moneyPage: true }),
+      page("https://example.test/weak", { moneyPage: true }),
+      page("https://example.test/near"),
+      page("https://example.test/orphan"),
+      page("https://example.test/redirect", { status: 301, finalUrl: "https://example.test/money", indexable: false }),
+      page("https://example.test/canonical-copy", { canonicalUrl: "https://example.test/money", indexable: false }),
+      page("https://example.test/noindex", { indexable: false }),
+    ],
+    links: [
+      { source: "https://example.test/", target: "https://example.test/money", anchor: "=SUM(1|2)\n<script>", placement: "+nav", rel: [] },
+      { source: "https://example.test/", target: "https://example.test/money", anchor: "-duplicate anchor", placement: "@body", rel: [] },
+      { source: "https://example.test/", target: "https://example.test/near", anchor: "Near", placement: "body", rel: [] },
+      { source: "https://example.test/", target: "https://example.test/redirect", anchor: "Redirect", placement: "body", rel: [] },
+      { source: "https://example.test/", target: "https://example.test/canonical-copy", anchor: "Canonical", placement: "body", rel: [] },
+      { source: "https://example.test/", target: "https://example.test/noindex", anchor: "Noindex", placement: "body", rel: [] },
+      { source: "https://example.test/", target: "https://example.test/weak", anchor: "Weak", placement: "body", rel: ["nofollow"] },
+      { source: "https://example.test/", target: "https://example.test/missing", anchor: "Broken", placement: "body", rel: [] },
+      { source: "https://example.test/orphan", target: "https://example.test/orphan#fragment", anchor: "Self", placement: "body", rel: [] },
+      { source: "https://example.test/", target: "https://outside.test/pixel", anchor: "![pixel](https://outside.test/pixel)\r[link](https://outside.test/)", placement: "body", rel: [] },
+    ],
+  };
+
+  try {
+    writeFileSync(inputPath, JSON.stringify(graphFixture));
+    const help = spawnCapture(process.execPath, [analyzer, "--help"]);
+    check(help.status === 0 && help.stdout.includes("JSON is the only v1 input"), "Analyzer --help must exit 0 and document JSON-only v1 input");
+
+    const first = spawnCapture(process.execPath, [analyzer, "--input", inputPath, "--stamp", "fixture-stamp"]);
+    const second = spawnCapture(process.execPath, [analyzer, "--input", inputPath, "--stamp", "fixture-stamp"]);
+    check(first.status === 0 && first.stdout === second.stdout, "Analyzer output must be byte-identical for identical input and arguments");
+    const output = first.stdout;
+    check(output.includes("duplicates preserved") && output.includes("-duplicate anchor"), "Analyzer must preserve duplicate anchored edges");
+    check(["redirected target", "canonicalized target", "non-indexable target", "nofollow edge", "broken target: internal target absent"].every((value) => output.includes(value)), "Analyzer must explain redirect, canonical, noindex, nofollow, and broken-target handling");
+    check(output.includes("excluded; self-link") && /\| https:\/\/example\.test\/orphan \| unreachable \| unreachable \| 0 \| 0 \| false \| orphan \|/.test(output), "Self-links must remain inventoried without inbound support or graph propagation");
+    check(output.includes("https://outside.test/pixel") && output.includes("excluded; external") && output.match(/broken target:/g)?.length === 1, "External links must remain counted without becoming broken-target findings");
+    check(output.includes("orphan") && output.includes("near-orphan") && output.includes("weak declared money page"), "Analyzer must explain orphan, near-orphan, and weak declared money-page findings");
+    check(output.includes("heuristic internal authority") && output.includes("damping 0.85") && output.includes("maximum 20"), "Analyzer must label authority and record damping/iteration bounds");
+    check(output.includes("\\|") && output.includes("&lt;script&gt;") && !output.includes("<script>"), "Analyzer must flatten/escape hostile Markdown and HTML values");
+    check(output.includes("'=SUM") && output.includes("'-duplicate") && output.includes("'+nav") && output.includes("'@body"), "Analyzer must neutralize all spreadsheet formula prefixes");
+    check(output.includes("!\\[pixel\\]\\(https://outside.test/pixel\\)") && output.includes("\\[link\\]\\(https://outside.test/\\)") && !output.includes("![pixel]("), "Analyzer must flatten lone CR and neutralize Markdown image/link payloads");
+
+    const { siteOrigins, ...derivedScopeFixture } = graphFixture;
+    writeFileSync(derivedScopePath, JSON.stringify(derivedScopeFixture));
+    const derivedScope = spawnCapture(process.execPath, [analyzer, "--input", derivedScopePath]);
+    check(derivedScope.status === 0 && derivedScope.stdout.includes("excluded; external") && derivedScope.stdout.match(/broken target:/g)?.length === 1, "Absent siteOrigins[] must derive internal scope from pages[] origins");
+
+    writeFileSync(incompletePath, JSON.stringify({ ...graphFixture, coverage: { complete: false, note: "Dynamic routes unsupported." } }));
+    const incomplete = spawnCapture(process.execPath, [analyzer, "--input", incompletePath]);
+    check(incomplete.status === 0 && incomplete.stdout.includes("Orphan result: insufficient input coverage") && !incomplete.stdout.includes("| orphan |"), "Incomplete coverage must return insufficient input coverage without false orphan findings");
+
+    writeFileSync(overLimitPath, JSON.stringify({ coverage: { complete: true, note: "" }, pages: Array(50_001).fill(null), links: [] }));
+    const overLimit = spawnCapture(process.execPath, [analyzer, "--input", overLimitPath]);
+    check(overLimit.status !== 0 && overLimit.stderr.includes("pages[] exceeds the 50000-record limit") && overLimit.stderr.includes("split or narrow"), "Over-limit analyzer input must fail with the bound and an actionable remedy");
+
+    writeFileSync(byteLimitPath, "x".repeat(5_000_001));
+    const byteLimit = spawnCapture(process.execPath, [analyzer, "--input", byteLimitPath]);
+    check(byteLimit.status !== 0 && byteLimit.stderr.includes("5000001 bytes") && byteLimit.stderr.includes("5000000-byte limit"), "Analyzer must reject an oversized file from metadata before parsing or full-file allocation");
+
+    const source = readFileSync(analyzer, "utf-8");
+    check(!/\bfetch\s*\(|node:child_process|from\s+["'](?!node:)|\breaddir|\bopendir|\bglob\b|\bwalk\s*\(/.test(source), "Analyzer source must contain no fetch, child process, external dependencies, or filesystem traversal");
+    check(/^import \{ readFile, stat \} from "node:fs\/promises";/m.test(source), "Analyzer may inspect and read only its explicitly named input file");
+    check(source.indexOf("const file = await stat(inputPath)") < source.indexOf("const bytes = await readFile(inputPath)"), "Analyzer must enforce the byte limit before reading the full input file");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 // --- gsc-opportunities.mjs: report format + golden file ---
 section("gsc-opportunities report", () => {
   const report = runScript("scripts/gsc-opportunities.mjs", [
@@ -1257,10 +1739,13 @@ section("gsc-fetch credentials-dir", () => {
       ],
       { encoding: "utf-8" },
     );
-    // Dummy creds parse, then the token exchange is attempted and rejected by Google —
-    // proving the credentials-dir shape reached the API stage without a shape error.
+    // Dummy credentials must pass local shape parsing and reach the token exchange:
+    // either Google returns an OAuth response or the sandbox blocks that same fetch at the network layer.
+    const parsedStderr = parsed.stderr ?? "";
     check(
-      (parsed.stderr ?? "").includes("GSC OAuth refresh failed"),
+      parsed.status !== 0 &&
+        !parsedStderr.includes("must contain an installed or web OAuth client") &&
+        (/GSC OAuth refresh failed/.test(parsedStderr) || /fetch failed|ENOTFOUND|EAI_AGAIN|ECONNREFUSED|getaddrinfo/.test(parsedStderr)),
       "--credentials-dir should parse {client_secret.json, token.json} and reach the token exchange",
     );
 
@@ -1709,6 +2194,150 @@ section("release evaluator blocking gates rehearsal", () => {
       editedSubgate.json.blockingGates?.rejections?.some((reason) => reason.includes("disagrees with its section result")),
     "A commandInventory result that disagrees with its section result must be rejected",
   );
+});
+
+// --- evaluate-release.mjs: canonical gate-results artifact consumption ---
+//
+// The single automated seam for the slice-7 gate-results artifact. Feeds the
+// evaluator a synthetic validator report (via --validator-report, so it does not
+// self-execute) plus a synthetic gate-results file (via --gate-results), then proves
+// the evaluator imports the deterministic (a)-rows bound to that report by digest,
+// reads the manual (b)-rows, and REJECTS a missing, stale, wrong-digest, duplicate,
+// malformed, non-PASS, or incomplete artifact.
+//
+// reportVersion coupling: if the validator report schema (reportVersion) changes, bump
+// it in the writer below, in evaluate-release.mjs (VALIDATOR_REPORT_VERSION), and
+// update this section together — the base synthetic pair here restates reportVersion 1.
+section("release evaluator gate-results artifact consumption", () => {
+  const evaluator = path.join(scriptDir, "evaluate-release.mjs");
+  const evaluatorSource = readFileSync(evaluator, "utf-8");
+  const rehearsalDir = fixtureTmp("seo-gate-results-");
+  const digest = treeDigest(skillRoot);
+  const tooling = devToolingDigest();
+  const sectionInventory = [
+    ...readFileSync(fileURLToPath(import.meta.url), "utf-8").matchAll(/^section\(\s*"([^"]+)"/gm),
+  ].map((match) => match[1]);
+  // Single source of truth: the required manual gate IDs live in evaluate-release.mjs.
+  const requiredManualGates = [
+    ...evaluatorSource.matchAll(/^\s*"(b\d\d-[a-z0-9-]+)",\s*$/gm),
+  ].map((match) => match[1]);
+  check(requiredManualGates.length === 17, `Expected 17 required manual gate IDs in evaluate-release.mjs, found ${requiredManualGates.length}`);
+
+  const baseReport = {
+    reportVersion: 1,
+    skill: "seo-growth-workspace",
+    generatedAt: new Date().toISOString(),
+    sourceDigest: digest,
+    toolingDigest: tooling,
+    pass: true,
+    sections: sectionInventory.map((name) => ({ name, result: "PASS", failures: [] })),
+    commandInventory: {
+      command: "node dev/seo-growth-workspace/command-inventory.mjs --verify",
+      exit: 0,
+      result: "PASS",
+    },
+  };
+  const baseGateResults = () => ({
+    artifact: "seo-growth-workspace gate results",
+    gateResultsVersion: 1,
+    boundReportVersion: 1,
+    skill: "seo-growth-workspace",
+    skillVersion: "4.0.0",
+    generatedAt: new Date().toISOString(),
+    operator: "matias/opus-4.8",
+    sourceDigest: digest,
+    toolingDigest: tooling,
+    deterministic: {
+      rows: sectionInventory.map((name) => ({ scenario: name, kind: "a", result: "PASS", sourceDigest: digest })),
+    },
+    manual: requiredManualGates.map((id) => ({
+      id,
+      kind: "b",
+      scenario: id,
+      result: "PASS",
+      evidence: "rehearsal-fixture",
+      date: "2026-07-11",
+      operator: "matias/opus-4.8",
+      sourceDigest: digest,
+    })),
+  });
+
+  const reportPathFor = (name) => {
+    const p = path.join(rehearsalDir, `${name}.report.json`);
+    writeFileSync(p, JSON.stringify(baseReport, null, 2));
+    return p;
+  };
+  const runEval = (name, gateResults) => {
+    const gr = path.join(rehearsalDir, `${name}.gate-results.json`);
+    if (gateResults !== null) {
+      writeFileSync(gr, typeof gateResults === "string" ? gateResults : JSON.stringify(gateResults, null, 2));
+    }
+    const result = spawnCapture(process.execPath, [
+      evaluator, "--json",
+      "--validator-report", reportPathFor(name),
+      "--gate-results", gr,
+    ]);
+    return { status: result.status, json: JSON.parse(result.stdout || "{}") };
+  };
+  const rejectsWith = (name, mutate, needle) => {
+    const gr = baseGateResults();
+    mutate(gr);
+    const out = runEval(name, gr);
+    check(
+      out.json.gateResults?.pass === false &&
+        (out.json.gateResults?.rejections ?? []).some((reason) => reason.includes(needle)),
+      `Gate-results rejection "${needle}" must fire for case ${name}`,
+    );
+  };
+
+  // A fresh, digest-bound, complete, all-PASS artifact satisfies the gate.
+  const valid = runEval("valid", baseGateResults());
+  check(
+    valid.json.gateResults?.pass === true &&
+      valid.json.gateResults?.rejections?.length === 0 &&
+      valid.json.gateResults?.deterministicRows === sectionInventory.length &&
+      valid.json.gateResults?.manualRows === 17 &&
+      valid.json.gates?.gateResultsGreen === true,
+    "A fresh digest-bound all-PASS gate-results artifact must satisfy the release",
+  );
+
+  // Missing / malformed.
+  check(
+    (() => {
+      const out = runEval("missing", null);
+      return out.json.gateResults?.pass === false && out.json.gateResults?.rejections?.some((r) => r.includes("missing gate-results artifact"));
+    })(),
+    "A missing gate-results artifact must be rejected",
+  );
+  check(
+    (() => {
+      const out = runEval("malformed", "{ not json");
+      return out.json.gateResults?.pass === false && out.json.gateResults?.rejections?.some((r) => r.includes("malformed"));
+    })(),
+    "A malformed gate-results artifact must be rejected",
+  );
+
+  // Version coupling.
+  rejectsWith("bad-artifact-version", (gr) => { gr.gateResultsVersion = 99; }, "unsupported gateResultsVersion");
+  rejectsWith("bad-report-coupling", (gr) => { gr.boundReportVersion = 2; }, "boundReportVersion");
+
+  // Stale / wrong-digest at artifact and row level.
+  rejectsWith("stale-artifact", (gr) => { gr.sourceDigest = "0".repeat(64); }, "stale gate-results artifact");
+  rejectsWith("wrong-tooling", (gr) => { gr.toolingDigest = "0".repeat(64); }, "wrong-digest gate-results artifact");
+  rejectsWith("stale-manual-row", (gr) => { gr.manual[0].sourceDigest = "0".repeat(64); }, "stale gate-results manual row");
+  rejectsWith("stale-deterministic-row", (gr) => { gr.deterministic.rows[0].sourceDigest = "0".repeat(64); }, "stale gate-results deterministic row");
+
+  // Import binding: deterministic rows must reproduce the validator report exactly.
+  rejectsWith("omit-section", (gr) => { gr.deterministic.rows.pop(); }, "omit validator section");
+  rejectsWith("unknown-section", (gr) => { gr.deterministic.rows.push({ scenario: "not-a-real-section", kind: "a", result: "PASS", sourceDigest: digest }); }, "not in validator report");
+  rejectsWith("duplicate-deterministic", (gr) => { gr.deterministic.rows.push({ ...gr.deterministic.rows[0] }); }, "duplicate gate-results deterministic row");
+  rejectsWith("non-pass-deterministic", (gr) => { gr.deterministic.rows[0].result = "FAIL"; }, "non-PASS gate-results deterministic row");
+
+  // Manual completeness, duplicates, non-PASS, and shape.
+  rejectsWith("missing-manual", (gr) => { gr.manual.shift(); }, "missing required gate-results manual gate");
+  rejectsWith("duplicate-manual", (gr) => { gr.manual.push({ ...gr.manual[0] }); }, "duplicate gate-results manual row");
+  rejectsWith("non-pass-manual", (gr) => { gr.manual[0].result = "blocked"; }, "non-PASS gate-results manual row");
+  rejectsWith("malformed-manual", (gr) => { delete gr.manual[0].evidence; }, "malformed manual row");
 });
 
 const reportPath = argValue("--report");

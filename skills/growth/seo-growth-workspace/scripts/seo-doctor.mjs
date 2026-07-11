@@ -16,6 +16,7 @@ import {
   CANONICAL_FILES,
   GENERATED_WORKSPACE_DIRS,
   GENERATED_WORKSPACE_FILES,
+  OPTIONAL_WORKSPACE_FILES,
   LEGACY_SIGNATURE_MIN,
   SITE_ID_PATTERN,
   classifyWorkspace,
@@ -41,24 +42,24 @@ const INSTALL_SURFACES = [
   ".commandcode/skills/seo-growth-workspace",
 ];
 const DOC_FILES = ["AGENTS.md", "CLAUDE.md", "README.md"];
-const DECISIONS = new Set(["unresolved", "create", "adopt", "migrate", "repair"]);
+const DECISIONS = new Set(["unresolved", "create", "adopt", "migrate", "repair", "create-optional"]);
 
 function usage() {
   return `Usage:
   node seo-doctor.mjs [root] [--site <id>] [--domain <host>]
     [--hub]
     [--search-root <dir>]... [--plan-output <outside-scan-roots.json>]
-    [--decision create|adopt|migrate|repair] [--workspace <path>]
-    [--repair-files <comma,separated,paths>] [--format md|json]
+    [--decision create|adopt|migrate|repair|create-optional] [--workspace <path>]
+    [--repair-files <comma,separated,paths>] [--optional-files <comma,separated,paths>] [--format md|json]
 
 Lifecycle preflight for schema-1 workspaces. It reads scanned state and writes nothing
 unless --plan-output is supplied. That one plan path must be outside every scanned root.
 Plans expire after 15 minutes and bind the root, domain, search roots, source fingerprints,
-decision, chosen workspace, and repair allowlist.
+decision, chosen workspace, and mutation allowlist.
 
 The canonical hub registry (.seo/registry.md) routes. The legacy registry
 (.agents/seo/REGISTRY.md) is inventory only. Bootstrap consumes only reviewed create,
-adopt, or repair plans; migrate is a terminal manual outcome in v3.1.
+adopt, repair, or create-optional plans; migrate is a terminal manual outcome in v3.1.
 
 Exit codes: 0 no findings (or an approved plan), 1 findings/unapproved plan, 2 usage/read error.`;
 }
@@ -74,6 +75,7 @@ function parseArgs(argv) {
     decision: "unresolved",
     workspace: null,
     repairFiles: [],
+    optionalFiles: [],
     format: "md",
   };
   for (let i = 0; i < argv.length; i += 1) {
@@ -89,7 +91,7 @@ function parseArgs(argv) {
       options.searchRoots.push(...value.split(",").map((item) => item.trim()).filter(Boolean));
       continue;
     }
-    if (["--site", "--domain", "--search-root", "--plan-output", "--decision", "--workspace", "--repair-files", "--format"].includes(arg)) {
+    if (["--site", "--domain", "--search-root", "--plan-output", "--decision", "--workspace", "--repair-files", "--optional-files", "--format"].includes(arg)) {
       const value = argv[++i];
       if (!value || value.startsWith("--")) throw new Error(`Missing value for ${arg}\n\n${usage()}`);
       if (arg === "--site") options.site = value;
@@ -99,6 +101,7 @@ function parseArgs(argv) {
       else if (arg === "--decision") options.decision = value;
       else if (arg === "--workspace") options.workspace = value;
       else if (arg === "--repair-files") options.repairFiles = value.split(",").map((item) => item.trim()).filter(Boolean);
+      else if (arg === "--optional-files") options.optionalFiles = value.split(",").map((item) => item.trim()).filter(Boolean);
       else options.format = value;
       continue;
     }
@@ -110,6 +113,9 @@ function parseArgs(argv) {
   if (!new Set(["md", "json"]).has(options.format)) throw new Error(`Invalid --format ${options.format}\n\n${usage()}`);
   if (options.repairFiles.length > 0 && options.decision !== "repair") {
     throw new Error("--repair-files is valid only with --decision repair");
+  }
+  if (options.optionalFiles.length > 0 && options.decision !== "create-optional") {
+    throw new Error("--optional-files is valid only with --decision create-optional");
   }
   return options;
 }
@@ -291,7 +297,7 @@ function permissionFinding(input) {
 
 function inspectGeneratedSymlinks(workspaceDir) {
   if (!workspaceDir || !existsSync(workspaceDir)) return [];
-  const artifacts = [...GENERATED_WORKSPACE_FILES, ...GENERATED_WORKSPACE_DIRS];
+  const artifacts = [...GENERATED_WORKSPACE_FILES, ...GENERATED_WORKSPACE_DIRS, ...OPTIONAL_WORKSPACE_FILES];
   const checked = new Set();
   return artifacts.flatMap((relative) => {
     const segments = relative.split(path.sep);
@@ -463,6 +469,8 @@ function diagnose(options) {
   const missing = target.workspaceDir ? missingGeneratedArtifacts(target.workspaceDir) : [];
   const requestedRepair = [...new Set(options.repairFiles)].sort();
   const invalidRepair = requestedRepair.filter((file) => !GENERATED_WORKSPACE_FILES.has(file) && !GENERATED_WORKSPACE_DIRS.has(file));
+  const requestedOptional = [...new Set(options.optionalFiles)].sort();
+  const invalidOptional = requestedOptional.filter((file) => !OPTIONAL_WORKSPACE_FILES.has(file));
   const unresolved = findings.filter((finding) => {
     if (finding.code === "stale_registry_row") return false;
     if (finding.code === "stale_canonical_route" && normalizedDomain && normalizeHost(finding.site) !== normalizedDomain) return false;
@@ -478,6 +486,7 @@ function diagnose(options) {
   if (options.site && rootState.classification === "standalone") decisionError = "a stamped standalone root cannot host hub site workspaces";
   if (options.decision === "adopt" && (target.classification !== "legacy-standalone" || target.recognized.length < LEGACY_SIGNATURE_MIN || !normalizedDomain)) decisionError = "adopt requires explicit identity and at least three recognized schema-1 files";
   if (options.decision === "repair" && (!new Set(["standalone", "hub-site"]).has(target.classification) || requestedRepair.length === 0 || invalidRepair.length > 0 || requestedRepair.some((file) => !missing.includes(file)))) decisionError = "repair requires a stamped/registered schema-1 workspace and an exact allowlist of missing generated artifacts";
+  if (options.decision === "create-optional" && (!new Set(["standalone", "hub-site"]).has(target.classification) || requestedOptional.length === 0 || invalidOptional.length > 0 || requestedOptional.some((file) => existsSync(path.join(target.workspaceDir, file))))) decisionError = "create-optional requires a stamped/registered schema-1 workspace and an exact allowlist of absent optional artifacts";
   if (options.decision === "unresolved") decisionError = "decision remains unresolved";
 
   const sourcePathMap = new Map();
@@ -532,12 +541,13 @@ function diagnose(options) {
     decision: options.decision,
     decisionError,
     repairFiles: requestedRepair,
+    optionalFiles: requestedOptional,
     clean: findings.length === 0,
   };
 
   if (options.planOutput) {
-    if (!normalizedDomain && new Set(["create", "adopt", "repair"]).has(options.decision)) {
-      throw new Error("--domain is required for create, adopt, and repair plans");
+    if (!normalizedDomain && new Set(["create", "adopt", "repair", "create-optional"]).has(options.decision)) {
+      throw new Error("--domain is required for create, adopt, repair, and create-optional plans");
     }
     const planOutput = path.resolve(expandHome(options.planOutput));
     if (searchRoots.some((searchRoot) => isWithin(planOutput, searchRoot))) {
@@ -575,6 +585,7 @@ function diagnose(options) {
       decision: options.decision,
       decisionError,
       repairFiles: requestedRepair,
+      optionalFiles: requestedOptional,
       approved: !decisionError && unresolved.length === 0,
       terminal: options.decision === "migrate",
     };

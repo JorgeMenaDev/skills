@@ -66,6 +66,8 @@ For utility/free tool pages, load `utility-tool-pages.md`; use pSEO gates only w
 
 ## Comparison Page Formats
 
+Before publishing any format below, apply `references/commercial-integrity.md`; it owns selection methodology, self-inclusion, material-benefit disclosure, direct alternative links, update dates, and the anti-authority-rental boundary.
+
 | Format                 | Intent                        | URL pattern              | Core sections                                                              |
 | ---------------------- | ----------------------------- | ------------------------ | -------------------------------------------------------------------------- |
 | Alternative (singular) | Ready to switch from X        | `/alternatives/x`        | Switch pain, you as the alternative, comparison, who should(n't) switch, migration, CTA |

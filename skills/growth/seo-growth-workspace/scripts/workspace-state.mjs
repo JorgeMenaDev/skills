@@ -32,6 +32,8 @@ export const GENERATED_WORKSPACE_FILES = new Set([
 
 export const GENERATED_WORKSPACE_DIRS = new Set(["reports", "scripts", "pseo"]);
 
+export const OPTIONAL_WORKSPACE_FILES = new Set(["backlinks/asset-rights.md"]);
+
 export function stableJson(value) {
   if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
   if (value && typeof value === "object") {
