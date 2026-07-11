@@ -1,6 +1,6 @@
 # Page Evidence — <page title>
 
-Use only when no content engine holds native revision evidence. Contract: [Page Evidence](../references/page-evidence.md). Shared vocabulary: [Evidence Conventions](../references/evidence-conventions.md).
+Use only when no content engine holds native revision evidence. Contract: the skill's `references/page-evidence.md`. Shared vocabulary: the skill's `references/evidence-conventions.md`. (This file is copied outside the skill tree, so canonical paths are named, not linked.)
 
 ## Revision identity
 

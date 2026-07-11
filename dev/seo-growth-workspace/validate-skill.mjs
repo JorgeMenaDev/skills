@@ -323,7 +323,7 @@ section("slice 2 GBP evidence contracts", () => {
   check(reference.includes("it emits no grid coverage percentage") && template.includes("must leave top-3 and top-10 coverage blank"), "Manual location samples must not emit coverage percentages");
   check(reference.includes("reject the pair as a before/after comparison") && template.includes("changed grid geometry must be rejected"), "Changed grid geometry must be rejected as a before/after comparison");
   check(reference.includes("no bundled script, paid tool, or particular provider is required or endorsed"), "Geo-grid workflow must remain tool-optional and vendor-neutral");
-  check(reference.includes("[Evidence Conventions](evidence-conventions.md)") && template.includes("[Evidence Conventions](../references/evidence-conventions.md)"), "GBP files must cross-link the shared evidence vocabulary");
+  check(reference.includes("[Evidence Conventions](evidence-conventions.md)") && template.includes("`references/evidence-conventions.md`") && !template.includes("](../references/"), "GBP reference cross-links the shared vocabulary; the copied template names it without relative links");
 
   const tableBlocks = template.split(/\r?\n/).reduce((blocks, line) => {
     if (!line.startsWith("|")) return [...blocks, []];
