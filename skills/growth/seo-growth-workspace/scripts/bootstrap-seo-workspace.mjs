@@ -186,7 +186,7 @@ Lifecycle: discovered → qualified → contacted → replied → won → live/v
 This is the current-state master for assets considered for distribution or reclamation. No image work may proceed without sufficient ownership or license evidence.
 
 | Asset ID | Original file | Creator/rightsholder | Created/acquired | Ownership/license evidence | Platform | Upload URL | License + version | Attribution requirement | Permitted credit destination | Model/property/trademark releases | Material edits | Privacy/metadata review | Checked date | Owner |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 `,
     "context.md": `# SEO business context
 

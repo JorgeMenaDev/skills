@@ -1294,11 +1294,14 @@ section("gsc-fetch credentials-dir", () => {
       ],
       { encoding: "utf-8" },
     );
-    // Dummy credentials must pass local shape parsing. The environment may block
-    // network access before an OAuth-specific response is available.
+    // Dummy credentials must pass local shape parsing and reach the token exchange:
+    // either Google returns an OAuth response or the sandbox blocks that same fetch at the network layer.
+    const parsedStderr = parsed.stderr ?? "";
     check(
-      parsed.status !== 0 && !(parsed.stderr ?? "").includes("must contain an installed or web OAuth client"),
-      "--credentials-dir should parse {client_secret.json, token.json} before any unavailable token exchange",
+      parsed.status !== 0 &&
+        !parsedStderr.includes("must contain an installed or web OAuth client") &&
+        (/GSC OAuth refresh failed/.test(parsedStderr) || /fetch failed|ENOTFOUND|EAI_AGAIN|ECONNREFUSED|getaddrinfo/.test(parsedStderr)),
+      "--credentials-dir should parse {client_secret.json, token.json} and reach the token exchange",
     );
 
     const badDir = fixtureTmp("seo-creds-bad-");
