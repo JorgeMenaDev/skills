@@ -1,15 +1,19 @@
 #!/usr/bin/env node
 
 // Maintainer validation for skills/growth/seo-growth-workspace.
-// Run from anywhere: node dev/seo-growth-workspace/validate-skill.mjs [--skill-dir <path>]
+// Run from anywhere: node dev/seo-growth-workspace/validate-skill.mjs [--skill-dir <path>] [--report <path>]
+// --report writes a versioned machine-readable gate report (per-section results,
+// command-inventory subgate, source path-digest, timestamp) for evaluate-release.mjs.
 
 import {
   appendFileSync,
   chmodSync,
+  closeSync,
   existsSync,
   lstatSync,
   mkdirSync,
   mkdtempSync,
+  openSync,
   readFileSync,
   readlinkSync,
   readdirSync,
@@ -95,24 +99,48 @@ const requiredFiles = [
 ];
 
 const failures = [];
+const sectionResults = [];
 
 function check(condition, message) {
   if (!condition) failures.push(message);
 }
 
 function section(name, fn) {
+  const failuresBefore = failures.length;
   try {
     fn();
   } catch (error) {
     failures.push(`${name}: ${error.message}`);
   }
+  sectionResults.push({
+    name,
+    result: failures.length === failuresBefore ? "PASS" : "FAIL",
+    failures: failures.slice(failuresBefore),
+  });
+}
+
+// Child stdout goes through a file descriptor into a temp file, never a pipe:
+// several JSON-emitting children exceed one pipe buffer and pipe capture
+// intermittently truncates at exactly 8192 bytes.
+let spawnCaptureCounter = 0;
+function spawnCapture(command, commandArgs, options = {}) {
+  const stdoutPath = path.join(validationTmp, `stdout-${spawnCaptureCounter++}.out`);
+  const fd = openSync(stdoutPath, "w");
+  let result;
+  try {
+    result = spawnSync(command, commandArgs, {
+      encoding: "utf-8",
+      ...options,
+      stdio: ["ignore", fd, "pipe"],
+    });
+  } finally {
+    closeSync(fd);
+  }
+  return { ...result, stdout: readFileSync(stdoutPath, "utf-8") };
 }
 
 function run(command, commandArgs, options = {}) {
-  const result = spawnSync(command, commandArgs, {
-    encoding: "utf-8",
-    ...options,
-  });
+  const result = spawnCapture(command, commandArgs, options);
 
   if (result.error) {
     throw new Error(
@@ -167,6 +195,16 @@ function treeDigest(root) {
   return hash(visit(root).join("\n"));
 }
 
+// Mirrored in evaluate-release.mjs: binds a --report to the validator/inventory
+// implementation that produced it, not just to the skill tree it validated.
+function devToolingDigest() {
+  return hash(
+    ["validate-skill.mjs", "command-inventory.mjs"]
+      .map((file) => hash(readFileSync(path.join(scriptDir, file), "utf-8")))
+      .join("\n"),
+  );
+}
+
 function makePlan(root, { domain = "example.com", decision, hub = false, site = null, repairFiles = [], extra = [] }) {
   const planDir = mkdtempSync(path.join("/private/tmp", "seo-plan-fixture-"));
   const planPath = path.join(planDir, "plan.json");
@@ -175,7 +213,7 @@ function makePlan(root, { domain = "example.com", decision, hub = false, site = 
   if (site) args.push("--site", site);
   if (repairFiles.length) args.push("--repair-files", repairFiles.join(","));
   args.push(...extra);
-  const result = spawnSync(process.execPath, [path.join(skillRoot, "scripts/seo-doctor.mjs"), ...args], { encoding: "utf-8" });
+  const result = spawnCapture(process.execPath, [path.join(skillRoot, "scripts/seo-doctor.mjs"), ...args]);
   return { planDir, planPath, result, report: JSON.parse(result.stdout || "{}") };
 }
 
@@ -479,18 +517,14 @@ section("doctor decoy workspace", () => {
       path.join(hub, ".seo/registry.md"),
       "| example.com | sites/example-com | sc-domain:example.com | none yet | UK / en-GB | human approves | decoy |\n",
     );
-    const result = spawnSync(
-      process.execPath,
-      [
-        path.join(skillRoot, "scripts/seo-doctor.mjs"),
-        target,
-        "--domain",
-        "example.com",
-        "--format",
-        "json",
-      ],
-      { encoding: "utf-8" },
-    );
+    const result = spawnCapture(process.execPath, [
+      path.join(skillRoot, "scripts/seo-doctor.mjs"),
+      target,
+      "--domain",
+      "example.com",
+      "--format",
+      "json",
+    ]);
     check(
       result.status === 1,
       "Doctor must exit 1 when another workspace for the same site exists",
@@ -525,11 +559,12 @@ section("doctor dangling symlink", () => {
       path.join(target, "no-such-skill-dir"),
       path.join(target, ".agents/skills/seo-growth-workspace"),
     );
-    const result = spawnSync(
-      process.execPath,
-      [path.join(skillRoot, "scripts/seo-doctor.mjs"), target, "--format", "json"],
-      { encoding: "utf-8" },
-    );
+    const result = spawnCapture(process.execPath, [
+      path.join(skillRoot, "scripts/seo-doctor.mjs"),
+      target,
+      "--format",
+      "json",
+    ]);
     check(result.status === 1, "Doctor must exit 1 on a dangling symlink skill copy");
     const json = JSON.parse(result.stdout || "{}");
     const install = (json.installs ?? []).find(
@@ -550,11 +585,12 @@ section("doctor unregistered hub site", () => {
     const hub = path.join(container, "hub");
     plannedBootstrap(hub, { domain: "orphan.example", hub: true, site: "orphan-site" });
     // The registry row was never added (bootstrap only prints REGISTRATION PENDING).
-    const result = spawnSync(
-      process.execPath,
-      [path.join(skillRoot, "scripts/seo-doctor.mjs"), hub, "--format", "json"],
-      { encoding: "utf-8" },
-    );
+    const result = spawnCapture(process.execPath, [
+      path.join(skillRoot, "scripts/seo-doctor.mjs"),
+      hub,
+      "--format",
+      "json",
+    ]);
     check(result.status === 1, "Doctor must exit 1 on an unregistered hub site folder");
     const json = JSON.parse(result.stdout || "{}");
     check(
@@ -728,14 +764,14 @@ section("doctor schema and filesystem safety", () => {
     const configPath = path.join(schemaRoot, ".seo/config.json");
     const config = JSON.parse(readFileSync(configPath, "utf-8"));
     writeFileSync(configPath, `${JSON.stringify({ ...config, workspaceSchemaVersion: 2 }, null, 2)}\n`);
-    const schema = spawnSync(process.execPath, [path.join(skillRoot, "scripts/seo-doctor.mjs"), schemaRoot, "--domain", "schema.example", "--format", "json"], { encoding: "utf-8" });
+    const schema = spawnCapture(process.execPath, [path.join(skillRoot, "scripts/seo-doctor.mjs"), schemaRoot, "--domain", "schema.example", "--format", "json"]);
     const schemaJson = JSON.parse(schema.stdout || "{}");
     check(schema.status === 1 && schemaJson.findings?.some((finding) => finding.code === "unsupported_schema"), "Schema 2/ahead state must be blocking in v3.1");
 
     plannedBootstrap(symlinkRoot, { domain: "symlink.example" });
     rmSync(path.join(symlinkRoot, ".seo/context.md"));
     symlinkSync(path.join(outside, "context.md"), path.join(symlinkRoot, ".seo/context.md"));
-    const symlink = spawnSync(process.execPath, [path.join(skillRoot, "scripts/seo-doctor.mjs"), symlinkRoot, "--domain", "symlink.example", "--format", "json"], { encoding: "utf-8" });
+    const symlink = spawnCapture(process.execPath, [path.join(skillRoot, "scripts/seo-doctor.mjs"), symlinkRoot, "--domain", "symlink.example", "--format", "json"]);
     const symlinkJson = JSON.parse(symlink.stdout || "{}");
     check(symlink.status === 1 && symlinkJson.findings?.some((finding) => finding.code === "generated_symlink_escape"), "Generated-file symlink escapes/dangling targets must block mutation");
 
@@ -836,7 +872,7 @@ section("doctor registry, permission, lock, and non-disclosure findings", () => 
     mkdirSync(path.join(hub, ".agents/skills"), { recursive: true });
     symlinkSync(skillRoot, path.join(hub, ".agents/skills/seo-growth-workspace"));
     writeFileSync(path.join(hub, "skills-lock.json"), JSON.stringify({ version: 1, skills: { "seo-growth-workspace": { source: "fixture", sourceType: "github", skillPath: "skills/growth/seo-growth-workspace/SKILL.md", computedHash: "0".repeat(64) } } }));
-    const result = spawnSync(process.execPath, [path.join(skillRoot, "scripts/seo-doctor.mjs"), hub, "--domain", "integrity.example", "--format", "json"], { encoding: "utf-8" });
+    const result = spawnCapture(process.execPath, [path.join(skillRoot, "scripts/seo-doctor.mjs"), hub, "--domain", "integrity.example", "--format", "json"]);
     const json = JSON.parse(result.stdout || "{}");
     const codes = new Set((json.findings ?? []).map((finding) => finding.code));
     check(result.status === 1 && codes.has("credential_permissions") && codes.has("skills_lock_drift"), "Doctor must report stat-only credential permission and skills-lock drift");
@@ -853,7 +889,7 @@ section("doctor active-path drift", () => {
   const root = fixtureTmp("seo-active-drift-");
   try {
     writeFileSync(path.join(root, "README.md"), "SEO state lives in .seo/backlog.md\n");
-    const result = spawnSync(process.execPath, [path.join(skillRoot, "scripts/seo-doctor.mjs"), root, "--format", "json"], { encoding: "utf-8" });
+    const result = spawnCapture(process.execPath, [path.join(skillRoot, "scripts/seo-doctor.mjs"), root, "--format", "json"]);
     const json = JSON.parse(result.stdout || "{}");
     check(result.status === 1 && json.findings?.some((finding) => finding.code === "active_path_drift"), "Stale active workspace pointers must be reported");
   } finally {
@@ -861,8 +897,19 @@ section("doctor active-path drift", () => {
   }
 });
 
+const commandInventorySubgate = { command: null, exit: null, result: "FAIL" };
 section("command inventory and foreign-CWD matrix", () => {
-  const result = JSON.parse(run(process.execPath, [path.join(scriptDir, "command-inventory.mjs"), "--verify"]));
+  const inventoryArgs = [path.join(scriptDir, "command-inventory.mjs"), "--verify"];
+  commandInventorySubgate.command = [process.execPath, ...inventoryArgs].join(" ");
+  const inventoryRun = spawnCapture(process.execPath, inventoryArgs);
+  commandInventorySubgate.exit = inventoryRun.error ? null : inventoryRun.status;
+  if (inventoryRun.error) {
+    throw new Error(`${commandInventorySubgate.command} failed to spawn: ${inventoryRun.error.message}`);
+  }
+  if (inventoryRun.status !== 0) {
+    throw new Error(`${commandInventorySubgate.command} failed:\n${inventoryRun.stderr || inventoryRun.stdout}`);
+  }
+  const result = JSON.parse(inventoryRun.stdout);
   check(result.counts?.malformed === 0, "Mechanical command inventory must have zero malformed/secret-argv entries");
   check(result.verification?.pass === true && result.verification.matrix.every((row) => row.status === 0), "Every executable command must pass the generated foreign-CWD matrix");
   check(result.verification?.contractCases.every((item) => item.actual === item.expected), "Command classifier must reject secret argv while allowing env/file-backed auth");
@@ -893,7 +940,7 @@ section("eight-row legacy / six-row hub rehearsal", () => {
       `| extra-b.example | ${legacyB} | unknown | unknown | UK / en | human | legacy-only |`,
     ];
     writeFileSync(path.join(hub, ".agents/seo/REGISTRY.md"), ["# Legacy registry", "", "| Site | Workspace root | GSC property | Credentials | Market / language | Publish gate | Notes |", "|---|---|---|---|---|---|---|", ...legacyRows, ""].join("\n"));
-    const result = spawnSync(process.execPath, [path.join(skillRoot, "scripts/seo-doctor.mjs"), hub, "--format", "json"], { encoding: "utf-8" });
+    const result = spawnCapture(process.execPath, [path.join(skillRoot, "scripts/seo-doctor.mjs"), hub, "--format", "json"]);
     const json = JSON.parse(result.stdout || "{}");
     const codes = (json.findings ?? []).map((finding) => finding.code);
     check(json.registryInventory?.filter((row) => row.registryKind === "canonical").length === 6, "Hub rehearsal must retain all six canonical routing rows");
@@ -1508,6 +1555,178 @@ section("portfolio status hub layout", () => {
     rmSync(legacyRoot, { recursive: true, force: true });
   }
 });
+
+// --- evaluate-release.mjs: blocking-gate report consumption (explicit --validator-report) ---
+section("release evaluator blocking gates rehearsal", () => {
+  const evaluator = path.join(scriptDir, "evaluate-release.mjs");
+  const rehearsalDir = fixtureTmp("seo-evaluator-gates-");
+  // Same extraction the evaluator performs over this file: synthetic reports must
+  // attest the full canonical section inventory or the evaluator rejects them.
+  const sectionInventory = [
+    ...readFileSync(fileURLToPath(import.meta.url), "utf-8").matchAll(/^section\(\s*"([^"]+)"/gm),
+  ].map((match) => match[1]);
+  const inventorySections = (overrides = {}) =>
+    sectionInventory.map((name) => ({
+      name,
+      result: overrides[name] ?? "PASS",
+      failures: overrides[name] ? ["rehearsed failure"] : [],
+    }));
+  const baseReport = {
+    reportVersion: 1,
+    skill: "seo-growth-workspace",
+    generatedAt: new Date().toISOString(),
+    sourceDigest: treeDigest(skillRoot),
+    toolingDigest: devToolingDigest(),
+    pass: true,
+    sections: inventorySections(),
+    commandInventory: {
+      command: "node dev/seo-growth-workspace/command-inventory.mjs --verify",
+      exit: 0,
+      result: "PASS",
+    },
+  };
+  const runEvaluator = (name, report) => {
+    const reportPath = path.join(rehearsalDir, `${name}.json`);
+    if (report !== null) {
+      writeFileSync(reportPath, typeof report === "string" ? report : JSON.stringify(report, null, 2));
+    }
+    const result = spawnCapture(process.execPath, [evaluator, "--json", "--validator-report", reportPath]);
+    return { status: result.status, json: JSON.parse(result.stdout || "{}") };
+  };
+
+  const valid = runEvaluator("valid", baseReport);
+  check(
+    valid.json.blockingGates?.rejections?.length === 0 &&
+      valid.json.blockingGates?.gates?.length === 2 &&
+      valid.json.blockingGates.gates.every((gate) => gate.result === "PASS") &&
+      valid.json.gates?.blockingGatesGreen === true,
+    "A fresh, digest-matching, all-PASS validator report must satisfy both blocking gates",
+  );
+
+  const redSection = runEvaluator("red-section", {
+    ...baseReport,
+    pass: false,
+    sections: inventorySections({ "version consistency": "FAIL" }),
+  });
+  check(
+    redSection.status !== 0 &&
+      redSection.json.pass === false &&
+      redSection.json.blockingGates?.gates?.some(
+        (gate) => gate.gate === "validate-skill" && gate.result === "FAIL" && (gate.failedSections ?? []).includes("version consistency"),
+      ),
+    "A red validator report must fail the evaluator and name the failing gate",
+  );
+
+  const redInventory = runEvaluator("red-inventory", {
+    ...baseReport,
+    pass: false,
+    sections: inventorySections({ "command inventory and foreign-CWD matrix": "FAIL" }),
+    commandInventory: { ...baseReport.commandInventory, exit: 1, result: "FAIL" },
+  });
+  check(
+    redInventory.json.pass === false &&
+      redInventory.json.blockingGates?.gates?.some((gate) => gate.gate === "command-inventory" && gate.result === "FAIL"),
+    "A failing command-inventory subgate must fail the evaluator",
+  );
+
+  const stale = runEvaluator("stale", {
+    ...baseReport,
+    generatedAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+  });
+  check(
+    stale.json.pass === false && stale.json.blockingGates?.rejections?.some((reason) => reason.includes("stale")),
+    "A stale validator report must be rejected",
+  );
+
+  const wrongDigest = runEvaluator("wrong-digest", { ...baseReport, sourceDigest: "0".repeat(64) });
+  check(
+    wrongDigest.json.pass === false && wrongDigest.json.blockingGates?.rejections?.some((reason) => reason.includes("digest")),
+    "A wrong-digest validator report must be rejected",
+  );
+
+  const wrongToolingDigest = runEvaluator("wrong-tooling-digest", { ...baseReport, toolingDigest: "0".repeat(64) });
+  check(
+    wrongToolingDigest.json.pass === false &&
+      wrongToolingDigest.json.blockingGates?.rejections?.some((reason) => reason.includes("tooling")),
+    "A report from a different validator/inventory implementation must be rejected",
+  );
+
+  const duplicate = runEvaluator("duplicate", {
+    ...baseReport,
+    sections: [...baseReport.sections, ...baseReport.sections],
+  });
+  check(
+    duplicate.json.pass === false && duplicate.json.blockingGates?.rejections?.some((reason) => reason.includes("duplicate")),
+    "Duplicate section entries in a validator report must be rejected",
+  );
+
+  const malformed = runEvaluator("malformed", "{ not json");
+  check(
+    malformed.json.pass === false && malformed.json.blockingGates?.rejections?.some((reason) => reason.includes("malformed")),
+    "A malformed validator report must be rejected",
+  );
+
+  const nullSection = runEvaluator("null-section", { ...baseReport, sections: [null, ...inventorySections()] });
+  check(
+    nullSection.json.pass === false &&
+      nullSection.json.blockingGates?.rejections?.some((reason) => reason.includes("malformed")),
+    "A report with non-object section entries must be rejected, not crash the evaluator",
+  );
+
+  const missing = runEvaluator("missing", null);
+  check(
+    missing.json.pass === false && missing.json.blockingGates?.rejections?.some((reason) => reason.includes("missing")),
+    "A missing validator report must be rejected",
+  );
+
+  const incomplete = runEvaluator("incomplete", {
+    ...baseReport,
+    sections: inventorySections().slice(0, 1),
+  });
+  check(
+    incomplete.json.pass === false &&
+      incomplete.json.blockingGates?.rejections?.some((reason) => reason.includes("section inventory mismatch")),
+    "A report missing the validator's canonical section inventory must be rejected",
+  );
+
+  const passExitMismatch = runEvaluator("pass-exit-mismatch", {
+    ...baseReport,
+    commandInventory: { ...baseReport.commandInventory, exit: 1 },
+  });
+  check(
+    passExitMismatch.json.pass === false &&
+      passExitMismatch.json.blockingGates?.rejections?.some((reason) => reason.includes("PASS with exit")),
+    "A commandInventory PASS with a non-zero exit must be rejected",
+  );
+
+  const editedSubgate = runEvaluator("edited-subgate", {
+    ...baseReport,
+    pass: false,
+    sections: inventorySections({ "command inventory and foreign-CWD matrix": "FAIL" }),
+  });
+  check(
+    editedSubgate.json.pass === false &&
+      editedSubgate.json.blockingGates?.rejections?.some((reason) => reason.includes("disagrees with its section result")),
+    "A commandInventory result that disagrees with its section result must be rejected",
+  );
+});
+
+const reportPath = argValue("--report");
+if (reportPath) {
+  commandInventorySubgate.result =
+    sectionResults.find((entry) => entry.name === "command inventory and foreign-CWD matrix")?.result ?? "FAIL";
+  const report = {
+    reportVersion: 1,
+    skill: "seo-growth-workspace",
+    generatedAt: new Date().toISOString(),
+    sourceDigest: treeDigest(skillRoot),
+    toolingDigest: devToolingDigest(),
+    pass: failures.length === 0,
+    sections: sectionResults,
+    commandInventory: commandInventorySubgate,
+  };
+  writeFileSync(reportPath, `${JSON.stringify(report, null, 2)}\n`);
+}
 
 rmSync(validationTmp, { recursive: true, force: true });
 

@@ -23,7 +23,7 @@ import {
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const taxonomyTemplatePath = path.resolve(scriptDir, "../templates/taxonomy.md");
-const SKILL_VERSION = "3.1.0";
+const SKILL_VERSION = "3.4.0";
 const WORKSPACE_SCHEMA_VERSION = 1;
 const ACTIONS = new Set(["create", "adopt", "verify", "repair"]);
 
