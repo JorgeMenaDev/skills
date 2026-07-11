@@ -42,7 +42,7 @@ Copy the material approved values from `SITE_WORKSPACE/backlinks/asset-rights.md
 
 ## Human approval and rendered-citation survival
 
-| Revision ID | Human approver | Decision / date | Approval notes | Live URL | Render checked at / by | Citation locators and destinations checked | Render result / mismatch |
+| Revision ID | Human approver | Decision / date | Approval notes | Preview / live URL (staged render before publication where staging exists) | Render checked at / by | Citation locators and destinations checked | Render result / mismatch |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 |  |  | approved / blocked — YYYY-MM-DD |  |  |  |  | PASS / FAIL |
 
