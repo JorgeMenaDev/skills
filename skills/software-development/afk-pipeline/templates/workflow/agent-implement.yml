@@ -447,11 +447,24 @@ jobs:
 {{VERIFY_SECRETS_ENV}}
         run: bun .sandcastle/verify/verify.ts
 
+      - name: Upload recorded verification artifact
+        if: always() && steps.preflight.outputs.refused != 'true' && steps.flags.outputs.recording == 'on'
+        id: recording_artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: computer-use-proof-issue-${{ github.event.issue.number }}
+          path: |
+            ${{ runner.temp }}/recording/issue-${{ github.event.issue.number }}.webm
+            {{EVIDENCE_DIR}}/issue-${{ github.event.issue.number }}/
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
+
       - name: Install video preview tooling
         if: steps.preflight.outputs.refused != 'true' && success() && steps.flags.outputs.recording == 'on'
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq ffmpeg
+          timeout 180s sudo apt-get update -qq
+          timeout 180s sudo apt-get install -y -qq ffmpeg
 
       - name: Build inline recorded-verification preview
         if: steps.preflight.outputs.refused != 'true' && success() && steps.flags.outputs.recording == 'on'
@@ -476,19 +489,6 @@ jobs:
           git add "$preview"
           git commit -m "docs(evidence): add interaction preview for #${ISSUE_NUMBER}"
           echo "path=$preview" >> "$GITHUB_OUTPUT"
-
-      - name: Upload recorded verification artifact
-        if: always() && steps.preflight.outputs.refused != 'true' && steps.flags.outputs.recording == 'on'
-        id: recording_artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: computer-use-proof-issue-${{ github.event.issue.number }}
-          path: |
-            ${{ runner.temp }}/recording/issue-${{ github.event.issue.number }}.webm
-            {{EVIDENCE_DIR}}/issue-${{ github.event.issue.number }}/
-          if-no-files-found: error
-          retention-days: 30
-          compression-level: 0
 
       - name: Push branch
         if: steps.preflight.outputs.refused != 'true' && success()
