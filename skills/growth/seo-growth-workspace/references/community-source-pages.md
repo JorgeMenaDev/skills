@@ -25,6 +25,8 @@ For every used source, record these attribution fields in the existing page revi
 
 Structure the page so **Quote**, **Paraphrase**, and **Publisher analysis** are explicitly labelled or otherwise unambiguous and editorially separate. Quotes must be minimal, necessary, directly attributed, and linked to their source. Paraphrases must not mimic source wording or imply endorsement. Publisher analysis must be the page's own page-specific synthesis, categorization, comparison, testing, decision criteria, or other information gain; it must not be presented as community consensus. Do not imply platform affiliation or endorsement.
 
+Every community-source page also carries two explicit, visible disclosures regardless of whether it is classified as commercial: a statement that the source community/platform does not endorse the publisher or its product, and a statement of the publisher's relationship to the product, service, or topic discussed. These are affirmative page requirements — a page without both fails the publish gate. Commercial elements additionally trigger the full [Commercial Integrity](commercial-integrity.md) contract.
+
 ## Privacy, deletion, and maintenance
 
 Use no personal information beyond a public handle needed for attribution. Redact the handle when the author is identifiable in a sensitive context, and omit incidental names, locations, contact details, health, financial, employment, or other identifying details that are unnecessary to the synthesis.

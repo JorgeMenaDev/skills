@@ -375,6 +375,7 @@ section("slice 3 community-source page contract", () => {
   check(reference.includes("cannot be redefined after results are seen") && reference.includes("explicit operator approval"), "Community pilot gates must be immutable after results and expansion must require operator approval");
   check(["No scraping", "No covert participation", "No parasite publishing"].every((rule) => reference.includes(rule)), "Community contract must prohibit scraping, covert participation, and parasite publishing");
   check(reference.includes("Anti-token-swap assertion") && reference.includes("page-specific source set") && reference.includes("page-specific analysis") && reference.includes("page-specific information gain"), "Community pages must reject token-swapped variants with interchangeable sources, analysis, or information gain");
+  check(reference.includes("does not endorse the publisher") && reference.includes("publisher's relationship to the product") && reference.includes("regardless of whether it is classified as commercial"), "Community pages must require affirmative non-endorsement and relationship disclosures on every page");
   check(reference.includes("fixture-validated only — not yet exercised against a live operation"), "Community specialist path must carry the fixture-only dogfood caveat");
   check(router.includes("Owned pages synthesizing forums, Q&A, or other community sources: `references/community-source-pages.md`"), "SKILL.md must progressively route community-source publishing");
 });
