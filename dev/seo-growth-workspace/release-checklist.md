@@ -132,6 +132,18 @@ These gates are executed at the slice-7 release. Record each numbered gate as PA
    - Evidence path: the authoritative native revision brief or dated fallback record containing the information-gain assessment and decision; record that path in the gate-results row.
    - PASS/FAIL: PASS only when the missing information gain produces a recorded non-publish outcome. FAIL if competitor averages, word counts, entity quotas, proprietary scores, or mere indexation potential permit drafting or publication.
 
+7. **Local personalized AI observation**
+   - Inputs: a maintained prompt-set entry with stable prompt ID/version and verbatim local query; at least two completed runs on one visible platform/model and surface; declared locale and controlled city/coordinates or location method; login/account, personalization/memory, device/app, timestamp/timezone, and Maps/transactional/sponsored context; and the stored answer artifacts.
+   - Expected result: one row exists per run with the full row-level context, ordered business mentions, and independent mention, recommendation, and citation evidence; visible product/model identifiers are transcribed rather than guessed; recurrence is stated only as `x of y` completed runs inside the declared prompt, time, platform/model, and context sample; the answers are described as dated samples, never rankings.
+   - Evidence path: the completed `.seo/reports/ai-visibility-YYYY-MM-DD.md` report, its maintained prompt set, and the permitted answer captures/exports referenced by observation ID; record those artifact paths in the gate-results row.
+   - PASS/FAIL: PASS only when every run row is reproducible from its own context, all repeats are evidenced, semantics remain separate, and recurrence stays within the declared sample. FAIL for missing row context, a guessed model/state, inferred recommendation or citation, a single run presented as stable, or any ranking/population/platform-wide claim.
+
+8. **Predicted AI lift fails**
+   - Inputs: a proposed content, technical, backlink, disclosure, markup, or profile action accompanied by copy promising, forecasting, scoring, or projecting an increase in AI mentions, recommendations, citations, traffic, leads, revenue, or AI visibility.
+   - Expected result: the projection is rejected and removed; the action may retain a non-causal hypothesis and a dated repeat-observation plan, but no predicted lift is emitted or used to justify publication or prioritization.
+   - Evidence path: the blocked/revised AI visibility report or backlog/work-log record showing the original proposed claim, reviewer decision, final non-causal wording, owner, and recheck plan; record that artifact path in the gate-results row.
+   - PASS/FAIL: PASS only when every promised or projected AI-visibility lift claim fails review and the surviving record separates action from later observed outcome. FAIL if any output promises, calculates, scores, forecasts, or projects AI-visibility lift from an action.
+
 ## Dry-Run Gates
 
 Before deploy, prove at least one repo-local dry run without mutating unrelated files:
