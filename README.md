@@ -38,6 +38,14 @@ A two-vendor adversarial review protocol for hard-to-reverse architecture or des
 npx skills@latest add JorgeMenaDev/skills --skill counsel
 ```
 
+### `source-to-system`
+
+A system-first review loop for external articles, videos, repositories, prompts, and tactics. It captures the material claims in temporary scratch space, compares them with the user's existing systems, selects one owned improvement or no change, and stops for approval before durable workspace or external-system mutation.
+
+```bash
+npx skills@latest add JorgeMenaDev/skills --skill source-to-system
+```
+
 ## Why These Skills Exist
 
 I built these skills to fix failure modes I keep seeing in AI growth and agent-ops work.
@@ -100,6 +108,7 @@ All skills below are **model-invoked** — the agent can reach for them when the
 ### Agent Operations
 
 - **[operator-handoff](./skills/agent-operations/operator-handoff/SKILL.md)** — Job-file handoff between a requesting agent and a human-supervised computer-use Operator: jobs, reports, evidence trails, and a per-repo `HOST.md` host profile.
+- **[source-to-system](./skills/agent-operations/source-to-system/SKILL.md)** — Turn external material into one evidence-backed, owned system improvement or an explicit no-change decision.
 
 ### Software Development
 
