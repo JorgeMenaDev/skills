@@ -79,6 +79,13 @@ const resume = existsSync(join(startDir, "RESUME.md")) ? readFileSync(join(start
 check("RESUME.md carries frontiers, attempts, and next safe act", ["## Frontiers", "## Active attempts", "## Next safe act"].every((token) => resume.includes(token)), resume.slice(0, 400));
 check("checkpoint is recorded in the ledger", readRun(startDir).checkpoints.length === 1 && readRun(startDir).checkpoints[0].reason === "wave boundary");
 check("no staged resume document is left behind", !existsSync(join(startDir, "RESUME.md.staged")));
+const stable = (value) => Array.isArray(value) ? value.map(stable) : !value || typeof value !== "object" ? value : Object.fromEntries(Object.keys(value).sort().map((key) => [key, stable(value[key])]));
+const digestOf = (value) => createHash("sha256").update(`${JSON.stringify(stable(value), null, 2)}\n`).digest("hex");
+check(
+  "RESUME.md records the committed revision and digest",
+  resume.includes(`- Revision: ${readRun(startDir).revision}`) && resume.includes(digestOf(readRun(startDir))),
+  resume.slice(0, 400),
+);
 
 // deferred gates: open gate blocks completion; malformed gate fails closed
 const gatePatch = join(root, "gate-patch.json");

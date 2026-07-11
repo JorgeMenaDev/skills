@@ -410,7 +410,6 @@ const mutate = (path, expectedRevision, conductor, operation, options = {}) => {
     const candidate = operation(structuredClone(current));
     const reconciliationChanged = serialize(candidate.reconciliation) !== serialize(current.reconciliation);
     if (reconciliationChanged && !options.allowReconciliation) throw new Error("reconciliation state changes only through reconcile");
-    if (options.beforeCommit) options.beforeCommit(candidate);
     const effectResolved = candidate.effects.some((effect) => {
       const old = current.effects.find(({ id }) => id === effect.id);
       return old && old.status !== effect.status && ["observed", "cancelled", "unknown"].includes(effect.status);
@@ -421,6 +420,7 @@ const mutate = (path, expectedRevision, conductor, operation, options = {}) => {
     candidate.updatedAt = now();
     const errors = validate(candidate, current);
     if (errors.length) throw new Error(errors.join("; "));
+    if (options.beforeCommit) options.beforeCommit(candidate);
     atomicWrite(path, candidate);
     const locator = locatorPath(candidate);
     mkdirSync(dirname(locator), { recursive: true });
