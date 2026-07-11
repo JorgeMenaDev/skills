@@ -130,9 +130,7 @@ const validate = (input) => {
   return { coverage, pages: pages.sort((a, b) => a.url.localeCompare(b.url)), links, siteOrigins };
 };
 
-const classify = ({ pages, links, siteOrigins }) => {
-  const byUrl = new Map(pages.map((page) => [page.url, page]));
-  const eligible = (page) => page && page.status >= 200 && page.status < 300 && page.indexable && (!page.canonicalUrl || page.canonicalUrl === page.url);
+const buildScope = (siteOrigins) => {
   const prefixesByOrigin = new Map();
   for (const prefix of siteOrigins) {
     const prefixUrl = new URL(prefix);
@@ -141,7 +139,7 @@ const classify = ({ pages, links, siteOrigins }) => {
     prefixesByOrigin.set(prefixUrl.origin, list);
   }
   const internalCache = new Map();
-  const internal = (target) => {
+  return (target) => {
     const cached = internalCache.get(target);
     if (cached !== undefined) return cached;
     const targetUrl = new URL(target);
@@ -150,6 +148,12 @@ const classify = ({ pages, links, siteOrigins }) => {
     internalCache.set(target, result);
     return result;
   };
+};
+
+const classify = ({ pages, links, siteOrigins }) => {
+  const byUrl = new Map(pages.map((page) => [page.url, page]));
+  const eligible = (page) => page && page.status >= 200 && page.status < 300 && page.indexable && (!page.canonicalUrl || page.canonicalUrl === page.url);
+  const internal = buildScope(siteOrigins);
   return links.map((link) => {
     const sourcePage = byUrl.get(link.source);
     const suppliedTarget = byUrl.get(link.target);
@@ -185,8 +189,8 @@ const classify = ({ pages, links, siteOrigins }) => {
   });
 };
 
-const graph = (pages, edges) => {
-  const eligiblePages = pages.filter((page) => page.status >= 200 && page.status < 300 && page.indexable && (!page.canonicalUrl || page.canonicalUrl === page.url));
+const graph = (pages, edges, internal) => {
+  const eligiblePages = pages.filter((page) => internal(page.url) && page.status >= 200 && page.status < 300 && page.indexable && (!page.canonicalUrl || page.canonicalUrl === page.url));
   const urls = eligiblePages.map((page) => page.url);
   const outgoing = new Map(urls.map((url) => [url, []]));
   const incoming = new Map(urls.map((url) => [url, []]));
@@ -240,7 +244,7 @@ const table = (headers, rows, empty = "_None._") => rows.length ? [
 
 const report = (input, stamp) => {
   const edges = classify(input);
-  const state = graph(input.pages, edges);
+  const state = graph(input.pages, edges, buildScope(input.siteOrigins));
   const orphanStatus = input.coverage.complete ? "evaluated" : "insufficient input coverage";
   const pageRows = state.eligiblePages.map((page) => {
     const inlinks = new Set(state.incoming.get(page.url).map((edge) => edge.source)).size;
