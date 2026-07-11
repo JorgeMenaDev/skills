@@ -192,7 +192,7 @@ const classify = ({ pages, links, siteOrigins }) => {
     const finalPage = byUrl.get(resolvedTarget);
     const resolvedExternal = !internal(resolvedTarget);
     if (resolvedExternal && !external) reasons.push("resolved target outside internal scope");
-    if (finalPage && finalPage.status >= 400) reasons.push(`broken target: HTTP ${finalPage.status}`);
+    if (finalPage && finalPage.status >= 400 && !external && !externalSource && !resolvedExternal) reasons.push(`broken target: HTTP ${finalPage.status}`);
     if (suppliedTarget && !suppliedTarget.indexable) reasons.push("noindex target");
     if (link.rel.includes("nofollow")) reasons.push("nofollow edge");
     if (sourcePage && !eligible(sourcePage)) reasons.push("ineligible source");
