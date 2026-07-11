@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import {
   GENERATED_WORKSPACE_DIRS,
   GENERATED_WORKSPACE_FILES,
+  OPTIONAL_WORKSPACE_FILES,
   LEGACY_SIGNATURE_MIN,
   SITE_ID_PATTERN,
   classifyWorkspace,
@@ -25,7 +26,7 @@ const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const taxonomyTemplatePath = path.resolve(scriptDir, "../templates/taxonomy.md");
 const SKILL_VERSION = "3.4.0";
 const WORKSPACE_SCHEMA_VERSION = 1;
-const ACTIONS = new Set(["create", "adopt", "verify", "repair"]);
+const ACTIONS = new Set(["create", "adopt", "verify", "repair", "create-optional"]);
 
 function usage() {
   return `Usage:
@@ -33,11 +34,13 @@ function usage() {
   node bootstrap-seo-workspace.mjs --plan <file> --action adopt --domain <host> [target-dir]
   node bootstrap-seo-workspace.mjs --plan <file> --action verify --domain <host> [--site <id>] [target-dir]
   node bootstrap-seo-workspace.mjs --plan <file> --action repair --domain <host> --files <comma,list> [--site <id>] [target-dir]
+  node bootstrap-seo-workspace.mjs --plan <file> --action create-optional --domain <host> --files <comma,list> [--site <id>] [target-dir]
 
 Every invocation requires a current, approved plan from seo-doctor.mjs. Create scaffolds
 an absent standalone/hub target. Adopt stamps config.json only on a recognized legacy
 standalone workspace (>=${LEGACY_SIGNATURE_MIN} exact schema-1 signatures). Repair creates
 only the approved missing generated files/directories and never overwrites existing bytes.
+Create-optional creates only approved absent optional files and never changes drift state.
 Verify performs zero writes. Mutating actions atomically consume the plan; replay fails.
 
 Migration is manual in v3.1. A migrate plan is terminal and this script refuses it.`;
@@ -68,8 +71,8 @@ function parseArgs(argv) {
   }
   if (!options.plan || !options.action || !options.domain) throw new Error(`--plan, --action, and --domain are required\n\n${usage()}`);
   if (!ACTIONS.has(options.action)) throw new Error(`Invalid --action ${options.action}; migrate is manual in v3.1\n\n${usage()}`);
-  if (options.action === "repair" && options.files.length === 0) throw new Error("repair requires --files");
-  if (options.action !== "repair" && options.files.length > 0) throw new Error("--files is valid only with --action repair");
+  if (new Set(["repair", "create-optional"]).has(options.action) && options.files.length === 0) throw new Error(`${options.action} requires --files`);
+  if (!new Set(["repair", "create-optional"]).has(options.action) && options.files.length > 0) throw new Error("--files is valid only with --action repair or create-optional");
   return options;
 }
 
@@ -168,6 +171,22 @@ Last updated: YYYY-MM-DD
 
 | Date | Target | Action | Status | Evidence | Next step |
 | --- | --- | --- | --- | --- | --- |
+
+## Authority funnel (v4)
+
+Whole-file migration is explicit operator opt-in only. Do not replace or widen the legacy table above during bootstrap, repair, or optional-file creation.
+
+| Date | Target | Lifecycle | Query | Market/geo | Source URL | Qualification | Reply disposition | Paid request | Amount | Link live | Indexable | 30-day check | 90-day check | Referral | Qualified conversion | Cost | Limitations | Evidence | Next step |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+
+Lifecycle: discovered → qualified → contacted → replied → won → live/verified → lost/expired. Record link-live and indexable as two independent facts.
+`,
+    "backlinks/asset-rights.md": `# Asset rights
+
+This is the current-state master for assets considered for distribution or reclamation. No image work may proceed without sufficient ownership or license evidence.
+
+| Asset ID | Original file | Creator/rightsholder | Created/acquired | Ownership/license evidence | Platform | Upload URL | License + version | Attribution requirement | Permitted credit destination | Model/property/trademark releases | Material edits | Privacy/metadata review | Checked date | Owner |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 `,
     "context.md": `# SEO business context
 
@@ -297,6 +316,7 @@ function loadAndVerifyPlan(options, root) {
   if (options.action !== "verify" && plan.decision !== options.action) throw new Error(`Plan decision ${plan.decision} does not match action ${options.action}`);
   const files = [...new Set(options.files)].sort();
   if (options.action === "repair" && stableJson(files) !== stableJson(plan.repairFiles)) throw new Error("Repair allowlist does not match the reviewed plan");
+  if (options.action === "create-optional" && stableJson(files) !== stableJson(plan.optionalFiles)) throw new Error("Optional-file allowlist does not match the reviewed plan");
   const targetState = classifyWorkspace(plan.target.workspaceDir, { hubSite: Boolean(options.site) });
   const rootState = classifyWorkspace(path.join(root, ".seo"));
   const hubSitesDir = path.join(root, ".seo/sites");
@@ -349,6 +369,18 @@ async function main() {
       }
       await createWorkspace(plan.target.workspaceDir, allowlist, options.site ? path.join(seoDir, "sites") : root);
       console.log(`Workspace repaired at ${plan.target.workspaceDir}: ${options.files.join(", ")}`);
+      return;
+    }
+
+    if (options.action === "create-optional") {
+      if (!new Set(["standalone", "hub-site"]).has(targetState.classification)) throw new Error(`Create-optional requires schema-1 standalone/hub-site, got ${targetState.classification}`);
+      const allowlist = new Set(options.files);
+      for (const file of allowlist) {
+        if (!OPTIONAL_WORKSPACE_FILES.has(file)) throw new Error(`Create-optional path is not optional: ${file}`);
+        if (existsSync(path.join(plan.target.workspaceDir, file))) throw new Error(`Create-optional refuses existing path: ${file}`);
+      }
+      await writeMissing(plan.target.workspaceDir, workspaceFiles(), allowlist, options.site ? path.join(seoDir, "sites") : root);
+      console.log(`Optional workspace files created at ${plan.target.workspaceDir}: ${options.files.join(", ")}`);
       return;
     }
 

@@ -1,5 +1,7 @@
 # AI Search Visibility
 
+Use the evidence states, provenance fields, buyer stages, and non-causal outcome ladder in `references/evidence-conventions.md`.
+
 Use for the `ai-visibility` phase of every first run, for `operate` checkpoints and tickets in the `ai-visibility` area, and whenever the user asks how the site shows up in ChatGPT/Perplexity/Gemini/AI Overviews. AI/LLM visibility is a default part of organic growth work, not an opt-in experiment.
 
 No special markup tricks exist for Google AI surfaces: AI Overviews and AI Mode use core Search ranking, and Google says no AI-specific markup or files are required. This workflow is about access, extractability, and honest measurement — not "AEO/GEO" hacks. Keep the framing from the AI Search Note in `references/phase-architecture.md`.

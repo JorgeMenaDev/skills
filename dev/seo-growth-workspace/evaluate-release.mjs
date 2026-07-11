@@ -480,6 +480,8 @@ function evaluate() {
     "references/conversion-cta.md",
     "references/local-seo-gbp.md",
     "references/backlinks-entity.md",
+    "references/evidence-conventions.md",
+    "references/commercial-integrity.md",
     "references/monthly-reporting.md",
     "references/ai-search-visibility.md",
     "references/data-tools.md",
@@ -518,7 +520,8 @@ function evaluate() {
   const portable = portableFiles();
   const allPortable = scanPortableFiles(portable);
   const combinedPortableText = allPortable.map(({ text }) => text).join("\n").toLowerCase();
-  const allReferencesLinked = references.filter((file) => skill.includes(file)).length;
+  const routedReferences = references.filter((file) => file !== "references/evidence-conventions.md");
+  const allReferencesLinked = routedReferences.filter((file) => skill.includes(file)).length;
   const scenarioProfiles = loadScenarioFixture(findings);
   const phaseArchitecture = exists("references/phase-architecture.md")
     ? read("references/phase-architecture.md").toLowerCase()
@@ -530,7 +533,7 @@ function evaluate() {
 
   award(checks, findings, "Structure", 2, /^---[\s\S]*name:\s*seo-growth-workspace[\s\S]*description:/m.test(skill), "SKILL.md frontmatter should include name and description", "SKILL.md");
   awardRatio(checks, findings, "Structure", 7, [...references, ...scripts, ...templates].filter(exists).length, references.length + scripts.length + templates.length, "Required runtime files present");
-  awardRatio(checks, findings, "Structure", 3, allReferencesLinked, references.length, "SKILL.md links current references");
+  awardRatio(checks, findings, "Structure", 3, allReferencesLinked, routedReferences.length, "SKILL.md links current routed references");
   awardRatio(checks, findings, "Structure", 3, releaseToolingFiles.filter((file) => existsSync(file)).length, releaseToolingFiles.length, "Release tooling files present in dev/seo-growth-workspace");
 
   // Generic contamination patterns: no personal names or private project markers —
