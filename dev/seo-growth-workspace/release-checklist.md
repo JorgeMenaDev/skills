@@ -144,6 +144,12 @@ These gates are executed at the slice-7 release. Record each numbered gate as PA
    - Evidence path: the blocked/revised AI visibility report or backlog/work-log record showing the original proposed claim, reviewer decision, final non-causal wording, owner, and recheck plan; record that artifact path in the gate-results row.
    - PASS/FAIL: PASS only when every promised or projected AI-visibility lift claim fails review and the surviving record separates action from later observed outcome. FAIL if any output promises, calculates, scores, forecasts, or projects AI-visibility lift from an action.
 
+9. **Sparse customer-evidenced discovery journey**
+   - Inputs: a sparse set of dated `Reported` or `Observed` customer evidence covering at least one supported discovery surface, one evidenced unsuitable surface, unresolved stages or fields, and a supported social or video surface requiring execution beyond SEO.
+   - Expected result: the matrix is created in `.seo/context.md`; only directly evidenced surfaces are `active`; the unsuitable surface is `rejected` with its evidence-based reason; unresolved stages, fields, and decisions remain `Unknown`; customer recall remains `Reported`; and social/video execution is recorded as an outside-skill handoff rather than a campaign. No matrix is created when the qualifying customer evidence is removed, and unrelated simple work remains unblocked.
+   - Evidence path: the completed `.seo/context.md`, its customer-evidence artifacts and provenance references, and any outside-skill handoff record referenced by the matrix; record those artifact paths in the gate-results row.
+   - PASS/FAIL: PASS only when every active surface has its own `Reported` or `Observed` customer-evidence basis, every rejection has a recorded reason, all unsupported values stay `Unknown`, and social/video execution remains outside the SEO skill. FAIL for inferred activation, a fabricated complete journey, an unreasoned rejection, customer recall upgraded beyond `Reported`, a required matrix for evidence-free or simple work, a surface score, a per-channel ledger, or social/video campaign execution inside this skill.
+
 ## Dry-Run Gates
 
 Before deploy, prove at least one repo-local dry run without mutating unrelated files:

@@ -335,6 +335,32 @@ section("slice 3 AI observation and portrayal contracts", () => {
   check(!/(?:will|expected to|projected to|should) (?:increase|improve|lift).{0,50}AI.visibility/i.test(reference), "AI contract must not promise or project AI-visibility lift");
 });
 
+section("slice 3 discovery-journey contract", () => {
+  const reference = readFileSync(path.join(skillRoot, "references/business-context.md"), "utf-8");
+  const fields = [
+    "Surface",
+    "Customer-evidence basis",
+    "Evidence state",
+    "Provenance / limitations",
+    "Buyer stage(s)",
+    "Customer job / query or task",
+    "Current-presence observation",
+    "Activation decision",
+    "Asset / outcome / next action",
+    "Execution route",
+  ];
+
+  check(fields.every((field) => reference.includes(field)), "Discovery-journey rows must carry customer evidence, provenance, buyer stages, presence, activation, action, and routing fields");
+  check(reference.includes("only when identified customer evidence is `Reported` or `Observed`") && reference.includes("When no qualifying evidence exists, create no matrix"), "Discovery-journey creation must require reported or observed customer evidence and treat no matrix as correct without it");
+  check(reference.includes("`.seo/context.md`") && reference.includes("Do not create another required workspace file"), "Discovery-journey matrix must live in existing context/strategy/report homes without a required workspace artifact");
+  check(reference.includes("`active`; `rejected — <reason>`; or `Unknown`") && reference.includes("Leave the decision `Unknown`"), "Discovery-journey activation must preserve active, reasoned rejection, and Unknown decisions");
+  check(reference.includes("Route social, video, newsletter, and marketplace execution to dedicated capabilities outside this skill"), "Social, video, newsletter, and marketplace execution must route outside the SEO skill");
+  check(reference.includes("Customer recall remains `Reported`") && reference.includes("Do not infer channel causality or revenue/ARR contribution"), "Discovery-journey evidence must keep recall reported and prohibit causal revenue claims");
+  check(reference.includes("Do not turn the matrix into an omni-channel mode") && reference.includes("create per-channel ledgers") && reference.includes("calculate a surface score"), "Discovery-journey guidance must prohibit omni-channel mode, per-channel ledgers, and scoring formulas");
+  check(!/(?:mandatory|required) (?:discovery[- ]journey |journey )?matrix/i.test(reference), "Discovery-journey matrix must not be mandatory");
+  check(!/(?:score|weight|points?)\s*[=+*/]/i.test(reference), "Discovery-journey contract must not contain a scoring formula");
+});
+
 section("slice 2 GBP evidence contracts", () => {
   const reference = readFileSync(path.join(skillRoot, "references/local-seo-gbp.md"), "utf-8");
   const template = readFileSync(path.join(skillRoot, "templates/local-seo-gbp.md"), "utf-8");
