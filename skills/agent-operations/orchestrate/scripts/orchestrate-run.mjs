@@ -886,12 +886,25 @@ const initializeRun = (run, path) => {
   try {
     exclusiveWrite(locator, record);
   } catch {
-    const active = existsSync(locator) ? readJson(locator) : null;
-    if (active?.runPath && active.runPath !== path && existsSync(active.runPath)) {
+    const claim = `${locator}.claim`;
+    try {
+      mkdirSync(claim);
+    } catch {
       rmSync(path, { force: true });
-      fail(`an active run already claimed ${run.repo.path}: ${active.runPath}`);
+      fail(`another process is reclaiming the active-run locator for ${run.repo.path}; retry, or remove ${claim} if its process is dead`);
     }
-    atomicWrite(locator, record);
+    let conflict = null;
+    try {
+      const active = existsSync(locator) ? readJson(locator) : null;
+      if (active?.runPath && active.runPath !== path && existsSync(active.runPath)) conflict = `an active run already claimed ${run.repo.path}: ${active.runPath}`;
+      else atomicWrite(locator, record);
+    } finally {
+      rmSync(claim, { recursive: true, force: true });
+    }
+    if (conflict) {
+      rmSync(path, { force: true });
+      fail(conflict);
+    }
   }
   return locator;
 };
@@ -951,7 +964,12 @@ if (command === "adopt") {
     if (active.runPath && existsSync(active.runPath)) fail(`an active run already exists for ${run.repo.path}: ${active.runPath}; resume it instead of adopting`);
   }
   run.reconciliation = { status: "unknown", at: now(), notes: ["adopted from a prose run; reconcile before any external intent"] };
-  run.effects = run.effects.map((effect) => ["observed", "cancelled"].includes(effect.status) ? effect : { ...effect, status: "unknown", reason: `adopted with unproved status ${effect.status}; outcome needs a ruling` });
+  run.effects = run.effects.map((effect) => {
+    if (effect.status === "observed") return effect;
+    const ruled = run.authorization?.effectRulings?.some(({ effectId, outcome, approvedBy, evidence }) => effectId === effect.id && outcome === "cancelled" && approvedBy && evidence);
+    if (effect.status === "cancelled" && (effect.observation?.definiteNonExecution === true || ruled)) return effect;
+    return { ...effect, status: "unknown", reason: `adopted with unproved status ${effect.status}; outcome needs a ruling` };
+  });
   run.resources = run.resources.map((resource) => resource.status === "acquired" && (!resource.ownerSlice || !resource.externalIdentity) ? { ...resource, status: "unknown" } : resource);
   const downgraded = new Set();
   for (let pass = 0; pass <= run.slices.length; pass += 1) {

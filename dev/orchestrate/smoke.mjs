@@ -4,6 +4,7 @@
 // specs; no test framework. Run: node dev/orchestrate/smoke.mjs
 
 import { execFileSync, spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -129,6 +130,10 @@ adoptSpec.slices[0].state = "ACTIVE";
 adoptSpec.slices[1].state = "TERMINAL";
 adoptSpec.slices[1].outcome = "merged";
 adoptSpec.slices[1].terminalProof = "claimed PR merge, unledgered";
+adoptSpec.effects = [
+  { id: "push-unproved", type: "push", sliceId: "foundation", status: "cancelled", ownerEpoch: 1, attemptKey: "adopt-example:foundation:1", reconcile: { kind: "remote", locator: "origin", expected: "ref" }, observation: null },
+  { id: "push-proved", type: "push", sliceId: "foundation", status: "cancelled", ownerEpoch: 1, attemptKey: "adopt-example:foundation:1", reconcile: { kind: "remote", locator: "origin", expected: "ref" }, observation: { definiteNonExecution: true } },
+];
 const adoptSpecPath = join(root, "adopt-spec.json");
 writeFileSync(adoptSpecPath, JSON.stringify(adoptSpec, null, 2));
 const adoptDir = join(root, "run-adopt");
@@ -143,6 +148,11 @@ check(
   JSON.stringify({ foundation, consumer }, null, 2),
 );
 check("adopt reports the downgrades and forces reconciliation", adopt.stdout.includes("ADOPTED_UNKNOWN:") && adopted.reconciliation.status === "unknown", adopt.stdout);
+check(
+  "adopt trusts a cancelled effect only with definite non-execution proof",
+  adopted.effects.find(({ id }) => id === "push-unproved").status === "unknown" && adopted.effects.find(({ id }) => id === "push-proved").status === "cancelled",
+  JSON.stringify(adopted.effects, null, 2),
+);
 const adoptInspect = helper(["inspect", "--run", join(adoptDir, "run.json")]);
 check("adopted run is valid with a closed write frontier", adoptInspect.stdout.includes("RUN_VALID: yes") && adoptInspect.stdout.includes("WRITE_FRONTIER: []"), adoptInspect.stdout);
 
@@ -245,6 +255,17 @@ check("unreconciled init keeps the write frontier closed", initInspect.stdout.in
 rmSync(startDir, { recursive: true, force: true });
 const reclaim = helper(["start", "--dir", join(root, "run-start-3"), "--spec", specPath]);
 check("start reclaims a stale active-run locator", reclaim.status === 0 && reclaim.stdout.includes("RECONCILIATION: clean"), reclaim.stderr || reclaim.stdout);
+
+// stale-locator reclamation is serialized by an exclusive claim
+const seedRoot = git(seed, ["rev-parse", "--show-toplevel"]);
+const seedLocator = join(env.XDG_STATE_HOME, "orchestrate", "active-runs", `${createHash("sha256").update(seedRoot).digest("hex")}.json`);
+rmSync(join(root, "run-start-3"), { recursive: true, force: true });
+mkdirSync(`${seedLocator}.claim`, { recursive: true });
+const blockedReclaim = helper(["start", "--dir", join(root, "run-start-4"), "--spec", specPath]);
+check("a held reclamation claim fails closed", blockedReclaim.status !== 0 && blockedReclaim.stderr.includes("reclaiming"), blockedReclaim.stderr || blockedReclaim.stdout);
+rmSync(`${seedLocator}.claim`, { recursive: true, force: true });
+const reclaimAfterClaim = helper(["start", "--dir", join(root, "run-start-4"), "--spec", specPath]);
+check("reclamation proceeds once the claim clears", reclaimAfterClaim.status === 0, reclaimAfterClaim.stderr || reclaimAfterClaim.stdout);
 
 rmSync(root, { recursive: true, force: true });
 process.stdout.write(failures ? `\n${failures} failure(s)\n` : "\nall smoke checks passed\n");
