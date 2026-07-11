@@ -19,6 +19,83 @@ Check:
 - Footer/nav links support core conversion and crawl paths.
 - Use the GSC Links report as evidence for internal-link counts and top linked pages.
 
+## Offline link-graph analyzer
+
+Run the analyzer after an approved local process has produced a complete page/link export, before filling the audit matrix or planning link changes. It reads one file, performs no crawl or network request, and writes deterministic Markdown suitable for a dated report or `.seo/audit.md`. JSON is the only v1 input; third-party crawler CSV ingestion is deferred until a real consumer export requires a specific dialect.
+
+Check the bundled command without depending on the current directory:
+
+```bash
+node "${SKILL_DIR}/scripts/link-graph-analyzer.mjs" --help
+```
+
+For a real approved export, run `node "${SKILL_DIR}/scripts/link-graph-analyzer.mjs" --input <pages-links.json> > <report.md>`. Supply `--stamp <value>` only when the caller needs an explicit evidence label; the script never creates a date or timestamp.
+
+### Input contract
+
+The top-level JSON object has exactly two record kinds plus coverage:
+
+```json
+{
+  "coverage": { "complete": true, "note": "All rendered public routes." },
+  "pages": [
+    {
+      "url": "https://example.com/",
+      "status": 200,
+      "finalUrl": "https://example.com/",
+      "canonicalUrl": "https://example.com/",
+      "indexable": true,
+      "entryPoint": true,
+      "moneyPage": false
+    }
+  ],
+  "links": [
+    {
+      "source": "https://example.com/",
+      "target": "https://example.com/service",
+      "anchor": "Service",
+      "placement": "nav",
+      "rel": []
+    }
+  ]
+}
+```
+
+All page fields shown are required except `finalUrl` and `canonicalUrl`, which may be omitted when unknown. All link fields are required; `rel` is an array of tokens. Records are supplied facts only. `moneyPage` and `entryPoint` must be declared booleans: the analyzer never infers commercial importance or entry points. Every `links[]` record remains a separate edge, so duplicate source/target pairs with different or repeated anchors and placements are preserved.
+
+The ten pinned schema decisions are:
+
+1. page vs edge records with duplicate edges preserved (anchors/placements)
+2. page-record fields taken from supplied records only (never fetched) with declared-not-inferred money pages and entry-point flags
+3. edge fields (source, target, anchor, placement, rel)
+4. stated URL-normalization policy applied identically to pages and edges
+5. explicit redirect/canonical/indexability/nofollow graph policy and entry points
+6. `heuristic internal authority` labeling with recorded damping/iteration bounds and exclusions (never "PageRank", never a ranking prediction)
+7. input-size limits with actionable over-limit failure, byte-identical determinism, no fetch/child-process/deps/fs-traversal
+8. injection-safe emission (Markdown escaping; spreadsheet-formula neutralization if CSV output exists)
+9. outputs mapping to the existing `internal-linking.md` audit matrix (evidence for that matrix, not a second workflow)
+10. Ahrefs keyless DR documented in `data-tools.md` only (privacy, linked attribution, third-party-estimate status, volatility, terms reverified at implementation date) — the analyzer makes no network call
+
+Normalization accepts absolute HTTP(S) URLs without credentials, lowercases scheme/host, removes fragments and default ports, resolves URL dot segments, removes a non-root trailing slash, and sorts query pairs by key then value. Path and query value case remain unchanged. The same function processes page URLs, final/canonical URLs, and link endpoints; normalized duplicate page URLs fail.
+
+The graph includes followed edges whose source and resolved target are supplied, indexable 2xx self-canonical pages. A redirect resolves only through that page record's declared `finalUrl`; a canonicalized target resolves only through its declared `canonicalUrl`. Missing destinations remain broken, nofollow edges remain in the inventory but do not transfer reach or authority, and noindex pages remain edge observations but are excluded from the graph. Click depth is reported from declared entry points and separately from declared money pages.
+
+The authority column is named **heuristic internal authority**. It uses damping `0.85` for exactly 20 iterations (minimum and maximum 20), preserves duplicate followed-edge weight, and records those bounds in every report. It is neither Google PageRank nor a ranking prediction.
+
+Limits are 5,000,000 input bytes, 50,000 pages, and 500,000 links. Identical input and arguments yield byte-identical output: ordering is stable and the script creates no timestamp or random value. Imported strings are treated as hostile: Markdown table delimiters and HTML-significant characters are escaped, newlines are flattened, and leading spreadsheet formula prefixes (`=`, `+`, `-`, `@`) are neutralized. The analyzer reads only the named input file and has no dependencies or network behavior.
+
+Set `coverage.complete` to `false` whenever the producer did not capture the entire intended page/link set, and explain the gap in `coverage.note`. The report then returns **insufficient input coverage** for orphan evaluation and never labels pages orphan or near-orphan. Other supplied-record observations remain available with that limitation.
+
+### Output mapping
+
+| Analyzer output | Audit matrix use |
+| --- | --- |
+| Page evidence: root click depth, money-page depth, distinct followed inlinks/outlinks | `Click depth` and `Current state` |
+| Orphan, near-orphan, and weak declared money-page findings | Candidate matrix rows; reviewer decides `Priority`, `Desired state`, and `Fix` |
+| Edge handling: broken, redirected, canonicalized, noindex, nofollow | `Source URL`, `Target URL`, and `Current state` |
+| Anchor inventory with duplicate count and placement | `Anchor text`, intent review, and repeated exact-match review |
+| Heuristic internal authority | Directional support evidence only; never an outcome or ranking claim |
+
 ## Done Criteria
 
 - Link exists in rendered HTML or verified route output.

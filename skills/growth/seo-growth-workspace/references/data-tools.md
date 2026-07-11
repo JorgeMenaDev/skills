@@ -37,3 +37,9 @@ Use when an audit matrix needs keyword volume, SERP, or backlink data beyond Sea
 - Third-party volume/DR/traffic numbers are estimates. Label them; never mix them unlabeled with GSC actuals.
 - Autocomplete/PAA observations are directional demand evidence, not volume data. Label them as directional.
 - When no tool is available, document the limitation in the matrix instead of inventing numbers — the same rule as `references/backlinks-entity.md`.
+
+## Ahrefs public Domain Rating
+
+As verified 2026-07-11, Ahrefs documents a free, keyless endpoint at `https://api.ahrefs.com/v3/public/domain-rating-free`. Availability, terms, and response shape can change, so recheck the [official endpoint documentation](https://docs.ahrefs.com/en/api/reference/public/get-domain-rating-free) before each use.
+
+This is an external request: the queried domain is sent to Ahrefs, so do not use it when that disclosure or the current terms are unacceptable. Domain Rating is a third-party directional estimate, not a Google metric, ranking guarantee, or hard quality/prioritization gate. Any published use requires linked attribution using **Domain Rating by Ahrefs**. The offline link-graph analyzer never calls this or any other endpoint.
