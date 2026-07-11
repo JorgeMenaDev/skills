@@ -80,6 +80,13 @@ const now = () => new Date().toISOString();
 const freshTimestamp = (value) => Number.isFinite(Date.parse(value)) && Math.abs(Date.now() - Date.parse(value)) <= observationMaxAgeMs;
 const reconciliationFresh = (run) => run.reconciliation?.status === "clean" && freshTimestamp(run.reconciliation?.at);
 const readJson = (path) => JSON.parse(readFileSync(path, "utf8"));
+const readJsonSafe = (path) => {
+  try {
+    return readJson(path);
+  } catch {
+    return null;
+  }
+};
 const runPath = (args) => resolve(args.run || (args.dir && join(args.dir, "run.json")) || fail("pass --run or --dir"));
 const git = (repo, values) => execFileSync("git", ["-C", repo, ...values], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
 const pidAlive = (pid) => {
@@ -278,6 +285,19 @@ const validate = (run, previous = null) => {
   for (const preparation of run.preparations) {
     if (!preparation.sliceId || !ids.has(preparation.sliceId) || !preparation.sourceSha || !Array.isArray(preparation.paths) || typeof preparation.valid !== "boolean") errors.push(`invalid preparation for ${preparation.sliceId || "<empty>"}`);
   }
+  for (const field of ["deferredGates", "checkpoints"]) if (run[field] !== undefined && !Array.isArray(run[field])) errors.push(`${field} must be an array`);
+  for (const checkpoint of Array.isArray(run.checkpoints) ? run.checkpoints : []) {
+    if (!checkpoint?.at || !checkpoint?.conductor) errors.push("checkpoint records require at and conductor");
+  }
+  const gateStatuses = new Set(["open", "discharged", "authorized"]);
+  const gateIds = new Set();
+  for (const gate of Array.isArray(run.deferredGates) ? run.deferredGates : []) {
+    if (!gate.id || gateIds.has(gate.id) || !gateStatuses.has(gate.status) || !gate.description) errors.push(`invalid or duplicate deferred gate ${gate.id || "<empty>"}`);
+    gateIds.add(gate.id);
+    if (gate.sliceId && !ids.has(gate.sliceId)) errors.push(`${gate.id}: unknown slice ${gate.sliceId}`);
+    if (["discharged", "authorized"].includes(gate.status) && (!Array.isArray(gate.evidence) || !gate.evidence.length || !gate.evidence.every((item) => typeof item === "string" && item.trim()))) errors.push(`${gate.id}: ${gate.status} requires non-empty evidence identifiers`);
+    if (gate.status === "authorized" && (typeof gate.approvedBy !== "string" || !gate.approvedBy.trim())) errors.push(`${gate.id}: authorized requires a named approver`);
+  }
 
   if (previous) {
     if (run.revision !== previous.revision + 1) errors.push("revision must increment by one");
@@ -307,6 +327,26 @@ const validate = (run, previous = null) => {
       }
     }
     for (const effect of previous.effects) if (!run.effects.some(({ id }) => id === effect.id) && !["observed", "cancelled"].includes(effect.status)) errors.push(`${effect.id}: unresolved effect cannot be removed`);
+    const previousGates = new Map((Array.isArray(previous.deferredGates) ? previous.deferredGates : []).map((gate) => [gate.id, gate]));
+    const currentGates = new Map((Array.isArray(run.deferredGates) ? run.deferredGates : []).map((gate) => [gate.id, gate]));
+    for (const [id, oldGate] of previousGates) {
+      const gate = currentGates.get(id);
+      if (!gate) {
+        errors.push(`${id}: a deferred gate cannot be removed`);
+        continue;
+      }
+      if (oldGate.status !== gate.status && !(oldGate.status === "open" && ["discharged", "authorized"].includes(gate.status))) errors.push(`${id}: illegal deferred gate transition ${oldGate.status} -> ${gate.status}`);
+    }
+    for (const [id, gate] of currentGates) if (!previousGates.has(id) && gate.status !== "open") errors.push(`${id}: a new deferred gate must begin open`);
+    const previousCheckpoints = Array.isArray(previous.checkpoints) ? previous.checkpoints : [];
+    const currentCheckpoints = Array.isArray(run.checkpoints) ? run.checkpoints : [];
+    if (currentCheckpoints.length < previousCheckpoints.length) errors.push("checkpoint history is append-only");
+    else for (let index = 0; index < previousCheckpoints.length; index += 1) {
+      if (serialize(previousCheckpoints[index]) !== serialize(currentCheckpoints[index])) {
+        errors.push("checkpoint records are immutable");
+        break;
+      }
+    }
   }
   return [...new Set(errors)];
 };
@@ -323,7 +363,8 @@ const derived = (run) => {
   const incompleteCriteria = [...run.parentCriteria, ...run.slices.flatMap(({ criteria }) => criteria || [])].filter((criterion) => !criterionAccounted(criterion));
   const unresolvedEffects = run.effects.filter(({ status }) => !["observed", "cancelled"].includes(status));
   const heldResources = run.resources.filter(({ status }) => !["free", "released"].includes(status));
-  const complete = run.slices.every(({ state }) => state === "TERMINAL") && !incompleteCriteria.length && !unresolvedEffects.length && !heldResources.length && reconciliationFresh(run);
+  const openDeferredGates = (Array.isArray(run.deferredGates) ? run.deferredGates : []).filter(({ status }) => status === "open");
+  const complete = run.slices.every(({ state }) => state === "TERMINAL") && !incompleteCriteria.length && !unresolvedEffects.length && !heldResources.length && !openDeferredGates.length && reconciliationFresh(run);
   const waves = {};
   const waveOf = (id, stack = new Set()) => {
     if (waves[id]) return waves[id];
@@ -334,7 +375,7 @@ const derived = (run) => {
     return waves[id];
   };
   for (const { id } of run.slices) waveOf(id);
-  return { write, preparation, ready, integration, blocked, unknown, incompleteCriteria, unresolvedEffects, heldResources, complete, waves };
+  return { write, preparation, ready, integration, blocked, unknown, incompleteCriteria, unresolvedEffects, heldResources, openDeferredGates, complete, waves };
 };
 
 const inspect = (run, shouldFail = true) => {
@@ -351,6 +392,7 @@ const inspect = (run, shouldFail = true) => {
   process.stdout.write(`INTEGRATION_FRONTIER: ${JSON.stringify(state.integration)}\n`);
   process.stdout.write(`BLOCKED: ${JSON.stringify(state.blocked)}\n`);
   process.stdout.write(`UNKNOWN: ${JSON.stringify(state.unknown)}\n`);
+  process.stdout.write(`DEFERRED_GATES_OPEN: ${JSON.stringify(state.openDeferredGates.map(({ id }) => id))}\n`);
   process.stdout.write(`COMPLETE: ${state.complete && !errors.length ? "yes" : "no"}\n`);
   for (const error of errors) process.stdout.write(`INVALID: ${error}\n`);
   if (errors.length && shouldFail) process.exit(1);
@@ -378,14 +420,28 @@ const mutate = (path, expectedRevision, conductor, operation, options = {}) => {
     candidate.updatedAt = now();
     const errors = validate(candidate, current);
     if (errors.length) throw new Error(errors.join("; "));
+    if (options.beforeCommit) options.beforeCommit(candidate);
     atomicWrite(path, candidate);
     const locator = locatorPath(candidate);
     mkdirSync(dirname(locator), { recursive: true });
     atomicWrite(locator, { runId: candidate.runId, runPath: path, revision: candidate.revision, updatedAt: candidate.updatedAt });
+    for (const stale of locatorCandidates(candidate.repo.path, candidate.repo.identity || repoIdentity(candidate.repo.path))) {
+      if (stale !== locator && readJsonSafe(stale)?.runPath === path) rmSync(stale, { force: true });
+    }
+    if (options.afterWrite) options.afterWrite(candidate);
     return candidate;
   } finally {
     release();
   }
+};
+
+const writeDoc = (path, content) => {
+  const temp = `${path}.tmp-${process.pid}`;
+  const descriptor = openSync(temp, "w", 0o600);
+  writeFileSync(descriptor, content);
+  fsyncSync(descriptor);
+  closeSync(descriptor);
+  renameSync(temp, path);
 };
 
 const render = (run, path) => {
@@ -393,18 +449,29 @@ const render = (run, path) => {
   const hash = digest(run);
   const rows = run.slices.map((slice) => `| ${slice.id} | ${state.waves[slice.id]} | ${slice.lane} | ${slice.state} | ${slice.outcome || "—"} |`).join("\n");
   const blockers = run.slices.filter(({ blocker }) => blocker).map(({ id, blocker }) => `- ${id}: ${blocker}`).join("\n") || "- None";
-  const content = `# ${run.title}\n\nGenerated from \`run.json\`. Do not edit this view.\n\n- Run: \`${run.runId}\`\n- Revision: ${run.revision}\n- SHA-256: \`${hash}\`\n- Owner: \`${run.conductor.id}@${run.conductor.epoch}\`\n- Reconciliation: \`${run.reconciliation?.status || "unknown"}\`\n\n| Slice | Wave | Lane | State | Outcome |\n|---|---:|---|---|---|\n${rows}\n\n## Frontiers\n\n- Write: ${JSON.stringify(state.write)}\n- Preparation: ${JSON.stringify(state.preparation)}\n- Acceptance: ${JSON.stringify(state.ready)}\n- Integration: ${JSON.stringify(state.integration)}\n\n## Blockers\n\n${blockers}\n`;
-  const temp = `${path}.tmp-${process.pid}`;
-  const descriptor = openSync(temp, "w", 0o600);
-  writeFileSync(descriptor, content);
-  fsyncSync(descriptor);
-  closeSync(descriptor);
-  renameSync(temp, path);
+  const gates = state.openDeferredGates.map(({ id, description }) => `- ${id}: ${description}`).join("\n") || "- None";
+  const content = `# ${run.title}\n\nGenerated from \`run.json\`. Do not edit this view.\n\n- Run: \`${run.runId}\`\n- Revision: ${run.revision}\n- SHA-256: \`${hash}\`\n- Owner: \`${run.conductor.id}@${run.conductor.epoch}\`\n- Reconciliation: \`${run.reconciliation?.status || "unknown"}\`\n\n| Slice | Wave | Lane | State | Outcome |\n|---|---:|---|---|---|\n${rows}\n\n## Frontiers\n\n- Write: ${JSON.stringify(state.write)}\n- Preparation: ${JSON.stringify(state.preparation)}\n- Acceptance: ${JSON.stringify(state.ready)}\n- Integration: ${JSON.stringify(state.integration)}\n\n## Open deferred gates\n\n${gates}\n\n## Blockers\n\n${blockers}\n`;
+  writeDoc(path, content);
   process.stdout.write(`RENDERED: ${path}\nSOURCE_REVISION: ${run.revision}\nSOURCE_DIGEST: ${hash}\n`);
 };
 
 const stateRoot = () => resolve(process.env.XDG_STATE_HOME || join(homedir(), ".local", "state"), "orchestrate");
-const locatorPath = (run) => join(stateRoot(), "active-runs", `${createHash("sha256").update(resolve(run.repo.path)).digest("hex")}.json`);
+const repoIdentity = (repoPath) => {
+  try {
+    return git(repoPath, ["rev-parse", "--path-format=absolute", "--git-common-dir"]);
+  } catch {
+    return resolve(repoPath);
+  }
+};
+const locatorPath = (run) => join(stateRoot(), "active-runs", `${createHash("sha256").update(run.repo.identity || repoIdentity(run.repo.path)).digest("hex")}.json`);
+const locatorCandidates = (repoPath, identity) => [...new Set([identity, resolve(repoPath)])].map((key) => join(stateRoot(), "active-runs", `${createHash("sha256").update(key).digest("hex")}.json`));
+const liveLocator = (candidates) => {
+  for (const candidate of candidates) {
+    const active = readJsonSafe(candidate);
+    if (active?.runPath && existsSync(active.runPath)) return active;
+  }
+  return null;
+};
 const mutexPath = (resourceId) => join(stateRoot(), "mutexes", `${createHash("sha256").update(resourceId).digest("hex")}.lock`);
 
 const normalize = (spec) => {
@@ -434,6 +501,8 @@ const normalize = (spec) => {
     runtimeObservations: spec.runtimeObservations || [],
     preparations: spec.preparations || [],
     knownLessons: spec.knownLessons || [],
+    deferredGates: spec.deferredGates ?? [],
+    checkpoints: spec.checkpoints ?? [],
     reconciliation: spec.reconciliation || { status: "unknown", at: null, notes: [] },
   };
 };
@@ -442,7 +511,7 @@ const command = process.argv[2];
 const args = parseArgs(process.argv.slice(3));
 
 if (!command || ["help", "--help", "-h"].includes(command)) {
-  process.stdout.write(`orchestrate-run.mjs commands:\n  preflight --repo DIR\n  classify --slices N --dependencies yes|no --integration-branch yes|no --shared-resource yes|no [--one-liner yes]\n  init --dir DIR --spec FILE\n  update --run FILE --expected-revision N --patch FILE --conductor-id ID --conductor-epoch N\n  probe --run FILE --expected-revision N --resource ID --slice ID --action acquire|release --conductor-id ID --conductor-epoch N\n  reconcile --run FILE --expected-revision N [--observations FILE] --conductor-id ID --conductor-epoch N\n  takeover --run FILE --expected-revision N --conductor-id OLD --conductor-epoch N --new-conductor-id NEW\n  recover-lock --run FILE --conductor-id ID --conductor-epoch N --confirm-stale\n  recover-mutex --run FILE --expected-revision N --resource ID --conductor-id ID --conductor-epoch N --confirm-stale\n  inspect --run FILE\n  render --run FILE\n  assert-complete --run FILE\n  archive --run FILE --conductor-id ID --conductor-epoch N\n`);
+  process.stdout.write(`orchestrate-run.mjs commands:\n  preflight --repo DIR\n  classify --slices N --dependencies yes|no --integration-branch yes|no --shared-resource yes|no [--one-liner yes]\n  start --dir DIR --spec FILE            (preflight + init + locator + reconcile + first frontier)\n  adopt --dir DIR --spec FILE            (conservative import of an in-flight prose run; unproved state -> UNKNOWN)\n  checkpoint --run FILE --expected-revision N [--reason TEXT] [--observations FILE] --conductor-id ID --conductor-epoch N\n  checkpoint --run FILE --render-only     (regenerate RESUME.md from the committed ledger; no mutation)\n  init --dir DIR --spec FILE\n  update --run FILE --expected-revision N --patch FILE --conductor-id ID --conductor-epoch N\n  probe --run FILE --expected-revision N --resource ID --slice ID --action acquire|release --conductor-id ID --conductor-epoch N\n  reconcile --run FILE --expected-revision N [--observations FILE] --conductor-id ID --conductor-epoch N\n  takeover --run FILE --expected-revision N --conductor-id OLD --conductor-epoch N --new-conductor-id NEW\n  recover-lock --run FILE --conductor-id ID --conductor-epoch N --confirm-stale\n  recover-mutex --run FILE --expected-revision N --resource ID --conductor-id ID --conductor-epoch N --confirm-stale\n  inspect --run FILE\n  render --run FILE\n  assert-complete --run FILE\n  archive --run FILE --conductor-id ID --conductor-epoch N\n`);
   process.exit(0);
 }
 
@@ -468,10 +537,10 @@ if (command === "preflight") {
       override = "malformed";
     }
   }
-  const activeLocator = join(stateRoot(), "active-runs", `${createHash("sha256").update(root).digest("hex")}.json`);
+  const activeLocator = locatorCandidates(root, repoIdentity(root)).find((candidate) => existsSync(candidate));
   const skillRoots = [join(root, ".agents", "skills"), join(homedir(), ".agents", "skills"), join(homedir(), ".claude", "skills")];
   const adapters = ["codex-cli-runtime", "claude-cli-runtime", "cursor-subagent", "opencode-subagent"].filter((name) => skillRoots.some((skillRoot) => existsSync(join(skillRoot, name, "SKILL.md"))));
-  process.stdout.write(`REPO: ${root}\nBRANCH: ${branch}\nDIRTY: ${dirty}\nBASE_SHA: ${head}\nACTIVE_RUN: ${existsSync(activeLocator) ? activeLocator : "none"}\nHELPER_SCHEMA: 1\nENGINE_OVERRIDE: ${override}\nNATIVE_EXECUTOR: runtime-owned\nNON_NATIVE_ADAPTERS: ${JSON.stringify(adapters)}\n`);
+  process.stdout.write(`REPO: ${root}\nBRANCH: ${branch}\nDIRTY: ${dirty}\nBASE_SHA: ${head}\nACTIVE_RUN: ${activeLocator || "none"}\nHELPER_SCHEMA: 1\nENGINE_OVERRIDE: ${override}\nNATIVE_EXECUTOR: runtime-owned\nNON_NATIVE_ADAPTERS: ${JSON.stringify(adapters)}\n`);
   process.exit(0);
 }
 
@@ -480,6 +549,7 @@ if (command === "classify") {
   const orchestrated = count > 1 || [args.dependencies, args["integration-branch"], args["shared-resource"]].includes("yes");
   const oneLiner = args["one-liner"] === "yes" && count === 1 && !orchestrated;
   process.stdout.write(`PATH: ${oneLiner ? "one-liner" : orchestrated ? "orchestrated" : "simple"}\n`);
+  if (!oneLiner && orchestrated) process.stdout.write("REQUIRES_INIT: mutating dispatch is fail-closed until a ledger exists; next: orchestrate-run.mjs start --dir <scratchpad>/orchestrate/<run-id> --spec <spec.json>\n");
   process.exit(0);
 }
 
@@ -490,6 +560,8 @@ if (command === "init") {
   const path = join(root, "run.json");
   if (existsSync(path)) fail(`${path} already exists`);
   const run = normalize(readJson(resolve(args.spec)));
+  const bornResolved = (Array.isArray(run.deferredGates) ? run.deferredGates : []).filter(({ status }) => status !== "open");
+  if (bornResolved.length) fail(`new-run deferred gates must begin open: ${bornResolved.map(({ id }) => id).join(", ")}; import in-flight gate state through adopt`);
   const errors = validate(run);
   if (errors.length) fail(errors.join("; "));
   atomicWrite(path, run);
@@ -675,11 +747,7 @@ if (command === "probe") {
   process.exit(0);
 }
 
-if (command === "reconcile") {
-  if (args["expected-revision"] === undefined) fail("reconcile requires --expected-revision");
-  const path = runPath(args);
-  const observations = args.observations ? readJson(resolve(args.observations)) : null;
-  const run = mutate(path, args["expected-revision"], caller(args), (current) => {
+const reconcileOperation = (observations) => (current) => {
     const notes = [];
     const unknownSlices = new Set();
     let status = "clean";
@@ -813,9 +881,203 @@ if (command === "reconcile") {
     });
     const slices = current.slices.map((slice) => unknownSlices.has(slice.id) && slice.state !== "TERMINAL" ? { ...slice, resumeState: slice.state === "UNKNOWN" ? slice.resumeState : slice.state, state: "UNKNOWN", blocker: "reconciliation could not prove recorded runtime/resource/effect state" } : slice);
     return { ...current, runtimeObservations, preparations, resources, effects, slices, reconciliation: { status, at: now(), notes } };
-  }, { allowReconciliation: true });
+};
+
+if (command === "reconcile") {
+  if (args["expected-revision"] === undefined) fail("reconcile requires --expected-revision");
+  const path = runPath(args);
+  const observations = args.observations ? readJson(resolve(args.observations)) : null;
+  const run = mutate(path, args["expected-revision"], caller(args), reconcileOperation(observations), { allowReconciliation: true });
   process.stdout.write(`RECONCILIATION: ${run.reconciliation.status}\nREVISION: ${run.revision}\n`);
   for (const note of run.reconciliation.notes) process.stdout.write(`NOTE: ${note}\n`);
+  process.exit(0);
+}
+
+const exclusiveWrite = (path, value) => {
+  const descriptor = openSync(path, "wx", 0o600);
+  writeFileSync(descriptor, serialize(value));
+  fsyncSync(descriptor);
+  closeSync(descriptor);
+};
+
+const initializeRun = (run, path) => {
+  const errors = validate(run);
+  if (errors.length) fail(errors.join("; "));
+  try {
+    exclusiveWrite(path, run);
+  } catch {
+    fail(`${path} already exists; use reconcile + inspect to resume`);
+  }
+  const locator = locatorPath(run);
+  mkdirSync(dirname(locator), { recursive: true });
+  const record = { runId: run.runId, runPath: path, revision: run.revision, updatedAt: run.updatedAt };
+  try {
+    exclusiveWrite(locator, record);
+  } catch {
+    const claim = `${locator}.claim`;
+    try {
+      mkdirSync(claim);
+    } catch {
+      rmSync(path, { force: true });
+      fail(`another process is reclaiming the active-run locator for ${run.repo.path}; retry, or remove ${claim} if its process is dead`);
+    }
+    let conflict = null;
+    try {
+      const active = readJsonSafe(locator);
+      if (active?.runPath && active.runPath !== path && existsSync(active.runPath)) conflict = `an active run already claimed ${run.repo.path}: ${active.runPath}`;
+      else atomicWrite(locator, record);
+    } finally {
+      rmSync(claim, { recursive: true, force: true });
+    }
+    if (conflict) {
+      rmSync(path, { force: true });
+      fail(conflict);
+    }
+  }
+  return locator;
+};
+
+if (command === "start") {
+  if (!args.dir || !args.spec) fail("start requires --dir and --spec");
+  const spec = readJson(resolve(args.spec));
+  if (!spec.repo?.path || !spec.repo?.targetBranch) fail("spec.repo.path and spec.repo.targetBranch are required");
+  let repoRoot;
+  try {
+    repoRoot = git(resolve(spec.repo.path), ["rev-parse", "--show-toplevel"]);
+  } catch {
+    fail(`spec.repo.path is not a git repository: ${spec.repo.path}`);
+  }
+  const identity = repoIdentity(repoRoot);
+  const activeStart = liveLocator(locatorCandidates(repoRoot, identity));
+  if (activeStart) fail(`an active run already exists for ${repoRoot}: ${activeStart.runPath}; resume it (reconcile + inspect) or archive it first`);
+  let liveHead;
+  try {
+    liveHead = git(repoRoot, ["rev-parse", `refs/heads/${spec.repo.targetBranch}`]);
+  } catch {
+    fail(`target branch not found in ${repoRoot}: ${spec.repo.targetBranch}`);
+  }
+  spec.repo.path = repoRoot;
+  spec.repo.identity = identity;
+  if (!spec.repo.baseSha || spec.repo.baseSha === "auto") spec.repo.baseSha = liveHead;
+  if (!spec.repo.expectedHead || spec.repo.expectedHead === "auto") spec.repo.expectedHead = liveHead;
+  const root = resolve(args.dir);
+  mkdirSync(root, { recursive: true });
+  const path = join(root, "run.json");
+  if (existsSync(path)) fail(`${path} already exists; use reconcile + inspect to resume`);
+  const run = normalize(spec);
+  const bornResolved = (Array.isArray(run.deferredGates) ? run.deferredGates : []).filter(({ status }) => status !== "open");
+  if (bornResolved.length) fail(`new-run deferred gates must begin open: ${bornResolved.map(({ id }) => id).join(", ")}; import in-flight gate state through adopt`);
+  const locator = initializeRun(run, path);
+  const reconciled = mutate(path, run.revision, run.conductor, reconcileOperation(null), { allowReconciliation: true });
+  process.stdout.write(`RUN: ${path}\nLOCATOR: ${locator}\nRECONCILIATION: ${reconciled.reconciliation.status}\n`);
+  for (const note of reconciled.reconciliation.notes) process.stdout.write(`NOTE: ${note}\n`);
+  inspect(reconciled);
+  process.exit(0);
+}
+
+if (command === "adopt") {
+  if (!args.dir || !args.spec) fail("adopt requires --dir and --spec");
+  const root = resolve(args.dir);
+  mkdirSync(root, { recursive: true });
+  const path = join(root, "run.json");
+  if (existsSync(path)) fail(`${path} already exists`);
+  const run = normalize(readJson(resolve(args.spec)));
+  try {
+    run.repo.path = git(resolve(run.repo.path), ["rev-parse", "--show-toplevel"]);
+  } catch {
+    fail(`spec.repo.path is not a git repository: ${run.repo.path}; adoption requires the live repo for canonical active-run detection`);
+  }
+  run.repo.identity = repoIdentity(run.repo.path);
+  const activeAdopt = liveLocator(locatorCandidates(run.repo.path, run.repo.identity));
+  if (activeAdopt) fail(`an active run already exists for ${run.repo.path}: ${activeAdopt.runPath}; resume it instead of adopting`);
+  run.reconciliation = { status: "unknown", at: now(), notes: ["adopted from a prose run; reconcile before any external intent"] };
+  run.effects = run.effects.map((effect) => {
+    if (effect.status === "observed") return effect;
+    const ruled = run.authorization?.effectRulings?.some(({ effectId, outcome, approvedBy, evidence }) => effectId === effect.id && outcome === "cancelled" && approvedBy && evidence);
+    if (effect.status === "cancelled" && (effect.observation?.definiteNonExecution === true || ruled)) return effect;
+    return { ...effect, status: "unknown", reason: `adopted with unproved status ${effect.status}; outcome needs a ruling` };
+  });
+  run.resources = run.resources.map((resource) => resource.status === "acquired" && (!resource.ownerSlice || !resource.externalIdentity) ? { ...resource, status: "unknown" } : resource);
+  const downgraded = new Set();
+  for (let pass = 0; pass <= run.slices.length; pass += 1) {
+    const errors = validate(run);
+    let changed = false;
+    for (const slice of run.slices) {
+      const reason = errors.find((error) => error.startsWith(`${slice.id}: `));
+      if (slice.state === "UNKNOWN" || !reason) continue;
+      slice.resumeState = ["BLOCKED", "UNKNOWN"].includes(slice.state) ? slice.resumeState || "PLANNED" : slice.state;
+      slice.blocker = `adopted without ledger proof (declared ${slice.state}${slice.outcome ? `/${slice.outcome}` : ""}): ${reason.slice(slice.id.length + 2)}`;
+      slice.state = "UNKNOWN";
+      slice.outcome = null;
+      downgraded.add(slice.id);
+      changed = true;
+    }
+    if (!changed) break;
+  }
+  const errors = validate(run);
+  if (errors.length) fail(`adopt could not conservatively import the spec: ${errors.join("; ")}`);
+  const locator = initializeRun(run, path);
+  process.stdout.write(`RUN: ${path}\nLOCATOR: ${locator}\nADOPTED_UNKNOWN: ${JSON.stringify([...downgraded])}\nNEXT: reconcile, then rule on every UNKNOWN slice and unresolved effect before any write\n`);
+  process.exit(0);
+}
+
+const renderResume = (run, path, resumePath) => {
+  const state = derived(run);
+  const hash = digest(run);
+  const rows = run.slices.map((slice) => `| ${slice.id} | ${state.waves[slice.id]} | ${slice.lane} | ${slice.state} | ${slice.outcome || "—"} | ${slice.attempt} | ${slice.branch || "—"} | ${slice.baseSha || "—"} | ${slice.reviews?.correctionCount ?? 0} |`).join("\n");
+  const active = run.slices.filter(({ state: sliceState }) => ["ACTIVE", "READY_FOR_ACCEPTANCE"].includes(sliceState)).map((slice) => {
+    const key = `${run.runId}:${slice.id}:${slice.attempt}`;
+    const observation = run.runtimeObservations.find(({ attemptKey }) => attemptKey === key);
+    return `- ${key}: executor=${observation?.executor || "unobserved"} session=${observation?.sessionId || "unobserved"} status=${observation?.status || "unobserved"} at=${observation?.observedAt || "—"}`;
+  }).join("\n") || "- None";
+  const held = state.heldResources.map(({ id, status, ownerSlice, externalIdentity }) => `- ${id}: ${status} owner=${ownerSlice || "—"} identity=${externalIdentity || "—"}`).join("\n") || "- None";
+  const unresolved = state.unresolvedEffects.map(({ id, type, status, sliceId }) => `- ${id}: ${type} ${status} slice=${sliceId}`).join("\n") || "- None";
+  const gates = state.openDeferredGates.map(({ id, description, sliceId }) => `- ${id}: ${description}${sliceId ? ` (slice ${sliceId})` : ""}`).join("\n") || "- None";
+  const blockers = run.slices.filter(({ blocker }) => blocker).map(({ id, blocker }) => `- ${id}: ${blocker}`).join("\n") || "- None";
+  const history = (Array.isArray(run.checkpoints) ? run.checkpoints : []).slice(-5).map(({ at, conductor: by, reason }) => `- ${at} by ${by}${reason ? `: ${reason}` : ""}`).join("\n");
+  const content = `# Resume: ${run.title}\n\nGenerated from \`run.json\` at checkpoint. Do not edit; regenerate with \`checkpoint\`.\n\n- Run: \`${run.runId}\` at \`${path}\`\n- Revision: ${run.revision}\n- SHA-256: \`${hash}\`\n- Owner: \`${run.conductor.id}@${run.conductor.epoch}\`\n- Repo: \`${run.repo.path}\` target \`${run.repo.targetBranch}\` expected head \`${run.repo.expectedHead}\`\n- Reconciliation: \`${run.reconciliation.status}\`${run.reconciliation.notes.length ? `\n${run.reconciliation.notes.map((note) => `  - ${note}`).join("\n")}` : ""}\n\n## Frontiers\n\n- Write: ${JSON.stringify(state.write)}\n- Preparation: ${JSON.stringify(state.preparation)}\n- Acceptance: ${JSON.stringify(state.ready)}\n- Integration: ${JSON.stringify(state.integration)}\n\n| Slice | Wave | Lane | State | Outcome | Attempt | Branch | Base | Corrections |\n|---|---:|---|---|---|---:|---|---|---:|\n${rows}\n\n## Active attempts\n\n${active}\n\n## Held resources\n\n${held}\n\n## Unresolved effects\n\n${unresolved}\n\n## Open deferred gates\n\n${gates}\n\n## Blockers\n\n${blockers}\n\n## Checkpoint history\n\n${history}\n\n## Next safe act\n\n1. A new conductor runs \`takeover\` first; the same conductor continues with its recorded id/epoch.\n2. \`reconcile\` against live state; a stale checkpoint is never dispatch authority.\n3. \`inspect\` and dispatch only from the emitted write frontier.\n4. Rule on every UNKNOWN slice and unresolved effect before new external intent.\n`;
+  writeDoc(resumePath, content);
+  return state;
+};
+
+if (command === "checkpoint" && args["render-only"] === true) {
+  const path = runPath(args);
+  const initial = readJson(path);
+  const release = lock(dirname(path), initial.conductor);
+  let failure = null;
+  try {
+    const run = readJson(path);
+    const errors = validate(run);
+    if (errors.length) failure = errors.join("; ");
+    else {
+      const resumePath = join(dirname(path), "RESUME.md");
+      renderResume(run, path, resumePath);
+      process.stdout.write(`CHECKPOINT_RENDERED: ${resumePath}\nSOURCE_REVISION: ${run.revision}\n`);
+    }
+  } finally {
+    release();
+  }
+  if (failure) fail(failure);
+  process.exit(0);
+}
+
+if (command === "checkpoint") {
+  if (args["expected-revision"] === undefined) fail("checkpoint requires --expected-revision");
+  const path = runPath(args);
+  const conductor = caller(args);
+  const observations = args.observations ? readJson(resolve(args.observations)) : null;
+  const resumePath = join(dirname(path), "RESUME.md");
+  const stagedPath = `${resumePath}.staged`;
+  const run = mutate(path, args["expected-revision"], conductor, (current) => {
+    const reconciled = reconcileOperation(observations)(current);
+    return { ...reconciled, checkpoints: [...(Array.isArray(reconciled.checkpoints) ? reconciled.checkpoints : []), { at: now(), reason: args.reason || null, conductor: `${conductor.id}@${conductor.epoch}`, revisionBefore: current.revision }] };
+  }, {
+    allowReconciliation: true,
+    beforeCommit: (candidate) => renderResume(candidate, path, stagedPath),
+    afterWrite: () => renameSync(stagedPath, resumePath),
+  });
+  const state = derived(run);
+  process.stdout.write(`CHECKPOINT: ${resumePath}\nRECONCILIATION: ${run.reconciliation.status}\nREVISION: ${run.revision}\nWRITE_FRONTIER: ${JSON.stringify(state.write)}\n`);
   process.exit(0);
 }
 
@@ -843,6 +1105,7 @@ if (command === "assert-complete") {
   for (const criterion of state.incompleteCriteria) process.stdout.write(`MISSING_CRITERION: ${criterion.id}\n`);
   for (const effect of state.unresolvedEffects) process.stdout.write(`UNRESOLVED_EFFECT: ${effect.id}:${effect.status}\n`);
   for (const resource of state.heldResources) process.stdout.write(`HELD_RESOURCE: ${resource.id}:${resource.status}\n`);
+  for (const gate of state.openDeferredGates) process.stdout.write(`OPEN_DEFERRED_GATE: ${gate.id}\n`);
   for (const error of errors) process.stdout.write(`INVALID: ${error}\n`);
   process.exit(1);
 }
@@ -854,9 +1117,13 @@ if (command === "archive") {
   const errors = validate(run);
   const state = derived(run);
   if (errors.length || !state.complete) fail("archive requires a valid complete run");
+  const archivedPath = runPath(args);
   const locator = locatorPath(run);
   rmSync(locator, { force: true });
-  process.stdout.write(`ARCHIVED_LOCATOR: ${locator}\nRUN_RETAINED: ${runPath(args)}\n`);
+  for (const candidate of locatorCandidates(run.repo.path, run.repo.identity || repoIdentity(run.repo.path))) {
+    if (readJsonSafe(candidate)?.runPath === archivedPath) rmSync(candidate, { force: true });
+  }
+  process.stdout.write(`ARCHIVED_LOCATOR: ${locator}\nRUN_RETAINED: ${archivedPath}\n`);
   process.exit(0);
 }
 

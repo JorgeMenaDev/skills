@@ -4,15 +4,19 @@ Use the helper from the installed skill directory. `run.json` is machine authori
 
 ## Initialize
 
-Create a spec from `examples/three-slice-spec.json`, then:
+Create a spec from `examples/three-slice-spec.json`, then use the one-command entry:
 
 ```bash
-node <skill>/scripts/orchestrate-run.mjs init --dir <scratchpad>/orchestrate/<run-id> --spec <spec.json>
+node <skill>/scripts/orchestrate-run.mjs start --dir <scratchpad>/orchestrate/<run-id> --spec <spec.json>
 node <skill>/scripts/orchestrate-run.mjs inspect --run <run.json>
 node <skill>/scripts/orchestrate-run.mjs render --run <run.json>
 ```
 
-The helper also writes `XDG_STATE_HOME/orchestrate/active-runs/<repo-hash>.json` (fallback `~/.local/state`) so a fresh conductor can find the run.
+`start` verifies the repo, fills `baseSha`/`expectedHead` from the live target branch when the spec says `"auto"`, initializes the ledger, writes the locator, reconciles, and emits the first frontiers in one step. `init` remains the low-level initializer for specs whose repo state is intentionally absent.
+
+The helper also writes `XDG_STATE_HOME/orchestrate/active-runs/<repo-hash>.json` (fallback `~/.local/state`) so a fresh conductor can find the run; `start` and `adopt` fail closed while that locator points at a live run.
+
+When orchestration is discovered mid-run — work already dispatched from prose — import it conservatively with `adopt --dir <dir> --spec <spec.json>`. Every effect not provably observed becomes `unknown`, every progressed slice without ledger-grade proof (observed dispatch, cleared edges, passing criteria) is downgraded to `UNKNOWN` with a blocker, and reconciliation starts `unknown`. Adoption never pretends prior acts were ledgered: rule on each `UNKNOWN` slice and unresolved effect before the write frontier opens.
 
 ## Update and effects
 
@@ -48,12 +52,28 @@ Lifecycle: `PLANNED -> ACTIVE -> READY_FOR_ACCEPTANCE -> ACCEPTED -> TERMINAL`. 
 
 After a dead process leaves a lock, use `recover-lock` or `recover-mutex --confirm-stale`; both verify ledger ownership and refuse a live PID. Mutex recovery requires the resource and reconciliation already be `UNKNOWN`, and unresolved effects still require an explicit ruling.
 
+## Checkpoint and rotation
+
+```bash
+node <skill>/scripts/orchestrate-run.mjs checkpoint --run <run.json> \
+  --expected-revision <n> [--reason <text>] [--observations FILE] \
+  --conductor-id <id> --conductor-epoch <n>
+```
+
+`checkpoint` reconciles, appends a checkpoint record to the ledger, and renders `RESUME.md`: frontiers, per-slice branch/base/attempt/correction state, active runtime identities, held resources, unresolved effects, open deferred gates, and the next safe act. Checkpoint at every wave boundary on multi-hour runs — one conductor context is a single point of failure even when workers are isolated. If a crash separates a committed checkpoint from its resume document, `checkpoint --render-only` regenerates `RESUME.md` from the committed ledger without reconciling or appending a record.
+
+Rotate the conductor when time, wave count, or context growth crosses the threshold recorded in the plan — at a clean wave boundary only, never during an executing irreversible effect or unresolved integration. The incoming conductor reads `RESUME.md` plus the source issues, runs `takeover`, then re-reconciles before any write; the outgoing conductor's stale epoch fails closed. A checkpoint is never dispatch authority by itself.
+
+## Deferred gates
+
+An external gate that cannot be discharged now (real-provider proof, human-only act) is recorded in `deferredGates` as `open` with the owning slice and description — never overclaimed as passed. Open gates block `assert-complete` until `discharged` with evidence or `authorized` with an approver and evidence.
+
 ## Completion
 
 ```bash
 node <skill>/scripts/orchestrate-run.mjs assert-complete --run <run.json>
 ```
 
-Completion requires every slice terminal, no unresolved effect/allocation, all parent criteria proved, and lane-specific terminal evidence. A blocked or abandoned attempt never satisfies the run.
+Completion requires every slice terminal, no unresolved effect/allocation, no open deferred gate, all parent criteria proved, and lane-specific terminal evidence. A blocked or abandoned attempt never satisfies the run.
 
 After completion, release resources, reconcile worktree disposition, apply evidence retention, render the final view, then run `archive` to remove the active locator while retaining the ledger. A stale generated view is never authority; `render` always replaces it from current JSON and prints the source revision/digest.

@@ -57,6 +57,16 @@ Examples: Claude may use its native agents or an installed `codex-cli-runtime`; 
 
 Before every new dispatch, inspect `.agents/engine-override.json`. An absent file means off; malformed means off plus a warning. Translate an active override into per-field executor constraints while preserving workspace/runtime carve-outs and their reasons. It never changes an already-active attempt silently.
 
+## Depletable capacity and staging
+
+Implement and review engines, agent slots, disk, and QA identities are budgets, not assumptions:
+
+- Before a long chain, probe engine/review quota and pre-declare a failover ladder per depletable resource (e.g. codex → claude engine → conductor); switch through the ladder instead of improvising mid-gate. An operator-instructed engine switch is a normal, loggable routing decision.
+- Declared capacity is not observed availability. A failed spawn against a nominally free slot updates the observation — owner, parent, retry/backoff, cleanup disposition — and gets bounded retry, never repeated blind spawns.
+- Check disk headroom in preflight and per wave; reclaim only allowlisted regenerable caches, never active worktrees, sources, dependencies, evidence, or local databases.
+- QA actors are scarce, not throwaway fixtures: keep a registry with role/workspace capabilities, reuse before creating, and record a restoration owner.
+- Look one wave ahead for external inputs — builds, credentials, fixtures, accounts — and stage them while the current wave executes, recording source SHA so staleness is detectable.
+
 ## Plan table
 
 Record: slice, criteria digest, lane, per-field required/preferred executor constraints, verified executor, fallback, base/target SHA, approval, start wave, `mergeAfter`, resources, verification owner, and one-line reason. Same-wave means start-eligible; resource constraints may serialize execution. Build a collision map for schema, generated APIs, auth/context helpers, route registries, migrations, and integration branches before dispatch.
