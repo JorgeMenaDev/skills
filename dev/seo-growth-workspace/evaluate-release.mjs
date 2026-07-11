@@ -298,6 +298,10 @@ function consumeGateResults(report) {
   if (artifact.boundReportVersion !== VALIDATOR_REPORT_VERSION) {
     rejections.push(`malformed gate-results artifact: boundReportVersion ${JSON.stringify(artifact.boundReportVersion)} does not match validator reportVersion ${VALIDATOR_REPORT_VERSION}`);
   }
+  const shippedVersion = read("SKILL.md").match(/^version:\s*(\S+)/m)?.[1];
+  if (shippedVersion && artifact.skillVersion !== shippedVersion) {
+    rejections.push(`stale gate-results artifact: skillVersion ${JSON.stringify(artifact.skillVersion)} does not match shipped SKILL.md version ${shippedVersion}`);
+  }
   const deterministic = artifact.deterministic;
   const manual = artifact.manual;
   if (!deterministic || !Array.isArray(deterministic.rows) || !Array.isArray(manual)) {
