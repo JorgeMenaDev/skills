@@ -1,0 +1,136 @@
+#!/usr/bin/env node
+// Smoke test for orchestrate-run.mjs: start, adopt, checkpoint, REQUIRES_INIT,
+// deferred gates, plus init/inspect regression. Extends the existing example
+// specs; no test framework. Run: node dev/orchestrate/smoke.mjs
+
+import { execFileSync, spawnSync } from "node:child_process";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const here = dirname(fileURLToPath(import.meta.url));
+const script = resolve(here, "../../skills/agent-operations/orchestrate/scripts/orchestrate-run.mjs");
+const exampleSpec = resolve(here, "../../skills/agent-operations/orchestrate/examples/three-slice-spec.json");
+
+const root = mkdtempSync(join(tmpdir(), "orchestrate-smoke-"));
+const env = { ...process.env, XDG_STATE_HOME: join(root, "state") };
+delete env.ORCHESTRATE_CONDUCTOR_ID;
+delete env.ORCHESTRATE_CONDUCTOR_EPOCH;
+
+let failures = 0;
+const check = (name, condition, detail = "") => {
+  if (condition) process.stdout.write(`ok - ${name}\n`);
+  else {
+    failures += 1;
+    process.stderr.write(`FAIL - ${name}${detail ? `\n  ${String(detail).trim().split("\n").join("\n  ")}` : ""}\n`);
+  }
+};
+const helper = (args) => spawnSync("node", [script, ...args], { encoding: "utf8", env });
+const git = (dir, args) => execFileSync("git", ["-C", dir, ...args], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
+const readRun = (dir) => JSON.parse(readFileSync(join(dir, "run.json"), "utf8"));
+const asConductor = ["--conductor-id", "conductor-example", "--conductor-epoch", "1"];
+
+const fixtureRepo = (name) => {
+  const repo = join(root, name);
+  execFileSync("git", ["clone", "--quiet", origin, repo], { stdio: "ignore" });
+  git(repo, ["config", "user.email", "smoke@example.com"]);
+  git(repo, ["config", "user.name", "Smoke"]);
+  return repo;
+};
+
+const origin = join(root, "origin.git");
+execFileSync("git", ["init", "--quiet", "--bare", "-b", "main", origin]);
+const seed = fixtureRepo("seed");
+writeFileSync(join(seed, "README.md"), "fixture\n");
+git(seed, ["add", "."]);
+git(seed, ["commit", "--quiet", "-m", "fixture"]);
+git(seed, ["push", "--quiet", "origin", "main"]);
+const head = git(seed, ["rev-parse", "HEAD"]);
+
+// classify: orchestrated path is fail-closed behind init
+const orchestrated = helper(["classify", "--slices", "3", "--dependencies", "yes", "--integration-branch", "no", "--shared-resource", "no"]);
+check("classify orchestrated emits REQUIRES_INIT", orchestrated.stdout.includes("PATH: orchestrated") && orchestrated.stdout.includes("REQUIRES_INIT:"), orchestrated.stdout);
+const simple = helper(["classify", "--slices", "1", "--dependencies", "no", "--integration-branch", "no", "--shared-resource", "no"]);
+check("classify simple does not require init", simple.stdout.includes("PATH: simple") && !simple.stdout.includes("REQUIRES_INIT:"), simple.stdout);
+
+// start: one command from spec to reconciled ledger with frontiers
+const spec = JSON.parse(readFileSync(exampleSpec, "utf8"));
+spec.repo = { path: seed, targetBranch: "main", baseSha: "auto" };
+const specPath = join(root, "spec.json");
+writeFileSync(specPath, JSON.stringify(spec, null, 2));
+const startDir = join(root, "run-start");
+const start = helper(["start", "--dir", startDir, "--spec", specPath]);
+check("start succeeds", start.status === 0, start.stderr || start.stdout);
+check(
+  "start emits ledger, locator, clean reconciliation, and write frontier",
+  ["RUN:", "LOCATOR:", "RECONCILIATION: clean", 'WRITE_FRONTIER: ["foundation","review"]'].every((token) => start.stdout.includes(token)),
+  start.stdout,
+);
+check("start captured the live base SHA", existsSync(join(startDir, "run.json")) && readRun(startDir).repo.baseSha === head);
+const secondStart = helper(["start", "--dir", join(root, "run-start-2"), "--spec", specPath]);
+check("second start fails closed on the active run", secondStart.status !== 0 && secondStart.stderr.includes("active run already exists"), secondStart.stderr);
+
+// checkpoint: reconcile + RESUME.md + recorded checkpoint
+const checkpoint = helper(["checkpoint", "--run", join(startDir, "run.json"), "--expected-revision", String(readRun(startDir).revision), "--reason", "wave boundary", ...asConductor]);
+check("checkpoint succeeds", checkpoint.status === 0, checkpoint.stderr || checkpoint.stdout);
+const resume = existsSync(join(startDir, "RESUME.md")) ? readFileSync(join(startDir, "RESUME.md"), "utf8") : "";
+check("RESUME.md carries frontiers, attempts, and next safe act", ["## Frontiers", "## Active attempts", "## Next safe act"].every((token) => resume.includes(token)), resume.slice(0, 400));
+check("checkpoint is recorded in the ledger", readRun(startDir).checkpoints.length === 1 && readRun(startDir).checkpoints[0].reason === "wave boundary");
+
+// deferred gates: open gate blocks completion; malformed gate fails closed
+const gatePatch = join(root, "gate-patch.json");
+writeFileSync(gatePatch, JSON.stringify({ deferredGates: [{ id: "provider-oauth", sliceId: "review", description: "Real provider OAuth proof deferred", status: "open", evidence: [] }] }));
+const gateUpdate = helper(["update", "--run", join(startDir, "run.json"), "--expected-revision", String(readRun(startDir).revision), "--patch", gatePatch, ...asConductor]);
+check("open deferred gate is accepted", gateUpdate.status === 0, gateUpdate.stderr);
+const inspected = helper(["inspect", "--run", join(startDir, "run.json")]);
+check("inspect lists the open deferred gate", inspected.stdout.includes('DEFERRED_GATES_OPEN: ["provider-oauth"]'), inspected.stdout);
+const incomplete = helper(["assert-complete", "--run", join(startDir, "run.json")]);
+check("assert-complete blocks on the open gate", incomplete.status !== 0 && incomplete.stdout.includes("OPEN_DEFERRED_GATE: provider-oauth"), incomplete.stdout);
+const rendered = helper(["render", "--run", join(startDir, "run.json")]);
+check("render includes open deferred gates", rendered.status === 0 && readFileSync(join(startDir, "RUN.md"), "utf8").includes("provider-oauth"));
+writeFileSync(gatePatch, JSON.stringify({ deferredGates: [{ id: "bogus-gate", description: "x", status: "someday" }] }));
+const badGate = helper(["update", "--run", join(startDir, "run.json"), "--expected-revision", String(readRun(startDir).revision), "--patch", gatePatch, ...asConductor]);
+check("invalid deferred gate status fails closed", badGate.status !== 0, badGate.stdout);
+
+// adopt: progressed prose state without ledger proof downgrades to UNKNOWN
+const adoptRepo = fixtureRepo("adopt-repo");
+const adoptSpec = JSON.parse(readFileSync(exampleSpec, "utf8"));
+adoptSpec.runId = "adopt-example";
+adoptSpec.repo = { path: adoptRepo, targetBranch: "main", baseSha: head };
+adoptSpec.slices[0].state = "ACTIVE";
+adoptSpec.slices[1].state = "TERMINAL";
+adoptSpec.slices[1].outcome = "merged";
+adoptSpec.slices[1].terminalProof = "claimed PR merge, unledgered";
+const adoptSpecPath = join(root, "adopt-spec.json");
+writeFileSync(adoptSpecPath, JSON.stringify(adoptSpec, null, 2));
+const adoptDir = join(root, "run-adopt");
+const adopt = helper(["adopt", "--dir", adoptDir, "--spec", adoptSpecPath]);
+check("adopt succeeds on a prose-run spec", adopt.status === 0, adopt.stderr || adopt.stdout);
+const adopted = readRun(adoptDir);
+const foundation = adopted.slices.find(({ id }) => id === "foundation");
+const consumer = adopted.slices.find(({ id }) => id === "consumer");
+check(
+  "unproved ACTIVE and TERMINAL slices are downgraded to UNKNOWN with blockers",
+  foundation.state === "UNKNOWN" && consumer.state === "UNKNOWN" && consumer.outcome === null && [foundation, consumer].every(({ blocker }) => blocker?.includes("adopted without ledger proof")),
+  JSON.stringify({ foundation, consumer }, null, 2),
+);
+check("adopt reports the downgrades and forces reconciliation", adopt.stdout.includes("ADOPTED_UNKNOWN:") && adopted.reconciliation.status === "unknown", adopt.stdout);
+const adoptInspect = helper(["inspect", "--run", join(adoptDir, "run.json")]);
+check("adopted run is valid with a closed write frontier", adoptInspect.stdout.includes("RUN_VALID: yes") && adoptInspect.stdout.includes("WRITE_FRONTIER: []"), adoptInspect.stdout);
+
+// regression: init + inspect on the pristine example spec still work
+const initDir = join(root, "run-init");
+const pristine = JSON.parse(readFileSync(exampleSpec, "utf8"));
+pristine.runId = "pristine-example";
+pristine.repo = { path: join(root, "no-such-repo"), targetBranch: "main", baseSha: "example-base" };
+const pristinePath = join(root, "pristine-spec.json");
+writeFileSync(pristinePath, JSON.stringify(pristine, null, 2));
+const init = helper(["init", "--dir", initDir, "--spec", pristinePath]);
+check("init still works", init.status === 0, init.stderr);
+const initInspect = helper(["inspect", "--run", join(initDir, "run.json")]);
+check("unreconciled init keeps the write frontier closed", initInspect.stdout.includes("RUN_VALID: yes") && initInspect.stdout.includes("WRITE_FRONTIER: []"), initInspect.stdout);
+
+rmSync(root, { recursive: true, force: true });
+process.stdout.write(failures ? `\n${failures} failure(s)\n` : "\nall smoke checks passed\n");
+process.exit(failures ? 1 : 0);
