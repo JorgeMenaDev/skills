@@ -1266,7 +1266,7 @@ section("Next App Router rendered-link exporter", () => {
     const second = spawnCapture(process.execPath, args);
     check(first.status === 0 && first.stdout === second.stdout, "Exporter output must be byte-identical for identical build input and arguments");
     const json = JSON.parse(first.stdout);
-    check(json.coverage?.complete === false && json.coverage?.note.includes("2 dynamic/server-rendered routes missing prerendered HTML: /account/[id], /missing") && json.coverage?.note.includes("1 declared prerender routes had missing HTML: /missing"), "Exporter must count and name manifest page routes and declared prerenders missing HTML");
+    check(json.coverage?.complete === false && json.coverage?.note.includes("2 routes without complete prerendered HTML (dynamic, fallback-rendered, or partial-prerender shells): /account/[id], /missing") && json.coverage?.note.includes("1 declared prerender routes had missing HTML: /missing"), "Exporter must count and name manifest page routes and declared prerenders missing HTML");
     check(json.provenance?.framework === "next-app-router" && json.provenance?.exportDate === "fixture-date" && json.provenance?.fileCount === 2 && json.provenance?.routeCount === 4, "Exporter must record deterministic provenance and count represented-plus-missing route identities as a union");
     check(json.pages.find((page) => page.url === "https://example.test/nested/page")?.indexable === false, "Exporter must set indexable false from a rendered noindex robots meta tag");
     check(json.links.some((link) => link.target === "https://example.test/nested/page" && link.anchor === "Nested page" && link.placement === "nav" && link.rel.join(" ") === "nofollow sponsored"), "Exporter must extract nested anchor text, root-relative targets, landmark placement, and rel tokens");
@@ -1290,6 +1290,56 @@ section("Next App Router rendered-link exporter", () => {
     mkdirSync(path.join(missingManifestDir, "server", "app"), { recursive: true });
     const missingManifest = spawnCapture(process.execPath, [exporter, "--build-dir", missingManifestDir, "--origin", "https://example.test"]);
     check(missingManifest.status !== 0 && missingManifest.stderr.includes("prerender-manifest.json") && missingManifest.stderr.includes("Cannot read manifest"), "Exporter must fail actionably when a required route manifest is absent");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+section("Next App Router exporter basePath, PPR-shell, and redirect handling", () => {
+  const root = fixtureTmp("seo-rendered-export-modes-");
+  const buildDir = path.join(root, ".next");
+  const appDir = path.join(buildDir, "server", "app");
+  const exporter = path.join(skillRoot, "scripts/rendered-link-export.mjs");
+  const analyzer = path.join(skillRoot, "scripts/link-graph-analyzer.mjs");
+  const outputPath = path.join(root, "export.json");
+  try {
+    mkdirSync(appDir, { recursive: true });
+    writeFileSync(path.join(buildDir, "routes-manifest.json"), JSON.stringify({ basePath: "/docs" }));
+    writeFileSync(path.join(buildDir, "prerender-manifest.json"), JSON.stringify({
+      routes: {
+        "/": { srcRoute: "/" },
+        "/redirect": { srcRoute: "/redirect", initialStatus: 308, initialHeaders: { location: "/docs/target" } },
+        "/shell": { srcRoute: "/shell", experimentalPPR: true },
+      },
+      dynamicRoutes: {},
+    }));
+    writeFileSync(path.join(buildDir, "app-path-routes-manifest.json"), JSON.stringify({
+      "/page": "/",
+      "/redirect/page": "/redirect",
+      "/shell/page": "/shell",
+    }));
+    writeFileSync(path.join(appDir, "index.html"), '<html><head><link rel="canonical" href="/docs"></head><body><main><a href="/docs/redirect">Redirect</a></main></body></html>');
+    writeFileSync(path.join(appDir, "redirect.html"), '<html><head></head><body><main>Redirecting…</main></body></html>');
+    writeFileSync(path.join(appDir, "shell.html"), '<html><head></head><body><main>Shell</main></body></html>');
+
+    const args = [exporter, "--build-dir", buildDir, "--origin", "https://example.test", "--stamp", "fixture-date"];
+    const first = spawnCapture(process.execPath, args);
+    const second = spawnCapture(process.execPath, args);
+    check(first.status === 0 && first.stdout === second.stdout, "basePath/PPR/redirect exporter output must be byte-identical for identical build input and arguments");
+    const json = JSON.parse(first.stdout);
+
+    check(json.pages.some((page) => page.url === "https://example.test/docs" && page.entryPoint === true), "Exporter must prefix a routes-manifest basePath onto the root page URL");
+    check(json.pages.some((page) => page.url === "https://example.test/docs/redirect"), "Exporter must prefix a routes-manifest basePath onto nested page URLs");
+
+    check(!json.pages.some((page) => page.url === "https://example.test/docs/shell") && json.coverage?.complete === false && json.coverage?.note.includes("/shell"), "A partial-prerender shell must be named in the coverage note and never emitted as a covered page");
+
+    const redirect = json.pages.find((page) => page.url === "https://example.test/docs/redirect");
+    check(redirect?.status === 308 && redirect?.indexable === false && redirect?.finalUrl === "https://example.test/docs/target", "A redirect route must carry its manifest status, finalUrl from the Location header, and indexable false");
+
+    const analyzerInput = { ...json, coverage: { complete: true, note: "Synthetic complete override for contract acceptance." } };
+    writeFileSync(outputPath, JSON.stringify(analyzerInput));
+    const accepted = spawnCapture(process.execPath, [analyzer, "--input", outputPath]);
+    check(accepted.status === 0, "Analyzer must accept exporter output carrying basePath URLs and redirect finalUrl targets");
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

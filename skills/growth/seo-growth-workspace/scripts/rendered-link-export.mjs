@@ -6,7 +6,7 @@ import path from "node:path";
 const LIMITS = { files: 50_000, fileBytes: 5_000_000 };
 const byCodePoint = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
 const LANDMARKS = new Set(["head", "nav", "main", "footer", "aside"]);
-const INERT_ELEMENTS = new Set(["script", "style", "template"]);
+const INERT_ELEMENTS = new Set(["script", "style", "template", "textarea", "title", "noscript", "iframe", "xmp"]);
 
 const usage = () => `Usage:
   node rendered-link-export.mjs --build-dir <path-to-.next> --origin <https://site-origin> [--output <file>] [--stamp <value>]
@@ -189,14 +189,23 @@ const main = async () => {
   const absoluteBuildDir = path.resolve(buildDir);
   const appDir = path.join(absoluteBuildDir, "server", "app");
   const prerender = await readJson(path.join(absoluteBuildDir, "prerender-manifest.json"), true);
+  const routesManifest = await readJson(path.join(absoluteBuildDir, "routes-manifest.json"), false);
+  const basePath = typeof routesManifest?.basePath === "string" ? routesManifest.basePath.replace(/\/$/, "") : "";
   const appRoutes = await readJson(path.join(absoluteBuildDir, "app-path-routes-manifest.json"), true);
   const scanned = await scanHtml(appDir);
   const scannedSet = new Set(scanned);
-  const declaredRoutes = Object.keys(prerender?.routes ?? {}).filter((route) => !/\.[^/]+$/.test(route)).sort(byCodePoint);
+  const pprRoutes = Object.entries(prerender?.routes ?? {}).filter(([, entry]) => entry?.experimentalPPR || entry?.renderingMode === "PARTIALLY_STATIC").map(([route]) => route).sort(byCodePoint);
+  const pprSet = new Set(pprRoutes);
+  const declaredRoutes = Object.keys(prerender?.routes ?? {}).filter((route) => !/\.[^/]+$/.test(route) && !pprSet.has(route)).sort(byCodePoint);
   const manifested = declaredRoutes.map((route) => ({ route, file: routeFile(appDir, route) }));
   const discovered = manifested.filter(({ file }) => scannedSet.has(file));
   const represented = new Set(discovered.map(({ file }) => file));
-  for (const file of scanned) if (!represented.has(file) && !file.endsWith(`${path.sep}_not-found.html`)) discovered.push({ route: fileRoute(appDir, file), file });
+  for (const file of scanned) {
+    if (represented.has(file) || file.endsWith(`${path.sep}_not-found.html`)) continue;
+    const route = fileRoute(appDir, file);
+    if (pprSet.has(route)) continue;
+    discovered.push({ route, file });
+  }
   discovered.sort((a, b) => byCodePoint(a.route, b.route));
 
   const missingHtml = manifested.filter(({ file }) => !scannedSet.has(file)).map(({ route }) => route);
@@ -208,14 +217,17 @@ const main = async () => {
     const src = manifestRoute?.srcRoute;
     return [route, ...(src && fullyCoveredPattern(src) ? [src] : [])].filter(Boolean);
   }));
-  const missingRoutes = pagePatterns.filter((route) => !capturedPatterns.has(route));
+  const missingRoutes = [...new Set([...pagePatterns.filter((route) => !capturedPatterns.has(route)), ...pprRoutes])].sort(byCodePoint);
   const pages = [];
   const links = [];
   const unparseableHtml = [];
   for (const { route, file } of discovered) {
+    const manifestEntry = prerender?.routes?.[route];
+    const initialStatus = Number.isInteger(manifestEntry?.initialStatus) ? manifestEntry.initialStatus : 200;
+    const initialLocation = manifestEntry?.initialHeaders?.location ?? manifestEntry?.initialHeaders?.Location;
     const info = await stat(file);
     if (info.size > LIMITS.fileBytes) throw new Error(`HTML file ${file} is ${info.size} bytes, over the ${LIMITS.fileBytes}-byte limit; reduce or exclude it before export.`);
-    const source = normalizeUrl(new URL(route, `${origin}/`));
+    const source = normalizeUrl(new URL(`${basePath}${route === "/" && basePath ? "" : route}`, `${origin}/`));
     let parsed;
     try {
       parsed = parseHtml(await readFile(file, "utf8"), source);
@@ -223,13 +235,23 @@ const main = async () => {
       unparseableHtml.push(`${route} (${error.message})`);
       continue;
     }
-    pages.push({ url: source, status: 200, indexable: parsed.indexable, entryPoint: route === "/", moneyPage: false, ...(parsed.canonicalUrl ? { canonicalUrl: parsed.canonicalUrl } : {}) });
+    const redirectStatus = new Set([301, 302, 303, 307, 308]).has(initialStatus);
+    pages.push({
+      url: source,
+      status: initialStatus,
+      indexable: redirectStatus || initialStatus >= 400 ? false : parsed.indexable,
+      entryPoint: route === "/",
+      moneyPage: false,
+      ...(redirectStatus && initialLocation ? { finalUrl: normalizeUrl(new URL(initialLocation, source)) } : {}),
+      ...(parsed.canonicalUrl && !redirectStatus ? { canonicalUrl: parsed.canonicalUrl } : {}),
+    });
+    if (redirectStatus && !initialLocation) throw new Error(`Route ${route} has redirect status ${initialStatus} but no Location header in the prerender manifest.`);
     links.push(...parsed.links);
   }
   pages.sort((a, b) => byCodePoint(a.url, b.url));
   links.sort((a, b) => byCodePoint(a.source, b.source) || byCodePoint(a.target, b.target) || byCodePoint(a.anchor, b.anchor) || byCodePoint(a.placement, b.placement) || byCodePoint(a.rel.join(" "), b.rel.join(" ")));
   const gaps = [];
-  if (missingRoutes.length) gaps.push(`${missingRoutes.length} dynamic/server-rendered routes missing prerendered HTML: ${missingRoutes.join(", ")}`);
+  if (missingRoutes.length) gaps.push(`${missingRoutes.length} routes without complete prerendered HTML (dynamic, fallback-rendered, or partial-prerender shells): ${missingRoutes.join(", ")}`);
   if (missingHtml.length) gaps.push(`${missingHtml.length} declared prerender routes had missing HTML: ${missingHtml.join(", ")}`);
   if (unparseableHtml.length) gaps.push(`${unparseableHtml.length} HTML files could not be parsed: ${unparseableHtml.join(", ")}`);
   const coverage = { complete: gaps.length === 0, note: gaps.length ? gaps.join("; ") : `All ${pages.length} page routes were present as prerendered HTML.` };
