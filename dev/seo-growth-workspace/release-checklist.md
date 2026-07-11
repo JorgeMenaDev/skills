@@ -49,7 +49,7 @@ If the target already has local-only or modified same-path files, the exporter s
 
 ## Disposable Registry Rehearsal (blocking — cannot be waived)
 
-V3.1 does not activate or repair a live hub. Run the existing deterministic rehearsal only:
+This release does not activate or repair a live hub — no live-hub activation or mutation, writer lease, or live install ships. Run the existing deterministic rehearsal only:
 
 1. Build six synthetic hub site workspaces and a six-row canonical registry under a temp root.
 2. Add an eight-row legacy inventory: six missing retired repo-local roots plus two recognized legacy-only sites.
@@ -59,7 +59,7 @@ V3.1 does not activate or repair a live hub. Run the existing deterministic rehe
 node dev/seo-growth-workspace/validate-skill.mjs
 ```
 
-PASS requires six canonical rows, eight legacy rows, six `stale_registry_row` findings, two `unmigrated_legacy_site` findings, zero false `candidate_workspace` findings, and realpath-deduplicated registry paths. Migration remains manual/terminal in v3.1.
+PASS requires six canonical rows, eight legacy rows, six `stale_registry_row` findings, two `unmigrated_legacy_site` findings, zero false `candidate_workspace` findings, and realpath-deduplicated registry paths. Migration remains manual/terminal and `workspaceSchemaVersion` stays `1` (schema 1 is current; no schema-2 contract ships). `create-optional` is the sole reviewed new mutation this release adds; `GENERATED_WORKSPACE_FILES` and `repair` semantics are unchanged.
 
 ## Plan/Action Safety Gate (blocking — cannot be waived)
 
@@ -247,4 +247,6 @@ Before publishing:
 - Confirm the Search generative AI include/exclude setting is described as an authenticated human-operated control, not a universal API or ranking lever.
 - Confirm pSEO guidance still says plan early, publish late.
 - Confirm the skill asks for explicit approval before production deploys, authenticated admin mutations, external submissions, or `skills.sh` publication.
+- Confirm the clean export includes every current portable file — including all references, scripts, and templates added this release — and that the exported copy's `SKILL.md` `version` and bootstrap `SKILL_VERSION` agree on the shipping version. Dev tooling (validator, evaluator, command inventory, exporter, fixtures, the gate-results artifact, and the dated release log) stays excluded from the export.
+- Confirm the canonical gate-results artifact (`dev/seo-growth-workspace/gate-results-4.0.0.json`) is the single source of truth for scenario results: `evaluate-release.mjs` self-executes the validator, imports its deterministic rows bound by digest, reads the manual rows, and rejects a missing/stale/wrong-digest/duplicate/malformed/non-PASS artifact. The dated release log renders this artifact and is never an alternate source of truth.
 - Confirm the release diff contains no schema-2 contracts, migration implementation, writer leases, live-hub mutation, or live install.
