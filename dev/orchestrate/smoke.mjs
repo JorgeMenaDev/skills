@@ -78,6 +78,7 @@ check("checkpoint succeeds", checkpoint.status === 0, checkpoint.stderr || check
 const resume = existsSync(join(startDir, "RESUME.md")) ? readFileSync(join(startDir, "RESUME.md"), "utf8") : "";
 check("RESUME.md carries frontiers, attempts, and next safe act", ["## Frontiers", "## Active attempts", "## Next safe act"].every((token) => resume.includes(token)), resume.slice(0, 400));
 check("checkpoint is recorded in the ledger", readRun(startDir).checkpoints.length === 1 && readRun(startDir).checkpoints[0].reason === "wave boundary");
+check("no staged resume document is left behind", !existsSync(join(startDir, "RESUME.md.staged")));
 
 // deferred gates: open gate blocks completion; malformed gate fails closed
 const gatePatch = join(root, "gate-patch.json");
@@ -266,6 +267,12 @@ check("a held reclamation claim fails closed", blockedReclaim.status !== 0 && bl
 rmSync(`${seedLocator}.claim`, { recursive: true, force: true });
 const reclaimAfterClaim = helper(["start", "--dir", join(root, "run-start-4"), "--spec", specPath]);
 check("reclamation proceeds once the claim clears", reclaimAfterClaim.status === 0, reclaimAfterClaim.stderr || reclaimAfterClaim.stdout);
+
+// a truncated locator left by a killed process is treated as stale, not fatal
+rmSync(join(root, "run-start-4"), { recursive: true, force: true });
+writeFileSync(seedLocator, "");
+const truncatedReclaim = helper(["start", "--dir", join(root, "run-start-5"), "--spec", specPath]);
+check("a truncated locator is reclaimed instead of crashing start", truncatedReclaim.status === 0 && truncatedReclaim.stdout.includes("RECONCILIATION: clean"), truncatedReclaim.stderr || truncatedReclaim.stdout);
 
 rmSync(root, { recursive: true, force: true });
 process.stdout.write(failures ? `\n${failures} failure(s)\n` : "\nall smoke checks passed\n");

@@ -80,6 +80,13 @@ const now = () => new Date().toISOString();
 const freshTimestamp = (value) => Number.isFinite(Date.parse(value)) && Math.abs(Date.now() - Date.parse(value)) <= observationMaxAgeMs;
 const reconciliationFresh = (run) => run.reconciliation?.status === "clean" && freshTimestamp(run.reconciliation?.at);
 const readJson = (path) => JSON.parse(readFileSync(path, "utf8"));
+const readJsonSafe = (path) => {
+  try {
+    return readJson(path);
+  } catch {
+    return null;
+  }
+};
 const runPath = (args) => resolve(args.run || (args.dir && join(args.dir, "run.json")) || fail("pass --run or --dir"));
 const git = (repo, values) => execFileSync("git", ["-C", repo, ...values], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
 const pidAlive = (pid) => {
@@ -403,6 +410,7 @@ const mutate = (path, expectedRevision, conductor, operation, options = {}) => {
     const candidate = operation(structuredClone(current));
     const reconciliationChanged = serialize(candidate.reconciliation) !== serialize(current.reconciliation);
     if (reconciliationChanged && !options.allowReconciliation) throw new Error("reconciliation state changes only through reconcile");
+    if (options.beforeCommit) options.beforeCommit(candidate);
     const effectResolved = candidate.effects.some((effect) => {
       const old = current.effects.find(({ id }) => id === effect.id);
       return old && old.status !== effect.status && ["observed", "cancelled", "unknown"].includes(effect.status);
@@ -895,7 +903,7 @@ const initializeRun = (run, path) => {
     }
     let conflict = null;
     try {
-      const active = existsSync(locator) ? readJson(locator) : null;
+      const active = readJsonSafe(locator);
       if (active?.runPath && active.runPath !== path && existsSync(active.runPath)) conflict = `an active run already claimed ${run.repo.path}: ${active.runPath}`;
       else atomicWrite(locator, record);
     } finally {
@@ -920,10 +928,8 @@ if (command === "start") {
     fail(`spec.repo.path is not a git repository: ${spec.repo.path}`);
   }
   const activeLocator = join(stateRoot(), "active-runs", `${createHash("sha256").update(repoRoot).digest("hex")}.json`);
-  if (existsSync(activeLocator)) {
-    const active = readJson(activeLocator);
-    if (active.runPath && existsSync(active.runPath)) fail(`an active run already exists for ${repoRoot}: ${active.runPath}; resume it (reconcile + inspect) or archive it first`);
-  }
+  const activeStart = readJsonSafe(activeLocator);
+  if (activeStart?.runPath && existsSync(activeStart.runPath)) fail(`an active run already exists for ${repoRoot}: ${activeStart.runPath}; resume it (reconcile + inspect) or archive it first`);
   let liveHead;
   try {
     liveHead = git(repoRoot, ["rev-parse", `refs/heads/${spec.repo.targetBranch}`]);
@@ -959,10 +965,8 @@ if (command === "adopt") {
     fail(`spec.repo.path is not a git repository: ${run.repo.path}; adoption requires the live repo for canonical active-run detection`);
   }
   const activeLocator = locatorPath(run);
-  if (existsSync(activeLocator)) {
-    const active = readJson(activeLocator);
-    if (active.runPath && existsSync(active.runPath)) fail(`an active run already exists for ${run.repo.path}: ${active.runPath}; resume it instead of adopting`);
-  }
+  const activeAdopt = readJsonSafe(activeLocator);
+  if (activeAdopt?.runPath && existsSync(activeAdopt.runPath)) fail(`an active run already exists for ${run.repo.path}: ${activeAdopt.runPath}; resume it instead of adopting`);
   run.reconciliation = { status: "unknown", at: now(), notes: ["adopted from a prose run; reconcile before any external intent"] };
   run.effects = run.effects.map((effect) => {
     if (effect.status === "observed") return effect;
@@ -1019,10 +1023,15 @@ if (command === "checkpoint") {
   const conductor = caller(args);
   const observations = args.observations ? readJson(resolve(args.observations)) : null;
   const resumePath = join(dirname(path), "RESUME.md");
+  const stagedPath = `${resumePath}.staged`;
   const run = mutate(path, args["expected-revision"], conductor, (current) => {
     const reconciled = reconcileOperation(observations)(current);
     return { ...reconciled, checkpoints: [...(Array.isArray(reconciled.checkpoints) ? reconciled.checkpoints : []), { at: now(), reason: args.reason || null, conductor: `${conductor.id}@${conductor.epoch}`, revisionBefore: current.revision }] };
-  }, { allowReconciliation: true, afterWrite: (candidate) => renderResume(candidate, path, resumePath) });
+  }, {
+    allowReconciliation: true,
+    beforeCommit: (candidate) => renderResume(candidate, path, stagedPath),
+    afterWrite: () => renameSync(stagedPath, resumePath),
+  });
   const state = derived(run);
   process.stdout.write(`CHECKPOINT: ${resumePath}\nRECONCILIATION: ${run.reconciliation.status}\nREVISION: ${run.revision}\nWRITE_FRONTIER: ${JSON.stringify(state.write)}\n`);
   process.exit(0);
