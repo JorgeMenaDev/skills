@@ -53,7 +53,7 @@ Selection order:
 
 A missing required executor/model/effort fails closed. A preferred choice may use only its recorded fallback. Unknown runtime metadata remains `unknown`; self-report never attests vendor/model.
 
-Examples: Claude may use its native agents or an installed `codex-cli-runtime`; Codex may use native agents or an installed `claude-cli-runtime`; Cursor/Grok uses `cursor-subagent`; OpenCode remains unavailable until a real adapter is installed and probed.
+Examples: Claude may use its native agents or an installed `codex-cli-runtime`; Codex may use native agents or an installed `claude-cli-runtime`; Cursor/Grok uses `cursor-subagent`; native xAI Grok (Grok Build CLI headless, default `grok-4.5` effort high, structured output + resumable sessions) uses `grok-cli-runtime`; OpenCode remains unavailable until a real adapter is installed and probed.
 
 Before every new dispatch, inspect `.agents/engine-override.json`. An absent file means off; malformed means off plus a warning. Translate an active override into per-field executor constraints while preserving workspace/runtime carve-outs and their reasons. It never changes an already-active attempt silently.
 
