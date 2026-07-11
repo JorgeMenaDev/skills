@@ -7,6 +7,7 @@ const LIMITS = { files: 50_000, fileBytes: 5_000_000 };
 const byCodePoint = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
 const LANDMARKS = new Set(["head", "nav", "main", "footer", "aside"]);
 const INERT_ELEMENTS = new Set(["script", "style", "template", "textarea", "title", "noscript", "iframe", "xmp"]);
+const RAW_TEXT_ELEMENTS = new Set(["script", "style", "textarea", "title", "iframe", "xmp"]);
 
 const usage = () => `Usage:
   node rendered-link-export.mjs --build-dir <path-to-.next> --origin <https://site-origin> [--output <file>] [--stamp <value>]
@@ -122,6 +123,7 @@ const parseHtml = (html, source) => {
     const name = raw.match(/^<\/?\s*([^\s/>]+)/)?.[1].toLowerCase();
     if (!name || raw.startsWith("<!")) continue;
     if (!closing && INERT_ELEMENTS.has(name)) {
+      const rawText = RAW_TEXT_ELEMENTS.has(name);
       let depth = 1;
       while (depth && index + 1 < tokens.length) {
         index += 1;
@@ -129,7 +131,7 @@ const parseHtml = (html, source) => {
         const inertName = inertRaw.match(/^<\/?\s*([^\s/>]+)/)?.[1].toLowerCase();
         if (inertName !== name) continue;
         if (/^<\//.test(inertRaw)) depth -= 1;
-        else if (!/\/$/.test(inertRaw)) depth += 1;
+        else if (!rawText && !/\/$/.test(inertRaw)) depth += 1;
       }
       continue;
     }
