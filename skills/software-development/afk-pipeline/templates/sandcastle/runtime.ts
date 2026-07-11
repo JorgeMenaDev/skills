@@ -83,7 +83,6 @@ function sandboxEnv(token?: string): Record<string, string> {
     if (!token) throw new Error("CLAUDE_CODE_OAUTH_TOKEN is required for Claude-backed phases");
     env.CLAUDE_CODE_OAUTH_TOKEN = token;
   }
-  if (process.env.GH_TOKEN) env.GH_TOKEN = process.env.GH_TOKEN;
   return env;
 }
 
@@ -119,7 +118,22 @@ export function chooseImplementAgent(token?: string, claudeOptions: { effort?: "
 
 export function chooseSandbox(token?: string) {
   if (useVercel) return vercelSandbox({ env: { CI: "true", ...sandboxEnv(token) } });
-  if (!useDocker) return noSandbox();
+  if (!useDocker) {
+    // `noSandbox` runs the agent as a child process on the hosted VM and may
+    // inherit the parent environment. Keep deterministic workflow credentials
+    // and recap-publisher secrets out of that tool-enabled child; phase code
+    // captures any values it needs before sandbox construction.
+    for (const key of [
+      "GH_TOKEN",
+      "GITHUB_TOKEN",
+      "VERCEL_SANDBOX_TOKEN",
+      "PLAN_RECAP_TOKEN",
+      "PLAN_RECAP_APP_URL",
+    ]) {
+      delete process.env[key];
+    }
+    return noSandbox();
+  }
   const options = {
     imageName: "{{IMAGE_NAME}}",
     // Image agent user is UID/GID 1000; the macOS host user is not. Docker

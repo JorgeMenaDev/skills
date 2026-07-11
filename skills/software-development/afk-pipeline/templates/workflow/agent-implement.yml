@@ -57,10 +57,10 @@ jobs:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       GH_REPO: ${{ github.repository }}
       SANDCASTLE_SANDBOX: ${{ github.event.label.name == 'agent:implement-local' && 'docker' || (github.event.label.name == 'agent:implement-sandbox' && 'vercel' || 'none') }}
-      # Sandbox lane auth (empty/unused on the other lanes). Team/project IDs
-      # are baked into .sandcastle/vercel/provider.ts from pipeline.json
-      # `sandbox:` at generate time; the provider reads this token from env.
-      VERCEL_SANDBOX_TOKEN: ${{ secrets.VERCEL_SANDBOX_TOKEN }}
+      # Sandbox lane auth is present only on the Vercel lane. Runtime scrubs
+      # workflow-only credentials before any noSandbox agent child is launched.
+      # Team/project IDs are baked into the generated provider.
+      VERCEL_SANDBOX_TOKEN: ${{ github.event.label.name == 'agent:implement-sandbox' && secrets.VERCEL_SANDBOX_TOKEN || '' }}
 
     steps:
       - name: Pre-flight — refuse if an open PR already exists for this issue
