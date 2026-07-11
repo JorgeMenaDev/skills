@@ -89,6 +89,9 @@ const validate = (input) => {
     if (!page || Array.isArray(page) || typeof page !== "object") throw new Error(`pages[${index}] must be an object.`);
     const status = Number(page.status);
     if (!Number.isInteger(status) || status < 100 || status > 599) throw new Error(`pages[${index}].status must be an HTTP status integer.`);
+    if (status >= 300 && status < 400 && (page.finalUrl === undefined || page.finalUrl === null)) {
+      throw new Error(`pages[${index}].finalUrl is required for a ${status} redirect record.`);
+    }
     return {
       url: normalizeUrl(page.url, `pages[${index}].url`),
       status,
@@ -184,7 +187,8 @@ const classify = ({ pages, links, siteOrigins }) => {
     if (link.rel.includes("nofollow")) reasons.push("nofollow edge");
     if (sourcePage && !eligible(sourcePage)) reasons.push("ineligible source");
     if (finalPage && !eligible(finalPage)) reasons.push("ineligible resolved target");
-    if (resolvedTarget !== link.target && !finalPage) reasons.push("resolved target absent from pages[]");
+    if (resolvedTarget !== link.target && !finalPage && !resolvedExternal) reasons.push("broken target: resolved internal destination absent from pages[]");
+    else if (resolvedTarget !== link.target && !finalPage) reasons.push("resolved target absent from pages[]");
     const traversable = Boolean(!external && !externalSource && !resolvedExternal && !selfLink && eligible(sourcePage) && eligible(finalPage) && !link.rel.includes("nofollow"));
     return { ...link, resolvedTarget, traversable, classification: selfLink ? "self-link" : external || externalSource || resolvedExternal ? "external" : "internal", handling: reasons.length ? reasons.join("; ") : "included unchanged" };
   });
