@@ -6,6 +6,7 @@ import path from "node:path";
 const LIMITS = { files: 50_000, fileBytes: 5_000_000 };
 const byCodePoint = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
 const LANDMARKS = new Set(["head", "nav", "main", "footer", "aside"]);
+const INERT_ELEMENTS = new Set(["script", "style", "template"]);
 
 const usage = () => `Usage:
   node rendered-link-export.mjs --build-dir <path-to-.next> --origin <https://site-origin> [--output <file>] [--stamp <value>]
@@ -119,6 +120,18 @@ const parseHtml = (html, source) => {
     const closing = /^<\//.test(raw);
     const name = raw.match(/^<\/?\s*([^\s/>]+)/)?.[1].toLowerCase();
     if (!name || raw.startsWith("<!")) continue;
+    if (!closing && INERT_ELEMENTS.has(name)) {
+      let depth = 1;
+      while (depth && index + 1 < tokens.length) {
+        index += 1;
+        const inertRaw = tokens[index][0];
+        const inertName = inertRaw.match(/^<\/?\s*([^\s/>]+)/)?.[1].toLowerCase();
+        if (inertName !== name) continue;
+        if (/^<\//.test(inertRaw)) depth -= 1;
+        else if (!/\/$/.test(inertRaw)) depth += 1;
+      }
+      continue;
+    }
     if (closing) {
       const position = stack.lastIndexOf(name);
       if (position >= 0) stack.splice(position);
@@ -171,8 +184,8 @@ const main = async () => {
   if (buildInfo.isSymbolicLink() || !buildInfo.isDirectory()) throw new Error("--build-dir must be a real directory, not a file or symlink.");
   const absoluteBuildDir = path.resolve(buildDir);
   const appDir = path.join(absoluteBuildDir, "server", "app");
-  const prerender = await readJson(path.join(absoluteBuildDir, "prerender-manifest.json"));
-  const appRoutes = await readJson(path.join(absoluteBuildDir, "app-path-routes-manifest.json"));
+  const prerender = await readJson(path.join(absoluteBuildDir, "prerender-manifest.json"), true);
+  const appRoutes = await readJson(path.join(absoluteBuildDir, "app-path-routes-manifest.json"), true);
   const scanned = await scanHtml(appDir);
   const scannedSet = new Set(scanned);
   const declaredRoutes = Object.keys(prerender?.routes ?? {}).filter((route) => !/\.[^/]+$/.test(route)).sort(byCodePoint);
@@ -213,7 +226,8 @@ const main = async () => {
   if (missingHtml.length) gaps.push(`${missingHtml.length} declared prerender routes had missing HTML: ${missingHtml.join(", ")}`);
   if (unparseableHtml.length) gaps.push(`${unparseableHtml.length} HTML files could not be parsed: ${unparseableHtml.join(", ")}`);
   const coverage = { complete: gaps.length === 0, note: gaps.length ? gaps.join("; ") : `All ${pages.length} page routes were present as prerendered HTML.` };
-  const provenance = { buildDir: absoluteBuildDir, framework: "next-app-router", ...(stamp === null ? {} : { exportDate: stamp }), fileCount: pages.length, routeCount: discovered.length + missingRoutes.length + missingHtml.length };
+  const routeCount = new Set([...discovered.map(({ route }) => route), ...missingRoutes, ...missingHtml]).size;
+  const provenance = { buildDir: absoluteBuildDir, framework: "next-app-router", ...(stamp === null ? {} : { exportDate: stamp }), fileCount: pages.length, routeCount };
   const json = `${JSON.stringify({ coverage, provenance, siteOrigins: [`${origin}/`], pages, links }, null, 2)}\n`;
   if (output) await writeFile(output, json);
   else process.stdout.write(json);

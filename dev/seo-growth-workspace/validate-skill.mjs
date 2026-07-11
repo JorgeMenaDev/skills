@@ -1247,15 +1247,16 @@ section("Next App Router rendered-link exporter", () => {
   try {
     mkdirSync(path.join(appDir, "nested"), { recursive: true });
     writeFileSync(path.join(buildDir, "prerender-manifest.json"), JSON.stringify({
-      routes: { "/": { srcRoute: "/" }, "/nested/page": { srcRoute: "/nested/page" } },
+      routes: { "/": { srcRoute: "/" }, "/missing": { srcRoute: "/missing" }, "/nested/page": { srcRoute: "/nested/page" } },
       dynamicRoutes: {},
     }));
     writeFileSync(path.join(buildDir, "app-path-routes-manifest.json"), JSON.stringify({
       "/page": "/",
       "/nested/page/page": "/nested/page",
       "/account/[id]/page": "/account/[id]",
+      "/missing/page": "/missing",
     }));
-    writeFileSync(path.join(appDir, "index.html"), '<html><head><link rel="canonical" href="/"></head><body><nav><a rel="nofollow sponsored" href="/nested/page"><strong> Nested </strong> page</a><a href="#skip">Fragment</a><a href="mailto:a@example.test">Mail</a></nav></body></html>');
+    writeFileSync(path.join(appDir, "index.html"), '<html><head><link rel="canonical" href="/"><script type="application/ld+json">{"text":"<a href=\'/phantom-jsonld\'>Phantom</a>"}</script><style>.sample::after { content: "<a href=\'/phantom-style\'>Phantom</a>"; }</style></head><body><template><a href="/phantom-template">Phantom</a></template><nav><a rel="nofollow sponsored" href="/nested/page"><strong> Nested </strong> page</a><a href="#skip">Fragment</a><a href="mailto:a@example.test">Mail</a></nav></body></html>');
     writeFileSync(path.join(appDir, "nested", "page.html"), '<html><head><meta content="noindex, follow" name="robots"></head><body><main><a href="../">Home</a></main></body></html>');
 
     const help = spawnCapture(process.execPath, [exporter, "--help"]);
@@ -1265,12 +1266,12 @@ section("Next App Router rendered-link exporter", () => {
     const second = spawnCapture(process.execPath, args);
     check(first.status === 0 && first.stdout === second.stdout, "Exporter output must be byte-identical for identical build input and arguments");
     const json = JSON.parse(first.stdout);
-    check(json.coverage?.complete === false && /1 dynamic\/server-rendered routes missing prerendered HTML: \/account\/\[id\]/.test(json.coverage?.note), "Exporter must count and name manifest page routes missing prerendered HTML");
-    check(json.provenance?.framework === "next-app-router" && json.provenance?.exportDate === "fixture-date" && json.provenance?.fileCount === 2 && json.provenance?.routeCount === 3, "Exporter must record deterministic framework, stamp, file, and route provenance");
+    check(json.coverage?.complete === false && json.coverage?.note.includes("2 dynamic/server-rendered routes missing prerendered HTML: /account/[id], /missing") && json.coverage?.note.includes("1 declared prerender routes had missing HTML: /missing"), "Exporter must count and name manifest page routes and declared prerenders missing HTML");
+    check(json.provenance?.framework === "next-app-router" && json.provenance?.exportDate === "fixture-date" && json.provenance?.fileCount === 2 && json.provenance?.routeCount === 4, "Exporter must record deterministic provenance and count represented-plus-missing route identities as a union");
     check(json.pages.find((page) => page.url === "https://example.test/nested/page")?.indexable === false, "Exporter must set indexable false from a rendered noindex robots meta tag");
     check(json.links.some((link) => link.target === "https://example.test/nested/page" && link.anchor === "Nested page" && link.placement === "nav" && link.rel.join(" ") === "nofollow sponsored"), "Exporter must extract nested anchor text, root-relative targets, landmark placement, and rel tokens");
     check(json.links.some((link) => link.source === "https://example.test/nested/page" && link.target === "https://example.test/" && link.placement === "main"), "Exporter must resolve relative hrefs against the source route");
-    check(json.links.length === 2, "Exporter must skip fragment-only and mailto links");
+    check(json.links.length === 2 && !json.links.some((link) => link.target.includes("phantom")), "Exporter must skip fragment-only, mailto, and anchor-shaped content inside script, style, and template elements");
 
     const analyzerInput = { ...json, coverage: { complete: true, note: "Synthetic complete override for contract acceptance." } };
     writeFileSync(outputPath, JSON.stringify(analyzerInput));
@@ -1284,6 +1285,11 @@ section("Next App Router rendered-link exporter", () => {
     const source = readFileSync(exporter, "utf8");
     check(!/\bfetch\s*\(|node:child_process|from\s+["'](?!node:)/.test(source), "Exporter source must contain no fetch, child process, or external dependencies");
     check(source.includes("files: 50_000") && source.includes("fileBytes: 5_000_000"), "Exporter source must retain both declared traversal bounds");
+
+    const missingManifestDir = path.join(root, "missing-manifest", ".next");
+    mkdirSync(path.join(missingManifestDir, "server", "app"), { recursive: true });
+    const missingManifest = spawnCapture(process.execPath, [exporter, "--build-dir", missingManifestDir, "--origin", "https://example.test"]);
+    check(missingManifest.status !== 0 && missingManifest.stderr.includes("prerender-manifest.json") && missingManifest.stderr.includes("Cannot read manifest"), "Exporter must fail actionably when a required route manifest is absent");
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
