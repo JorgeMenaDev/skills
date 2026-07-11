@@ -460,7 +460,15 @@ const repoIdentity = (repoPath) => {
     return resolve(repoPath);
   }
 };
-const locatorPath = (run) => join(stateRoot(), "active-runs", `${createHash("sha256").update(run.repo.identity || resolve(run.repo.path)).digest("hex")}.json`);
+const locatorPath = (run) => join(stateRoot(), "active-runs", `${createHash("sha256").update(run.repo.identity || repoIdentity(run.repo.path)).digest("hex")}.json`);
+const locatorCandidates = (repoPath, identity) => [...new Set([identity, resolve(repoPath)])].map((key) => join(stateRoot(), "active-runs", `${createHash("sha256").update(key).digest("hex")}.json`));
+const liveLocator = (candidates) => {
+  for (const candidate of candidates) {
+    const active = readJsonSafe(candidate);
+    if (active?.runPath && existsSync(active.runPath)) return active;
+  }
+  return null;
+};
 const mutexPath = (resourceId) => join(stateRoot(), "mutexes", `${createHash("sha256").update(resourceId).digest("hex")}.lock`);
 
 const normalize = (spec) => {
@@ -526,10 +534,10 @@ if (command === "preflight") {
       override = "malformed";
     }
   }
-  const activeLocator = join(stateRoot(), "active-runs", `${createHash("sha256").update(repoIdentity(root)).digest("hex")}.json`);
+  const activeLocator = locatorCandidates(root, repoIdentity(root)).find((candidate) => existsSync(candidate));
   const skillRoots = [join(root, ".agents", "skills"), join(homedir(), ".agents", "skills"), join(homedir(), ".claude", "skills")];
   const adapters = ["codex-cli-runtime", "claude-cli-runtime", "cursor-subagent", "opencode-subagent"].filter((name) => skillRoots.some((skillRoot) => existsSync(join(skillRoot, name, "SKILL.md"))));
-  process.stdout.write(`REPO: ${root}\nBRANCH: ${branch}\nDIRTY: ${dirty}\nBASE_SHA: ${head}\nACTIVE_RUN: ${existsSync(activeLocator) ? activeLocator : "none"}\nHELPER_SCHEMA: 1\nENGINE_OVERRIDE: ${override}\nNATIVE_EXECUTOR: runtime-owned\nNON_NATIVE_ADAPTERS: ${JSON.stringify(adapters)}\n`);
+  process.stdout.write(`REPO: ${root}\nBRANCH: ${branch}\nDIRTY: ${dirty}\nBASE_SHA: ${head}\nACTIVE_RUN: ${activeLocator || "none"}\nHELPER_SCHEMA: 1\nENGINE_OVERRIDE: ${override}\nNATIVE_EXECUTOR: runtime-owned\nNON_NATIVE_ADAPTERS: ${JSON.stringify(adapters)}\n`);
   process.exit(0);
 }
 
@@ -549,6 +557,8 @@ if (command === "init") {
   const path = join(root, "run.json");
   if (existsSync(path)) fail(`${path} already exists`);
   const run = normalize(readJson(resolve(args.spec)));
+  const bornResolved = run.deferredGates.filter(({ status }) => status !== "open");
+  if (bornResolved.length) fail(`new-run deferred gates must begin open: ${bornResolved.map(({ id }) => id).join(", ")}; import in-flight gate state through adopt`);
   const errors = validate(run);
   if (errors.length) fail(errors.join("; "));
   atomicWrite(path, run);
@@ -935,9 +945,8 @@ if (command === "start") {
     fail(`spec.repo.path is not a git repository: ${spec.repo.path}`);
   }
   const identity = repoIdentity(repoRoot);
-  const activeLocator = join(stateRoot(), "active-runs", `${createHash("sha256").update(identity).digest("hex")}.json`);
-  const activeStart = readJsonSafe(activeLocator);
-  if (activeStart?.runPath && existsSync(activeStart.runPath)) fail(`an active run already exists for ${repoRoot}: ${activeStart.runPath}; resume it (reconcile + inspect) or archive it first`);
+  const activeStart = liveLocator(locatorCandidates(repoRoot, identity));
+  if (activeStart) fail(`an active run already exists for ${repoRoot}: ${activeStart.runPath}; resume it (reconcile + inspect) or archive it first`);
   let liveHead;
   try {
     liveHead = git(repoRoot, ["rev-parse", `refs/heads/${spec.repo.targetBranch}`]);
@@ -953,6 +962,8 @@ if (command === "start") {
   const path = join(root, "run.json");
   if (existsSync(path)) fail(`${path} already exists; use reconcile + inspect to resume`);
   const run = normalize(spec);
+  const bornResolved = run.deferredGates.filter(({ status }) => status !== "open");
+  if (bornResolved.length) fail(`new-run deferred gates must begin open: ${bornResolved.map(({ id }) => id).join(", ")}; import in-flight gate state through adopt`);
   const locator = initializeRun(run, path);
   const reconciled = mutate(path, run.revision, run.conductor, reconcileOperation(null), { allowReconciliation: true });
   process.stdout.write(`RUN: ${path}\nLOCATOR: ${locator}\nRECONCILIATION: ${reconciled.reconciliation.status}\n`);
@@ -974,9 +985,8 @@ if (command === "adopt") {
     fail(`spec.repo.path is not a git repository: ${run.repo.path}; adoption requires the live repo for canonical active-run detection`);
   }
   run.repo.identity = repoIdentity(run.repo.path);
-  const activeLocator = locatorPath(run);
-  const activeAdopt = readJsonSafe(activeLocator);
-  if (activeAdopt?.runPath && existsSync(activeAdopt.runPath)) fail(`an active run already exists for ${run.repo.path}: ${activeAdopt.runPath}; resume it instead of adopting`);
+  const activeAdopt = liveLocator(locatorCandidates(run.repo.path, run.repo.identity));
+  if (activeAdopt) fail(`an active run already exists for ${run.repo.path}: ${activeAdopt.runPath}; resume it instead of adopting`);
   run.reconciliation = { status: "unknown", at: now(), notes: ["adopted from a prose run; reconcile before any external intent"] };
   run.effects = run.effects.map((effect) => {
     if (effect.status === "observed") return effect;
@@ -1029,12 +1039,22 @@ const renderResume = (run, path, resumePath) => {
 
 if (command === "checkpoint" && args["render-only"] === true) {
   const path = runPath(args);
-  const run = readJson(path);
-  const errors = validate(run);
-  if (errors.length) fail(errors.join("; "));
-  const resumePath = join(dirname(path), "RESUME.md");
-  renderResume(run, path, resumePath);
-  process.stdout.write(`CHECKPOINT_RENDERED: ${resumePath}\nSOURCE_REVISION: ${run.revision}\n`);
+  const initial = readJson(path);
+  const release = lock(dirname(path), initial.conductor);
+  let failure = null;
+  try {
+    const run = readJson(path);
+    const errors = validate(run);
+    if (errors.length) failure = errors.join("; ");
+    else {
+      const resumePath = join(dirname(path), "RESUME.md");
+      renderResume(run, path, resumePath);
+      process.stdout.write(`CHECKPOINT_RENDERED: ${resumePath}\nSOURCE_REVISION: ${run.revision}\n`);
+    }
+  } finally {
+    release();
+  }
+  if (failure) fail(failure);
   process.exit(0);
 }
 

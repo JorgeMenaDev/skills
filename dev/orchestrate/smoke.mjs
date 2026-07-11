@@ -94,6 +94,11 @@ check(
   renderOnly.status === 0 && existsSync(join(startDir, "RESUME.md")) && readRun(startDir).checkpoints.length === checkpointCountBefore,
   renderOnly.stderr || renderOnly.stdout,
 );
+mkdirSync(join(startDir, ".run.lock"), { recursive: true });
+writeFileSync(join(startDir, ".run.lock", "owner.json"), JSON.stringify({ id: "conductor-example", epoch: 1, pid: 999999 }));
+const lockedRender = helper(["checkpoint", "--run", join(startDir, "run.json"), "--render-only"]);
+check("render-only fails closed while the run lock is held", lockedRender.status !== 0 && lockedRender.stderr.includes("run lock is held"), lockedRender.stderr);
+rmSync(join(startDir, ".run.lock"), { recursive: true, force: true });
 
 // deferred gates: open gate blocks completion; malformed gate fails closed
 const gatePatch = join(root, "gate-patch.json");
@@ -291,6 +296,32 @@ rmSync(join(root, "run-start-4"), { recursive: true, force: true });
 writeFileSync(seedLocator, "");
 const truncatedReclaim = helper(["start", "--dir", join(root, "run-start-5"), "--spec", specPath]);
 check("a truncated locator is reclaimed instead of crashing start", truncatedReclaim.status === 0 && truncatedReclaim.stdout.includes("RECONCILIATION: clean"), truncatedReclaim.stderr || truncatedReclaim.stdout);
+
+// an init-created ledger (no repo.identity) is still seen by start, and a legacy
+// path-hashed locator from a pre-identity release also blocks a new start
+const initRepo = fixtureRepo("init-collision-repo");
+const initCollisionSpec = { ...JSON.parse(readFileSync(exampleSpec, "utf8")), runId: "init-collision", repo: { path: initRepo, targetBranch: "main", baseSha: head } };
+const initCollisionSpecPath = join(root, "init-collision-spec.json");
+writeFileSync(initCollisionSpecPath, JSON.stringify(initCollisionSpec, null, 2));
+const initCollision = helper(["init", "--dir", join(root, "run-init-collision"), "--spec", initCollisionSpecPath]);
+const startOverInit = helper(["start", "--dir", join(root, "run-start-over-init"), "--spec", initCollisionSpecPath]);
+check("start sees an init-created active run", initCollision.status === 0 && startOverInit.status !== 0 && startOverInit.stderr.includes("active run already exists"), startOverInit.stderr || startOverInit.stdout);
+const legacyRepo = fixtureRepo("legacy-repo");
+const legacyRoot = git(legacyRepo, ["rev-parse", "--show-toplevel"]);
+const legacyLocator = join(env.XDG_STATE_HOME, "orchestrate", "active-runs", `${createHash("sha256").update(legacyRoot).digest("hex")}.json`);
+writeFileSync(legacyLocator, JSON.stringify({ runId: "legacy", runPath: initCollisionSpecPath, revision: 1 }));
+const legacySpec = { ...initCollisionSpec, runId: "legacy-collision", repo: { path: legacyRepo, targetBranch: "main", baseSha: "auto" } };
+const legacySpecPath = join(root, "legacy-spec.json");
+writeFileSync(legacySpecPath, JSON.stringify(legacySpec, null, 2));
+const startOverLegacy = helper(["start", "--dir", join(root, "run-start-over-legacy"), "--spec", legacySpecPath]);
+check("start sees a legacy path-hashed locator", startOverLegacy.status !== 0 && startOverLegacy.stderr.includes("active run already exists"), startOverLegacy.stderr || startOverLegacy.stdout);
+
+// a new run cannot be born with resolved deferred gates
+const bornResolvedSpec = { ...JSON.parse(readFileSync(exampleSpec, "utf8")), runId: "born-resolved", repo: { path: join(root, "no-such-repo-2"), targetBranch: "main", baseSha: "x" }, deferredGates: [{ id: "pre-resolved", description: "x", status: "discharged", evidence: ["e"] }] };
+const bornResolvedPath = join(root, "born-resolved-spec.json");
+writeFileSync(bornResolvedPath, JSON.stringify(bornResolvedSpec, null, 2));
+const bornResolved = helper(["init", "--dir", join(root, "run-born-resolved"), "--spec", bornResolvedPath]);
+check("new-run deferred gates must begin open", bornResolved.status !== 0 && bornResolved.stderr.includes("must begin open"), bornResolved.stderr);
 
 // a linked worktree of the same repository shares the active-run identity
 execFileSync("git", ["-C", seed, "worktree", "add", "--quiet", join(root, "seed-linked"), "-b", "linked-smoke"], { stdio: "ignore" });
