@@ -286,6 +286,55 @@ section("slice 3 page-evidence contracts", () => {
   }
 });
 
+section("slice 3 AI observation and portrayal contracts", () => {
+  const reference = readFileSync(path.join(skillRoot, "references/ai-search-visibility.md"), "utf-8");
+  const observationFields = [
+    "Platform",
+    "Visible model/version",
+    "Surface/mode",
+    "Prompt ID + version",
+    "Verbatim query",
+    "Country + locale",
+    "City/coordinates + location method",
+    "Login/account state",
+    "Personalization/memory state",
+    "Device/app",
+    "Run number",
+    "Declared repeat count",
+  ];
+  const portrayalFields = [
+    "Citation state",
+    "Cited source",
+    "Concise portrayal sentence",
+    "Factual accuracy",
+    "Missing material qualifier",
+    "Outdated information",
+    "Unsupported claim",
+    "Entity confusion",
+    "Sentiment rubric",
+    "Buyer stage",
+    "Action route",
+    "Route reason",
+  ];
+  const gapFields = ["Opportunity class", "Rationale", "Action route", "Route reason"];
+
+  check(observationFields.every((field) => reference.includes(field)), "AI observation rows must carry platform/model, prompt, verbatim query, locale/personalization/device/account state, and repeat context");
+  check(["**Mention**", "**Recommendation**", "**Citation**"].every((semantic) => reference.includes(semantic)), "AI observation contract must distinguish mention, recommendation, and citation per row");
+  check(reference.includes("one row per answer run") && reference.includes("x of y completed runs") && reference.includes("never rankings"), "AI observations must be dated reproducible samples with recurrence bounded to the declared sample");
+  check(gapFields.every((field) => reference.includes(field)), "AI source-page gaps must carry an opportunity class, rationale, action route, and route reason");
+  check(reference.includes("| Opportunity class | Rationale | Action route | Route reason |"), "AI source-page gap rows must include classification and bounded routing as separate fields");
+  check(reference.includes("opportunity class is the inference; the action route is its bounded consequence") && reference.includes("Every material gap gets exactly one action route"), "Every material AI source-page gap must route exactly once as a bounded consequence of its classification");
+  check(portrayalFields.every((field) => reference.includes(field)), "AI portrayal records must separate factual portrayal, sentiment, buyer stage, and bounded action routing");
+  check(reference.includes("| Brand mention | Recommendation | Citation state | Cited source |") && !reference.includes("Citation + cited source"), "AI portrayal rows must keep citation state and cited source as independent fields");
+  check(reference.includes("Portrayal is not sentiment") && reference.includes("Every material gap and every portrayal finding routes to exactly one existing destination"), "Portrayal must differ from sentiment and gaps and portrayal findings must each have exactly one route");
+  const routes = ["`content backlog`", "`backlink work-log`", "`commercial disclosure review`", "`no action`"];
+  check(routes.every((route) => reference.includes(route)), "AI portrayal routing must include the four bounded destinations");
+  check(reference.includes(".seo/backlog.md") && reference.includes(".seo/backlinks/work-log.md") && reference.includes("commercial-integrity.md"), "AI findings must route only to existing backlog, backlink, and commercial-review homes");
+  check(reference.includes("No scraping, provider dependency, outreach automation") && reference.includes("never promise, project, or calculate AI-visibility lift"), "AI guidance must prohibit scraping, provider/outreach machinery, and predicted lift");
+  check(!/route.{0,80}(?:GEO mode|GEO backlog)/is.test(reference), "AI contract must not define a GEO-mode or GEO-backlog route");
+  check(!/(?:will|expected to|projected to|should) (?:increase|improve|lift).{0,50}AI.visibility/i.test(reference), "AI contract must not promise or project AI-visibility lift");
+});
+
 section("slice 2 GBP evidence contracts", () => {
   const reference = readFileSync(path.join(skillRoot, "references/local-seo-gbp.md"), "utf-8");
   const template = readFileSync(path.join(skillRoot, "templates/local-seo-gbp.md"), "utf-8");
