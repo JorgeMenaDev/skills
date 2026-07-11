@@ -1,5 +1,7 @@
 # Backlinks, Citations, And Entity Authority
 
+Use the evidence states, provenance fields, and non-causal outcome ladder in `references/evidence-conventions.md`. Comparisons and commercial relationships consume `references/commercial-integrity.md` rather than redefining disclosure rules here.
+
 Use for backlink audits, authority planning, local citations, and brand/entity optimization.
 
 ## Backlink Gap Matrix

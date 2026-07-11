@@ -75,6 +75,7 @@ The existing validator must prove direct bootstrap bypass, expired/tampered/mism
 - `adopt` writes only `config.json` on at least three exactly recognized files;
 - `verify` performs zero writes;
 - `repair` creates only the reviewed missing generated allowlist and preserves all existing/historical bytes;
+- `create-optional` creates only the reviewed absent optional allowlist, is plan-bound and replay-safe, and does not change generated-file drift or repair semantics;
 - doctor writes only `--plan-output`, outside every scan root, and never emits credential content.
 - two validator processes pass concurrently: plans bind the target and discovered inputs, not volatile unrelated entries under a shared system-temp parent.
 
@@ -105,7 +106,7 @@ node "$SKILL_DIR/scripts/bootstrap-seo-workspace.mjs" --plan <outside-root-plan>
 
 For an installed copy, the same scripts under `.agents/skills/seo-growth-workspace/scripts/`.
 
-3. Verify `.seo/README.md`, `.seo/context.md`, `.seo/backlog.md`, `.seo/audit.md`, `.seo/strategy.md`, `.seo/taxonomy.md`, `.seo/log.md`, `.seo/reports/`, `.seo/scripts/`, `.seo/pseo/`, `.seo/backlinks/work-log.md`, and `.seo/config.json` with `"mode": "standalone"` and `"workspaceSchemaVersion": 1`.
+3. Verify `.seo/README.md`, `.seo/context.md`, `.seo/backlog.md`, `.seo/audit.md`, `.seo/strategy.md`, `.seo/taxonomy.md`, `.seo/log.md`, `.seo/reports/`, `.seo/scripts/`, `.seo/pseo/`, `.seo/backlinks/work-log.md`, `.seo/backlinks/asset-rights.md`, and `.seo/config.json` with `"mode": "standalone"` and exactly `"workspaceSchemaVersion": 1`.
 4. Confirm the dry run did not overwrite existing files (preseed one file with sentinel content and byte-compare after a rerun).
 5. Hub dry run — against a second temporary root:
 

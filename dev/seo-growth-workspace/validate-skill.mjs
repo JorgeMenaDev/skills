@@ -72,6 +72,8 @@ const requiredFiles = [
   "references/conversion-cta.md",
   "references/local-seo-gbp.md",
   "references/backlinks-entity.md",
+  "references/evidence-conventions.md",
+  "references/commercial-integrity.md",
   "references/monthly-reporting.md",
   "references/ai-search-visibility.md",
   "references/data-tools.md",
@@ -205,13 +207,14 @@ function devToolingDigest() {
   );
 }
 
-function makePlan(root, { domain = "example.com", decision, hub = false, site = null, repairFiles = [], extra = [] }) {
+function makePlan(root, { domain = "example.com", decision, hub = false, site = null, repairFiles = [], optionalFiles = [], extra = [] }) {
   const planDir = mkdtempSync(path.join("/private/tmp", "seo-plan-fixture-"));
   const planPath = path.join(planDir, "plan.json");
   const args = [root, "--domain", domain, "--decision", decision, "--plan-output", planPath, "--format", "json"];
   if (hub) args.push("--hub");
   if (site) args.push("--site", site);
   if (repairFiles.length) args.push("--repair-files", repairFiles.join(","));
+  if (optionalFiles.length) args.push("--optional-files", optionalFiles.join(","));
   args.push(...extra);
   const result = spawnCapture(process.execPath, [path.join(skillRoot, "scripts/seo-doctor.mjs"), ...args]);
   return { planDir, planPath, result, report: JSON.parse(result.stdout || "{}") };
@@ -235,14 +238,31 @@ section("file inventory", () => {
   for (const file of requiredFiles) {
     check(existsSync(path.join(skillRoot, file)), `Missing ${file}`);
   }
+  check(existsSync(path.join(scriptDir, "criterion-matrix.md")), "Missing dev/seo-growth-workspace/criterion-matrix.md");
+});
+
+section("slice 1 shared contracts", () => {
+  const evidence = readFileSync(path.join(skillRoot, "references/evidence-conventions.md"), "utf-8");
+  const commercial = readFileSync(path.join(skillRoot, "references/commercial-integrity.md"), "utf-8");
+  const matrix = readFileSync(path.join(scriptDir, "criterion-matrix.md"), "utf-8");
+  check(["Reported", "Observed", "Third-party estimate", "Inference", "Action completed", "Outcome"].every((state) => evidence.includes(`**${state}**`)), "Evidence conventions must define the six shared evidence states");
+  check(evidence.includes("Unknown") && evidence.includes("exposure → mention → citation") && evidence.includes("qualified conversion"), "Evidence conventions must include buyer-stage Unknown and the non-causal outcome ladder");
+  check(commercial.includes("typical mobile viewport") && commercial.includes("directly to each named alternative") && commercial.includes("Anti-authority-rental boundary"), "Commercial integrity must define disclosure visibility, direct alternative links, and the anti-authority-rental boundary");
+  const rows = matrix.split(/\r?\n/).filter((line) => /^\| C\d+-\d{2} \|/.test(line));
+  const ids = rows.map((line) => line.split("|")[1].trim());
+  const expectedCounts = { 32: 6, 33: 8, 34: 20, 35: 12, 36: 18, 37: 13, 38: 11, 39: 15, 40: 16, 41: 10, 42: 12, 43: 12 };
+  check(rows.length === 153 && new Set(ids).size === rows.length, "Criterion matrix must contain all 153 unique source criteria");
+  check(Object.entries(expectedCounts).every(([issue, count]) => ids.filter((id) => id.startsWith(`C${issue}-`)).length === count), "Criterion matrix per-issue row counts must match the source issue contracts");
+  check(rows.every((line) => /\| \((?:a|b)\) [^|]+ \| (?:open|closed-by-slice-1) \|/.test(line)), "Every criterion row must have exactly one typed scenario and a valid status");
 });
 
 // --- SKILL.md routes every reference ---
 section("SKILL.md routing", () => {
   const skill = readFileSync(path.join(skillRoot, "SKILL.md"), "utf-8");
-  for (const file of requiredFiles.filter((f) => f.startsWith("references/"))) {
+  for (const file of requiredFiles.filter((f) => f.startsWith("references/") && f !== "references/evidence-conventions.md")) {
     check(skill.includes(file), `SKILL.md does not reference ${file}`);
   }
+  check(!skill.includes("references/evidence-conventions.md"), "Evidence conventions must be reached through consumer cross-links, not routed from SKILL.md");
 });
 
 // --- SKILL.md version matches the bootstrap script's stamp constant ---
@@ -270,6 +290,7 @@ section("bootstrap smoke test", () => {
       ".seo/log.md",
       ".seo/context.md",
       ".seo/backlog.md",
+      ".seo/backlinks/asset-rights.md",
     ]) {
       check(
         existsSync(path.join(bootstrapRoot, file)),
@@ -299,6 +320,10 @@ section("bootstrap smoke test", () => {
       config.workspaceSchemaVersion === 1,
       "Bootstrap must stamp config.json with workspaceSchemaVersion 1",
     );
+    const workLog = readFileSync(path.join(bootstrapRoot, ".seo/backlinks/work-log.md"), "utf-8");
+    const legacyTable = "| Date | Target | Action | Status | Evidence | Next step |\n| --- | --- | --- | --- | --- | --- |";
+    check(workLog.includes(legacyTable), "Bootstrap must preserve the legacy six-column backlink table byte-for-byte");
+    check(workLog.includes("## Authority funnel (v4)") && workLog.includes("Link live | Indexable") && workLog.includes("explicit operator opt-in only"), "Bootstrap must append the separate v4 authority funnel and migration opt-in note");
   } finally {
     rmSync(bootstrapRoot, { recursive: true, force: true });
   }
@@ -634,6 +659,18 @@ section("doctor plan and bootstrap action contract", () => {
 
     run(process.execPath, [path.join(skillRoot, "scripts/bootstrap-seo-workspace.mjs"), "--plan", planned.planPath, "--action", "create", "--domain", "plan.example", root]);
     check(existsSync(path.join(root, ".seo/config.json")) && !existsSync(planned.planPath), "Create must scaffold once and atomically consume its plan");
+    const assetRights = path.join(root, ".seo/backlinks/asset-rights.md");
+    check(existsSync(assetRights), "New workspaces must scaffold the optional asset-rights ledger");
+    rmSync(assetRights);
+    const optionalMissing = spawnCapture(process.execPath, [path.join(skillRoot, "scripts/seo-doctor.mjs"), root, "--domain", "plan.example", "--format", "json"]);
+    check(optionalMissing.status === 0 && JSON.parse(optionalMissing.stdout || "{}").clean === true, "An absent optional ledger must be excluded from workspace drift");
+    const optional = makePlan(root, { domain: "plan.example", decision: "create-optional", optionalFiles: ["backlinks/asset-rights.md"] });
+    check(optional.result.status === 0 && optional.report.plan?.approved === true && optional.report.optionalFiles?.[0] === "backlinks/asset-rights.md", "Doctor must emit an approved, allowlist-bound create-optional plan");
+    run(process.execPath, [path.join(skillRoot, "scripts/bootstrap-seo-workspace.mjs"), "--plan", optional.planPath, "--action", "create-optional", "--domain", "plan.example", "--files", "backlinks/asset-rights.md", root]);
+    check(existsSync(assetRights), "Create-optional must create the reviewed absent asset-rights ledger");
+    const optionalReplay = spawnSync(process.execPath, [path.join(skillRoot, "scripts/bootstrap-seo-workspace.mjs"), "--plan", optional.planPath, "--action", "create-optional", "--domain", "plan.example", "--files", "backlinks/asset-rights.md", root], { encoding: "utf-8" });
+    check(optionalReplay.status !== 0, "A consumed create-optional plan must not replay");
+    rmSync(optional.planDir, { recursive: true, force: true });
     const replay = spawnSync(process.execPath, [path.join(skillRoot, "scripts/bootstrap-seo-workspace.mjs"), "--plan", planned.planPath, "--action", "create", "--domain", "plan.example", root], { encoding: "utf-8" });
     check(replay.status !== 0, "A consumed plan must not replay");
     rmSync(planned.planDir, { recursive: true, force: true });
@@ -1257,11 +1294,11 @@ section("gsc-fetch credentials-dir", () => {
       ],
       { encoding: "utf-8" },
     );
-    // Dummy creds parse, then the token exchange is attempted and rejected by Google —
-    // proving the credentials-dir shape reached the API stage without a shape error.
+    // Dummy credentials must pass local shape parsing. The environment may block
+    // network access before an OAuth-specific response is available.
     check(
-      (parsed.stderr ?? "").includes("GSC OAuth refresh failed"),
-      "--credentials-dir should parse {client_secret.json, token.json} and reach the token exchange",
+      parsed.status !== 0 && !(parsed.stderr ?? "").includes("must contain an installed or web OAuth client"),
+      "--credentials-dir should parse {client_secret.json, token.json} before any unavailable token exchange",
     );
 
     const badDir = fixtureTmp("seo-creds-bad-");

@@ -41,6 +41,7 @@ Create or verify this structure at SITE_WORKSPACE (see Install Modes for where t
   audit.md
   taxonomy.md
   backlinks/
+    asset-rights.md
     summary.md
     work-log.md
   reports/
@@ -106,6 +107,7 @@ Load only the file needed for the mode or ticket:
 - Conversion and CTA audits: `references/conversion-cta.md`
 - Local SEO/GBP/citations: `references/local-seo-gbp.md`
 - Backlinks/entity authority, directories, digital PR: `references/backlinks-entity.md`
+- Comparisons, listicles, affiliate/referral relationships, and commercial disclosures: `references/commercial-integrity.md`
 - Competitor profiling and dated snapshots: `references/competitor-profiling.md`
 - Third-party keyword/SERP/backlink data tools: `references/data-tools.md`
 - AI/LLM search visibility (ChatGPT, Perplexity, AI Overviews): `references/ai-search-visibility.md`
@@ -116,7 +118,7 @@ Load only the file needed for the mode or ticket:
 Use templates from `templates/` for report shape. Use scripts when deterministic scaffolding or analysis is useful (all run with `node`, no dependencies):
 
 - `scripts/seo-doctor.mjs` classifies exact schema-1 state, canonical/legacy registries, installs/lock/active paths, generated drift, and stat-only credential permissions. Its short-lived plan binds every reviewed source.
-- `scripts/bootstrap-seo-workspace.mjs` consumes that plan: create scaffolds once, adopt writes config only, verify writes nothing, and repair creates only the reviewed missing generated allowlist.
+- `scripts/bootstrap-seo-workspace.mjs` consumes that plan: create scaffolds once, adopt writes config only, verify writes nothing, repair creates only the reviewed missing generated allowlist, and create-optional creates only a reviewed absent optional artifact.
 - `scripts/gsc-oauth.mjs` creates a local refresh-token env file without printing token values.
 - `scripts/gsc-fetch.mjs` fetches Search Console `query,page` rows with pagination using env credentials.
 - `scripts/gsc-opportunities.mjs` turns exported GSC rows into position-banded CTR, page-2, and cannibalization opportunity tables; on early-stage data with nothing inside positions 1-20 it falls back to impression-clusters-by-page so sparse exports still yield a next action. `--brand` excludes branded queries, `--format backlog` emits draft `.seo/backlog.md` rows for review.
