@@ -81,7 +81,7 @@ The ten pinned schema decisions are:
 
 Normalization accepts absolute HTTP(S) URLs without credentials, lowercases scheme/host, removes fragments and default ports, resolves URL dot segments, removes a non-root trailing slash, and sorts query pairs by key then value. Path and query value case remain unchanged. The same function processes page URLs, final/canonical URLs, and link endpoints; normalized duplicate page URLs fail.
 
-The graph includes followed, non-self edges whose source and resolved target are supplied, indexable 2xx self-canonical pages. A self-link is one whose normalized source equals its normalized supplied target, including a fragment-only link normalized back to the same URL. Self-links remain annotated in the edge and anchor inventories but provide no inbound support, do not prevent orphan/near-orphan findings, and do not propagate heuristic authority. A redirect resolves only through that page record's declared `finalUrl`; a canonicalized target resolves only through its declared `canonicalUrl`. Internal missing destinations remain broken; external targets do not. Nofollow edges remain in the inventory but do not transfer reach or authority, and noindex pages remain edge observations but are excluded from the graph. Click depth is reported from declared entry points and separately from declared money pages.
+The graph includes followed, non-self edges whose source and resolved target are supplied, indexable 2xx self-canonical pages. A self-link is one whose normalized source equals its normalized supplied target, including a fragment-only link normalized back to the same URL. Self-links remain annotated in the edge and anchor inventories but provide no inbound support, do not prevent orphan/near-orphan findings, and do not propagate heuristic authority. A redirect resolves only through that page record's declared `finalUrl`; a canonicalized target resolves only through its declared `canonicalUrl`. Internal missing destinations remain broken; external targets do not. Nofollow edges remain in the inventory but do not transfer reach or authority, and non-indexable pages remain edge observations but are excluded from the graph. Click depth is reported from declared entry points and separately from declared money pages.
 
 The authority column is named **heuristic internal authority**. It uses damping `0.85` for exactly 20 iterations (minimum and maximum 20), preserves duplicate followed-edge weight, and records those bounds in every report. It is neither Google PageRank nor a ranking prediction.
 
@@ -95,7 +95,7 @@ Set `coverage.complete` to `false` whenever the producer did not capture the ent
 | --- | --- |
 | Page evidence: root click depth, money-page depth, distinct followed inlinks/outlinks | `Click depth` and `Current state` |
 | Orphan, near-orphan, and weak declared money-page findings | Candidate matrix rows; reviewer decides `Priority`, `Desired state`, and `Fix` |
-| Edge handling: broken, external, self-link, redirected, canonicalized, noindex, nofollow | `Source URL`, `Target URL`, and `Current state` |
+| Edge handling: broken, external, self-link, redirected, canonicalized, non-indexable, nofollow | `Source URL`, `Target URL`, and `Current state` |
 | Anchor inventory with duplicate count and placement | `Anchor text`, intent review, and repeated exact-match review |
 | Heuristic internal authority | Directional support evidence only; never an outcome or ranking claim |
 

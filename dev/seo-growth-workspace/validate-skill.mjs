@@ -1271,7 +1271,7 @@ section("offline link-graph analyzer", () => {
     check(first.status === 0 && first.stdout === second.stdout, "Analyzer output must be byte-identical for identical input and arguments");
     const output = first.stdout;
     check(output.includes("duplicates preserved") && output.includes("-duplicate anchor"), "Analyzer must preserve duplicate anchored edges");
-    check(["redirected target", "canonicalized target", "noindex target", "nofollow edge", "broken target: internal target absent"].every((value) => output.includes(value)), "Analyzer must explain redirect, canonical, noindex, nofollow, and broken-target handling");
+    check(["redirected target", "canonicalized target", "non-indexable target", "nofollow edge", "broken target: internal target absent"].every((value) => output.includes(value)), "Analyzer must explain redirect, canonical, noindex, nofollow, and broken-target handling");
     check(output.includes("excluded; self-link") && /\| https:\/\/example\.test\/orphan \| unreachable \| unreachable \| 0 \| 0 \| false \| orphan \|/.test(output), "Self-links must remain inventoried without inbound support or graph propagation");
     check(output.includes("https://outside.test/pixel") && output.includes("excluded; external") && output.match(/broken target:/g)?.length === 1, "External links must remain counted without becoming broken-target findings");
     check(output.includes("orphan") && output.includes("near-orphan") && output.includes("weak declared money page"), "Analyzer must explain orphan, near-orphan, and weak declared money-page findings");

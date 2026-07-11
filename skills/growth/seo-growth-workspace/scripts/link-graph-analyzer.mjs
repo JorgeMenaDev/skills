@@ -91,6 +91,7 @@ const validate = (input) => {
     if (!page || Array.isArray(page) || typeof page !== "object") throw new Error(`pages[${index}] must be an object.`);
     const status = Number(page.status);
     if (!Number.isInteger(status) || status < 100 || status > 599) throw new Error(`pages[${index}].status must be an HTTP status integer.`);
+    if (status >= 300 && status < 400 && !REDIRECT_STATUSES.has(status)) throw new Error(`pages[${index}].status ${status} is not a supported redirect status (301, 302, 303, 307, 308).`);
     if (REDIRECT_STATUSES.has(status) && (page.finalUrl === undefined || page.finalUrl === null)) {
       throw new Error(`pages[${index}].finalUrl is required for a ${status} redirect record.`);
     }
@@ -195,7 +196,7 @@ const classify = ({ pages, links, siteOrigins }) => {
     const resolvedExternal = !internal(resolvedTarget);
     if (resolvedExternal && !external) reasons.push("resolved target outside internal scope");
     if (finalPage && finalPage.status >= 400 && !external && !externalSource && !resolvedExternal) reasons.push(`broken target: HTTP ${finalPage.status}`);
-    if (suppliedTarget && !suppliedTarget.indexable) reasons.push("noindex target");
+    if (suppliedTarget && !suppliedTarget.indexable) reasons.push("non-indexable target");
     if (link.rel.includes("nofollow")) reasons.push("nofollow edge");
     if (sourcePage && !eligible(sourcePage)) reasons.push("ineligible source");
     if (finalPage && !eligible(finalPage)) reasons.push("ineligible resolved target");
