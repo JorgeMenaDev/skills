@@ -10,10 +10,14 @@ Do NOT write unit tests — the browser check IS the test.
 
 # UNDERSTAND THE CONTRACT
 
-1. `gh issue view {{ISSUE_NUMBER}} --json title,body,comments` — the issue
-   body is the Agent Brief; its acceptance criteria are your test plan.
+1. Read the approved Agent Brief injected below; its acceptance criteria are
+   your test plan. Do not use GitHub credentials or fetch issue comments.
 2. `git log {{BASE_BRANCH}}..HEAD --oneline` and `git diff {{BASE_BRANCH}}..HEAD` — what actually
    changed.
+
+# AGENT BRIEF
+
+{{ISSUE_BODY}}
 
 {{VERIFY_BOOT_MD}}
 

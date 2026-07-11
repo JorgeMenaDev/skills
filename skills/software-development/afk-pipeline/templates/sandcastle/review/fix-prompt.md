@@ -16,10 +16,14 @@ intent, or repo conventions.
   for the brief, or not meaningful at this repo's scale — one-line rationale).
 - Fixes must stay surgical and inside the brief's scope. Never widen the diff
   to satisfy style opinions.
-- Re-read the Agent Brief first (`gh issue view {{ISSUE_NUMBER}} --json body`) —
-  a "finding" that contradicts an explicit brief constraint is rejected, the
-  brief wins.
+- Re-read the approved Agent Brief injected below — a finding that contradicts
+  an explicit brief constraint is rejected; the brief wins. Do not use GitHub
+  credentials or fetch issue comments.
 - After any fix, your gate is `{{IMPLEMENT_GATE}}` — make it pass once.
+
+# AGENT BRIEF
+
+{{ISSUE_BODY}}
 
 # RECORD DISPOSITIONS
 

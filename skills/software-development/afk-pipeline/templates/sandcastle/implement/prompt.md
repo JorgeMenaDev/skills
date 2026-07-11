@@ -2,10 +2,13 @@
 
 Implement issue #{{ISSUE_NUMBER}}: {{ISSUE_TITLE}}
 
-You are on branch `{{BRANCH}}`, already created from `{{BASE_BRANCH}}`. Pull in the
-issue with `gh issue view {{ISSUE_NUMBER}} --json title,body,comments`. The
-issue body is the Agent Brief: goal, constraints, and the acceptance criteria
-a separate Verify phase will test end-to-end after you finish.
+You are on branch `{{BRANCH}}`, already created from `{{BASE_BRANCH}}`.
+The approved Agent Brief is injected below; it is the complete contract for this
+run. Do not use GitHub credentials or fetch issue comments.
+
+# AGENT BRIEF
+
+{{ISSUE_BODY}}
 
 # CONTEXT
 

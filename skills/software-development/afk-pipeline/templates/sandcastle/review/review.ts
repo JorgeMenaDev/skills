@@ -80,6 +80,7 @@ const childEnv = { ...process.env };
 // Defense in depth: workflow expressions already pass only the selected
 // provider credential, but never let an inherited host env leak the other
 // vendor's long-lived credential into a tool-enabled review subprocess.
+delete childEnv.CODEX_AUTH_B64;
 delete childEnv.GH_TOKEN;
 delete childEnv.GITHUB_TOKEN;
 delete childEnv.VERCEL_SANDBOX_TOKEN;

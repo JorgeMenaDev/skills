@@ -6,6 +6,7 @@ import { chooseImplementAgent, chooseSandbox, sandboxHooks } from "../runtime";
 
 const ISSUE_NUMBER = required("ISSUE_NUMBER");
 const ISSUE_TITLE = required("ISSUE_TITLE");
+const ISSUE_BODY = required("ISSUE_BODY");
 const BRANCH = required("BRANCH");
 const OUTPUT_DIR = process.env.OUTPUT_DIR ?? "/tmp";
 const TOKEN = process.env.CLAUDE_CODE_OAUTH_TOKEN;
@@ -20,6 +21,7 @@ const result = await sandcastle.run({
   promptArgs: {
     ISSUE_NUMBER,
     ISSUE_TITLE,
+    ISSUE_BODY,
     BRANCH,
   },
 });

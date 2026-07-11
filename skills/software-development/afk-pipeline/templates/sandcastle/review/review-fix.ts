@@ -14,6 +14,7 @@ import * as sandcastle from "@ai-hero/sandcastle";
 import { chooseAgent, chooseSandbox, sandboxHooks } from "../runtime";
 
 const ISSUE_NUMBER = required("ISSUE_NUMBER");
+const ISSUE_BODY = required("ISSUE_BODY");
 const BRANCH = required("BRANCH");
 const OUTPUT_DIR = process.env.OUTPUT_DIR ?? "/tmp";
 const TOKEN = process.env.CLAUDE_CODE_OAUTH_TOKEN;
@@ -36,6 +37,7 @@ await sandcastle.run({
   promptFile: path.join(import.meta.dirname, "fix-prompt.md"),
   promptArgs: {
     ISSUE_NUMBER,
+    ISSUE_BODY,
     BRANCH,
     FINDINGS: findings.slice(0, 20000),
   },

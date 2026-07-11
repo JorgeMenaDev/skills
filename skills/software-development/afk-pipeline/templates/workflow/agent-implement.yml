@@ -54,6 +54,7 @@ jobs:
     env:
       ISSUE_NUMBER: ${{ github.event.issue.number }}
       ISSUE_TITLE: ${{ github.event.issue.title }}
+      ISSUE_BODY: ${{ github.event.issue.body }}
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       GH_REPO: ${{ github.repository }}
       SANDCASTLE_SANDBOX: ${{ github.event.label.name == 'agent:implement-local' && 'docker' || (github.event.label.name == 'agent:implement-sandbox' && 'vercel' || 'none') }}
@@ -100,15 +101,26 @@ jobs:
           gh issue edit "$ISSUE_NUMBER" --remove-label "agent:blocked" || true
           gh issue edit "$ISSUE_NUMBER" --add-label "agent:in-progress"
 
+      - name: Validate deterministic push credential
+        if: steps.preflight.outputs.refused != 'true'
+        env:
+          AGENT_PAT: ${{ secrets.AGENT_PAT }}
+        run: |
+          test -n "$AGENT_PAT" || {
+            echo "AGENT_PAT is required: agents never receive persisted checkout credentials, and deterministic push/PR steps authenticate only after agent execution." >&2
+            exit 1
+          }
+
       - name: Checkout base branch
         if: steps.preflight.outputs.refused != 'true'
         uses: actions/checkout@v4
         with:
           ref: {{BASE_BRANCH}}
           fetch-depth: 0
-          # AGENT_PAT so pushes may touch .github/workflows/ (GITHUB_TOKEN
-          # lacks the workflow scope). Falls back to GITHUB_TOKEN if unset.
-          token: ${{ secrets.AGENT_PAT || secrets.GITHUB_TOKEN }}
+          # Checkout needs read access only. Never persist a write-capable PAT
+          # where a tool-enabled agent can read Git's credential config.
+          token: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: false
 
       - name: Compute branch name
         if: steps.preflight.outputs.refused != 'true'
@@ -215,10 +227,10 @@ jobs:
           node "$(npm root -g)/@anthropic-ai/claude-code/install.cjs"
           claude --version
 
-      - name: Install Codex CLI + materialize auth (hosted lanes needing Codex)
+      - name: Install Codex CLI + implementation auth (hosted lanes needing Codex)
         if: steps.preflight.outputs.refused != 'true' && (steps.flags.outputs.engine == 'codex' || steps.flags.outputs.review_engine == 'codex') && env.SANDCASTLE_SANDBOX != 'docker'
         env:
-          CODEX_AUTH_B64: ${{ github.event.label.name != 'agent:implement-local' && secrets.CODEX_AUTH_B64 || '' }}
+          CODEX_AUTH_B64: ${{ steps.flags.outputs.engine == 'codex' && github.event.label.name != 'agent:implement-local' && secrets.CODEX_AUTH_B64 || '' }}
           ENGINE: ${{ steps.flags.outputs.engine }}
         run: |
           set -euo pipefail
@@ -236,7 +248,7 @@ jobs:
           elif [ "$ENGINE" = "codex" ]; then
             fail "Codex setup failed: CODEX_AUTH_B64 repo secret is missing for this hosted codex lane."
           else
-            echo "CODEX_AUTH_B64 missing; hosted Codex review will skip advisory review instead of failing the run." >&2
+            echo "Codex review auth is deferred until after implementation."
           fi
 
       - name: Install Cursor CLI (cloud cursor lane)
@@ -355,14 +367,33 @@ jobs:
       - name: Run implement phase
         if: steps.preflight.outputs.refused != 'true'
         env:
-          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          CODEX_AUTH_B64: ${{ github.event.label.name != 'agent:implement-local' && secrets.CODEX_AUTH_B64 || '' }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ steps.flags.outputs.engine == 'claude' && secrets.CLAUDE_CODE_OAUTH_TOKEN || '' }}
+          CODEX_AUTH_B64: ${{ steps.flags.outputs.engine == 'codex' && github.event.label.name != 'agent:implement-local' && secrets.CODEX_AUTH_B64 || '' }}
           CURSOR_API_KEY: ${{ steps.flags.outputs.engine == 'cursor' && secrets.CURSOR_API_KEY || '' }}
           CURSOR_MODEL: ${{ vars.CURSOR_MODEL || 'grok-4.5-xhigh' }}
           ENGINE: ${{ steps.flags.outputs.engine }}
           BRANCH: ${{ steps.branch.outputs.name }}
           OUTPUT_DIR: ${{ runner.temp }}
         run: bun .sandcastle/implement/implement.ts
+
+      - name: Materialize hosted Codex review auth
+        if: steps.preflight.outputs.refused != 'true' && steps.flags.outputs.review != 'off' && steps.flags.outputs.review_engine == 'codex' && steps.flags.outputs.engine != 'codex' && env.SANDCASTLE_SANDBOX != 'docker'
+        continue-on-error: true
+        env:
+          CODEX_AUTH_B64: ${{ github.event.label.name != 'agent:implement-local' && secrets.CODEX_AUTH_B64 || '' }}
+        run: |
+          set -euo pipefail
+          if [ -z "$CODEX_AUTH_B64" ]; then
+            echo "CODEX_AUTH_B64 missing; hosted Codex review will skip advisory review." >&2
+            exit 0
+          fi
+          mkdir -p "${RUNNER_TEMP}/codex-home"
+          printf "%s" "$CODEX_AUTH_B64" | base64 -d > "${RUNNER_TEMP}/codex-home/auth.json"
+          chmod 600 "${RUNNER_TEMP}/codex-home/auth.json"
+
+      - name: Remove Codex implementation auth before hosted Claude review
+        if: steps.preflight.outputs.refused != 'true' && steps.flags.outputs.review != 'off' && steps.flags.outputs.engine == 'codex' && steps.flags.outputs.review_engine == 'claude' && env.SANDCASTLE_SANDBOX != 'docker'
+        run: rm -rf "${RUNNER_TEMP}/codex-home"
 
       - name: Second-model review (advisory)
         # Runs the repo's vendored autoreview skill against the branch diff
@@ -383,11 +414,24 @@ jobs:
           # Least privilege: the review subprocess receives only the selected
           # vendor's credential, never both long-lived provider credentials.
           CLAUDE_CODE_OAUTH_TOKEN: ${{ steps.flags.outputs.review_engine == 'claude' && secrets.CLAUDE_CODE_OAUTH_TOKEN || '' }}
-          CODEX_AUTH_B64: ${{ steps.flags.outputs.review_engine == 'codex' && github.event.label.name != 'agent:implement-local' && secrets.CODEX_AUTH_B64 || '' }}
           BRANCH: ${{ steps.branch.outputs.name }}
           OUTPUT_DIR: ${{ runner.temp }}
           REVIEW_ENGINE: ${{ steps.flags.outputs.review_engine }}
         run: bun .sandcastle/review/review.ts
+
+      - name: Remove cross-vendor Codex review auth
+        if: always() && steps.preflight.outputs.refused != 'true' && steps.flags.outputs.review_engine == 'codex' && steps.flags.outputs.engine != 'codex' && env.SANDCASTLE_SANDBOX != 'docker'
+        run: rm -rf "${RUNNER_TEMP}/codex-home"
+
+      - name: Restore Codex implementation auth after hosted Claude review
+        if: always() && steps.preflight.outputs.refused != 'true' && steps.flags.outputs.review != 'off' && steps.flags.outputs.engine == 'codex' && steps.flags.outputs.review_engine == 'claude' && env.SANDCASTLE_SANDBOX != 'docker'
+        env:
+          CODEX_AUTH_B64: ${{ github.event.label.name != 'agent:implement-local' && secrets.CODEX_AUTH_B64 || '' }}
+        run: |
+          test -n "$CODEX_AUTH_B64"
+          mkdir -p "${RUNNER_TEMP}/codex-home"
+          printf "%s" "$CODEX_AUTH_B64" | base64 -d > "${RUNNER_TEMP}/codex-home/auth.json"
+          chmod 600 "${RUNNER_TEMP}/codex-home/auth.json"
 
       - name: Review disposition pass (fix blockers or justify)
         # Only when the reviewer flagged findings: a fresh agent session fixes
@@ -397,8 +441,8 @@ jobs:
         if: steps.preflight.outputs.refused != 'true' && steps.review.outputs.has_findings == 'true'
         continue-on-error: true
         env:
-          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          CODEX_AUTH_B64: ${{ github.event.label.name != 'agent:implement-local' && secrets.CODEX_AUTH_B64 || '' }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ (steps.flags.outputs.engine == 'claude' || steps.flags.outputs.engine == 'cursor') && secrets.CLAUDE_CODE_OAUTH_TOKEN || '' }}
+          CODEX_AUTH_B64: ${{ steps.flags.outputs.engine == 'codex' && github.event.label.name != 'agent:implement-local' && secrets.CODEX_AUTH_B64 || '' }}
           ENGINE: ${{ steps.flags.outputs.engine == 'cursor' && 'claude' || steps.flags.outputs.engine }}
           BRANCH: ${{ steps.branch.outputs.name }}
           OUTPUT_DIR: ${{ runner.temp }}
@@ -432,8 +476,8 @@ jobs:
         # env — never a per-profile prompt file.
         if: steps.preflight.outputs.refused != 'true' && steps.flags.outputs.verify != 'off'
         env:
-          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          CODEX_AUTH_B64: ${{ github.event.label.name != 'agent:implement-local' && secrets.CODEX_AUTH_B64 || '' }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ (steps.flags.outputs.engine == 'claude' || steps.flags.outputs.engine == 'cursor') && secrets.CLAUDE_CODE_OAUTH_TOKEN || '' }}
+          CODEX_AUTH_B64: ${{ steps.flags.outputs.engine == 'codex' && github.event.label.name != 'agent:implement-local' && secrets.CODEX_AUTH_B64 || '' }}
           ENGINE: ${{ steps.flags.outputs.engine == 'cursor' && 'claude' || steps.flags.outputs.engine }}
           BRANCH: ${{ steps.branch.outputs.name }}
           OUTPUT_DIR: ${{ runner.temp }}
@@ -495,17 +539,20 @@ jobs:
         if: steps.preflight.outputs.refused != 'true' && success()
         env:
           BRANCH: ${{ steps.branch.outputs.name }}
-        # Force-push recovers from orphan branches whose PR has since closed —
-        # safe because preflight refuses when an open PR exists for this issue.
-        # All lanes: commits land on the HOST checkout (bind-mount on docker,
-        # sandcastle sync-out on the vercel lane), so this push is host-side.
-        run: git push --force origin "$BRANCH"
+          AGENT_PAT: ${{ secrets.AGENT_PAT }}
+        # Force-push recovers from orphan branches whose PR has since closed.
+        # Authentication is one-shot and never persisted in Git config, so no
+        # earlier tool-enabled phase can read or reuse the write credential.
+        run: |
+          test -n "$AGENT_PAT"
+          auth=$(printf 'x-access-token:%s' "$AGENT_PAT" | base64 | tr -d '\n')
+          git -c http.https://github.com/.extraheader="AUTHORIZATION: basic $auth" push --force origin "$BRANCH"
 
       - name: Write PR title and description
         if: steps.preflight.outputs.refused != 'true' && success()
         env:
-          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          CODEX_AUTH_B64: ${{ github.event.label.name != 'agent:implement-local' && secrets.CODEX_AUTH_B64 || '' }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ (steps.flags.outputs.engine == 'claude' || steps.flags.outputs.engine == 'cursor') && secrets.CLAUDE_CODE_OAUTH_TOKEN || '' }}
+          CODEX_AUTH_B64: ${{ steps.flags.outputs.engine == 'codex' && github.event.label.name != 'agent:implement-local' && secrets.CODEX_AUTH_B64 || '' }}
           ENGINE: ${{ steps.flags.outputs.engine == 'cursor' && 'claude' || steps.flags.outputs.engine }}
           BRANCH: ${{ steps.branch.outputs.name }}
           OUTPUT_DIR: ${{ runner.temp }}
@@ -520,10 +567,8 @@ jobs:
         id: open_pr
         env:
           BRANCH: ${{ steps.branch.outputs.name }}
-          # AGENT_PAT: GITHUB_TOKEN cannot create PRs unless the org-level
-          # "Allow GitHub Actions to create and approve pull requests" is on
-          # (often off at the org level). A user PAT has no such restriction.
-          GH_TOKEN: ${{ secrets.AGENT_PAT || secrets.GITHUB_TOKEN }}
+          # Required one-time credential; never persisted into the checkout.
+          GH_TOKEN: ${{ secrets.AGENT_PAT }}
         run: |
           set -euo pipefail
           PR_TITLE=$(cat "${RUNNER_TEMP}/pr_title.txt")
@@ -601,6 +646,7 @@ jobs:
         continue-on-error: true
         env:
           BRANCH: ${{ steps.branch.outputs.name }}
+          AGENT_PAT: ${{ secrets.AGENT_PAT }}
         # Salvage body lives in .sandcastle/salvage.sh (extracted v2.5.0).
         # Host-side on all lanes. Vercel-lane honesty: sandcastle sync-out runs
         # only AFTER a phase succeeds, so this saves commits from COMPLETED
@@ -707,11 +753,15 @@ jobs:
         with:
           ref: ${{ needs.implement.outputs.branch }}
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Fetch base ref (for the diff range)
-        # The recap diff is computed against the base branch; the single-branch
-        # checkout above doesn't create that remote-tracking ref, so fetch it.
-        run: git fetch --no-tags origin {{BASE_BRANCH}}:refs/remotes/origin/{{BASE_BRANCH}}
+        # One-time read auth; never persist credentials into the agent checkout.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          auth=$(printf 'x-access-token:%s' "$GITHUB_TOKEN" | base64 | tr -d '\n')
+          git -c http.https://github.com/.extraheader="AUTHORIZATION: basic $auth" fetch --no-tags origin {{BASE_BRANCH}}:refs/remotes/origin/{{BASE_BRANCH}}
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2

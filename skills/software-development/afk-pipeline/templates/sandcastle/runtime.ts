@@ -129,8 +129,21 @@ export function chooseSandbox(token?: string) {
       "VERCEL_SANDBOX_TOKEN",
       "PLAN_RECAP_TOKEN",
       "PLAN_RECAP_APP_URL",
+      "CODEX_AUTH_B64",
     ]) {
       delete process.env[key];
+    }
+    if (ENGINE === "codex") {
+      delete process.env.CLAUDE_CODE_OAUTH_TOKEN;
+      delete process.env.CURSOR_API_KEY;
+    } else if (ENGINE === "cursor") {
+      delete process.env.CLAUDE_CODE_OAUTH_TOKEN;
+      delete process.env.CODEX_API_KEY;
+      delete process.env.OPENAI_API_KEY;
+    } else {
+      delete process.env.CURSOR_API_KEY;
+      delete process.env.CODEX_API_KEY;
+      delete process.env.OPENAI_API_KEY;
     }
     return noSandbox();
   }

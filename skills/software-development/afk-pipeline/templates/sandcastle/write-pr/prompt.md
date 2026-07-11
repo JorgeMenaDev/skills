@@ -8,11 +8,12 @@ running tests. You are summarising work that already exists.
 
 # CONTEXT
 
-Read the issue:
+Read the approved Agent Brief injected below. Do not use GitHub credentials or
+fetch issue comments.
 
-```
-gh issue view {{ISSUE_NUMBER}} --json title,body,comments
-```
+# AGENT BRIEF
+
+{{ISSUE_BODY}}
 
 Read what changed on the branch:
 
