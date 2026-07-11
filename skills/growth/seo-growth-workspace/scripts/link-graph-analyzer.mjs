@@ -113,6 +113,12 @@ const validate = (input) => {
   if (input.siteOrigins !== undefined && input.siteOrigins.length > LIMITS.siteOrigins) {
     throw new Error(`siteOrigins[] exceeds the ${LIMITS.siteOrigins}-prefix limit; consolidate prefixes.`);
   }
+  if (input.siteOrigins !== undefined) {
+    for (const [index, value] of input.siteOrigins.entries()) {
+      const prefixUrl = new URL(value);
+      if (prefixUrl.search || prefixUrl.hash) throw new Error(`siteOrigins[${index}] must be an origin or origin-plus-path prefix without query or fragment.`);
+    }
+  }
   const siteOrigins = input.siteOrigins === undefined
     ? [...new Set(pages.map((page) => new URL(page.url).origin))].sort()
     : [...new Set(input.siteOrigins.map((value, index) => normalizeUrl(value, `siteOrigins[${index}]`)))].sort();
@@ -176,8 +182,12 @@ const classify = ({ pages, links, siteOrigins }) => {
     }
     const resolvedPage = byUrl.get(resolvedTarget);
     if (resolvedPage?.canonicalUrl && resolvedPage.canonicalUrl !== resolvedPage.url) {
-      reasons.push("canonicalized target");
-      resolvedTarget = resolvedPage.canonicalUrl;
+      if (resolvedPage.status >= 400) {
+        reasons.push("canonical ignored on terminal-error page");
+      } else {
+        reasons.push("canonicalized target");
+        resolvedTarget = resolvedPage.canonicalUrl;
+      }
     }
     const finalPage = byUrl.get(resolvedTarget);
     const resolvedExternal = !internal(resolvedTarget);
