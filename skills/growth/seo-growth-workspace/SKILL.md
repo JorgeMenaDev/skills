@@ -41,7 +41,7 @@ Create or verify this structure at SITE_WORKSPACE (see Install Modes for where t
   audit.md
   taxonomy.md
   backlinks/
-    asset-rights.md
+    asset-rights.md   # optional: scaffolded on create; existing workspaces add it via create-optional, absence is not drift
     summary.md
     work-log.md
   reports/
