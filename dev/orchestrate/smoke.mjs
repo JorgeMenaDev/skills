@@ -93,6 +93,28 @@ writeFileSync(gatePatch, JSON.stringify({ deferredGates: [{ id: "bogus-gate", de
 const badGate = helper(["update", "--run", join(startDir, "run.json"), "--expected-revision", String(readRun(startDir).revision), "--patch", gatePatch, ...asConductor]);
 check("invalid deferred gate status fails closed", badGate.status !== 0, badGate.stdout);
 
+// gate continuity: no removal, no non-open creation, discharge with evidence works
+writeFileSync(gatePatch, JSON.stringify({ deferredGates: [] }));
+const removeGate = helper(["update", "--run", join(startDir, "run.json"), "--expected-revision", String(readRun(startDir).revision), "--patch", gatePatch, ...asConductor]);
+check("deferred gate removal fails closed", removeGate.status !== 0 && (removeGate.stderr + removeGate.stdout).includes("cannot be removed"), removeGate.stderr);
+writeFileSync(gatePatch, JSON.stringify({ deferredGates: [{ id: "provider-oauth", sliceId: "review", description: "Real provider OAuth proof deferred", status: "open", evidence: [] }, { id: "pre-discharged", description: "x", status: "discharged", evidence: ["e"] }] }));
+const bornDischarged = helper(["update", "--run", join(startDir, "run.json"), "--expected-revision", String(readRun(startDir).revision), "--patch", gatePatch, ...asConductor]);
+check("a new deferred gate must begin open", bornDischarged.status !== 0 && (bornDischarged.stderr + bornDischarged.stdout).includes("must begin open"), bornDischarged.stderr);
+writeFileSync(gatePatch, JSON.stringify({ deferredGates: [{ id: "provider-oauth", sliceId: "review", description: "Real provider OAuth proof deferred", status: "discharged", evidence: ["oauth-smoke.log"] }] }));
+const discharge = helper(["update", "--run", join(startDir, "run.json"), "--expected-revision", String(readRun(startDir).revision), "--patch", gatePatch, ...asConductor]);
+check("an open gate discharges with evidence", discharge.status === 0, discharge.stderr);
+const afterDischarge = helper(["inspect", "--run", join(startDir, "run.json")]);
+check("a discharged gate leaves the open list", afterDischarge.stdout.includes("DEFERRED_GATES_OPEN: []"), afterDischarge.stdout);
+
+// malformed checkpoints field fails closed before any ledger exists
+const badCheckpoints = JSON.parse(readFileSync(exampleSpec, "utf8"));
+badCheckpoints.runId = "bad-checkpoints";
+badCheckpoints.checkpoints = {};
+const badCheckpointsPath = join(root, "bad-checkpoints-spec.json");
+writeFileSync(badCheckpointsPath, JSON.stringify(badCheckpoints, null, 2));
+const badCheckpointsInit = helper(["init", "--dir", join(root, "run-badck"), "--spec", badCheckpointsPath]);
+check("non-array checkpoints fails closed", badCheckpointsInit.status !== 0 && badCheckpointsInit.stderr.includes("checkpoints must be an array"), badCheckpointsInit.stderr);
+
 // adopt: progressed prose state without ledger proof downgrades to UNKNOWN
 const adoptRepo = fixtureRepo("adopt-repo");
 const adoptSpec = JSON.parse(readFileSync(exampleSpec, "utf8"));
@@ -130,6 +152,11 @@ const init = helper(["init", "--dir", initDir, "--spec", pristinePath]);
 check("init still works", init.status === 0, init.stderr);
 const initInspect = helper(["inspect", "--run", join(initDir, "run.json")]);
 check("unreconciled init keeps the write frontier closed", initInspect.stdout.includes("RUN_VALID: yes") && initInspect.stdout.includes("WRITE_FRONTIER: []"), initInspect.stdout);
+
+// a stale locator (run.json gone) is reclaimable; a live one is not
+rmSync(startDir, { recursive: true, force: true });
+const reclaim = helper(["start", "--dir", join(root, "run-start-3"), "--spec", specPath]);
+check("start reclaims a stale active-run locator", reclaim.status === 0 && reclaim.stdout.includes("RECONCILIATION: clean"), reclaim.stderr || reclaim.stdout);
 
 rmSync(root, { recursive: true, force: true });
 process.stdout.write(failures ? `\n${failures} failure(s)\n` : "\nall smoke checks passed\n");

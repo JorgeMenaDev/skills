@@ -278,9 +278,13 @@ const validate = (run, previous = null) => {
   for (const preparation of run.preparations) {
     if (!preparation.sliceId || !ids.has(preparation.sliceId) || !preparation.sourceSha || !Array.isArray(preparation.paths) || typeof preparation.valid !== "boolean") errors.push(`invalid preparation for ${preparation.sliceId || "<empty>"}`);
   }
+  for (const field of ["deferredGates", "checkpoints"]) if (run[field] !== undefined && !Array.isArray(run[field])) errors.push(`${field} must be an array`);
+  for (const checkpoint of Array.isArray(run.checkpoints) ? run.checkpoints : []) {
+    if (!checkpoint?.at || !checkpoint?.conductor) errors.push("checkpoint records require at and conductor");
+  }
   const gateStatuses = new Set(["open", "discharged", "authorized"]);
   const gateIds = new Set();
-  for (const gate of run.deferredGates || []) {
+  for (const gate of Array.isArray(run.deferredGates) ? run.deferredGates : []) {
     if (!gate.id || gateIds.has(gate.id) || !gateStatuses.has(gate.status) || !gate.description) errors.push(`invalid or duplicate deferred gate ${gate.id || "<empty>"}`);
     gateIds.add(gate.id);
     if (gate.sliceId && !ids.has(gate.sliceId)) errors.push(`${gate.id}: unknown slice ${gate.sliceId}`);
@@ -316,6 +320,17 @@ const validate = (run, previous = null) => {
       }
     }
     for (const effect of previous.effects) if (!run.effects.some(({ id }) => id === effect.id) && !["observed", "cancelled"].includes(effect.status)) errors.push(`${effect.id}: unresolved effect cannot be removed`);
+    const previousGates = new Map((Array.isArray(previous.deferredGates) ? previous.deferredGates : []).map((gate) => [gate.id, gate]));
+    const currentGates = new Map((Array.isArray(run.deferredGates) ? run.deferredGates : []).map((gate) => [gate.id, gate]));
+    for (const [id, oldGate] of previousGates) {
+      const gate = currentGates.get(id);
+      if (!gate) {
+        errors.push(`${id}: a deferred gate cannot be removed`);
+        continue;
+      }
+      if (oldGate.status !== gate.status && !(oldGate.status === "open" && ["discharged", "authorized"].includes(gate.status))) errors.push(`${id}: illegal deferred gate transition ${oldGate.status} -> ${gate.status}`);
+    }
+    for (const [id, gate] of currentGates) if (!previousGates.has(id) && gate.status !== "open") errors.push(`${id}: a new deferred gate must begin open`);
   }
   return [...new Set(errors)];
 };
@@ -332,7 +347,7 @@ const derived = (run) => {
   const incompleteCriteria = [...run.parentCriteria, ...run.slices.flatMap(({ criteria }) => criteria || [])].filter((criterion) => !criterionAccounted(criterion));
   const unresolvedEffects = run.effects.filter(({ status }) => !["observed", "cancelled"].includes(status));
   const heldResources = run.resources.filter(({ status }) => !["free", "released"].includes(status));
-  const openDeferredGates = (run.deferredGates || []).filter(({ status }) => status === "open");
+  const openDeferredGates = (Array.isArray(run.deferredGates) ? run.deferredGates : []).filter(({ status }) => status === "open");
   const complete = run.slices.every(({ state }) => state === "TERMINAL") && !incompleteCriteria.length && !unresolvedEffects.length && !heldResources.length && !openDeferredGates.length && reconciliationFresh(run);
   const waves = {};
   const waveOf = (id, stack = new Set()) => {
@@ -393,6 +408,7 @@ const mutate = (path, expectedRevision, conductor, operation, options = {}) => {
     const locator = locatorPath(candidate);
     mkdirSync(dirname(locator), { recursive: true });
     atomicWrite(locator, { runId: candidate.runId, runPath: path, revision: candidate.revision, updatedAt: candidate.updatedAt });
+    if (options.afterWrite) options.afterWrite(candidate);
     return candidate;
   } finally {
     release();
@@ -846,7 +862,17 @@ const initializeRun = (run, path) => {
   atomicWrite(path, run);
   const locator = locatorPath(run);
   mkdirSync(dirname(locator), { recursive: true });
-  atomicWrite(locator, { runId: run.runId, runPath: path, revision: run.revision, updatedAt: run.updatedAt });
+  const record = { runId: run.runId, runPath: path, revision: run.revision, updatedAt: run.updatedAt };
+  try {
+    writeFileSync(locator, serialize(record), { flag: "wx", mode: 0o600 });
+  } catch {
+    const active = existsSync(locator) ? readJson(locator) : null;
+    if (active?.runPath && active.runPath !== path && existsSync(active.runPath)) {
+      rmSync(path, { force: true });
+      fail(`an active run claimed ${run.repo.path} concurrently: ${active.runPath}`);
+    }
+    atomicWrite(locator, record);
+  }
   return locator;
 };
 
@@ -871,6 +897,7 @@ if (command === "start") {
   } catch {
     fail(`target branch not found in ${repoRoot}: ${spec.repo.targetBranch}`);
   }
+  spec.repo.path = repoRoot;
   if (!spec.repo.baseSha || spec.repo.baseSha === "auto") spec.repo.baseSha = liveHead;
   if (!spec.repo.expectedHead || spec.repo.expectedHead === "auto") spec.repo.expectedHead = liveHead;
   const root = resolve(args.dir);
@@ -924,15 +951,7 @@ if (command === "adopt") {
   process.exit(0);
 }
 
-if (command === "checkpoint") {
-  if (args["expected-revision"] === undefined) fail("checkpoint requires --expected-revision");
-  const path = runPath(args);
-  const conductor = caller(args);
-  const observations = args.observations ? readJson(resolve(args.observations)) : null;
-  const run = mutate(path, args["expected-revision"], conductor, (current) => {
-    const reconciled = reconcileOperation(observations)(current);
-    return { ...reconciled, checkpoints: [...(reconciled.checkpoints || []), { at: now(), reason: args.reason || null, conductor: `${conductor.id}@${conductor.epoch}`, revisionBefore: current.revision }] };
-  }, { allowReconciliation: true });
+const renderResume = (run, path, resumePath) => {
   const state = derived(run);
   const hash = digest(run);
   const rows = run.slices.map((slice) => `| ${slice.id} | ${state.waves[slice.id]} | ${slice.lane} | ${slice.state} | ${slice.outcome || "—"} | ${slice.attempt} | ${slice.branch || "—"} | ${slice.baseSha || "—"} | ${slice.reviews?.correctionCount ?? 0} |`).join("\n");
@@ -945,10 +964,23 @@ if (command === "checkpoint") {
   const unresolved = state.unresolvedEffects.map(({ id, type, status, sliceId }) => `- ${id}: ${type} ${status} slice=${sliceId}`).join("\n") || "- None";
   const gates = state.openDeferredGates.map(({ id, description, sliceId }) => `- ${id}: ${description}${sliceId ? ` (slice ${sliceId})` : ""}`).join("\n") || "- None";
   const blockers = run.slices.filter(({ blocker }) => blocker).map(({ id, blocker }) => `- ${id}: ${blocker}`).join("\n") || "- None";
-  const history = (run.checkpoints || []).slice(-5).map(({ at, conductor: by, reason }) => `- ${at} by ${by}${reason ? `: ${reason}` : ""}`).join("\n");
+  const history = (Array.isArray(run.checkpoints) ? run.checkpoints : []).slice(-5).map(({ at, conductor: by, reason }) => `- ${at} by ${by}${reason ? `: ${reason}` : ""}`).join("\n");
   const content = `# Resume: ${run.title}\n\nGenerated from \`run.json\` at checkpoint. Do not edit; regenerate with \`checkpoint\`.\n\n- Run: \`${run.runId}\` at \`${path}\`\n- Revision: ${run.revision}\n- SHA-256: \`${hash}\`\n- Owner: \`${run.conductor.id}@${run.conductor.epoch}\`\n- Repo: \`${run.repo.path}\` target \`${run.repo.targetBranch}\` expected head \`${run.repo.expectedHead}\`\n- Reconciliation: \`${run.reconciliation.status}\`${run.reconciliation.notes.length ? `\n${run.reconciliation.notes.map((note) => `  - ${note}`).join("\n")}` : ""}\n\n## Frontiers\n\n- Write: ${JSON.stringify(state.write)}\n- Preparation: ${JSON.stringify(state.preparation)}\n- Acceptance: ${JSON.stringify(state.ready)}\n- Integration: ${JSON.stringify(state.integration)}\n\n| Slice | Wave | Lane | State | Outcome | Attempt | Branch | Base | Corrections |\n|---|---:|---|---|---|---:|---|---|---:|\n${rows}\n\n## Active attempts\n\n${active}\n\n## Held resources\n\n${held}\n\n## Unresolved effects\n\n${unresolved}\n\n## Open deferred gates\n\n${gates}\n\n## Blockers\n\n${blockers}\n\n## Checkpoint history\n\n${history}\n\n## Next safe act\n\n1. A new conductor runs \`takeover\` first; the same conductor continues with its recorded id/epoch.\n2. \`reconcile\` against live state; a stale checkpoint is never dispatch authority.\n3. \`inspect\` and dispatch only from the emitted write frontier.\n4. Rule on every UNKNOWN slice and unresolved effect before new external intent.\n`;
-  const resumePath = join(dirname(path), "RESUME.md");
   writeDoc(resumePath, content);
+  return state;
+};
+
+if (command === "checkpoint") {
+  if (args["expected-revision"] === undefined) fail("checkpoint requires --expected-revision");
+  const path = runPath(args);
+  const conductor = caller(args);
+  const observations = args.observations ? readJson(resolve(args.observations)) : null;
+  const resumePath = join(dirname(path), "RESUME.md");
+  const run = mutate(path, args["expected-revision"], conductor, (current) => {
+    const reconciled = reconcileOperation(observations)(current);
+    return { ...reconciled, checkpoints: [...(Array.isArray(reconciled.checkpoints) ? reconciled.checkpoints : []), { at: now(), reason: args.reason || null, conductor: `${conductor.id}@${conductor.epoch}`, revisionBefore: current.revision }] };
+  }, { allowReconciliation: true, afterWrite: (candidate) => renderResume(candidate, path, resumePath) });
+  const state = derived(run);
   process.stdout.write(`CHECKPOINT: ${resumePath}\nRECONCILIATION: ${run.reconciliation.status}\nREVISION: ${run.revision}\nWRITE_FRONTIER: ${JSON.stringify(state.write)}\n`);
   process.exit(0);
 }
