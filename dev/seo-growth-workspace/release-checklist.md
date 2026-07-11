@@ -93,6 +93,16 @@ Inspect at least these six profiles before release; each row gets its own PASS/F
 | Local-business fixture | Synthetic local-business scenario routes through `local-seo` without requiring a real GBP login |
 | E-commerce fixture | Synthetic e-commerce scenario routes through the classifier to `references/ecommerce-seo.md`; fixture-validated only — not yet exercised against a live operation |
 
+### Fixture-only paths pending Jorge sign-off (rendered into the v4 release log at slice 7)
+
+Accumulating list — each specialist path shipped without a nameable live operation, per the programme's dogfood default. Jorge signs this list in the release log; fixture-only paths are excluded from the v4 "dogfooded" completion claim and are the first defer candidates if v4 slips.
+
+- Community-source pages (`references/community-source-pages.md`) — whole path.
+- Affiliate/promo integrity (`references/affiliate-promo-integrity.md`) — whole path.
+- E-commerce decisions (`references/ecommerce-seo.md`) — whole path.
+- Image rights (`references/image-rights.md`) — the live distribution/outreach play only; the asset-rights master, green-evidence gate, same-funnel routing, current-check stop gate, and enforcement-escalation boundary are structural and unconditional.
+- Platform-license table (#43): excluded under its ratified reverification condition — current official terms could not be reverified at implementation time; a per-asset/run current official-source check ships instead. Shipping it requires release-time reverification and then only as a dated routing aid.
+
 ### Enumerated v4 scenario gates (blocking — cannot be waived)
 
 These gates are executed at the slice-7 release. Record each numbered gate as PASS or FAIL with the evidence path in the canonical gate-results artifact; WAIVED is not permitted.

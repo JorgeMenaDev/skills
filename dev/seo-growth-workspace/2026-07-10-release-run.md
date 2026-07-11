@@ -142,11 +142,3 @@ The independent replay passed all four and exposed one additional path-traversal
 Official autoreview then closed two final plan/identity edges. Plans now hash the realpath-deduplicated shallow registry catalog, so adding or removing a discoverable canonical or legacy registry invalidates the plan before source verification. Canonical stale routes remain public findings, but only a route matching the selected normalized identity is unresolved/blocking; unrelated stale routes no longer freeze otherwise safe work.
 
 Re-run evidence: two validators passed concurrently; command inventory remained 3 executable / 76 illustrative / 0 malformed with 3/3 foreign-CWD passes; evaluator passed 100/100 with zero findings; clean export remained 46 files and its exported copy passed the validator.
-
----
-
-## v4 slice 5 — rights-gated authority plays
-
-Fixture-only sign-off item for Jorge: the live image-distribution/outreach play in `references/image-rights.md` has not been exercised against a nameable live operation and is excluded from the v4 dogfooded completion claim. The asset-rights master, green-evidence gate, same-funnel routing, current-check stop gate, and enforcement-escalation boundary are structural and remain unconditional.
-
-The platform-license table is excluded under the ratified reverification condition: this offline slice could not reverify current official terms at release time. The generic rights contract ships with a per-asset/run current official-source check that stops use or contact when absent.
