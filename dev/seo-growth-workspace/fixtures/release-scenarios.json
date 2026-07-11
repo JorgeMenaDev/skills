@@ -41,6 +41,15 @@
       "signals": ["GBP", "NAP consistency", "reviews", "service areas", "citations"],
       "expectedModes": ["bootstrap", "local-seo"],
       "expectedPhases": ["classification", "technical", "metadata", "local", "authority", "reporting"]
+    },
+    {
+      "id": "synthetic-ecommerce",
+      "siteType": "ecommerce",
+      "signals": ["collection pages", "product variants", "inventory and merchant data", "no live store access"],
+      "expectedModes": ["bootstrap", "technical-seo-fix", "content-ops"],
+      "expectedPhases": ["classification", "technical", "schema", "measurement", "content", "reporting"],
+      "expectedReference": "references/ecommerce-seo.md",
+      "dogfoodStatus": "fixture-validated only — not yet exercised against a live operation"
     }
   ]
 }

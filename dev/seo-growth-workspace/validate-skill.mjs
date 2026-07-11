@@ -77,6 +77,7 @@ const requiredFiles = [
   "references/page-evidence.md",
   "references/community-source-pages.md",
   "references/affiliate-promo-integrity.md",
+  "references/ecommerce-seo.md",
   "references/monthly-reporting.md",
   "references/ai-search-visibility.md",
   "references/data-tools.md",
@@ -102,6 +103,10 @@ const requiredFiles = [
   "scripts/gsc-opportunities.mjs",
   "scripts/monthly-report.mjs",
   "scripts/portfolio-status.mjs",
+];
+
+const requiredDevFiles = [
+  "fixtures/release-scenarios.json",
 ];
 
 const failures = [];
@@ -241,6 +246,9 @@ function plannedBootstrap(root, { domain = "example.com", action = "create", hub
 section("file inventory", () => {
   for (const file of requiredFiles) {
     check(existsSync(path.join(skillRoot, file)), `Missing ${file}`);
+  }
+  for (const file of requiredDevFiles) {
+    check(existsSync(path.join(scriptDir, file)), `Missing dev/seo-growth-workspace/${file}`);
   }
   check(existsSync(path.join(scriptDir, "criterion-matrix.md")), "Missing dev/seo-growth-workspace/criterion-matrix.md");
 });
@@ -400,6 +408,26 @@ section("slice 3 affiliate and promo integrity contract", () => {
   check(reference.includes("fixture-validated only — not yet exercised against a live operation"), "Affiliate specialist path must carry the fixture-only dogfood caveat");
   check(router.includes("Affiliate/referral offers, coupons, promo codes, and commission lifecycle: `references/affiliate-promo-integrity.md`"), "SKILL.md must progressively route affiliate and promo integrity");
   check(businessContext.includes("affiliate/referral relationships to `references/affiliate-promo-integrity.md`"), "Business-context journey routing must name affiliate-promo integrity");
+});
+
+section("slice 4 e-commerce decision contract", () => {
+  const reference = readFileSync(path.join(skillRoot, "references/ecommerce-seo.md"), "utf-8");
+  const router = readFileSync(path.join(skillRoot, "SKILL.md"), "utf-8");
+  const classifier = readFileSync(path.join(skillRoot, "references/phase-architecture.md"), "utf-8");
+  const fixturePath = path.join(scriptDir, "fixtures/release-scenarios.json");
+  const fixture = JSON.parse(readFileSync(fixturePath, "utf-8"));
+  const ecommerceProfile = fixture.profiles?.find(({ id }) => id === "synthetic-ecommerce");
+
+  check(reference.includes("## Commerce decision contract"), "E-commerce reference must define its commerce decision contract");
+  check(reference.includes("Unknown margin stays `Unknown`") && reference.includes("never estimate it or substitute points to force a ranking"), "Unknown commerce value must stay Unknown and never be estimated to force ranking");
+  check(reference.includes("A mixed SERP triggers investigation, never automatic URL creation"), "Mixed commerce SERPs must trigger investigation rather than URL creation");
+  check(["`keep`", "`redirect`", "`410`", "`replace`"].every((decision) => reference.includes(decision)) && reference.includes("never apply a blanket rule"), "Discontinued inventory must use the complete evidence-dependent lifecycle decision set");
+  check(reference.includes("product feed, structured data, and rendered landing page must agree") && reference.includes("Any disagreement is a blocker"), "Feed, schema, and rendered landing-page truth must agree or block release");
+  check(reference.includes("no Merchant Center adapters") && reference.includes("no provider integrations"), "Commerce contract must exclude Merchant Center adapters and provider integrations");
+  check(reference.includes("fixture-validated only — not yet exercised against a live operation"), "Commerce specialist path must carry the fixture-only dogfood caveat");
+  check(classifier.includes("Ecommerce / marketplace") && classifier.includes("load `references/ecommerce-seo.md` for commerce decisions"), "Site-type classifier must route e-commerce targets to the commerce reference");
+  check(router.includes("E-commerce and marketplace prioritization, page-type, collection, facet/variant/inventory, and commerce-truth decisions: `references/ecommerce-seo.md`"), "SKILL.md must progressively route e-commerce decisions");
+  check(ecommerceProfile?.siteType === "ecommerce" && ecommerceProfile?.expectedReference === "references/ecommerce-seo.md" && ecommerceProfile?.dogfoodStatus === "fixture-validated only — not yet exercised against a live operation", "Release fixtures must include a synthetic e-commerce classifier route and fixture-only caveat");
 });
 
 section("slice 2 GBP evidence contracts", () => {

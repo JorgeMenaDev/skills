@@ -15,7 +15,7 @@ Classify the target before planning work. Mark uncertainty plainly.
 | Local business | GBP, NAP, reviews, service areas, local competitors | `bootstrap`, `local-seo` |
 | Local or regulated service | Trust proof, legal/compliance constraints, service pages, local intent | `bootstrap`, `local-seo`, `content-ops` |
 | Publisher / blog | Article routes, editorial calendar, author/date/category pages | `content-ops`, `monthly-report` |
-| Ecommerce / marketplace | Categories, product pages, variants, merchant data | `bootstrap`, `technical-seo-fix`, `content-ops` |
+| Ecommerce / marketplace | Categories, product pages, variants, merchant data | `bootstrap`, `technical-seo-fix`, `content-ops`; load `references/ecommerce-seo.md` for commerce decisions |
 | Programmatic site | Data-driven page types, templates, index/noindex states | `pseo-planning`, `technical-seo-fix` |
 | Utility/tool library | Public calculators, converters, checkers, generators, templates, curated examples, tools hub | `content-ops`, `pseo-planning`, `technical-seo-fix` |
 | Multilingual / multi-region | Locale routes, hreflang, regional canonicals | `bootstrap`, `technical-seo-fix`, `content-ops` |
