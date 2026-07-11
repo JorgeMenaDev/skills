@@ -454,20 +454,6 @@ jobs:
         run: |
           [ -f "${RUNNER_TEMP}/review-summary.md" ] && gh issue comment "$ISSUE_NUMBER" --body-file "${RUNNER_TEMP}/review-summary.md" || true
 
-      - name: Convex integrity gate (real codegen + anonymous schema validation)
-        # Regenerates Convex _generated with REAL codegen against a keyless
-        # anonymous local backend (CONVEX_AGENT_MODE=anonymous) and fails the
-        # RUN when committed files diverge or the schema/functions don't push
-        # cleanly — hand-applied codegen (acredix PR #72 incident, 2026-07-05)
-        # cannot reach the merge. Runs after the review disposition pass so
-        # every code-committing phase is covered, and before verify/push so a
-        # corrupted branch never ships. Repos without Convex leave convexDir
-        # empty in .sandcastle/config and this step self-skips instantly.
-        if: steps.preflight.outputs.refused != 'true'
-        env:
-          OUTPUT_DIR: ${{ runner.temp }}
-        run: bun .sandcastle/implement/convex-gate.ts
-
       - name: Run verify phase (e2e, agent-browser)
         # Verify Profile from the parsed flags: `off` skips this step entirely
         # (no QA Evidence — the degrade mode is picked up by write-pr and the
@@ -491,6 +477,19 @@ jobs:
           # a failed run on andesphere #26). The generator keeps both in sync.
 {{VERIFY_SECRETS_ENV}}
         run: bun .sandcastle/verify/verify.ts
+
+      - name: Convex integrity gate (real codegen + anonymous schema validation)
+        # Regenerates Convex _generated with REAL codegen against a keyless
+        # anonymous local backend (CONVEX_AGENT_MODE=anonymous) and fails the
+        # RUN when committed files diverge or the schema/functions don't push
+        # cleanly — hand-applied codegen (acredix PR #72 incident, 2026-07-05)
+        # cannot reach the merge. Runs after Verify so implementation, review-disposition, and any small
+        # verification fixes are all covered before the branch can push. Repos without Convex leave convexDir
+        # empty in .sandcastle/config and this step self-skips instantly.
+        if: steps.preflight.outputs.refused != 'true'
+        env:
+          OUTPUT_DIR: ${{ runner.temp }}
+        run: bun .sandcastle/implement/convex-gate.ts
 
       - name: Upload recorded verification artifact
         if: always() && steps.preflight.outputs.refused != 'true' && steps.flags.outputs.recording == 'on'
