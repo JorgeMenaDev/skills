@@ -107,14 +107,15 @@ const decode = (value) => value
   .replace(/&#(x[\da-f]+|\d+);/gi, (_, code) => String.fromCodePoint(code[0].toLowerCase() === "x" ? Number.parseInt(code.slice(1), 16) : Number(code)))
   .replace(/&(?:nbsp|amp|lt|gt|quot|apos);/gi, (entity) => ({ "&nbsp;": " ", "&amp;": "&", "&lt;": "<", "&gt;": ">", "&quot;": '"', "&apos;": "'" })[entity.toLowerCase()]);
 const attrs = (source) => Object.fromEntries([...source.matchAll(/([^\s=/>]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?/g)].map((match) => [match[1].toLowerCase(), decode(match[2] ?? match[3] ?? match[4] ?? "")]));
-const visibleText = (html) => decode(html.replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, " ").replace(/<style\b[^>]*>[\s\S]*?<\/style\s*>/gi, " ").replace(/<[^>]*>/g, " ")).replace(/\s+/g, " ").trim();
+const visibleText = (html) => decode(html.replace(/<script\b(?:"[^"]*"|\x27[^\x27]*\x27|[^"\x27>])*>[\s\S]*?<\/script\s*>/gi, " ").replace(/<style\b(?:"[^"]*"|\x27[^\x27]*\x27|[^"\x27>])*>[\s\S]*?<\/style\s*>/gi, " ").replace(/<(?:"[^"]*"|\x27[^\x27]*\x27|[^"\x27>])*>/g, " ")).replace(/\s+/g, " ").trim();
 
 const parseHtml = (html, source) => {
-  const tokens = [...html.matchAll(/<!--[\s\S]*?-->|<![^>]*>|<\/?[a-zA-Z][^>]*>/g)];
+  const tokens = [...html.matchAll(/<!--[\s\S]*?-->|<!(?:"[^"]*"|\x27[^\x27]*\x27|[^"\x27>])*>|<\/?[a-zA-Z](?:"[^"]*"|\x27[^\x27]*\x27|[^"\x27>])*>/g)];
   const stack = [];
   const links = [];
   let canonicalUrl;
   let indexable = true;
+  let documentBase = null;
   for (let index = 0; index < tokens.length; index += 1) {
     const raw = tokens[index][0];
     const closing = /^<\//.test(raw);
@@ -138,14 +139,17 @@ const parseHtml = (html, source) => {
       continue;
     }
     const attributes = attrs(raw.slice(raw.indexOf(name) + name.length, -1));
+    if (name === "base" && attributes.href && documentBase === null) {
+      try { documentBase = new URL(attributes.href, source).toString(); } catch { documentBase = null; }
+    }
     if (name === "meta" && (attributes.name ?? "").toLowerCase() === "robots" && /(?:^|,)\s*noindex\b/i.test(attributes.content ?? "")) indexable = false;
-    if (name === "link" && (attributes.rel ?? "").toLowerCase().split(/\s+/).includes("canonical") && attributes.href) canonicalUrl = normalizeUrl(new URL(attributes.href, source));
+    if (name === "link" && (attributes.rel ?? "").toLowerCase().split(/\s+/).includes("canonical") && attributes.href) canonicalUrl = normalizeUrl(new URL(attributes.href, documentBase ?? source));
     if (name === "a" && attributes.href) {
       const href = attributes.href.trim();
       if (href && !href.startsWith("#") && !/^(?:mailto|tel|javascript):/i.test(href)) {
         let target;
         try {
-          target = normalizeUrl(new URL(href, source));
+          target = normalizeUrl(new URL(href, documentBase ?? source));
         } catch {
           target = null;
         }
@@ -197,9 +201,12 @@ const main = async () => {
 
   const missingHtml = manifested.filter(({ file }) => !scannedSet.has(file)).map(({ route }) => route);
   const pagePatterns = [...new Set(Object.entries(appRoutes ?? {}).filter(([key]) => key.endsWith("/page")).map(([, route]) => route).filter((route) => route !== "/_not-found"))].sort(byCodePoint);
+  const dynamicInfo = prerender?.dynamicRoutes ?? {};
+  const fullyCoveredPattern = (src) => !(src in dynamicInfo) || dynamicInfo[src]?.fallback === false;
   const capturedPatterns = new Set(discovered.flatMap(({ route }) => {
     const manifestRoute = prerender?.routes?.[route];
-    return [route, manifestRoute?.srcRoute].filter(Boolean);
+    const src = manifestRoute?.srcRoute;
+    return [route, ...(src && fullyCoveredPattern(src) ? [src] : [])].filter(Boolean);
   }));
   const missingRoutes = pagePatterns.filter((route) => !capturedPatterns.has(route));
   const pages = [];
