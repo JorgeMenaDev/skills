@@ -27,17 +27,39 @@ Check the bundled command without depending on the current directory:
 
 ```bash
 node "${SKILL_DIR}/scripts/link-graph-analyzer.mjs" --help
+node "${SKILL_DIR}/scripts/rendered-link-export.mjs" --help
 ```
 
 For a real approved export, run `node "${SKILL_DIR}/scripts/link-graph-analyzer.mjs" --input <pages-links.json> > <report.md>`. Supply `--stamp <value>` only when the caller needs an explicit evidence label; the script never creates a date or timestamp.
 
+### Next.js rendered-output exporter
+
+Use the bundled exporter when the approved source is a completed **Next.js App Router** `.next` build. It reads prerender manifests and rendered `server/app/**/*.html`, then emits the analyzer contract without crawling or fetching the site:
+
+```bash
+node "${SKILL_DIR}/scripts/rendered-link-export.mjs" --build-dir <path-to-.next> --origin https://example.com --output <pages-links.json> --stamp <caller-supplied-date>
+```
+
+Omit `--output` to write JSON to stdout and omit `--stamp` when no caller-supplied export date belongs in provenance. The exporter records each discovered rendered route as a status-200 page, reads robots indexability and canonical markup from that HTML, and preserves every rendered anchor with its resolved target, collapsed visible text, nearest landmark placement, and `rel` tokens. Money-page flags are deliberately `false`; the operator marks them after export rather than asking the exporter to infer commercial intent.
+
+Coverage is complete only when every manifest page route has prerendered HTML. Dynamic or server-rendered page routes without HTML, and declared prerender routes whose files cannot be parsed, are counted and named in `coverage.note`. When `coverage.complete` is `false`, the analyzer reports **insufficient input coverage** instead of orphan or near-orphan findings; other supplied observations remain usable with that limitation. The exporter never invents instances for a dynamic route.
+
+This exporter is deliberately bounded to Next.js App Router rendered build output. Other frameworks and source-only Next.js projects need a separately reviewed exporter. It is dependency-free and offline, reads only the declared build directory, refuses symlinks, writes only stdout or `--output`, and stops above 50,000 HTML files or 5 MB per HTML file.
+
 ### Input contract
 
-The top-level JSON object has exactly two record kinds plus coverage:
+The top-level JSON object has exactly two record kinds plus coverage and may include exporter provenance:
 
 ```json
 {
   "coverage": { "complete": true, "note": "All rendered public routes." },
+  "provenance": {
+    "buildDir": "/approved/site/.next",
+    "framework": "next-app-router",
+    "exportDate": "caller-supplied-date",
+    "fileCount": 1,
+    "routeCount": 1
+  },
   "siteOrigins": ["https://example.com/"],
   "pages": [
     {
@@ -63,6 +85,8 @@ The top-level JSON object has exactly two record kinds plus coverage:
 ```
 
 All page fields shown are required except `finalUrl` (required for 3xx records, whose redirect destination it declares) and `canonicalUrl`, whose omission unambiguously asserts the page is self-canonical — a producer that cannot determine canonical state must supply the observed canonical URL or exclude the record rather than omit silently. All link fields are required; `rel` is an array of tokens. Records are supplied facts only. `moneyPage` and `entryPoint` must be declared booleans: the analyzer never infers commercial importance or entry points. Every `links[]` record remains a separate edge, so duplicate source/target pairs with different or repeated anchors and placements are preserved.
+
+`provenance` is an optional producer-owned object that the analyzer ignores for graph calculations. The Next.js exporter records the absolute build directory, framework boundary, caller-supplied `exportDate` when `--stamp` is present, processed HTML file count, and the total represented-plus-missing page-route count. The analyzer accepts this top-level metadata without requiring it.
 
 `siteOrigins[]` is optional (maximum 200 prefixes) and declares the normalized HTTP(S) origin or origin-plus-path prefixes that define internal scope. Prefixes match only on the same origin and at a path boundary. When omitted, the analyzer derives internal scope from the distinct origins in `pages[]`. Scope applies to BOTH edge endpoints and to resolution: an edge whose source, supplied target, or redirect/canonical-resolved target falls outside internal scope is `external` — it remains counted in the edge and anchor inventories, is never called broken, and never enters the internal graph, so out-of-scope records cannot alter click depth, inbound support, orphan findings, or heuristic authority. An internal target absent from `pages[]`, or an internal resolved target whose record carries a terminal error status (4xx/5xx), is a broken-target finding.
 

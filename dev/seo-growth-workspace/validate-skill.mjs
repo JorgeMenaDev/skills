@@ -103,6 +103,7 @@ const requiredFiles = [
   "scripts/gsc-fetch.mjs",
   "scripts/gsc-opportunities.mjs",
   "scripts/link-graph-analyzer.mjs",
+  "scripts/rendered-link-export.mjs",
   "scripts/monthly-report.mjs",
   "scripts/portfolio-status.mjs",
 ];
@@ -1236,7 +1237,59 @@ section("eight-row legacy / six-row hub rehearsal", () => {
   }
 });
 
-// --- gsc-opportunities.mjs: report format + golden file ---
+section("Next App Router rendered-link exporter", () => {
+  const root = fixtureTmp("seo-rendered-export-");
+  const buildDir = path.join(root, ".next");
+  const appDir = path.join(buildDir, "server", "app");
+  const outputPath = path.join(root, "export.json");
+  const oversizedPath = path.join(root, "oversized.json");
+  const exporter = path.join(skillRoot, "scripts/rendered-link-export.mjs");
+  try {
+    mkdirSync(path.join(appDir, "nested"), { recursive: true });
+    writeFileSync(path.join(buildDir, "prerender-manifest.json"), JSON.stringify({
+      routes: { "/": { srcRoute: "/" }, "/nested/page": { srcRoute: "/nested/page" } },
+      dynamicRoutes: {},
+    }));
+    writeFileSync(path.join(buildDir, "app-path-routes-manifest.json"), JSON.stringify({
+      "/page": "/",
+      "/nested/page/page": "/nested/page",
+      "/account/[id]/page": "/account/[id]",
+    }));
+    writeFileSync(path.join(appDir, "index.html"), '<html><head><link rel="canonical" href="/"></head><body><nav><a rel="nofollow sponsored" href="/nested/page"><strong> Nested </strong> page</a><a href="#skip">Fragment</a><a href="mailto:a@example.test">Mail</a></nav></body></html>');
+    writeFileSync(path.join(appDir, "nested", "page.html"), '<html><head><meta content="noindex, follow" name="robots"></head><body><main><a href="../">Home</a></main></body></html>');
+
+    const help = spawnCapture(process.execPath, [exporter, "--help"]);
+    check(help.status === 0 && help.stdout.includes("Next.js App Router"), "Exporter --help must exit 0 and state its framework boundary");
+    const args = [exporter, "--build-dir", buildDir, "--origin", "https://example.test", "--stamp", "fixture-date"];
+    const first = spawnCapture(process.execPath, args);
+    const second = spawnCapture(process.execPath, args);
+    check(first.status === 0 && first.stdout === second.stdout, "Exporter output must be byte-identical for identical build input and arguments");
+    const json = JSON.parse(first.stdout);
+    check(json.coverage?.complete === false && /1 dynamic\/server-rendered routes missing prerendered HTML: \/account\/\[id\]/.test(json.coverage?.note), "Exporter must count and name manifest page routes missing prerendered HTML");
+    check(json.provenance?.framework === "next-app-router" && json.provenance?.exportDate === "fixture-date" && json.provenance?.fileCount === 2 && json.provenance?.routeCount === 3, "Exporter must record deterministic framework, stamp, file, and route provenance");
+    check(json.pages.find((page) => page.url === "https://example.test/nested/page")?.indexable === false, "Exporter must set indexable false from a rendered noindex robots meta tag");
+    check(json.links.some((link) => link.target === "https://example.test/nested/page" && link.anchor === "Nested page" && link.placement === "nav" && link.rel.join(" ") === "nofollow sponsored"), "Exporter must extract nested anchor text, root-relative targets, landmark placement, and rel tokens");
+    check(json.links.some((link) => link.source === "https://example.test/nested/page" && link.target === "https://example.test/" && link.placement === "main"), "Exporter must resolve relative hrefs against the source route");
+    check(json.links.length === 2, "Exporter must skip fragment-only and mailto links");
+
+    const analyzerInput = { ...json, coverage: { complete: true, note: "Synthetic complete override for contract acceptance." } };
+    writeFileSync(outputPath, JSON.stringify(analyzerInput));
+    const accepted = spawnCapture(process.execPath, [path.join(skillRoot, "scripts/link-graph-analyzer.mjs"), "--input", outputPath]);
+    check(accepted.status === 0, "Analyzer must accept exporter provenance and the emitted pages[]/links[] contract");
+
+    writeFileSync(path.join(appDir, "nested", "page.html"), "x".repeat(5_000_001));
+    const oversized = spawnCapture(process.execPath, [exporter, "--build-dir", buildDir, "--origin", "https://example.test", "--output", oversizedPath]);
+    check(oversized.status !== 0 && oversized.stderr.includes("5000001 bytes") && oversized.stderr.includes("5000000-byte limit"), "Exporter must refuse an HTML file over 5 MB with an actionable bound");
+
+    const source = readFileSync(exporter, "utf8");
+    check(!/\bfetch\s*\(|node:child_process|from\s+["'](?!node:)/.test(source), "Exporter source must contain no fetch, child process, or external dependencies");
+    check(source.includes("files: 50_000") && source.includes("fileBytes: 5_000_000"), "Exporter source must retain both declared traversal bounds");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+// --- link-graph-analyzer.mjs: contract + deterministic report ---
 section("offline link-graph analyzer", () => {
   const root = fixtureTmp("seo-link-graph-");
   const inputPath = path.join(root, "graph.json");
