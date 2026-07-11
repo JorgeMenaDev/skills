@@ -10,7 +10,7 @@ No image distribution and no rights-based outreach/contact may start unless the 
 
 Classify the assessed use as one of: `voluntary credit`, `license-required attribution`, `missing required attribution`, `unauthorized use`, `permitted use without attribution`, or `uncertain ownership/license`. Permitted unattributed use generates no demand. Voluntary credit is optional and may point only to a destination the current terms permit.
 
-Per-platform license terms are volatile and must be checked against a current official source for each asset/run at use time. **Current-check stop gate:** record that check and its source in the asset evidence before distribution, classification, or contact; without it, stop. This reference deliberately contains no frozen platform-license table because release-time reverification was unavailable offline.
+Per-platform license terms are volatile. When an asset's rights derive from a platform or third-party license (stock, CC, platform-hosted, licensed commission), check the current official terms source for each asset/run at use time. **Current-check stop gate:** record that check and its source in the asset evidence before distribution, classification, or contact; without it, stop. For a wholly original, directly owned asset with no platform or third-party license, no platform-terms source exists — record the basis as ownership evidence plus `not applicable (directly owned, no platform license)`, which satisfies the gate. This reference deliberately contains no frozen platform-license table because release-time reverification was unavailable offline.
 
 ## Rights-safe distribution and reclamation
 
