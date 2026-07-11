@@ -3,6 +3,7 @@
 import { readFile, stat } from "node:fs/promises";
 
 const LIMITS = { inputBytes: 5_000_000, pages: 50_000, links: 500_000, siteOrigins: 200 };
+const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 const DAMPING = 0.85;
 const ITERATIONS = 20;
 
@@ -89,7 +90,7 @@ const validate = (input) => {
     if (!page || Array.isArray(page) || typeof page !== "object") throw new Error(`pages[${index}] must be an object.`);
     const status = Number(page.status);
     if (!Number.isInteger(status) || status < 100 || status > 599) throw new Error(`pages[${index}].status must be an HTTP status integer.`);
-    if (status >= 300 && status < 400 && (page.finalUrl === undefined || page.finalUrl === null)) {
+    if (REDIRECT_STATUSES.has(status) && (page.finalUrl === undefined || page.finalUrl === null)) {
       throw new Error(`pages[${index}].finalUrl is required for a ${status} redirect record.`);
     }
     return {
@@ -176,7 +177,7 @@ const classify = ({ pages, links, siteOrigins }) => {
     if (external) reasons.push("external");
     else if (!externalSource && !suppliedTarget) reasons.push("broken target: internal target absent from pages[]");
     if (selfLink) reasons.push("self-link");
-    if (suppliedTarget?.status >= 300 && suppliedTarget.status < 400) {
+    if (suppliedTarget && REDIRECT_STATUSES.has(suppliedTarget.status)) {
       reasons.push(`redirected target (${suppliedTarget.status})`);
       if (suppliedTarget.finalUrl) resolvedTarget = suppliedTarget.finalUrl;
     }
