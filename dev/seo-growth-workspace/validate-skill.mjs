@@ -1550,13 +1550,24 @@ section("portfolio status hub layout", () => {
 section("release evaluator blocking gates rehearsal", () => {
   const evaluator = path.join(scriptDir, "evaluate-release.mjs");
   const rehearsalDir = fixtureTmp("seo-evaluator-gates-");
+  // Same extraction the evaluator performs over this file: synthetic reports must
+  // attest the full canonical section inventory or the evaluator rejects them.
+  const sectionInventory = [
+    ...readFileSync(fileURLToPath(import.meta.url), "utf-8").matchAll(/^section\(\s*"([^"]+)"/gm),
+  ].map((match) => match[1]);
+  const inventorySections = (overrides = {}) =>
+    sectionInventory.map((name) => ({
+      name,
+      result: overrides[name] ?? "PASS",
+      failures: overrides[name] ? ["rehearsed failure"] : [],
+    }));
   const baseReport = {
     reportVersion: 1,
     skill: "seo-growth-workspace",
     generatedAt: new Date().toISOString(),
     sourceDigest: treeDigest(skillRoot),
     pass: true,
-    sections: [{ name: "rehearsal", result: "PASS", failures: [] }],
+    sections: inventorySections(),
     commandInventory: {
       command: "node dev/seo-growth-workspace/command-inventory.mjs --verify",
       exit: 0,
@@ -1584,7 +1595,7 @@ section("release evaluator blocking gates rehearsal", () => {
   const redSection = runEvaluator("red-section", {
     ...baseReport,
     pass: false,
-    sections: [{ name: "version consistency", result: "FAIL", failures: ["rehearsed red baseline"] }],
+    sections: inventorySections({ "version consistency": "FAIL" }),
   });
   check(
     redSection.status !== 0 &&
@@ -1597,6 +1608,8 @@ section("release evaluator blocking gates rehearsal", () => {
 
   const redInventory = runEvaluator("red-inventory", {
     ...baseReport,
+    pass: false,
+    sections: inventorySections({ "command inventory and foreign-CWD matrix": "FAIL" }),
     commandInventory: { ...baseReport.commandInventory, exit: 1, result: "FAIL" },
   });
   check(
@@ -1639,6 +1652,27 @@ section("release evaluator blocking gates rehearsal", () => {
   check(
     missing.json.pass === false && missing.json.blockingGates?.rejections?.some((reason) => reason.includes("missing")),
     "A missing validator report must be rejected",
+  );
+
+  const incomplete = runEvaluator("incomplete", {
+    ...baseReport,
+    sections: inventorySections().slice(0, 1),
+  });
+  check(
+    incomplete.json.pass === false &&
+      incomplete.json.blockingGates?.rejections?.some((reason) => reason.includes("section inventory mismatch")),
+    "A report missing the validator's canonical section inventory must be rejected",
+  );
+
+  const editedSubgate = runEvaluator("edited-subgate", {
+    ...baseReport,
+    pass: false,
+    sections: inventorySections({ "command inventory and foreign-CWD matrix": "FAIL" }),
+  });
+  check(
+    editedSubgate.json.pass === false &&
+      editedSubgate.json.blockingGates?.rejections?.some((reason) => reason.includes("disagrees with its section result")),
+    "A commandInventory result that disagrees with its section result must be rejected",
   );
 });
 

@@ -86,6 +86,14 @@ function treeDigest(root) {
   return hash(visit(root).join("\n"));
 }
 
+// The canonical section inventory is derived from the validator's own source, so
+// a report cannot green-light the gates without attesting every section the
+// current validator actually runs (a hand-edited or truncated report is rejected),
+// and validator changes never drift from a hand-maintained list here.
+function validatorSectionInventory(validatorScript) {
+  return [...readFileSync(validatorScript, "utf-8").matchAll(/^section\(\s*"([^"]+)"/gm)].map((match) => match[1]);
+}
+
 function runBlockingGates() {
   const explicitReport = argValues("--validator-report")[0] ?? null;
   const validatorScript = path.join(scriptDir, "validate-skill.mjs");
@@ -140,6 +148,17 @@ function runBlockingGates() {
     const sectionNames = report.sections.map((entry) => entry.name);
     if (new Set(sectionNames).size !== sectionNames.length) {
       rejections.push("duplicate section entries in validator report");
+    }
+    const expectedSections = validatorSectionInventory(validatorScript);
+    const reportedSections = new Set(sectionNames);
+    const missingSections = expectedSections.filter((name) => !reportedSections.has(name));
+    const unknownSections = sectionNames.filter((name) => !expectedSections.includes(name));
+    if (missingSections.length > 0 || unknownSections.length > 0) {
+      rejections.push(`incomplete validator report: section inventory mismatch (missing: ${missingSections.join(", ") || "none"}; unknown: ${unknownSections.join(", ") || "none"})`);
+    }
+    const inventorySection = report.sections.find((entry) => entry.name === "command inventory and foreign-CWD matrix");
+    if (inventorySection && report.commandInventory.result !== inventorySection.result) {
+      rejections.push(`malformed validator report: commandInventory.result ${report.commandInventory.result} disagrees with its section result ${inventorySection.result}`);
     }
     const expectedDigest = treeDigest(skillRoot);
     if (report.sourceDigest !== expectedDigest) {
