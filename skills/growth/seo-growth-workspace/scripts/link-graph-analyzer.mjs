@@ -161,7 +161,7 @@ const classify = ({ pages, links, siteOrigins }) => {
     if (!sourcePage) reasons.push("source absent from pages[]");
     if (externalSource) reasons.push("external source");
     if (external) reasons.push("external");
-    else if (!suppliedTarget) reasons.push("broken target: internal target absent from pages[]");
+    else if (!externalSource && !suppliedTarget) reasons.push("broken target: internal target absent from pages[]");
     if (selfLink) reasons.push("self-link");
     if (suppliedTarget?.status >= 300 && suppliedTarget.status < 400) {
       reasons.push(`redirected target (${suppliedTarget.status})`);
@@ -229,7 +229,7 @@ const graph = (pages, edges) => {
 const neutralize = (value) => {
   let output = String(value ?? "").replace(/\r\n?|\n/g, " ");
   if (/^\s*[=+\-@]/.test(output)) output = `'${output}`;
-  return output.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/([\[\]()])/g, "\\$1").replace(/\|/g, "\\|");
+  return output.replace(/\\/g, "\\\\").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/([\[\]()])/g, "\\$1").replace(/\|/g, "\\|");
 };
 
 const table = (headers, rows, empty = "_None._") => rows.length ? [
