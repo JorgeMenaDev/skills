@@ -380,9 +380,10 @@ jobs:
         id: review
         continue-on-error: true
         env:
-          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          CODEX_AUTH_B64: ${{ github.event.label.name != 'agent:implement-local' && secrets.CODEX_AUTH_B64 || '' }}
-          ENGINE: ${{ steps.flags.outputs.engine == 'cursor' && 'claude' || steps.flags.outputs.engine }}
+          # Least privilege: the review subprocess receives only the selected
+          # vendor's credential, never both long-lived provider credentials.
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ steps.flags.outputs.review_engine == 'claude' && secrets.CLAUDE_CODE_OAUTH_TOKEN || '' }}
+          CODEX_AUTH_B64: ${{ steps.flags.outputs.review_engine == 'codex' && github.event.label.name != 'agent:implement-local' && secrets.CODEX_AUTH_B64 || '' }}
           BRANCH: ${{ steps.branch.outputs.name }}
           OUTPUT_DIR: ${{ runner.temp }}
           REVIEW_ENGINE: ${{ steps.flags.outputs.review_engine }}

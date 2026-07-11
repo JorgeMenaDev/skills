@@ -77,6 +77,16 @@ if (!onPath(engine)) {
   finish("skipped_no_engine", "none", false);
 }
 const childEnv = { ...process.env };
+// Defense in depth: workflow expressions already pass only the selected
+// provider credential, but never let an inherited host env leak the other
+// vendor's long-lived credential into a tool-enabled review subprocess.
+if (engine === "codex") {
+  delete childEnv.CLAUDE_CODE_OAUTH_TOKEN;
+} else {
+  delete childEnv.CODEX_AUTH_B64;
+  delete childEnv.CODEX_API_KEY;
+  delete childEnv.OPENAI_API_KEY;
+}
 if (engine === "codex" && SANDCASTLE_SANDBOX !== "docker") {
   childEnv.CODEX_HOME = CODEX_CLOUD_HOME;
   if (!fs.existsSync(path.join(CODEX_CLOUD_HOME, "auth.json"))) {

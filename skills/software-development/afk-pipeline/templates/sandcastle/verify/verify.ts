@@ -1,5 +1,6 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { execFileSync } from "node:child_process";
 import { z } from "zod";
 import * as sandcastle from "@ai-hero/sandcastle";
 import { chooseAgent, chooseSandbox, sandboxHooks } from "../runtime";
@@ -72,6 +73,25 @@ const evidenceReport = path.join(
 if (!fs.existsSync(evidenceReport)) {
   fail(
     `Verify phase finished without writing ${evidenceReport} — no QA Evidence, so the run cannot be trusted.`
+  );
+}
+
+try {
+  execFileSync("git", ["cat-file", "-e", `HEAD:${evidenceReport}`], {
+    stdio: "ignore",
+  });
+} catch {
+  fail(
+    `Verify phase left ${evidenceReport} outside HEAD — QA Evidence must be committed before the run can pass.`
+  );
+}
+
+const dirty = execFileSync("git", ["status", "--porcelain"], {
+  encoding: "utf8",
+}).trim();
+if (dirty) {
+  fail(
+    `Verify phase left uncommitted changes, so the pushed branch would not match the verified workspace:\n${dirty}`
   );
 }
 
