@@ -92,8 +92,8 @@ const validate = (input) => {
     return {
       url: normalizeUrl(page.url, `pages[${index}].url`),
       status,
-      finalUrl: page.finalUrl ? normalizeUrl(page.finalUrl, `pages[${index}].finalUrl`) : "",
-      canonicalUrl: page.canonicalUrl ? normalizeUrl(page.canonicalUrl, `pages[${index}].canonicalUrl`) : "",
+      finalUrl: page.finalUrl === undefined || page.finalUrl === null ? "" : normalizeUrl(page.finalUrl, `pages[${index}].finalUrl`),
+      canonicalUrl: page.canonicalUrl === undefined || page.canonicalUrl === null ? "" : normalizeUrl(page.canonicalUrl, `pages[${index}].canonicalUrl`),
       indexable: boolean(page.indexable, `pages[${index}].indexable`),
       entryPoint: boolean(page.entryPoint, `pages[${index}].entryPoint`),
       moneyPage: boolean(page.moneyPage, `pages[${index}].moneyPage`),
@@ -227,7 +227,7 @@ const graph = (pages, edges) => {
 };
 
 const neutralize = (value) => {
-  let output = String(value ?? "").replace(/\r\n?|\n/g, " ");
+  let output = String(value ?? "").replace(/\r\n?|\n/g, " ").replace(/[\u0000-\u0008\u000B-\u001F\u007F-\u009F]/g, "\uFFFD");
   if (/^\s*[=+\-@]/.test(output)) output = `'${output}`;
   return output.replace(/\\/g, "\\\\").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/([\[\]()])/g, "\\$1").replace(/\|/g, "\\|");
 };
