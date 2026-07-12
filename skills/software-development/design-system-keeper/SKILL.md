@@ -1,7 +1,7 @@
 ---
 name: design-system-keeper
 description: Extract, encode, and enforce a repo's real design system as an agent-readable canon (v0 Design Systems 2.0 shape). Use when the user wants agents to learn or import their design system, asks why pages look inconsistent or like different design systems mixed together, wants a design consolidation or cleanup, or when building UI in a repo that has a canon (`design/` + DESIGN.md).
-version: 0.2.0
+version: 0.2.1
 license: MIT
 mutating: true
 writes_to: [DESIGN.md, design/, AGENTS.md, CLAUDE.md]
