@@ -1,9 +1,9 @@
 ---
 name: grok-cli-runtime
 description: Runtime contract for delegating work to xAI's Grok Build CLI (grok-4.5) as a headless sidecar — exploration, review, structured output, or isolated implementation. Use when a task or skill routes to the grok engine/seat, or the user asks to spawn Grok directly.
-version: 1.0.0
+version: 1.0.1
 mutating: true
-writes_to: ["target workspace only in write-capable mode"]
+writes_to: ["target workspace only in write-capable mode", "~/.grok/auth.json during explicit auth recovery", "configured encrypted credential store during explicit deposition", "GROK_AUTH_B64 during explicit cloud seeding"]
 ---
 
 # Grok CLI Runtime
@@ -16,7 +16,21 @@ Contract for calling **Grok Build CLI** (`~/.grok/bin/grok`, on PATH as `grok`) 
 - Read-only is the default posture: restrict tools with `--tools "read_file,grep,list_dir"`.
 - Write-capable runs only in an isolated branch, worktree (`--worktree`), or scratch workspace — never a dirty shared checkout.
 - Grok never receives secrets, production mutations, external sends, or final-click authority.
-- Auth is Jorge's **X Premium+ OAuth** in `~/.grok/auth.json` (7-day tokens, auto-refresh via refresh_token). `XAI_API_KEY` (console.x.ai, metered credits) takes precedence when exported — the CI/seed lane. A `403 permission-denied ... chat endpoint` means the auth lane lost its entitlement (subscription lapsed / wrong account), not a bug.
+- Auth is **X Premium+ OAuth** in `~/.grok/auth.json` (7-day tokens, auto-refresh via refresh_token). `XAI_API_KEY` (console.x.ai, metered credits) takes precedence when exported — the CI/seed lane. A `403 permission-denied ... chat endpoint` means the auth lane lost its entitlement (subscription lapsed / wrong account), not a bug.
+
+## Auth safety gate
+
+1. Identify the requested lane before changing auth. A local `grok -p` 403 does not prove a repo-secret-backed cloud runner is unhealthy; inspect that lane's last real chat smoke and list secret names without reading values.
+2. Restore the configured encrypted canonical copy when one exists (for example `credentials/grok/auth.json`) before attempting login, then run the minimal real chat probe below. Model listing is not proof.
+3. **STOP before `grok login`: it may remove the current `~/.grok/auth.json` before replacement.** Continue only after the current credential has a recoverable encrypted copy, or after explicitly recording that no working local credential exists.
+4. After login, deposit the complete auth file in the configured encrypted credential store and repeat the real chat probe. Login success without chat success is not a usable credential.
+5. Replace `GROK_AUTH_B64` only from a credential whose real chat probe passed. A failed probe preserves the last known-good repo secret.
+
+Minimal real chat probe:
+
+```bash
+$GROK -p "Reply only OK" -m grok-4.5 --effort high --output-format json
+```
 
 ## Preamble
 
