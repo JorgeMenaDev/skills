@@ -94,6 +94,15 @@ jobs:
           gh issue comment "$ISSUE_NUMBER" --body "Refused to run: PR $EXISTING_PR_URL already targets this issue. Close it first, then re-add \`$TRIGGER_LABEL\`."
           exit 0
 
+      - name: Record job start (UTC) for attempt-loop deadline
+        # Companion bound for the in-script deadline: min(loop+110m, job+115m).
+        # Anchored at TRUE job start — before checkout — so no checkout or
+        # setup latency can push jobStamp+115 past the 120-minute job kill
+        # (RUNNER_TEMP exists pre-checkout). Earlier stamping only ever makes
+        # the deadline more conservative.
+        if: steps.preflight.outputs.refused != 'true'
+        run: date -u +"%Y-%m-%dT%H:%M:%SZ" > "${RUNNER_TEMP}/job-start"
+
       - name: Transition labels — remove implement/blocked, add in-progress
         if: steps.preflight.outputs.refused != 'true'
         run: |
@@ -123,13 +132,6 @@ jobs:
           # where a tool-enabled agent can read Git's credential config.
           token: ${{ secrets.GITHUB_TOKEN }}
           persist-credentials: false
-
-      - name: Record job start (UTC) for attempt-loop deadline
-        # Companion bound for the in-script deadline: min(loop+110m, job+115m).
-        # Written immediately post-checkout so setup tax cannot push the loop
-        # past the 120-minute job kill without the wrapper seeing it.
-        if: steps.preflight.outputs.refused != 'true'
-        run: date -u +"%Y-%m-%dT%H:%M:%SZ" > "${RUNNER_TEMP}/job-start"
 
       - name: Compute branch name
         if: steps.preflight.outputs.refused != 'true'
