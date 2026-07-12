@@ -228,8 +228,9 @@ jobs:
 
       - name: Pre-flight Grok engine + materialize auth seed
         # Grok Build CLI (v2.12.0) is cloud-lane only. Auth is a GROK_AUTH_B64
-        # seed of the dispatch host's ~/.grok/auth.json (OAuth; tokens
-        # auto-refresh, so the seed is re-cut at dispatch like CODEX_AUTH_B64).
+        # seed of the dispatch host's probed auth.json. A refresh inside this
+        # ephemeral runner cannot persist back to the repo secret, so the seed
+        # is re-cut immediately before every dispatch.
         # Materialized to $RUNNER_TEMP/grok-home, which runtime.ts bind-mounts
         # at /home/agent/.grok inside the per-phase container.
         if: steps.preflight.outputs.refused != 'true' && steps.flags.outputs.engine == 'grok'
@@ -410,17 +411,29 @@ jobs:
             echo "$1" >&2
             exit 1
           }
-          if ! docker run --rm --entrypoint sh \
-            --user "$(id -u):$(id -g)" \
-            -v "${RUNNER_TEMP}/grok-home:/home/agent/.grok" \
-            {{IMAGE_NAME}} \
-            -c "timeout 180 grok -p 'Reply OK' --model ${GROK_MODEL:-grok-4.5} --effort low --output-format json" \
-            > "${RUNNER_TEMP}/grok-smoke.json" 2> "${RUNNER_TEMP}/grok-smoke.err"; then
+          smoke_ok=false
+          for attempt in 1 2 3; do
+            : > "${RUNNER_TEMP}/grok-smoke.json"
+            : > "${RUNNER_TEMP}/grok-smoke.err"
+            if docker run --rm --entrypoint sh \
+              --user "$(id -u):$(id -g)" \
+              -v "${RUNNER_TEMP}/grok-home:/home/agent/.grok" \
+              {{IMAGE_NAME}} \
+              -c "timeout 180 grok -p 'Reply only OK' --model ${GROK_MODEL:-grok-4.5} --effort low --output-format json" \
+              > "${RUNNER_TEMP}/grok-smoke.json" 2> "${RUNNER_TEMP}/grok-smoke.err" \
+              && jq -e '(.stopReason == "EndTurn") and ((.text // "") | gsub("^[[:space:]]+|[[:space:]]+$"; "") == "OK")' \
+                "${RUNNER_TEMP}/grok-smoke.json" >/dev/null; then
+              smoke_ok=true
+              break
+            fi
+            [ "$attempt" = 3 ] || sleep $((attempt * 5))
+          done
+          if [ "$smoke_ok" != true ]; then
             tail -n 40 "${RUNNER_TEMP}/grok-smoke.err" >&2 || true
             if grep -q "403" "${RUNNER_TEMP}/grok-smoke.err" "${RUNNER_TEMP}/grok-smoke.json" 2>/dev/null; then
-              fail "Grok auth smoke failed with 403 permission-denied: the seeded account lost its chat entitlement (SuperGrok / X Premium+ lapsed?) or the seed is stale. Re-cut GROK_AUTH_B64 from a working ~/.grok/auth.json and retrigger."
+              fail "Grok auth smoke failed three times with 403 permission-denied: xAI rejected the selected credential or team. This can be transient provider authorization, a stale seed, or a wrong principal/policy; preserve the credential, check xAI status, then compare the dispatch seed with a passing local real-chat probe before rotating auth."
             fi
-            fail "Grok auth smoke failed before implement. Check GROK_AUTH_B64 seed freshness and the grok CLI install."
+            fail "Grok auth smoke failed three times before implement. Inspect the captured response, GROK_AUTH_B64 seed, selected model, and Grok CLI install."
           fi
 
       - name: Implement↔verify attempt loop

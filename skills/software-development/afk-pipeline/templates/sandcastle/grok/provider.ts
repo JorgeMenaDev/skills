@@ -14,8 +14,8 @@ import type { AgentProvider } from "@ai-hero/sandcastle";
  *   {"type":"end","stopReason":...,"sessionId":...}. Tool calls execute but
  *   emit NO stream event — job logs show text/thought only, by CLI design.
  * - auth = ~/.grok/auth.json (materialized from the GROK_AUTH_B64 seed and
- *   bind-mounted by runtime.ts); XAI_API_KEY env would take precedence when
- *   present.
+ *   bind-mounted by runtime.ts). No global XAI_API_KEY is passed; current CLI
+ *   prefers an active session token over the global key.
  *
  * Grok headless sessions ARE resumable (`-r <id>`), but v1 keeps
  * captureSessions: false and ignores resumeSession — implement is the only

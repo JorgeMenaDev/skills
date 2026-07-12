@@ -1,14 +1,14 @@
 ---
 name: grok-cli-runtime
 description: Runtime contract for delegating work to xAI's Grok Build CLI (grok-4.5) as a headless sidecar — exploration, review, structured output, or isolated implementation. Use when a task or skill routes to the grok engine/seat, or the user asks to spawn Grok directly.
-version: 1.0.1
+version: 1.0.2
 mutating: true
 writes_to: ["target workspace only in write-capable mode", "~/.grok/auth.json during explicit auth recovery", "configured encrypted credential store during explicit deposition", "GROK_AUTH_B64 during explicit cloud seeding"]
 ---
 
 # Grok CLI Runtime
 
-Contract for calling **Grok Build CLI** (`~/.grok/bin/grok`, on PATH as `grok`) from another agent. Default model **`grok-4.5`** (500k context, $2/M in $6/M out), default effort **`high`** (the model's own default; menu: `low|medium|high`). All mechanics below were proven live 2026-07-12.
+Contract for calling **Grok Build CLI** (`~/.grok/bin/grok`, on PATH as `grok`) from another agent. Default model **`grok-4.5`**, default effort **`high`** (menu: `low|medium|high`).
 
 ## Contract
 
@@ -16,20 +16,23 @@ Contract for calling **Grok Build CLI** (`~/.grok/bin/grok`, on PATH as `grok`) 
 - Read-only is the default posture: restrict tools with `--tools "read_file,grep,list_dir"`.
 - Write-capable runs only in an isolated branch, worktree (`--worktree`), or scratch workspace — never a dirty shared checkout.
 - Grok never receives secrets, production mutations, external sends, or final-click authority.
-- Auth is **X Premium+ OAuth** in `~/.grok/auth.json` (7-day tokens, auto-refresh via refresh_token). `XAI_API_KEY` (console.x.ai, metered credits) takes precedence when exported — the CI/seed lane. A `403 permission-denied ... chat endpoint` means the auth lane lost its entitlement (subscription lapsed / wrong account), not a bug.
+- Auth lives under `$GROK_HOME` (default `~/.grok`). Treat `auth.json` as an opaque whole file: never extract, merge, or document its fields. Current CLI precedence is per-model `api_key` → per-model `env_key` → active session token → global `XAI_API_KEY`; a plain global key does not override a working OAuth session.
+- `401` means missing or invalid authentication. `403 permission-denied` means xAI rejected the selected credential or team for that endpoint; it can be a wrong principal/policy, a stale cloud seed, or transient provider-side authorization state. It does not by itself prove a lapsed subscription.
 
 ## Auth safety gate
 
-1. Identify the requested lane before changing auth. A local `grok -p` 403 does not prove a repo-secret-backed cloud runner is unhealthy; inspect that lane's last real chat smoke and list secret names without reading values.
-2. Restore the configured encrypted canonical copy when one exists (for example `credentials/grok/auth.json`) before attempting login, then run the minimal real chat probe below. Model listing is not proof.
-3. **STOP before `grok login`: it may remove the current `~/.grok/auth.json` before replacement.** Continue only after the current credential has a recoverable encrypted copy, or after explicitly recording that no working local credential exists.
-4. After login, deposit the complete auth file in the configured encrypted credential store and repeat the real chat probe. Login success without chat success is not a usable credential.
-5. Replace `GROK_AUTH_B64` only from a credential whose real chat probe passed. A failed probe preserves the last known-good repo secret.
+1. Pin the effective home: `GROK_HOME=${GROK_HOME:-$HOME/.grok}`. Inspect config for per-model `api_key` / `env_key`; do not infer precedence from the shell environment alone.
+2. Identify the failing lane. Local OAuth, a repo-secret-backed cloud runner, a container with a different home, and Cursor's Grok models are separate lanes. Inspect the failing lane's real chat smoke; a models listing is not proof.
+3. Run the minimal real chat probe below with the exact home, model, and CLI version used by that lane. Validate `.stopReason == "EndTurn"` and `.text`, not only exit 0.
+4. On `403`, retry the same preserved credential before rotating it and check xAI service status. A credential that later succeeds without changing bytes proves transient authorization, not stale auth. On cloud-only failure, compare the seeded file fingerprint with the probed local file without printing either.
+5. **STOP before `grok login`.** Preserve the complete current auth file in the configured encrypted credential store first. Login is recovery after the same credential remains red, not the first response to a 403.
+6. After login, repeat the real chat probe and deposit the complete resulting auth file. Replace `GROK_AUTH_B64` only from a credential whose probe passed; a failed probe preserves the last known-good repo secret.
 
 Minimal real chat probe:
 
 ```bash
-$GROK -p "Reply only OK" -m grok-4.5 --effort high --output-format json
+env -u XAI_API_KEY GROK_HOME="${GROK_HOME:-$HOME/.grok}" \
+  $GROK -p "Reply only OK" -m grok-4.5 --effort low --output-format json
 ```
 
 ## Preamble
@@ -39,7 +42,7 @@ command -v grok >/dev/null 2>&1 && GROK=grok || GROK="$HOME/.grok/bin/grok"
 $GROK --version || echo "GROK: missing"
 ```
 
-`GROK: missing` → stop and report. Version proven: 0.2.93.
+`GROK: missing` → stop and report. Active-session precedence requires Grok CLI 0.2.66 or newer.
 
 ## Launch recipes (proven)
 
@@ -87,4 +90,5 @@ $GROK -p "<phase 2, same context>" -m grok-4.5 -r "$SID" --output-format json
 - `--disallowed-tools "Agent"` blocks subagent spawning; use for bounded review seats.
 - Effort menu is model-specific (`grok inspect` / models cache); grok-4.5 accepts `low|medium|high`, defaults high — don't invent `xhigh` here (that id belongs to Cursor's `grok-4.5-xhigh` lane, a different harness).
 - Exit code is 0 even for refusals; check `.stopReason == "EndTurn"` and the content, not just exit.
+- `GROK_AUTH_B64` is an AFK harness convention, not a native xAI CLI setting.
 - Do not confuse lanes: `cursor-subagent` also runs Grok models but through Cursor's CLI and auth; this skill is the native xAI lane.
