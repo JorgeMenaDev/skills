@@ -2243,7 +2243,7 @@ section("release evaluator gate-results artifact consumption", () => {
     gateResultsVersion: 1,
     boundReportVersion: 1,
     skill: "seo-growth-workspace",
-    skillVersion: "4.0.1",
+    skillVersion: "4.1.0",
     generatedAt: new Date().toISOString(),
     operator: "matias/opus-4.8",
     sourceDigest: digest,

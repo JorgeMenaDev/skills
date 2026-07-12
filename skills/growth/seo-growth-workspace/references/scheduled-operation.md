@@ -16,6 +16,7 @@ An unattended run is a *bounded* operate iteration: it resumes from workspace st
 - One target site per run. Portfolio sweeps iterate targets as separate runs (`references/portfolio-registry.md`).
 - Do exactly what the invoking prompt scopes — a monitor monitors, a reporter reports. New problems discovered outside the remit become Ready tickets with evidence, not work done now.
 - One useful step or checkpoint per run, selected by the Work Selection order in `references/ticket-architecture.md`. If nothing is actionable, write the checkpoint evidence and exit; do not manufacture work.
+- An empty backlog with healthy checkpoints may spend the run on one Opportunity Frontier source (`references/operating-loop.md`), filing evidence-backed tickets or a recorded skip reason within the mutation ceiling. Certifying "nothing valuable this cycle" still requires every source run or skipped, accumulated across runs via loop state.
 
 ## Mutation Ceiling
 

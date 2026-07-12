@@ -47,6 +47,8 @@ An empty `Ready` and `In progress` queue does not mean SEO is done. It means the
 - write a reporting/recheck ticket with a concrete date, or
 - log evidence that no immediate action is useful yet.
 
+When the checkpoints look healthy and no ticket emerges, run the Opportunity Frontier in `references/operating-loop.md` before concluding no work exists; a certified "nothing valuable this cycle" requires every frontier source run or skipped with a recorded reason.
+
 When the user has explicitly asked to exhaust all unblocked work, do not create a recheck ticket only to keep the queue alive. A "no immediate action remains" checkpoint is acceptable when remaining work is external-gated by recrawl lag, missing access, missing contact/profile ownership, business decisions, or side infrastructure monitoring.
 
 Do not run every audit every time. Use stale evidence, missing reports, recent publishes, changed routes, changed access, or the latest handoff note to choose the checkpoint.
