@@ -4,6 +4,14 @@ Use when this skill is invoked without an interactive human in the loop — a cr
 
 An unattended run is a *bounded* operate iteration: it resumes from workspace state, does one useful step or checkpoint, records evidence, and exits with a machine-readable summary. It never expands its own remit.
 
+## Three lifecycles
+
+- **Iteration** always exits with one terminal from `references/never-dry-loop.md`.
+- **Continuity** waits on `nextWakeAt` and/or an observable `wakeOn` predicate, then resumes on a later invocation; an unobservable predicate is `paused/needs_human`, not a made-up date.
+- **Schedule** ends only on its configured `stop`, explicit cancellation, or the user’s explicit request to exhaust all unblocked work. It exits `done` once and is then retired by the human.
+
+“Never terminal” binds the mode, not named loops: an iteration may exit, continuity may pause, and a configured schedule may end under those conditions.
+
 ## Cold Resume
 
 1. Read state in the State Read Order from `references/operating-loop.md` — the workspace is the only memory an unattended run has. Do not rely on conversation context, prior run output, or anything not written down.
@@ -15,7 +23,8 @@ An unattended run is a *bounded* operate iteration: it resumes from workspace st
 
 - One target site per run. Portfolio sweeps iterate targets as separate runs (`references/portfolio-registry.md`).
 - Do exactly what the invoking prompt scopes — a monitor monitors, a reporter reports. New problems discovered outside the remit become Ready tickets with evidence, not work done now.
-- One useful step or checkpoint per run, selected by the Work Selection order in `references/ticket-architecture.md`. If nothing is actionable, write the checkpoint evidence and exit; do not manufacture work.
+- One useful step or checkpoint per run, selected by the Work Selection order in `references/ticket-architecture.md`. If nothing is actionable, perform only the scoped checkpoint and route its result through the three-terminal contract in `references/never-dry-loop.md`; do not manufacture work or expand a monitor into discovery because reads are non-mutating.
+- Only an unattended `operate` invocation that explicitly authorizes opportunity generation may traverse applicable discovery rungs. A scoped monitor or reporter records its own dated/event wake state and exits; it does not start unrelated discovery.
 
 ## Mutation Ceiling
 
@@ -44,16 +53,24 @@ Persist per-loop state at `.seo/loops/<loop-name>.json` — meaning the resolved
 
 ```json
 {
+  "schemaVersion": 1,
   "loop": "weekly-gsc-monitor",
   "cadence": "weekly",
   "lastRun": "YYYY-MM-DD",
   "lastResult": "ok | alerted | blocked",
   "alerted": { "<alert-fingerprint>": "YYYY-MM-DD" },
   "cooldownDays": 14,
+  "nextWakeAt": "YYYY-MM-DD",
+  "wakeOn": [{ "predicate": "...", "source": "...", "owner": "...", "fingerprint": "..." }],
+  "sleepCertificate": {},
+  "occurrences": {},
+  "heartbeatAt": "YYYY-MM-DDTHH:mm:ssZ",
+  "stageStamp": { "stage": "unknown", "evaluated": "YYYY-MM-DD" },
   "stop": "condition that ends this loop, or null"
 }
 ```
 
+- The fields added above are optional additive schema-1 state; existing fields remain compatible and malformed or incomparable new values fail closed. The shared state, certificate, occurrence, and lease rules live in `references/never-dry-loop.md`.
 - An alert already in `alerted` within its cooldown is logged, not re-raised.
 - A loop whose `stop` condition is met exits `done` and says so once — the human retires the schedule.
 
@@ -78,4 +95,4 @@ The payload is the contract with the scheduler; keep keys stable and values one 
 
 ## Exit Criteria
 
-A scheduled run exits cleanly when state was read cold, one bounded step or checkpoint completed (or blocked honestly), nothing above the mutation ceiling was attempted, loop state and `.seo/log.md` were updated, and the summary payload was emitted with silent-mode discipline applied.
+A scheduled run exits cleanly when state was read cold, one bounded step or checkpoint completed, the result is executed work, scoped dated sleep, or honest blocked under `references/never-dry-loop.md`, nothing above the mutation ceiling was attempted, loop state and `.seo/log.md` were updated as allowed by hot-loop coalescing, and the summary payload was emitted with silent-mode discipline applied. A configured stop, cancellation, or explicit exhaust request remains a valid schedule terminal.
