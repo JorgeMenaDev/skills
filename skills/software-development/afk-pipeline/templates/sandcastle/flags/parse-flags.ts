@@ -222,7 +222,12 @@ console.log(
     line("recording", recording),
     line("engine", engine),
     line("review-engine", reviewEngine),
-    line("retries", retries),
+    // Run-specific inert note (spec §2): under verify: off there is no
+    // behavioral signal, so whatever retries parsed to, this run gets
+    // exactly one attempt — say so on the line, not just in the boilerplate.
+    verify.value === "off"
+      ? `${line("retries", retries)} _(inert this run — \`verify: off\` means a single attempt)_`
+      : line("retries", retries),
     "",
     "_Defaults (`verify: full`, `recap: on`, `review: on`, `recording: off`, `engine: claude`, `review-engine: codex`, `retries: 2`) keep today's full pipeline without recording and allow up to two retries on behavioral verify failure. `engine: cursor` / `engine: grok` run implement only, then Claude-backed structured phases continue. When `engine: codex` is set and `review-engine` is absent, review defaults to `claude`. `retries: 0` restores single-attempt behavior; `verify: off` makes retries inert. Retriggering re-reads this body._",
   ].join("\n")
