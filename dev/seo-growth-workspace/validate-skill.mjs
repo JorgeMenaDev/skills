@@ -1478,6 +1478,7 @@ section("cadence-status fixtures", () => {
     { name: "absurd-backlog-id", format: "backlog", expected: "absurd-backlog-id.expected.md" },
     { name: "dual-schema-conflict", format: "json", expected: "dual-schema-conflict.expected.json" },
     { name: "missing-schema", format: "json", expected: "missing-schema.expected.json" },
+    { name: "invalid-superseded", format: "json", expected: "invalid-superseded.expected.json" },
   ];
 
   for (const fixtureCase of cases) {
@@ -1511,6 +1512,26 @@ section("cadence-status fixtures", () => {
   check(
     zoneless.status !== 0 && zoneless.stderr.includes("timezone-qualified"),
     "cadence-status must reject zoneless --now timestamps",
+  );
+
+  const crashIntermediates = JSON.parse(runScript("scripts/cadence-status.mjs", [
+    "--workspace",
+    fixture(path.join("cadence-status", "obligations-due")),
+    "--format",
+    "json",
+    "--now",
+    "2026-07-12",
+  ])).obligations;
+  check(
+    ["sha256:due-crash", "sha256:pending-crash", "sha256:ticket-crash", "sha256:closed-crash"]
+      .every((fingerprint) => crashIntermediates.some((obligation) => obligation.pageCohortFingerprint === fingerprint)),
+    "cadence-status must surface every legal materialization and inconclusive-return crash intermediate",
+  );
+  const hygienic = crashIntermediates.find((obligation) => obligation.pageCohortFingerprint === "sha256:pricing-page");
+  check(
+    hygienic?.source === "loops/measurement-obligations.json"
+      && !Object.hasOwn(hygienic, "unknownField"),
+    "cadence-status must whitelist obligation fields and let reader-derived provenance win",
   );
 });
 

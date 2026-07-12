@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "obligations": {
+    "[\"Retire old cohort\",\"sha256:old-cohort\"]": {
+      "hypothesis": "Retire old cohort",
+      "pageCohortFingerprint": "sha256:old-cohort",
+      "baseline": { "measuredAt": "2026-07-01", "value": "20 pages", "evidence": ".seo/reports/old-cohort.json" },
+      "metric": "indexed URL count",
+      "decision": "measure its successor",
+      "dueAt": "2026-07-05",
+      "state": "superseded",
+      "candidateFingerprint": null,
+      "ticket": null,
+      "attempts": [],
+      "wakeAt": null,
+      "resolvedAt": null,
+      "calibrationNote": null,
+      "successor": { "hypothesis": "", "pageCohortFingerprint": "sha256:new-cohort", "evidence": ".seo/reports/migration.json" }
+    }
+  }
+}

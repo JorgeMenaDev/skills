@@ -1,0 +1,16 @@
+{
+  "now": "2026-07-12",
+  "status": "fail_closed",
+  "cadenceState": "absent",
+  "obligationState": "invalid",
+  "due": [],
+  "deduplicated": [],
+  "earliestNextDue": null,
+  "obligations": [],
+  "failures": [
+    {
+      "file": "loops/measurement-obligations.json",
+      "reason": "loops/measurement-obligations.json obligations[\"[\\\"Retire old cohort\\\",\\\"sha256:old-cohort\\\"]\"].successor.hypothesis must be a non-empty string"
+    }
+  ]
+}

@@ -78,6 +78,14 @@ function nullableDate(value, field) {
   return value === null ? null : parseDate(value, field);
 }
 
+function nullableNonEmptyString(value, field) {
+  if (value === null) return null;
+  if (typeof value !== "string" || value.trim() === "") {
+    throw new Error(`${field} must be a non-empty string or null`);
+  }
+  return value;
+}
+
 function validateTicket(value, field) {
   if (value === null) return null;
   if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -270,7 +278,7 @@ function validateObligation(key, value, source) {
   if (!value.baseline || typeof value.baseline !== "object" || Array.isArray(value.baseline)) {
     throw new Error(`${field}.baseline must be an object`);
   }
-  parseDate(value.baseline.measuredAt, `${field}.baseline.measuredAt`);
+  const measuredAt = parseDate(value.baseline.measuredAt, `${field}.baseline.measuredAt`);
   if (typeof value.baseline.value !== "string" || value.baseline.value.trim() === "") {
     throw new Error(`${field}.baseline.value must be a non-empty string`);
   }
@@ -279,20 +287,22 @@ function validateObligation(key, value, source) {
   }
   const dueAt = parseDate(value.dueAt, `${field}.dueAt`);
   if (!OBLIGATION_STATES.has(value.state)) throw new Error(`${field}.state is unknown`);
+  const candidateFingerprint = nullableNonEmptyString(value.candidateFingerprint, `${field}.candidateFingerprint`);
   const ticket = validateTicket(value.ticket, `${field}.ticket`);
   if (!Array.isArray(value.attempts)) throw new Error(`${field}.attempts must be an array`);
-  for (const [index, attempt] of value.attempts.entries()) {
+  const attempts = value.attempts.map((attempt, index) => {
     if (!attempt || typeof attempt !== "object" || Array.isArray(attempt)) {
       throw new Error(`${field}.attempts[${index}] must be an object`);
     }
-    parseDate(attempt.attemptedAt, `${field}.attempts[${index}].attemptedAt`);
+    const attemptedAt = parseDate(attempt.attemptedAt, `${field}.attempts[${index}].attemptedAt`);
     if (typeof attempt.reason !== "string" || attempt.reason.trim() === "") {
       throw new Error(`${field}.attempts[${index}].reason must be a non-empty string`);
     }
     if (typeof attempt.evidence !== "string" || attempt.evidence.trim() === "") {
       throw new Error(`${field}.attempts[${index}].evidence must be a non-empty string`);
     }
-  }
+    return { attemptedAt, reason: attempt.reason, evidence: attempt.evidence };
+  });
   const wakeAt = nullableDate(value.wakeAt, `${field}.wakeAt`);
   const resolvedAt = nullableDate(value.resolvedAt, `${field}.resolvedAt`);
   if (value.calibrationNote !== null && typeof value.calibrationNote !== "string") {
@@ -301,17 +311,13 @@ function validateObligation(key, value, source) {
   if ((value.state === "pending" || value.state === "due") && ticket !== null) {
     throw new Error(`${field}.ticket must be null before materialization`);
   }
-  if ((value.state === "pending" || value.state === "due") && value.candidateFingerprint !== null) {
-    throw new Error(`${field}.candidateFingerprint must be null before materialization`);
-  }
   if (value.state === "materialized") {
-    if (typeof value.candidateFingerprint !== "string" || value.candidateFingerprint.trim() === "") {
+    if (candidateFingerprint === null) {
       throw new Error(`${field}.candidateFingerprint must be non-empty after materialization`);
     }
-    if (ticket?.status !== "open") throw new Error(`${field}.ticket must be open when materialized`);
   }
   if (value.state === "resolved") {
-    if (typeof value.candidateFingerprint !== "string" || value.candidateFingerprint.trim() === "") {
+    if (candidateFingerprint === null) {
       throw new Error(`${field}.candidateFingerprint must be non-empty when resolved`);
     }
     if (ticket?.status !== "closed") throw new Error(`${field}.ticket must be closed when resolved`);
@@ -320,7 +326,49 @@ function validateObligation(key, value, source) {
       throw new Error(`${field}.calibrationNote must be non-empty when resolved`);
     }
   }
-  return { source, ...value, dueAt, wakeAt, resolvedAt, ticket };
+  let successor = null;
+  if (value.successor !== null) {
+    if (!value.successor || typeof value.successor !== "object" || Array.isArray(value.successor)) {
+      throw new Error(`${field}.successor must be null or an object`);
+    }
+    for (const name of ["hypothesis", "pageCohortFingerprint", "evidence"]) {
+      if (typeof value.successor[name] !== "string" || value.successor[name].trim() === "") {
+        throw new Error(`${field}.successor.${name} must be a non-empty string`);
+      }
+    }
+    successor = {
+      hypothesis: value.successor.hypothesis,
+      pageCohortFingerprint: value.successor.pageCohortFingerprint,
+      evidence: value.successor.evidence,
+    };
+  }
+  if (value.state === "superseded") {
+    if (successor === null) throw new Error(`${field}.successor is required when superseded`);
+    if (ticket?.status === "open") throw new Error(`${field}.ticket must be closed or null when superseded`);
+  } else if (successor !== null) {
+    throw new Error(`${field}.successor must be null unless superseded`);
+  }
+  return {
+    source,
+    hypothesis: value.hypothesis,
+    pageCohortFingerprint: value.pageCohortFingerprint,
+    baseline: {
+      measuredAt,
+      value: value.baseline.value,
+      evidence: value.baseline.evidence,
+    },
+    metric: value.metric,
+    decision: value.decision,
+    dueAt,
+    state: value.state,
+    candidateFingerprint,
+    ticket,
+    attempts,
+    wakeAt,
+    resolvedAt,
+    calibrationNote: value.calibrationNote,
+    successor,
+  };
 }
 
 async function readObligationState(workspace) {
@@ -389,7 +437,11 @@ function analyze(state, obligationState, now) {
   );
   const nextDates = sorted.map((occurrence) => nextDueFor(occurrence, now)).filter(Boolean).sort();
   const obligations = obligationState.obligations
-    .filter((obligation) => obligation.state === "due" || obligation.state === "pending")
+    .filter((obligation) =>
+      obligation.state === "due"
+      || obligation.state === "pending"
+      || (obligation.state === "materialized" && (obligation.ticket === null || obligation.ticket.status === "closed"))
+    )
     .map((obligation) => ({
       ...obligation,
       effectiveDueAt: obligation.state === "pending" ? obligation.wakeAt ?? obligation.dueAt : obligation.dueAt,
@@ -400,8 +452,15 @@ function analyze(state, obligationState, now) {
       || a.pageCohortFingerprint.localeCompare(b.pageCohortFingerprint)
     );
   const dueObligations = obligations
-    .filter((obligation) => obligation.effectiveDueAt <= now)
-    .map((obligation) => ({ ...obligation, action: "materialize" }));
+    .filter((obligation) => obligation.state === "materialized" || obligation.effectiveDueAt <= now)
+    .map((obligation) => ({
+      ...obligation,
+      action: obligation.state === "materialized" && obligation.ticket?.status === "closed"
+        ? "reconcile_inconclusive_return"
+        : obligation.candidateFingerprint === null
+          ? "materialize"
+          : "reconcile_materialization",
+    }));
   nextDates.push(...obligations.map((obligation) => obligation.effectiveDueAt));
   nextDates.sort();
   return {
@@ -449,13 +508,25 @@ ${markdownTable(
     `Run cadence ${occurrence.cadenceId} for ${occurrence.dueWindow}`,
     `Record ok, alerted, or honest blocked evidence for ${occurrence.cadenceId} due ${occurrence.dueAt}`,
   ]);
-  rows.push(...report.obligations.map((obligation, index) => [
+  const materializedObligations = report.obligations.filter((obligation) => obligation.action === "materialize");
+  rows.push(...materializedObligations.map((obligation, index) => [
     `SEO-${String(startId + cadenceRows.length + index).padStart(3, "0")}`,
     "P1",
     "measurement",
     `Measure ${obligation.metric} for ${obligation.pageCohortFingerprint}`,
     `${obligation.hypothesis}; use the result to decide ${obligation.decision}`,
   ]));
+  const obligationActions = report.obligations
+    .filter((obligation) => obligation.action !== "materialize")
+    .map((obligation) => [
+      obligation.ticket?.id ?? "unlinked",
+      obligation.action === "reconcile_materialization" ? "Reconcile materialization" : "Complete inconclusive return",
+      obligation.hypothesis,
+      obligation.pageCohortFingerprint,
+      obligation.action === "reconcile_materialization"
+        ? "Reuse the persisted fingerprint and repair the missing ticket link"
+        : "Atomically clear the fingerprint and ticket, append the attempt, and set wakeAt",
+    ]);
   const existingActions = report.due.filter((occurrence) => occurrence.action !== "materialize").map((occurrence) => [
     occurrence.ticket.id,
     occurrence.action === "retry" ? "Retry" : "Escalate to needs_human",
@@ -472,15 +543,22 @@ ${markdownTable(
 ## Existing occurrence actions
 
 ${markdownTable(["Ticket", "Action", "Cadence", "Due window", "Reason"], existingActions)}`;
+  const obligationSection = obligationActions.length === 0
+    ? ""
+    : `
+
+## Obligation reconciliation actions
+
+${markdownTable(["Ticket", "Action", "Hypothesis", "Page cohort", "Reason"], obligationActions)}`;
   const backlog = `# Draft SEO backlog rows from cadence and obligations
 
 This is a draft backlog, not a direct workspace mutation. Review every row before merging into .seo/backlog.md.
 
 Earliest next-due: ${report.earliestNextDue ?? "none"}
 
-${markdownTable(["ID", "P", "Area", "Ticket", "Verify"], rows)}${existingSection}
+${markdownTable(["ID", "P", "Area", "Ticket", "Verify"], rows)}${existingSection}${obligationSection}
 `;
-  return existingActions.length === 0 ? backlog : backlog.trimEnd();
+  return existingActions.length === 0 && obligationActions.length === 0 ? backlog : backlog.trimEnd();
 }
 
 async function nextBacklogId(workspace) {
@@ -528,7 +606,8 @@ async function main() {
   let report = { now, ...analysis };
   let startId = 1;
   const draftsRows = report.status === "ok" && (
-    report.due.some((occurrence) => occurrence.action === "materialize") || report.obligations.length > 0
+    report.due.some((occurrence) => occurrence.action === "materialize")
+    || report.obligations.some((obligation) => obligation.action === "materialize")
   );
   if (format === "backlog" && draftsRows) {
     const backlogState = await nextBacklogId(workspace);
