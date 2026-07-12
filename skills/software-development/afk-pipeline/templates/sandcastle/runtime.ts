@@ -1,3 +1,4 @@
+import * as os from "node:os";
 import * as sandcastle from "@ai-hero/sandcastle";
 import { docker } from "@ai-hero/sandcastle/sandboxes/docker";
 import { noSandbox } from "@ai-hero/sandcastle/sandboxes/no-sandbox";
@@ -191,7 +192,10 @@ export function chooseSandbox(token?: string) {
     // jobs). RAM stays the harder ceiling: the cap curbs thrash, it doesn't
     // make 4 simultaneous Next builds fit in 16 GB — route overflow to the
     // cloud/sandbox lanes instead. Per-repo: dockerCpus in pipeline.json.
-    cpus: {{DOCKER_CPUS}},
+    // Never exceed the host's cores: hosted 2-core runners hard-error on
+    // --cpus above capacity (docker "range of CPUs is from 0.01 to 2.00",
+    // first hit andesphere #46 run 29191356252, v2.13.2).
+    cpus: Math.max(1, Math.min({{DOCKER_CPUS}}, os.availableParallelism?.() ?? os.cpus().length)),
     env: sandboxEnv(token),
   };
   if (ENGINE === "codex") {
