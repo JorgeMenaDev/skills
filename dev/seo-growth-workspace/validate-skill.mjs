@@ -1436,6 +1436,36 @@ section("offline link-graph analyzer", () => {
   }
 });
 
+// --- cadence-status.mjs: deterministic workspace fixtures ---
+section("cadence-status fixtures", () => {
+  const cases = [
+    { name: "nothing-due", format: "json", expected: "nothing-due.expected.json" },
+    { name: "due", format: "backlog", expected: "due.expected.md" },
+    { name: "dedupe", format: "json", expected: "dedupe.expected.json" },
+    { name: "malformed", format: "json", expected: "malformed.expected.json" },
+    { name: "absent", format: "json", expected: "absent.expected.json" },
+  ];
+
+  for (const fixtureCase of cases) {
+    const output = runScript("scripts/cadence-status.mjs", [
+      "--workspace",
+      fixture(path.join("cadence-status", fixtureCase.name)),
+      "--format",
+      fixtureCase.format,
+      "--now",
+      "2026-07-12",
+    ]);
+    const expected = readFileSync(
+      fixture(path.join("cadence-status", fixtureCase.expected)),
+      "utf-8",
+    );
+    check(
+      output === expected,
+      `cadence-status ${fixtureCase.name} output drifted from its expected fixture`,
+    );
+  }
+});
+
 // --- gsc-opportunities.mjs: report format + golden file ---
 section("gsc-opportunities report", () => {
   const report = runScript("scripts/gsc-opportunities.mjs", [

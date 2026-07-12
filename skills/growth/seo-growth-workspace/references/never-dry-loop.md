@@ -82,6 +82,33 @@ An occurrence is identified by `{cadenceId, dueWindow}`. Its transitions are:
 
 There is at most one active ticket for an occurrence; retries reuse it. A completed prior window never trips duplicate suppression for a later window, while same-window re-materialization always deduplicates. Advancement occurs only after a successful observation: both `ok` and `alerted` count as observed. `alerted` also creates or links remediation or `needs_human` work. Execution failures and blocked observations record bounded-backoff fields (`attempt`, `nextAt`, `maxAt`, and escalation state) and never silently satisfy the cadence. Backoff bounds are configurable defaults, not standards.
 
+### Schema-1 occurrence serialization
+
+An occurrence-bearing loop file carries `schema: 1`; readers also accept the existing schema-1 envelope's `schemaVersion: 1` for additive compatibility. If both fields are present, both must equal 1. Its `occurrences` field is an object map keyed by the compact JSON serialization of the identity tuple: `JSON.stringify([cadenceId, dueWindow])`. Writers use that field order with no whitespace; readers decode the key and require it to equal the record identity. `cadenceId` is a stable non-empty string. `dueWindow` is a closed UTC calendar-date interval encoded `YYYY-MM-DD/YYYY-MM-DD`; repeat the date for a one-day window.
+
+```json
+{
+  "schema": 1,
+  "occurrences": {
+    "[\"weekly-gsc\",\"2026-07-06/2026-07-12\"]": {
+      "cadenceId": "weekly-gsc",
+      "dueWindow": "2026-07-06/2026-07-12",
+      "dueAt": "2026-07-12",
+      "state": "due",
+      "candidateFingerprint": "stable materialization fingerprint",
+      "ticket": null,
+      "result": null,
+      "attempt": 0,
+      "nextAt": null,
+      "maxAt": null,
+      "escalation": "none"
+    }
+  }
+}
+```
+
+`state` is one of `due`, `materialized`, `attempted`, `satisfied`, or `blockedUntil`. `result` is `null`, `ok`, or `alerted`; `nextAt` and `maxAt` are `null` or `YYYY-MM-DD`. `dueAt` is the dated source input that makes the occurrence due and must fall inside `dueWindow`; cadence owners supply it rather than readers inferring it from `lastRun`. Before materialization, `ticket` is null. After materialization it links the single ticket: its status is `open` through materialized, attempted, or blocked states and `closed` when satisfied. Retain the closed ticket as lineage so the same window remains deduplicated. Persist `candidateFingerprint` before ticket creation and use it to reconcile crash retries. Set `result` only to `ok` or `alerted` after a successful observation; either permits `satisfied`. A failed or blocked observation sets `state` to `blockedUntil`, increments `attempt` above zero, and records `nextAt`, `maxAt`, and `escalation` without setting `result`. For `blockedUntil`, `nextAt` is the next-due input and `maxAt` is the absolute retry bound. Backoff values are configured inputs; any numeric backoff defaults remain labeled configurable defaults pending JorgeMenaDev/matias#118.
+
 Apply the Emergency Selector in `references/ticket-architecture.md` for due-ness and P0 promotion.
 
 ## Measurement obligations

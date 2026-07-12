@@ -1,0 +1,10 @@
+{
+  "now": "2026-07-12",
+  "status": "ok",
+  "cadenceState": "absent",
+  "due": [],
+  "deduplicated": [],
+  "earliestNextDue": null,
+  "obligations": [],
+  "failures": []
+}

@@ -15,7 +15,7 @@ An unattended run is a *bounded* operate iteration: it resumes from workspace st
 ## Cold Resume
 
 1. Read state in the State Read Order from `references/operating-loop.md` — the workspace is the only memory an unattended run has. Do not rely on conversation context, prior run output, or anything not written down.
-2. Read the run's own loop state (below) to know its cadence, cooldowns, and what it already alerted on.
+2. Read the run's own loop state (below) with `node "$SKILL_DIR/scripts/cadence-status.mjs" --workspace "$SITE_WORKSPACE" --format json` to know its cadence, cooldowns, and what it already alerted on.
 3. If `.seo/` is missing, do not bootstrap unattended — exit with status `blocked` and a note that the workspace needs an interactive first run. Never ask the install-mode question unattended (`references/hub-mode.md`).
 4. In a hub workspace, the invoking prompt must name the target site; without one, exit `blocked` — never pick a target unattended.
 
