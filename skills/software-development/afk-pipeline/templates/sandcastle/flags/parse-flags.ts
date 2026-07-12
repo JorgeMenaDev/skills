@@ -19,16 +19,21 @@
  *   recording: on|off     — optional reason
  *   engine: claude|codex|cursor|grok — optional reason
  *   review-engine: codex|claude — optional reason
+ *   retries: 0–3         — optional reason (default 2; >3 clamps to 3)
  *
  * FAIL-SAFE: an absent section, an unknown key, or an unparseable value ⇒ that
  * flag falls back to its default (`verify: full`, `recap: on`, `review: on`, `recording: off`,
- * `engine: claude`, `review-engine: codex`). Parsing may only
+ * `engine: claude`, `review-engine: codex`, `retries: 2`). Parsing may only
  * reduce work below the default when the body explicitly and legibly says so.
  * `review-engine` defaults to codex unless `engine: codex` is set and
  * `review-engine` itself was not set; then it resolves to claude to keep the
  * implement/review engines cross-vendor. `engine: cursor` and `engine: grok`
  * are implement-only and follow the Claude default. Explicit old briefs carry
  * their `review-engine: codex` contract forward.
+ *
+ * When `verify: off`, the implement↔verify retry loop is inert — the echo notes
+ * that `retries` does not apply for the run (the wrapper still enforces a
+ * single attempt).
  *
  * Lives in the `.sandcastle` layer (not inline YAML) so it travels with the
  * pipeline to other repos. Uses only Node/Bun builtins — no `bun install`
@@ -60,6 +65,7 @@ const DEFAULTS = {
     status: "default" as Status,
     raw: "",
   },
+  retries: { value: "2", reason: "", status: "default" as Status, raw: "" },
 };
 
 const ALLOWED = {
@@ -71,7 +77,7 @@ const ALLOWED = {
   "review-engine": new Set(["codex", "claude"]),
 };
 
-type FlagKey = keyof typeof DEFAULTS;
+type EnumFlagKey = Exclude<keyof typeof DEFAULTS, "retries">;
 
 /** Extract the body of the `### Pipeline` section: lines after the heading up to
  *  the next Markdown heading (any level) or EOF. Returns "" when absent. */
@@ -84,9 +90,9 @@ function pipelineSection(body: string): string {
   return (end === -1 ? rest : rest.slice(0, end)).join("\n");
 }
 
-/** Parse one flag key out of the section body. The value is a single word; an
+/** Parse one enum flag key out of the section body. The value is a single word; an
  *  optional reason follows an em/en dash or hyphen separator. */
-function parseFlag(key: FlagKey, section: string): Flag {
+function parseFlag(key: EnumFlagKey, section: string): Flag {
   const re = new RegExp(
     `^\\s*${key}\\s*:\\s*([A-Za-z]+)\\s*(?:[—–-]\\s*(.*))?$`,
     "im"
@@ -104,6 +110,38 @@ function parseFlag(key: FlagKey, section: string): Flag {
   return { value, reason, status: "set", raw: "" };
 }
 
+/**
+ * Integer `retries:` — counts extra implement→…→verify cycles after the first.
+ * Default 2; allowed 0–3; integers >3 clamp to 3 with a clamp note; absent or
+ * non-integer fall back to 2 under the standard fail-safe contract.
+ */
+function parseRetries(section: string): Flag {
+  const re = /^\s*retries\s*:\s*(\S+)\s*(?:[—–-]\s*(.*))?$/im;
+  const m = section.match(re);
+  if (!m) return { ...DEFAULTS.retries };
+
+  const raw = m[1];
+  const reason = (m[2] ?? "").trim().replace(/\s+/g, " ");
+  if (!/^-?\d+$/.test(raw)) {
+    return { ...DEFAULTS.retries, status: "fallback", raw };
+  }
+  const n = Number(raw);
+  if (n < 0) {
+    return { ...DEFAULTS.retries, status: "fallback", raw };
+  }
+  if (n > 3) {
+    return {
+      value: "3",
+      reason: reason
+        ? `${reason} (clamped from ${n} to 3)`
+        : `clamped from ${n} to 3 (max allowed)`,
+      status: "set",
+      raw: "",
+    };
+  }
+  return { value: String(n), reason, status: "set", raw: "" };
+}
+
 const body = process.env.ISSUE_BODY ?? "";
 const section = pipelineSection(body);
 const verify = parseFlag("verify", section);
@@ -116,6 +154,20 @@ const reviewEngine =
   engine.value === "codex" && parsedReviewEngine.status === "default"
     ? { ...parsedReviewEngine, value: "claude", reason: "defaulted to claude because engine is codex" }
     : parsedReviewEngine;
+const retries = parseRetries(section);
+
+// When verify is off the retry loop has no behavioral signal — note that
+// retries is inert for the run (wrapper also enforces maxAttempts=1).
+if (verify.value === "off") {
+  const inert = "inert for this run because verify: off (loop runs exactly one attempt)";
+  if (retries.status === "default") {
+    retries.reason = inert;
+  } else if (retries.reason) {
+    retries.reason = `${retries.reason}; ${inert}`;
+  } else {
+    retries.reason = inert;
+  }
+}
 
 // --- machine outputs -------------------------------------------------------
 if (process.env.GITHUB_OUTPUT) {
@@ -138,6 +190,9 @@ if (process.env.GITHUB_OUTPUT) {
     `review_engine=${reviewEngine.value}`,
     `review_engine_status=${reviewEngine.status}`,
     `review_engine_reason=${reviewEngine.reason}`,
+    `retries=${retries.value}`,
+    `retries_status=${retries.status}`,
+    `retries_reason=${retries.reason}`,
   ].join("\n");
   fs.appendFileSync(process.env.GITHUB_OUTPUT, out + "\n");
 }
@@ -167,7 +222,8 @@ console.log(
     line("recording", recording),
     line("engine", engine),
     line("review-engine", reviewEngine),
+    line("retries", retries),
     "",
-    "_Defaults (`verify: full`, `recap: on`, `review: on`, `recording: off`, `engine: claude`, `review-engine: codex`) keep today's full pipeline without recording. `engine: cursor` runs implement only on Cursor, then Claude-backed structured phases continue. When `engine: codex` is set and `review-engine` is absent, review defaults to `claude`; retriggering re-reads this body._",
+    "_Defaults (`verify: full`, `recap: on`, `review: on`, `recording: off`, `engine: claude`, `review-engine: codex`, `retries: 2`) keep today's full pipeline without recording and allow up to two retries on behavioral verify failure. `engine: cursor` / `engine: grok` run implement only, then Claude-backed structured phases continue. When `engine: codex` is set and `review-engine` is absent, review defaults to `claude`. `retries: 0` restores single-attempt behavior; `verify: off` makes retries inert. Retriggering re-reads this body._",
   ].join("\n")
 );

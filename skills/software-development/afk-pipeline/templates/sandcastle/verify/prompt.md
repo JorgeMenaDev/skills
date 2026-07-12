@@ -119,18 +119,28 @@ thing in your response:
 {
   "pass": true,
   "summary": "one paragraph: what was verified and the result",
-  "failedCriteria": []
+  "failedCriteria": [],
+  "failureClass": "behavioral"
 }
 </verdict>
 
 `pass` is true only if EVERY acceptance criterion is met and the standard
 sweep is clean. If false, list each unmet criterion in `failedCriteria`.
 
+`failureClass` (optional; default `"behavioral"` if omitted):
+- `"behavioral"` — a genuine unmet acceptance criterion that a fresh implement
+  session can fix (retryable).
+- `"indeterminate"` — you are out of time/context, or a criterion is stuck on a
+  long-running async process that re-implementing cannot fix. The attempt loop
+  terminals immediately (no retry).
+
 The `<verdict>` block is MANDATORY on every exit path. If you are running
 out of time or context, or a criterion is stuck on a long-running async
 process (e.g. an article generation that never completes), STOP verifying
 early: commit whatever evidence you already have and emit `pass: false`
-with the stuck criterion in `failedCriteria` and what you observed in
-`summary`. A missing verdict destroys the whole run's diagnostics (the
-orchestrator only sees a StructuredOutputError — observed on superaseo #55,
-2026-07-04); a false verdict with partial evidence is always better.
+with the stuck criterion in `failedCriteria`, what you observed in
+`summary`, and `"failureClass": "indeterminate"`. Genuinely unmet criteria
+use `"failureClass": "behavioral"` (or omit the field). A missing verdict
+destroys the whole run's diagnostics (the orchestrator only sees a
+StructuredOutputError — observed on superaseo #55, 2026-07-04); a false
+verdict with partial evidence is always better.

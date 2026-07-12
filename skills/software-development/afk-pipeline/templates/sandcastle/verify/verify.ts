@@ -32,6 +32,9 @@ const Verdict = z.object({
   pass: z.boolean(),
   summary: z.string().min(1),
   failedCriteria: z.array(z.string()).default([]),
+  // Absent / invalid ⇒ behavioral (fail-safe = retry). Indeterminate exits
+  // (out of time/context, stuck async) route terminal in the attempt loop.
+  failureClass: z.enum(["behavioral", "indeterminate"]).default("behavioral"),
 });
 
 // Internal phase timeout (v2.2.2). Without it a hung verify burns the whole
@@ -110,14 +113,27 @@ if (RECORDING_MODE === "on") {
   console.log(`Recorded verification: ${RECORDING_HOST_PATH} (${size} bytes)`);
 }
 
-console.log(`\nVerify phase verdict: ${result.output.pass ? "PASS" : "FAIL"}`);
-console.log(`  ${result.output.summary}`);
+const verdict = {
+  pass: result.output.pass,
+  summary: result.output.summary,
+  failedCriteria: result.output.failedCriteria,
+  failureClass: result.output.failureClass ?? "behavioral",
+};
+// Always written so the attempt-loop wrapper can route without parsing
+// failure_reason.txt. Exit-code contract unchanged (0 pass / 1 fail).
+writeVerdict(verdict);
 
-if (!result.output.pass) {
+console.log(`\nVerify phase verdict: ${verdict.pass ? "PASS" : "FAIL"}`);
+console.log(`  ${verdict.summary}`);
+if (!verdict.pass) {
+  console.log(`  failureClass: ${verdict.failureClass}`);
+}
+
+if (!verdict.pass) {
   fail(
     `Verify phase failed acceptance criteria:\n` +
-      result.output.failedCriteria.map((c) => `- ${c}`).join("\n") +
-      `\n\n${result.output.summary}`
+      verdict.failedCriteria.map((c) => `- ${c}`).join("\n") +
+      `\n\n${verdict.summary}`
   );
 }
 
@@ -154,6 +170,19 @@ async function withTimeout<T>(work: Promise<T>): Promise<T> {
   } finally {
     clearTimeout(timer!);
   }
+}
+
+function writeVerdict(v: {
+  pass: boolean;
+  summary: string;
+  failedCriteria: string[];
+  failureClass: "behavioral" | "indeterminate";
+}): void {
+  fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+  fs.writeFileSync(
+    path.join(OUTPUT_DIR, "verdict.json"),
+    JSON.stringify(v, null, 2) + "\n"
+  );
 }
 
 function fail(message: string): never {
