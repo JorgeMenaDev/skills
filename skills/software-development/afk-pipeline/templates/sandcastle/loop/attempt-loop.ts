@@ -930,6 +930,12 @@ function headSha(): string {
 
 function persistManifest(): void {
   writeManifestAtomic(MANIFEST_PATH, manifest);
+  // Forensic record in the run log (spec §8.1): RUNNER_TEMP dies with the
+  // runner, so post-hoc manifest reads (Tier-2 telemetry review, proof
+  // assertions) need the latest state in the log. Grouped to stay skimmable.
+  console.log("::group::attempts-summary.json (state after last change)");
+  console.log(JSON.stringify(manifest, null, 2));
+  console.log("::endgroup::");
 }
 
 function closeRow(row: AttemptRow): void {

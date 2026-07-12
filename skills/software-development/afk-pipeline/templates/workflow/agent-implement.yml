@@ -478,6 +478,19 @@ jobs:
 {{VERIFY_SECRETS_ENV}}
         run: bun .sandcastle/loop/attempt-loop.ts
 
+      - name: Upload attempts manifest artifact
+        # Durable copy of the loop telemetry (spec §8.1): RUNNER_TEMP is gone
+        # once the job ends, and Tier-2 manifest review + proof assertions
+        # read manifests after the fact. Best-effort — never fails the run.
+        if: always() && steps.preflight.outputs.refused != 'true'
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: attempts-summary-issue-${{ github.event.issue.number }}
+          path: ${{ runner.temp }}/attempts-summary.json
+          if-no-files-found: ignore
+          retention-days: 30
+
       - name: Move cloud-Docker recording to host artifact storage
         if: always() && steps.preflight.outputs.refused != 'true' && steps.flags.outputs.recording == 'on' && env.SANDCASTLE_SANDBOX == 'docker-cloud'
         run: |
