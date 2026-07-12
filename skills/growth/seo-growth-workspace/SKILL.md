@@ -147,7 +147,7 @@ node "$SKILL_DIR/scripts/bootstrap-seo-workspace.mjs" --help
 5. Capture admin/auth evidence with `references/admin-preflight.md` before changing production or authenticated surfaces.
 6. Load `references/adapters.md` when the repo has a content engine, CMS, publisher bot, local skill customizations, or `.seo/adapters/` notes.
 7. Load `references/ticket-architecture.md` before writing or changing `.seo/backlog.md`.
-8. When a ticket creates or materially revises a public SEO page, load `references/page-launch.md`, `references/page-evidence.md`, `references/technical-seo.md`, `references/schema-rich-results.md`, and `references/search-console.md`. Do not move the ticket to Done until every applicable launch gate has `PASS` evidence or a named blocker; the optional discovery-submission decision must still be logged.
+8. When a ticket creates or materially revises a public SEO page, load `references/page-launch.md`, `references/page-evidence.md`, `references/technical-seo.md`, `references/schema-rich-results.md`, and `references/search-console.md`. Do not move the ticket to Done until every applicable mandatory launch gate has `PASS` evidence; record any failed gate as a named blocker and keep the ticket Blocked. The optional discovery-submission decision must still be logged.
 9. Execute the mode's reference workflow, verify live results (use at least one mobile viewport for UI/CTA work), and update `.seo/` files only where facts changed.
 
 ## Optional Expert Lenses
