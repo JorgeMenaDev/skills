@@ -1,6 +1,4 @@
-import * as fs from "node:fs";
 import * as path from "node:path";
-import { execSync } from "node:child_process";
 import * as sandcastle from "@ai-hero/sandcastle";
 import { chooseImplementAgent, chooseSandbox, sandboxHooks } from "../runtime";
 
@@ -8,7 +6,8 @@ const ISSUE_NUMBER = required("ISSUE_NUMBER");
 const ISSUE_TITLE = required("ISSUE_TITLE");
 const ISSUE_BODY = required("ISSUE_BODY");
 const BRANCH = required("BRANCH");
-const OUTPUT_DIR = process.env.OUTPUT_DIR ?? "/tmp";
+// Empty on attempt 1; attempt-loop fills the retry envelope on re-entry.
+const RETRY_CONTEXT = process.env.RETRY_CONTEXT ?? "";
 const TOKEN = process.env.CLAUDE_CODE_OAUTH_TOKEN;
 
 const result = await sandcastle.run({
@@ -23,19 +22,14 @@ const result = await sandcastle.run({
     ISSUE_TITLE,
     ISSUE_BODY,
     BRANCH,
+    RETRY_CONTEXT,
   },
 });
 
-const commitsAhead = Number(
-  execSync("git rev-list --count main..HEAD", { encoding: "utf8" }).trim()
-);
-if (!Number.isFinite(commitsAhead) || commitsAhead === 0) {
-  fail("Agent finished but no commits were made on the branch.");
-}
-
-console.log(
-  `\nImplementation produced ${commitsAhead} commit(s) on ${BRANCH}.`
-);
+// Progress gating (HEAD unchanged ⇒ no-progress terminal) is owned by the
+// attempt-loop wrapper via SHA comparison — works on non-main base branches
+// and does not hardcode `main`. Keep sandcastle's commit count as informational.
+console.log(`\nImplementation finished on ${BRANCH}.`);
 console.log(`  commits this run: ${result.commits.length}`);
 
 function required(name: string): string {
@@ -45,10 +39,4 @@ function required(name: string): string {
     process.exit(1);
   }
   return value;
-}
-
-function fail(message: string): never {
-  console.error(`\nFAILED: ${message}`);
-  fs.writeFileSync(path.join(OUTPUT_DIR, "failure_reason.txt"), message);
-  process.exit(1);
 }
