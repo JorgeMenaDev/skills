@@ -113,6 +113,7 @@ All skills below are **model-invoked** — the agent can reach for them when the
 
 ### Software Development
 
+- **[design-system-keeper](./skills/software-development/design-system-keeper/SKILL.md)** — Extract, encode, and enforce a repo's real design system as an agent-readable canon (v0 Design Systems 2.0 shape): sourced rules, a primitive index, verify-against-source builds, and a drift backlog instead of memory-built lookalikes.
 - **[cursor-subagent](./skills/software-development/cursor-subagent/SKILL.md)** — Cursor sidecar delegation for explicit Cursor/Grok exploration, review, or isolated implementation.
 - **[work-tracking](./skills/software-development/work-tracking/SKILL.md)** — Decide where multi-step work should live: repo markdown, GitHub Issues, Linear, memory, or a mix. When to promote tasks to issues and how future agents find current state.
 
