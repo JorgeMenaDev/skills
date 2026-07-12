@@ -1384,7 +1384,18 @@ function assertControlPlane(phaseLabel: string): void {
     );
     const sandcastleDiff = spawnSync(
       "/usr/bin/diff",
-      ["-qr", path.join(trusted, ".sandcastle"), ".sandcastle"],
+      [
+        "-qr",
+        // Harness-owned runtime state materialized under .sandcastle DURING
+        // phases — never executed with credentials, and flagging it is a
+        // false positive: sandcastle's bundle-sync worktrees (vercel lane,
+        // first hit superaseo #104 run 29193708129) and recording artifacts
+        // (docker lanes, created during verify before the post-verify assert).
+        "--exclude=worktrees",
+        "--exclude=.sandcastle-artifacts",
+        path.join(trusted, ".sandcastle"),
+        ".sandcastle",
+      ],
       { encoding: "utf8" }
     );
     const workflowDiff = spawnSync(
