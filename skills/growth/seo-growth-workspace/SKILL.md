@@ -105,6 +105,7 @@ Load only the file needed for the mode or ticket:
 - Content-engine webhook publishing (receive, verify, deploy; includes one worked example): `references/content-engine-webhooks.md`
 - pSEO publish gates and playbook chooser: `references/pseo-gates.md`
 - Ticket taxonomy, work selection, statuses, and done criteria: `references/ticket-architecture.md`
+- Empty-Ready opportunity discovery and progressive coverage: `references/frontier-sweep.md`
 - Internal linking audits: `references/internal-linking.md`
 - Schema and rich-results work: `references/schema-rich-results.md`
 - Content decay and refresh/consolidate/remove decisions: `references/content-refresh.md`
