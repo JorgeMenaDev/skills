@@ -82,7 +82,7 @@ An occurrence is identified by `{cadenceId, dueWindow}`. Its transitions are:
 
 There is at most one active ticket for an occurrence; retries reuse it. A completed prior window never trips duplicate suppression for a later window, while same-window re-materialization always deduplicates. Advancement occurs only after a successful observation: both `ok` and `alerted` count as observed. `alerted` also creates or links remediation or `needs_human` work. Execution failures and blocked observations record bounded-backoff fields (`attempt`, `nextAt`, `maxAt`, and escalation state) and never silently satisfy the cadence. Backoff bounds are configurable defaults, not standards.
 
-Due-ness is evidence to run the check, not a P0. The explicit emergency selector in `references/ticket-architecture.md` promotes only an observed red safety delta.
+Apply the Emergency Selector in `references/ticket-architecture.md` for due-ness and P0 promotion.
 
 ## Measurement obligations
 

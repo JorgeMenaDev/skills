@@ -43,7 +43,7 @@ Label reports with the target surface at the top. When parking a side monitor, r
 
 ## Work Selection Order
 
-Choose work using the Work Selection order in `references/ticket-architecture.md` (current focus → in progress → top Ready → newly unblockable Blocked → new evidence-backed ticket). That file owns the order, duplicate rules, and done criteria; do not restate them here or in the workspace.
+Choose work using the Work Selection order in `references/ticket-architecture.md`. That file owns the order, duplicate rules, and done criteria; do not restate them here or in the workspace.
 
 ## Lightweight Checkpoints
 
@@ -80,7 +80,7 @@ Use this when the user asks to continue until no backlog items remain, or when a
 
 ## Handoff Log
 
-Write a short `.seo/log.md` entry after each run. Long evidence belongs in `.seo/audit.md` or `.seo/reports/*`; the log is for continuity.
+Write a short `.seo/log.md` handoff after each run when evidence, wake state, or terminal outcome changes, per the hot-loop coalescing rule in `references/never-dry-loop.md`. Long evidence belongs in `.seo/audit.md` or `.seo/reports/*`; the log is for continuity.
 
 ```md
 ## YYYY-MM-DD - Short title

@@ -35,7 +35,7 @@ An implementation ticket is eligible only when every condition below is satisfie
 - Non-duplicate fingerprint checked against the backlog, log, audit, reports, obligations, and existing tickets.
 - Phase readiness per the existing first-run phase ladder in `references/phase-architecture.md`.
 - Plausible business-impact hypothesis.
-- At least one dated first-party or `[E]`/`[P]` observation. `[H]`/`[V]` claims may mint a labeled research lead only; they never qualify an implementation ticket by themselves. Evidence-tier vocabulary is owned by `references/evidence-conventions.md`.
+- At least one dated first-party or `[E]`/`[P]` observation; use the evidence-tier rules in `references/evidence-conventions.md`.
 - A baseline, or an explicit proxy/acquisition plan naming the decision threshold it will inform.
 - The metric and decision the work can affect.
 - Rough effort and dependencies.

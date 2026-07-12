@@ -7,7 +7,7 @@ An unattended run is a *bounded* operate iteration: it resumes from workspace st
 ## Three lifecycles
 
 - **Iteration** always exits with one terminal from `references/never-dry-loop.md`.
-- **Continuity** waits on `nextWakeAt` and/or an observable `wakeOn` predicate, then resumes on a later invocation; an unobservable predicate is `paused/needs_human`, not a made-up date.
+- **Continuity** waits on `nextWakeAt` and/or an observable `wakeOn` predicate, then resumes on a later invocation; apply `references/never-dry-loop.md` §Wake taxonomy for unobservable predicates and date behavior.
 - **Schedule** ends only on its configured `stop`, explicit cancellation, or the user’s explicit request to exhaust all unblocked work. It exits `done` once and is then retired by the human.
 
 “Never terminal” binds the mode, not named loops: an iteration may exit, continuity may pause, and a configured schedule may end under those conditions.
