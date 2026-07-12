@@ -1,7 +1,7 @@
 ---
 name: orchestrate
 description: Orchestrate multi-slice work through dependency-aware waves, isolated executors, review gates, integration, and recovery. Use when a task spans parallel agents, worktrees, AFK runs, shared resources, cross-runtime delegation, or an issue chain that must be driven to verified completion.
-version: 2.1.0
+version: 2.2.0
 license: MIT
 mutating: true
 writes_to: [session-scratchpad/orchestrate/, worktrees, branches, pull-requests, issue-trackers]
@@ -48,6 +48,12 @@ node <skill>/scripts/orchestrate-run.mjs classify \
 4. **Dispatch.** Reconcile first. Acquire resources and commit write-ahead effect intent before each external act. For mutating dev slices read `references/dev-lane.md`; for other lanes follow their installed skill. Done when every dispatch has an observed runtime identity or is `UNKNOWN`/`BLOCKED`.
 5. **Supervise and verify.** Inspect real diffs, reports, evidence, and runtime state, tiering review depth by slice risk. Allow one grounding checkpoint; interrupt only for scope, safety, or concrete defects. After handoff, classify findings as contract-violating or advisory and follow the convergence and correction ladder in `references/dev-lane.md`; escalation triggers are defect recurrence or executor degradation, never round count. Done when each slice is accepted or carries an exact blocker.
 6. **Integrate and advance.** Follow integration edges, conductor-owned publication, CI/preview gates, refreshed-target verification, and `assert-complete`. External gates that cannot be discharged now enter the ledger's deferred-gate register and block completion until discharged or separately authorized. Default mode confirms the next frontier; autopilot continues. Done when every slice and parent criterion is terminal with proof.
+
+## Operator visibility
+
+After planning computes the waves, use a native user-visible task/todo list when the runtime provides one. Create one `Wave N — <label> (<n> tickets)` task per wave plus `Integration`; create no per-slice tasks and add no executor detail. A runtime without this tool continues without a mirror; prose is not a substitute.
+
+The task list is a view, never state: `run.json` remains sole authority, control flow reads only the ledger, and the list carries no unique sequencing or ownership. Missing or stale tasks never alter work, and resume/adopt does not recreate them. Touch each task exactly twice: set a wave `in_progress` after its first dispatch is recorded in `run.json` and `completed` after its last slice is accepted; set `Integration` `in_progress` after the first conductor-owned integration act is recorded in `run.json` and `completed` only when `assert-complete` succeeds. Once started, `Integration` remains `in_progress` while the run is blocked or a deferred gate is unresolved.
 
 ## Read when needed
 
