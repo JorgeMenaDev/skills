@@ -1,7 +1,7 @@
 ---
 name: posthog-growth-workspace
 description: "Use when operating data-driven growth for a product instrumented with PostHog — funnels, activation, retention, experiments, session-replay mining, campaign plays, and periodic growth reviews. Triggers: \"growth review\", \"why aren't users activating\", \"run an experiment\", \"mine session replays\", \"what does the product data say\", \"set up the growth workspace\", \"monthly growth report\". Creates a durable .growth workspace per product, reads live PostHog data CLI-first, does one verified high-leverage action per pass, and logs handoffs. Installs in a single product repo (standalone) or in an orchestrator/agent-profile repo managing many products (hub). Install/instrumentation doctrine and SEO/search-channel work belong to other skills."
-version: 1.0.1
+version: 1.1.0
 license: MIT
 mutating: true
 writes_to: [".growth/"]
@@ -63,7 +63,7 @@ Pick the narrowest mode that satisfies the request; default to `operate`.
 | Mode | Use when | Exit criteria |
 | --- | --- | --- |
 | `operate` | Continuing growth work without a narrower request | State read, one evidence-backed action completed and verified in live PostHog data, `log.md` handoff written |
-| `bootstrap` | Starting a workspace | `.growth/` exists, `context.md` names ICP + north star + primary conversion event, first audit and backlog rows exist |
+| `bootstrap` | Starting a workspace | `.growth/` exists, `context.md` names ICP + north star + primary conversion event, the Product Overview baseline dashboard exists and is registered (`references/dashboard-baseline.md`), first audit and backlog rows exist |
 | `experiment` | Testing a hypothesis with a flag/experiment | Hypothesis, flag, and success metric registered in `experiments.md`; experiment launched or verdict recorded |
 | `replay-mining` | Extracting friction from session replays | Replays reviewed, friction findings with replay links in `audit.md`, at least one backlog row filed or explicitly ruled out |
 | `campaign` | Running a marketing/sales play | One playbook from `references/campaigns/` executed against the real product, outcome row in `campaigns.md` |
@@ -78,6 +78,7 @@ Pick the narrowest mode that satisfies the request; default to `operate`.
 ## Progressive References
 
 - Install-health audit from the data side: `references/platform-ops.md`
+- Day-one dashboard baseline (spec + creation recipe): `references/dashboard-baseline.md`
 - Funnels, activation, retention method: `references/funnels-activation-retention.md`
 - Experiment method and registry discipline: `references/experiments.md`
 - Session-replay mining: `references/replay-mining.md`
