@@ -41,7 +41,7 @@ For the initial policy, use these **configurable defaults pending `JorgeMenaDev/
 
 For each observed rung, append its evidence and candidates to the dated sweep ledger, then apply the Binary Eligibility Gate owned by `references/ticket-architecture.md`. Stop at the first eligible candidate, materialize or reuse its ticket through the core contract's fingerprint reconciliation, persist the next-rung cursor, and resolve the run through the three-terminal contract. Retain rejected candidates with their failing gates; do not continue merely to compare scores.
 
-A sweep is complete only when every applicable rung has a coverage artifact within its configured max-age. Only then may a run claim `nothing valuable this cycle`, and the claim must name the top three rejected candidates and their failing gates. A partial traversal may claim only what the core contract permits. Always write the dated ledger report from `templates/frontier-sweep-ledger.md`; sweep output is never silence or an unticketed prose conclusion.
+A sweep is complete only when every applicable rung has a coverage artifact within its configured max-age. Only then may a run claim `nothing valuable this cycle`, and the claim must name the top three rejected candidates and their failing gates, per the terminal contract in `references/never-dry-loop.md`. A partial traversal may claim only what the core contract permits. Always write the dated ledger report from `templates/frontier-sweep-ledger.md`; sweep output is never silence or an unticketed prose conclusion.
 
 Contribute-back happens only after the site run under `references/never-dry-loop.md`. It is never a rung, candidate, or sweep output.
 
@@ -52,6 +52,6 @@ The human-readable cadence state header mirrors the content engine's observed au
 | Cadence row | Due source | Check and decision | Continuation |
 | --- | --- | --- | --- |
 | Frontier sweep | Empty Ready queue plus the persisted cursor and coverage due state | Traverse from the first due rung and stop on the first candidate that passes the canonical gate | Persist cursor, coverage artifact, and next due rung/window |
-| Autopublish quality watch | Armed engine autopublish plus its next publish window | Inspect the pending or newly published item using `references/content-engine-webhooks.md`; link remediation when alerted | A successfully executed watch mints the next watch occurrence for the following publish window |
+| Autopublish quality watch | Armed engine autopublish plus its next publish window | Inspect the pending or newly published item using `references/content-engine-webhooks.md`; link remediation when alerted | A watch observed per the occurrence rules in `references/never-dry-loop.md` (`ok` or `alerted`) mints the next watch occurrence for the following publish window |
 
 While autopublish is armed, a live quality-watch row covering the next publish window must exist. An armed ungated auto-publish path makes the site ineligible for a sleep certificate, even when frontier coverage is complete. Record that condition as an honest blocker until a gate is restored or autopublish is disarmed; never let a sweep certificate suppress the quality-watch continuity.
