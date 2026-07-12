@@ -45,7 +45,20 @@ async function request(method, path, body) {
 
 const getPath = opt('--get')
 const project = opt('--project')
-const hogql = opt('--hogql') ?? (opt('--hogql-file') ? readFileSync(opt('--hogql-file'), 'utf8') : undefined)
+let hogql = opt('--hogql')
+if (hogql === undefined && opt('--hogql-file')) {
+  try {
+    hogql = readFileSync(opt('--hogql-file'), 'utf8')
+  } catch (err) {
+    console.error(`pg-query: cannot read --hogql-file ${opt('--hogql-file')}: ${err.message}`)
+    process.exit(2)
+  }
+}
+
+if (getPath && (project || hogql)) {
+  console.error('pg-query: ambiguous arguments — pass either --get, or --project with --hogql, not both')
+  process.exit(2)
+}
 
 if (getPath) {
   process.stdout.write(await request('GET', getPath))

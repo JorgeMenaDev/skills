@@ -51,10 +51,10 @@ Create or verify at GROWTH_WORKSPACE (see Install Modes), copying skeletons from
 
 ## Install Modes
 
-Stamped in `GROWTH_WORKSPACE/../config.json` for hubs, or inferred for standalone — light machinery, create-if-missing, no migration tooling:
+Hub mode is stamped in the hub's `.growth/config.json` (`{"mode": "hub"}`); standalone is inferred by its absence — light machinery, create-if-missing, no migration tooling:
 
 - **standalone** — a product repo; GROWTH_WORKSPACE is repo-local `.growth/`.
-- **hub** — an orchestrator repo managing many products; the hub's `.growth/` holds `config.json` (`{"mode": "hub"}`), `registry.md` (slug → product, repo, PostHog project id), and one workspace per product under `.growth/products/<slug>/`. Resolve the target product from `registry.md` before any work.
+- **hub** — an orchestrator repo managing many products; the hub's `.growth/` holds `config.json`, `registry.md` (slug → product, repo, PostHog project id, last review), and one workspace per product under `.growth/products/<slug>/`. Resolve the target product from `registry.md` before any work.
 
 ## Choose A Mode
 
@@ -67,7 +67,7 @@ Pick the narrowest mode that satisfies the request; default to `operate`.
 | `experiment` | Testing a hypothesis with a flag/experiment | Hypothesis, flag, and success metric registered in `experiments.md`; experiment launched or verdict recorded |
 | `replay-mining` | Extracting friction from session replays | Replays reviewed, friction findings with replay links in `audit.md`, at least one backlog row filed or explicitly ruled out |
 | `campaign` | Running a marketing/sales play | One playbook from `references/campaigns/` executed against the real product, outcome row in `campaigns.md` |
-| `growth-review` | Periodic review (monthly per product; hub-batched) | Dated report in `reports/` with metric deltas, experiment verdicts, and the single next action; hub runs also update the hub index |
+| `growth-review` | Periodic review (monthly per product; hub-batched; manually triggered — scheduling it is the operating profile's decision, not this skill's) | Dated report in `reports/` with metric deltas, experiment verdicts, and the single next action; hub runs also stamp each product's last-review date in `registry.md` |
 
 `operate` reads state in this order: `backlog.md` → `log.md` → `audit.md` → `strategy.md` → latest `reports/*` → `context.md`. If `.growth/` is missing, run `bootstrap` first. If no ticket is ready, pick the smallest checkpoint from the funnel: install health (`references/platform-ops.md`) → activation/retention (`references/funnels-activation-retention.md`) → replay friction → experiment pipeline → campaign pipeline. Log the evidence even when everything is healthy.
 
