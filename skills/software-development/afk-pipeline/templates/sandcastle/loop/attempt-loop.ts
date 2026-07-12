@@ -433,6 +433,10 @@ persistManifest();
 let lastFailedCriteria: string[] = [];
 let lastVerifySummary = "";
 let lastAttemptDurationSec = 0;
+// Empty hooks dir for wrapper-owned git writes (declared HERE, before the
+// loop executes — a let in the helpers section below would be in its
+// temporal dead zone when relocate/prune run mid-loop).
+let harnessHooksDir: string | null = null;
 
 try {
   for (let k = 1; k <= maxAttempts; k++) {
@@ -674,6 +678,12 @@ try {
             `Convex integrity gate failed on attempt ${k} (exit ${gate.status}).`
         );
       }
+
+      // The gate executes REPOSITORY-controlled code (real codegen against
+      // the repo's convex functions) after the post-disposition assert —
+      // re-assert the control plane BEFORE verify launches with a provider
+      // credential and the verify secrets. The post-verify assert is too late.
+      assertControlPlane(`convex gate (attempt ${k})`);
 
       // --- verify:off → single no-verify row -------------------------------
       if (verifyOff) {
@@ -1331,6 +1341,50 @@ function assertControlPlane(phaseLabel: string): void {
   }
 }
 
+/**
+ * Env + hook hardening for wrapper-owned git operations. After the implement
+ * pass the workspace is AGENT-controlled — .git/hooks, core.hooksPath, and
+ * .git/config are all writable by the phases. A planted pre-/post-commit hook
+ * running under the wrapper's env would see every credential the phases were
+ * deliberately denied. Two belts:
+ *   (a) scrubbed env — no vendor creds, no verify secrets, no GH_TOKEN(S);
+ *   (b) hooks disabled — core.hooksPath points at an empty dir (kills
+ *       post-commit and friends) and commits also pass --no-verify
+ *       (skips pre-commit / commit-msg even if hooksPath were overridden).
+ * Read-only ops may share this for consistency; writes MUST use it.
+ */
+function harnessGitEnv(): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = { ...process.env };
+  for (const k of Object.keys(noVendorCreds())) delete env[k];
+  for (const k of VERIFY_SECRET_KEYS) delete env[k];
+  delete env.GH_TOKEN;
+  delete env.GITHUB_TOKEN;
+  return env;
+}
+
+function emptyHooksPath(): string {
+  if (!harnessHooksDir) {
+    harnessHooksDir = fs.mkdtempSync(path.join(RUNNER_TEMP, "afk-nohooks."));
+  }
+  return harnessHooksDir;
+}
+
+function harnessGit(
+  args: string[],
+  stdio: "inherit" | "ignore" = "inherit"
+): { status: number | null } {
+  const r = spawnSync(
+    "git",
+    ["-c", `core.hooksPath=${emptyHooksPath()}`, ...args],
+    { env: harnessGitEnv(), stdio }
+  );
+  if (r.error) {
+    console.warn(`[attempt-loop] harness git ${args[0]} failed to spawn: ${r.error.message}`);
+    return { status: null };
+  }
+  return { status: r.status };
+}
+
 function relocateEvidence(attemptK: number): void {
   const canonical = path.join(EVIDENCE_ROOT, `issue-${ISSUE_NUMBER}`);
   const dest = path.join(canonical, `attempt-${attemptK}`);
@@ -1346,34 +1400,24 @@ function relocateEvidence(attemptK: number): void {
     const to = path.join(dest, ent.name);
     fs.renameSync(from, to);
   }
-  try {
-    execFileSync("git", ["add", "-A", "--", canonical], { stdio: "inherit" });
-    const st = spawnSync(
-      "git",
-      [
-        "diff",
-        "--cached",
-        "--quiet",
-      ],
-      { stdio: "ignore" }
-    );
-    if (st.status === 0) {
-      // nothing staged
-      return;
-    }
-    execFileSync(
-      "git",
-      [
-        "commit",
-        "-m",
-        `docs(evidence): relocate attempt-${attemptK} evidence for #${ISSUE_NUMBER}`,
-      ],
-      { stdio: "inherit" }
-    );
-  } catch (err) {
-    console.warn(
-      `[attempt-loop] evidence relocate commit failed: ${err instanceof Error ? err.message : err}`
-    );
+  const add = harnessGit(["add", "-A", "--", canonical]);
+  if (add.status !== 0) {
+    console.warn(`[attempt-loop] evidence relocate add failed (exit ${add.status})`);
+    return;
+  }
+  const st = harnessGit(["diff", "--cached", "--quiet"], "ignore");
+  if (st.status === 0) {
+    // nothing staged
+    return;
+  }
+  const commit = harnessGit([
+    "commit",
+    "--no-verify",
+    "-m",
+    `docs(evidence): relocate attempt-${attemptK} evidence for #${ISSUE_NUMBER}`,
+  ]);
+  if (commit.status !== 0) {
+    console.warn(`[attempt-loop] evidence relocate commit failed (exit ${commit.status})`);
   }
 }
 
@@ -1388,22 +1432,20 @@ function pruneFailedAttemptEvidence(): void {
     }
   }
   if (!removed) return;
-  try {
-    execFileSync("git", ["add", "-A", "--", canonical], { stdio: "inherit" });
-    const st = spawnSync("git", ["diff", "--cached", "--quiet"], { stdio: "ignore" });
-    if (st.status === 0) return;
-    execFileSync(
-      "git",
-      [
-        "commit",
-        "-m",
-        `chore(evidence): prune failed-attempt evidence for #${ISSUE_NUMBER} (retained in git history)`,
-      ],
-      { stdio: "inherit" }
-    );
-  } catch (err) {
-    console.warn(
-      `[attempt-loop] evidence prune commit failed: ${err instanceof Error ? err.message : err}`
-    );
+  const add = harnessGit(["add", "-A", "--", canonical]);
+  if (add.status !== 0) {
+    console.warn(`[attempt-loop] evidence prune add failed (exit ${add.status})`);
+    return;
+  }
+  const st = harnessGit(["diff", "--cached", "--quiet"], "ignore");
+  if (st.status === 0) return;
+  const commit = harnessGit([
+    "commit",
+    "--no-verify",
+    "-m",
+    `chore(evidence): prune failed-attempt evidence for #${ISSUE_NUMBER} (retained in git history)`,
+  ]);
+  if (commit.status !== 0) {
+    console.warn(`[attempt-loop] evidence prune commit failed (exit ${commit.status})`);
   }
 }
