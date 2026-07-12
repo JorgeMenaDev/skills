@@ -588,9 +588,15 @@ try {
 
         cleanupReviewAuth();
 
+        // Restore codex implement auth UNCONDITIONALLY after a hosted Claude
+        // review (engine codex + review-engine claude): prepareReviewAuth()
+        // removed ${RUNNER_TEMP}/codex-home before the review, and a CLEAN
+        // review (no findings) still needs codex auth back for verify. The
+        // old workflow's restore step was unconditional too.
+        restoreCodexAuthIfNeeded();
+
         // Disposition when findings
         if (hasFindings) {
-          restoreCodexAuthIfNeeded();
           const dispTimeout = clampPhaseTimeoutMinutes(
             DISPOSITION_TIMEOUT_DEFAULT,
             remainingSeconds(deadlineMs, Date.now())
@@ -630,6 +636,21 @@ try {
       // --- Convex gate (unconditional, before verify) ----------------------
       // Deterministic, no agent: gets NO vendor credentials and no verify
       // secrets (its former workflow step carried only OUTPUT_DIR + job env).
+      // Deadline-clamped like every phase (spec §10): an unclamped gate near
+      // the deadline could straddle into the 120-min job kill, which posts
+      // no blocked comment.
+      const GATE_TIMEOUT_DEFAULT = 20;
+      const gateTimeout = clampPhaseTimeoutMinutes(
+        GATE_TIMEOUT_DEFAULT,
+        remainingSeconds(deadlineMs, Date.now())
+      );
+      if (gateTimeout == null) {
+        row.outcome = "deadline-fail";
+        closeRow(row);
+        manifest.outcome = "deadline-expired";
+        persistManifest();
+        failTyped(`Deadline expired before the Convex gate on attempt ${k}.`);
+      }
       const gate = spawnPhase(
         "convex-gate",
         ["bun", ".sandcastle/implement/convex-gate.ts"],
@@ -639,13 +660,14 @@ try {
           ...scrubVerifySecrets(),
           ...noVendorCreds(),
         }),
-        20 * 60_000
+        gateTimeout * 60_000
       );
       if (gate.status !== 0) {
         hoistFailure(attemptDir);
-        row.outcome = "infra-fail";
+        row.outcome = timeoutOutcome(gate, gateTimeout, GATE_TIMEOUT_DEFAULT);
         closeRow(row);
-        manifest.outcome = "infra-terminal";
+        manifest.outcome =
+          row.outcome === "deadline-fail" ? "deadline-expired" : "infra-terminal";
         persistManifest();
         failTyped(
           readFailure(attemptDir) ??
