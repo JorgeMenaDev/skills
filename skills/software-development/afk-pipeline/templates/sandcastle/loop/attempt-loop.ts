@@ -22,6 +22,22 @@ import { execFileSync, spawnSync } from "node:child_process";
 const BASE_BRANCH = "{{BASE_BRANCH}}";
 const EVIDENCE_DIR = "{{EVIDENCE_DIR}}";
 const IMAGE_NAME = "{{IMAGE_NAME}}";
+// Consumer verify-boot secret names (JSON array). The workflow injects the
+// values on the LOOP step env; the wrapper scopes them to the verify child
+// only — implement/disposition/gate children must never see them (runtime.ts
+// passthroughEnv() would otherwise forward them into every phase sandbox).
+const VERIFY_SECRET_KEYS: string[] = parseVerifySecretKeys('{{VERIFY_SECRET_KEYS}}');
+
+function parseVerifySecretKeys(raw: string): string[] {
+  try {
+    const v = JSON.parse(raw) as unknown;
+    return Array.isArray(v) ? v.map(String) : [];
+  } catch {
+    // Unstamped template (smokes run it directly) or malformed stamp — treat
+    // as no repo verify secrets.
+    return [];
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Pure helpers (also exercised by AFK_LOOP_SIMULATE)
@@ -386,7 +402,10 @@ const GH_TOKEN = process.env.GH_TOKEN ?? process.env.GITHUB_TOKEN ?? "";
 const GH_REPO = process.env.GH_REPO ?? process.env.GITHUB_REPOSITORY ?? "";
 
 // Env-driven phase defaults (high for implement/disposition — clamp is the bound).
-const IMPLEMENT_TIMEOUT_DEFAULT = Number(process.env.IMPLEMENT_TIMEOUT_MINUTES ?? 90);
+// Implement default = the 110-min deadline window itself: spec §4 forbids a NEW
+// per-attempt implement timeout in v1, so the deadline clamp must be the only
+// effective bound (min(110, remaining − 2m) always clamps below this default).
+const IMPLEMENT_TIMEOUT_DEFAULT = Number(process.env.IMPLEMENT_TIMEOUT_MINUTES ?? 110);
 const DISPOSITION_TIMEOUT_DEFAULT = Number(process.env.DISPOSITION_TIMEOUT_MINUTES ?? 45);
 const REVIEW_TIMEOUT_DEFAULT = Number(process.env.REVIEW_TIMEOUT_MINUTES ?? 15);
 const VERIFY_TIMEOUT_DEFAULT = Number(process.env.VERIFY_TIMEOUT_MINUTES ?? 60);
@@ -496,6 +515,7 @@ try {
         ENGINE: implEngine,
         RETRY_CONTEXT: retryContext,
         IMPLEMENT_TIMEOUT_MINUTES: String(implTimeout),
+        ...scrubVerifySecrets(),
         ...credentialEnvForEngine(implEngine, "implement"),
       });
 
@@ -507,7 +527,7 @@ try {
       );
       if (impl.status !== 0) {
         hoistFailure(attemptDir);
-        row.outcome = isTimeout(impl) ? "deadline-fail" : "infra-fail";
+        row.outcome = timeoutOutcome(impl, implTimeout, IMPLEMENT_TIMEOUT_DEFAULT);
         closeRow(row);
         manifest.outcome = row.outcome === "deadline-fail" ? "deadline-expired" : "infra-terminal";
         persistManifest();
@@ -592,6 +612,7 @@ try {
               GITHUB_OUTPUT: githubOutput,
               ENGINE: dispEngine,
               DISPOSITION_TIMEOUT_MINUTES: String(dispTimeout),
+              ...scrubVerifySecrets(),
               ...credentialEnvForEngine(dispEngine, "disposition"),
             }),
             dispTimeout * 60_000,
@@ -607,12 +628,16 @@ try {
       }
 
       // --- Convex gate (unconditional, before verify) ----------------------
+      // Deterministic, no agent: gets NO vendor credentials and no verify
+      // secrets (its former workflow step carried only OUTPUT_DIR + job env).
       const gate = spawnPhase(
         "convex-gate",
         ["bun", ".sandcastle/implement/convex-gate.ts"],
         baseEnv({
           OUTPUT_DIR: attemptDir,
           GITHUB_OUTPUT: githubOutput,
+          ...scrubVerifySecrets(),
+          ...noVendorCreds(),
         }),
         20 * 60_000
       );
@@ -682,6 +707,12 @@ try {
 
       assertControlPlane(`verify (attempt ${k})`);
 
+      // The vercel provider (and any lane writing through OUTPUT_DIR) lands
+      // the recording under the per-attempt dir; the upload step reads
+      // ${RUNNER_TEMP}/recording. Hoist per attempt — final attempt's ships
+      // (spec §7 per-attempt overwrite).
+      hoistRecording(attemptDir);
+
       const verdictPath = path.join(attemptDir, "verdict.json");
       let verdict: {
         pass: boolean;
@@ -725,10 +756,28 @@ try {
         process.exit(0);
       }
 
+      // Passing verdict but non-zero exit: verify crashed AFTER deciding pass
+      // (evidence commit, recording check, …). Re-implementing cannot fix it
+      // and the empty failedCriteria would make a useless envelope — terminal
+      // infra class, never the behavioral retry path.
+      if (verdict?.pass) {
+        hoistFailure(attemptDir);
+        row.outcome = timeoutOutcome(ver, verTimeout, VERIFY_TIMEOUT_DEFAULT);
+        row.endSha = headSha();
+        closeRow(row);
+        manifest.outcome =
+          row.outcome === "deadline-fail" ? "deadline-expired" : "infra-terminal";
+        persistManifest();
+        failTyped(
+          readFailure(attemptDir) ??
+            `Verify exited ${ver.status} despite a passing verdict on attempt ${k} — infra failure, not retryable.`
+        );
+      }
+
       // Verify failed or crashed
       if (!verdict) {
         hoistFailure(attemptDir);
-        row.outcome = isTimeout(ver) ? "deadline-fail" : "infra-fail";
+        row.outcome = timeoutOutcome(ver, verTimeout, VERIFY_TIMEOUT_DEFAULT);
         row.endSha = headSha();
         closeRow(row);
         manifest.outcome =
@@ -897,6 +946,17 @@ function baseEnv(extra: Record<string, string | undefined>): NodeJS.ProcessEnv {
   return env;
 }
 
+/** Deterministic (agent-free) children get no vendor credential at all.
+ *  Function (hoisted), not const — the top-level loop runs before consts
+ *  declared down here would leave the temporal dead zone. */
+function noVendorCreds(): Record<string, string | undefined> {
+  return {
+    CLAUDE_CODE_OAUTH_TOKEN: undefined,
+    CODEX_AUTH_B64: undefined,
+    CURSOR_API_KEY: undefined,
+  };
+}
+
 function credentialEnvForEngine(
   engine: string,
   phase: "implement" | "disposition" | "verify"
@@ -923,10 +983,54 @@ function credentialEnvForEngine(
   return out;
 }
 
+/**
+ * Verify-boot secrets ride the loop step's env (generator emits them there),
+ * so they exist in this wrapper's process.env. Scope: verify child ONLY.
+ */
 function passthroughVerifySecrets(): Record<string, string | undefined> {
-  // Workflow injects verify secrets into the loop step env; pass through as-is.
-  // Named list is consumer-specific (generator emits them on the step).
-  return {};
+  const out: Record<string, string | undefined> = {};
+  for (const k of VERIFY_SECRET_KEYS) out[k] = process.env[k];
+  return out;
+}
+
+/** Remove verify-boot secrets from non-verify children (implement/disposition/gate). */
+function scrubVerifySecrets(): Record<string, string | undefined> {
+  const out: Record<string, string | undefined> = {};
+  for (const k of VERIFY_SECRET_KEYS) out[k] = undefined;
+  return out;
+}
+
+/**
+ * Classify a phase kill: clamp-induced (deadline's doing) ⇒ deadline-fail;
+ * a timeout at the phase's own default cap is a phase-timeout infra class
+ * (spec §3); everything else is infra-fail.
+ */
+function timeoutOutcome(
+  r: { status: number | null; signal: NodeJS.Signals | null },
+  clampedMinutes: number,
+  defaultMinutes: number
+): "deadline-fail" | "infra-fail" {
+  if (!isTimeout(r)) return "infra-fail";
+  return clampedMinutes < defaultMinutes ? "deadline-fail" : "infra-fail";
+}
+
+/**
+ * Hoist a per-attempt recording dir to ${RUNNER_TEMP}/recording where the
+ * upload/preview steps expect it (the vercel provider writes through
+ * OUTPUT_DIR). Per-attempt overwrite — the final attempt's recording ships.
+ */
+function hoistRecording(attemptDir: string): void {
+  const src = path.join(attemptDir, "recording");
+  if (!fs.existsSync(src)) return;
+  const dest = path.join(RUNNER_TEMP, "recording");
+  try {
+    fs.rmSync(dest, { recursive: true, force: true });
+    fs.cpSync(src, dest, { recursive: true });
+  } catch (err) {
+    console.warn(
+      `[attempt-loop] recording hoist failed: ${err instanceof Error ? err.message : err}`
+    );
+  }
 }
 
 function spawnPhase(
@@ -1017,7 +1121,9 @@ function runReviewInDocker(attemptDir: string, timeoutMinutes: number): void {
         : path.join(RUNNER_TEMP, "codex-home");
     args.push("-v", `${codexHome}:/home/agent/.codex`, "-e", "CODEX_HOME=/home/agent/.codex");
   } else if (process.env.CLAUDE_CODE_OAUTH_TOKEN) {
-    args.push("-e", `CLAUDE_CODE_OAUTH_TOKEN=${process.env.CLAUDE_CODE_OAUTH_TOKEN}`);
+    // Name-only -e: docker reads the value from this process's env — the
+    // token must never appear in argv (ps-visible), matching the old YAML.
+    args.push("-e", "CLAUDE_CODE_OAUTH_TOKEN");
   }
 
   args.push(IMAGE_NAME, "-c", "bun .sandcastle/review/review.ts");

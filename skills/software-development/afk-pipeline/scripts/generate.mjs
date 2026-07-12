@@ -154,6 +154,9 @@ const TOKENS = {
   "{{PASSTHROUGH_DOC}}": passthroughDoc,
   "{{PASSTHROUGH_KEYS}}": passthroughArr,
   "{{VERIFY_SECRETS_ENV}}": verifySecretsEnv || "          # (no repo verify secrets configured)",
+  // JSON array of verify-boot secret NAMES for the attempt-loop wrapper: it
+  // scopes the values (injected on the loop step env) to the verify child only.
+  "{{VERIFY_SECRET_KEYS}}": JSON.stringify(verifySecrets),
   "{{DEPLOY_NOTE}}": deployNote,
   "{{DEPLOY_NOTE_LOWER}}": deployNote.charAt(0).toLowerCase() + deployNote.slice(1),
   "{{IMPLEMENT_GATE}}": req("implementGate"),
