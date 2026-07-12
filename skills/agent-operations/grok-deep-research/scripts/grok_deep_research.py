@@ -51,7 +51,9 @@ SCHEMA = json.dumps(
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--query", required=True, help="Research question")
+    query_group = parser.add_mutually_exclusive_group(required=True)
+    query_group.add_argument("--query", help="Research question")
+    query_group.add_argument("--query-file", help="UTF-8 file containing the research question")
     parser.add_argument("--output-dir", help="Directory for report and evidence")
     parser.add_argument("--max-iterations", type=int, default=6)
     parser.add_argument("--max-turns", type=int, default=20)
@@ -62,6 +64,10 @@ def parse_args() -> argparse.Namespace:
         parser.error("--max-iterations must be between 1 and 50")
     if not 1 <= args.max_turns <= 100:
         parser.error("--max-turns must be between 1 and 100")
+    if args.query_file:
+        args.query = Path(args.query_file).expanduser().read_text(encoding="utf-8").strip()
+        if not args.query:
+            parser.error("--query-file is empty")
     return args
 
 

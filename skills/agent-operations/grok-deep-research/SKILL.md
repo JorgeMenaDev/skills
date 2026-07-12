@@ -1,7 +1,7 @@
 ---
 name: grok-deep-research
 description: Use when the user wants iterative web research, asks Grok to investigate a topic deeply, or requests a bounded research loop. Runs Grok Build CLI with grok-4.5, preserves one resumable session, and produces a cited report plus an iteration ledger.
-version: 1.0.0
+version: 1.0.1
 mutating: true
 writes_to: ["requested output directory or ./AGENT-DESK/research/<run-id>/", "~/.grok/sessions"]
 ---
@@ -33,9 +33,11 @@ From this skill directory:
 
 ```bash
 python3 scripts/grok_deep_research.py \
-  --query "<research question>" \
+  --query-file "<absolute path to research brief.md>" \
   --output-dir "<absolute output directory>"
 ```
+
+Use `--query "<research question>"` for short prompts. Exactly one of `--query` or `--query-file` is required.
 
 Optional controls:
 
