@@ -10,6 +10,8 @@ Default mode asks once for the routing plan plus Wave 1, then at each frontier. 
 - `irreversible`: external send, purchase, deletion, force-push, production secret rotation;
 - `ambiguity`: context cannot make the slice dispatchable without risking the wrong result.
 
+A task whose start edge is this run's own merge is post-merge work, not a slice in the current run. Record it as an open deferred gate with its tracker reference; discharge or separately authorize it after the merge. `classify --post-merge-work yes` prints this routing hint.
+
 ## Five edge types
 
 | Type | Meaning |

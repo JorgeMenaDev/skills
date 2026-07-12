@@ -10,6 +10,8 @@ Read this for every mutating agent/worktree/PR slice.
 4. Write the brief to disk before spawn from `references/brief-template.md`: scope/non-scope, decisions, base SHA, criteria/evidence matrix, owned paths, generated/formatter allowlist, execution-context matrix, stop rules, and handoff schema. Append the run's `standing-lessons.md` verbatim instead of re-typing tooling facts per brief.
 5. Dispatch through the selected executor. Native runtimes use native subagent tools; non-native sessions use the installed adapter's launch/resume contract.
 
+For process-per-call executors, record the spawn PID and resumable session ID at dispatch. When the call exits between phases, record runtime status `between-calls`; do not fabricate an active process. After conductor restart, check `scripts/watch-pid.sh <pid>` or `kill -0 <pid>` before declaring the executor dead. If it is live, keep observing it; if it exited, resume through the adapter's session contract (for Grok, `grok -r <sid>`) and bind the new PID to the same attempt.
+
 ## Supervise and accept
 
 - Ask for one grounding checkpoint before material edits: intended boundary and validation plan.

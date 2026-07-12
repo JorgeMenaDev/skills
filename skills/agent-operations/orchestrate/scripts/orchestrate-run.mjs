@@ -22,7 +22,7 @@ const lanes = new Set(["dev-subagent", "afk", "read-only", "computer-use", "huma
 const edgeTypes = new Set(["start", "acceptance", "integration", "resource", "human_gate"]);
 const outcomes = new Set(["merged", "accepted_local", "report_accepted", "operation_verified", "cancelled", "deferred"]);
 const effectStatuses = new Set(["prepared", "executing", "observed", "unknown", "cancelled"]);
-const runtimeStatuses = new Set(["active", "complete"]);
+const runtimeStatuses = new Set(["active", "between-calls", "complete"]);
 const observationMaxAgeMs = 5 * 60 * 1000;
 const effectTypes = new Set(["dispatch", "resume", "resource_acquire", "resource_release", "push", "pr_create", "pr_update", "merge", "issue_close", "external_act"]);
 const effectTransitions = new Map([
@@ -144,6 +144,22 @@ const resourceMap = (run) => new Map(run.resources.map((resource) => [resource.i
 const evidencePassed = (criterion) => criterion.status === "passed" && Array.isArray(criterion.evidence) && criterion.evidence.length > 0;
 const criterionAccounted = (criterion) => ["passed", "cancelled", "deferred"].includes(criterion.status) && Array.isArray(criterion.evidence) && criterion.evidence.length > 0;
 const successOutcome = (slice) => slice.state === "TERMINAL" && !["cancelled", "deferred"].includes(slice.outcome);
+const expectedAttemptKey = (run, slice) => `${run.runId}:${slice.id}:${slice.attempt}`;
+const nonEmptyStrings = (value) => Array.isArray(value) && value.length > 0 && value.every((item) => typeof item === "string" && item.trim());
+
+const deriveAttemptKeys = (run) => ({
+  ...run,
+  effects: run.effects.map((effect) => {
+    if (effect.attemptKey || !effect.sliceId) return effect;
+    const slice = sliceMap(run).get(effect.sliceId);
+    return slice ? { ...effect, attemptKey: expectedAttemptKey(run, slice) } : effect;
+  }),
+});
+
+const reviewWaiverFor = (run, slice) => {
+  const id = slice.reviews?.reviewWaiver;
+  return id ? run.authorization?.reviewWaivers?.find((waiver) => waiver.id === id && waiver.sliceId === slice.id && waiver.scope === "independent_review") : null;
+};
 
 const requiredExecutorSatisfied = (slice) => {
   const verified = slice.executor?.verified || {};
@@ -190,6 +206,7 @@ const validate = (run, previous = null) => {
   if (!run.repo?.path || !run.repo?.targetBranch || !run.repo?.baseSha) errors.push("repo path, targetBranch, and baseSha are required");
   if (!Array.isArray(run.slices) || !run.slices.length) errors.push("at least one slice is required");
   for (const field of ["parentCriteria", "edges", "resources", "effects", "runtimeObservations", "knownLessons"]) if (!Array.isArray(run[field])) errors.push(`${field} must be an array`);
+  if (run.authorization?.reviewWaivers !== undefined && !Array.isArray(run.authorization.reviewWaivers)) errors.push("authorization.reviewWaivers must be an array");
   if (errors.length) return errors;
 
   const ids = new Set();
@@ -200,7 +217,7 @@ const validate = (run, previous = null) => {
     if (!states.has(slice.state)) errors.push(`${slice.id}: invalid state ${slice.state}`);
     if (!lanes.has(slice.lane)) errors.push(`${slice.id}: invalid lane ${slice.lane}`);
     if (!Number.isInteger(slice.attempt) || slice.attempt < 1) errors.push(`${slice.id}: invalid attempt`);
-    const attemptKey = `${run.runId}:${slice.id}:${slice.attempt}`;
+    const attemptKey = expectedAttemptKey(run, slice);
     if (attempts.has(attemptKey)) errors.push(`${slice.id}: duplicate attempt key`);
     attempts.add(attemptKey);
     for (const constraint of slice.executor?.constraints || []) {
@@ -221,7 +238,10 @@ const validate = (run, previous = null) => {
     if (["ACCEPTED", "TERMINAL"].includes(slice.state) && !cessation) {
       const acceptanceEdges = run.edges.filter((edge) => edge.target === slice.id && edge.type === "acceptance");
       if (!acceptanceEdges.every((edge) => edgeCleared(run, edge))) errors.push(`${slice.id}: acceptance edge is uncleared`);
-      if (slice.lane === "dev-subagent" && (slice.reviews?.conductor?.verdict !== "pass" || slice.reviews?.independent?.verdict !== "pass")) errors.push(`${slice.id}: dev acceptance requires passing conductor and independent reviews`);
+      const waiver = reviewWaiverFor(run, slice);
+      if (slice.reviews?.reviewWaiver && !waiver) errors.push(`${slice.id}: review waiver ${slice.reviews.reviewWaiver} is missing or bound to another slice/scope`);
+      if (slice.lane === "dev-subagent" && slice.reviews?.conductor?.verdict !== "pass") errors.push(`${slice.id}: dev acceptance requires a passing conductor review`);
+      if (slice.lane === "dev-subagent" && slice.reviews?.independent?.verdict !== "pass" && !waiver) errors.push(`${slice.id}: dev acceptance requires a passing independent review or bound review waiver`);
     }
     if (slice.state === "TERMINAL") {
       if (!outcomes.has(slice.outcome) || !slice.terminalProof) errors.push(`${slice.id}: terminal outcome and proof are required`);
@@ -259,6 +279,11 @@ const validate = (run, previous = null) => {
     if (!effect.attemptKey || !effect.reconcile?.kind || !effect.reconcile?.locator || effect.reconcile?.expected === undefined || effect.reconcile?.expected === null || effect.reconcile?.expected === "") errors.push(`${effect.id}: attempt key and complete reconciliation probe are required`);
     const effectSlice = sliceMap(run).get(effect.sliceId);
     if (!effectSlice) errors.push(`${effect.id}: unknown slice ${effect.sliceId}`);
+    else {
+      const prefix = `${run.runId}:${effectSlice.id}:`;
+      const attempt = effect.attemptKey.startsWith(prefix) ? Number(effect.attemptKey.slice(prefix.length)) : NaN;
+      if (!Number.isInteger(attempt) || attempt < 1 || attempt > effectSlice.attempt) errors.push(`${effect.id}: attemptKey must match ${run.runId}:${effectSlice.id}:<attempt 1..${effectSlice.attempt}>, found ${effect.attemptKey}`);
+    }
     if (effect.type === "dispatch" && ["prepared", "executing"].includes(effect.status) && effectSlice) {
       if (!requiredExecutorSatisfied(effectSlice)) errors.push(`${effect.id}: required executor constraints are not verified`);
       const blockers = run.edges.filter((edge) => edge.target === effectSlice.id && ["start", "resource", "human_gate"].includes(edge.type) && !edgeCleared(run, edge));
@@ -281,6 +306,16 @@ const validate = (run, previous = null) => {
   for (const resource of run.resources) {
     if (!resource.id || !["free", "prepared", "acquired", "released", "unknown"].includes(resource.status)) errors.push(`invalid resource ${resource.id || "<empty>"}`);
     if (resource.status === "acquired" && (!resource.ownerSlice || !resource.externalIdentity)) errors.push(`${resource.id}: acquired resource requires owner and identity`);
+  }
+  const waiverIds = new Set();
+  for (const waiver of run.authorization?.reviewWaivers || []) {
+    if (!waiver.id || waiverIds.has(waiver.id)) errors.push(`invalid or duplicate review waiver ${waiver.id || "<empty>"}`);
+    waiverIds.add(waiver.id);
+    if (!ids.has(waiver.sliceId) || waiver.scope !== "independent_review" || !waiver.approvedBy || !nonEmptyStrings(waiver.evidence) || !waiver.compensatingControl) errors.push(`${waiver.id || "<empty>"}: review waiver requires sliceId, independent_review scope, approver, evidence, and compensating control`);
+  }
+  for (const observation of run.runtimeObservations) {
+    if (!observation.attemptKey || !runtimeStatuses.has(observation.status) || !observation.executor || !observation.sessionId || !observation.observedAt) errors.push(`invalid runtime observation ${observation.attemptKey || "<empty>"}`);
+    if (observation.pid !== undefined && (!Number.isInteger(observation.pid) || observation.pid < 1)) errors.push(`${observation.attemptKey || "<empty>"}: runtime pid must be a positive integer`);
   }
   for (const preparation of run.preparations) {
     if (!preparation.sliceId || !ids.has(preparation.sliceId) || !preparation.sourceSha || !Array.isArray(preparation.paths) || typeof preparation.valid !== "boolean") errors.push(`invalid preparation for ${preparation.sliceId || "<empty>"}`);
@@ -347,6 +382,10 @@ const validate = (run, previous = null) => {
         break;
       }
     }
+    const previousDecisions = previous.authorization?.recordedDecisions || [];
+    const currentDecisions = run.authorization?.recordedDecisions || [];
+    if (currentDecisions.length < previousDecisions.length) errors.push("recorded decisions are append-only");
+    else for (let index = 0; index < previousDecisions.length; index += 1) if (serialize(previousDecisions[index]) !== serialize(currentDecisions[index])) errors.push("recorded decisions are immutable");
   }
   return [...new Set(errors)];
 };
@@ -378,15 +417,42 @@ const derived = (run) => {
   return { write, preparation, ready, integration, blocked, unknown, incompleteCriteria, unresolvedEffects, heldResources, openDeferredGates, complete, waves };
 };
 
+const frontierExclusions = (run, state) => {
+  const incoming = (id) => run.edges.filter((edge) => edge.target === id && ["start", "resource", "human_gate"].includes(edge.type));
+  const unresolved = new Map();
+  for (const effect of run.effects.filter(({ status }) => ["prepared", "executing", "unknown"].includes(status))) {
+    const list = unresolved.get(effect.sliceId) || [];
+    list.push(`${effect.id}:${effect.status}`);
+    unresolved.set(effect.sliceId, list);
+  }
+  return run.slices.filter(({ state: sliceState, id }) => sliceState === "PLANNED" && !state.write.includes(id)).map((slice) => {
+    const reasons = [];
+    if (!reconciliationFresh(run)) reasons.push(`reconciliation=${run.reconciliation?.status || "unknown"}${run.reconciliation?.status === "clean" ? " (stale)" : ""}`);
+    for (const constraint of (slice.executor?.constraints || []).filter(({ strength }) => strength === "required")) {
+      const actual = slice.executor?.verified?.[constraint.field];
+      if (actual === undefined || actual === "unknown" || actual !== constraint.value) reasons.push(`required executor ${constraint.field}=${constraint.value} not verified (verified.${constraint.field}=${actual ?? "missing"})`);
+    }
+    if (unresolved.has(slice.id)) reasons.push(`unresolved effects ${unresolved.get(slice.id).join(", ")}`);
+    const blockedEdges = incoming(slice.id).filter((edge) => !edgeCleared(run, edge));
+    if (blockedEdges.length) reasons.push(`uncleared edges ${blockedEdges.map(({ id }) => id).join(", ")}`);
+    return { id: slice.id, reasons: reasons.length ? reasons : ["not eligible for an unknown reason"] };
+  });
+};
+
 const inspect = (run, shouldFail = true) => {
   const errors = validate(run);
   const state = derived(run);
   process.stdout.write(`RUN_VALID: ${errors.length ? "no" : "yes"}\n`);
   process.stdout.write(`REVISION: ${run.revision}\n`);
   process.stdout.write(`OWNER: ${run.conductor.id}@${run.conductor.epoch}\n`);
-  process.stdout.write(`RECONCILIATION: ${run.reconciliation?.status === "clean" && !reconciliationFresh(run) ? "stale" : run.reconciliation?.status || "unknown"}\n`);
+  const reconciliationAt = Date.parse(run.reconciliation?.at);
+  const reconciliationAgeMs = Number.isFinite(reconciliationAt) ? Math.max(0, Date.now() - reconciliationAt) : null;
+  const reconciliationAge = reconciliationAgeMs === null ? "unknown" : reconciliationAgeMs < 60_000 ? `${Math.floor(reconciliationAgeMs / 1000)}s` : `${Math.floor(reconciliationAgeMs / 60_000)}m`;
+  const reconciliationStatus = run.reconciliation?.status || "unknown";
+  process.stdout.write(`RECONCILIATION: ${reconciliationStatus} (age ${reconciliationAge}${reconciliationStatus === "clean" && !reconciliationFresh(run) ? " — STALE for new external intents" : ""})\n`);
   process.stdout.write(`WAVES: ${JSON.stringify(state.waves)}\n`);
   process.stdout.write(`WRITE_FRONTIER: ${JSON.stringify(state.write)}\n`);
+  for (const exclusion of frontierExclusions(run, state)) process.stdout.write(`WRITE_FRONTIER_EXCLUDED: ${exclusion.id}: ${exclusion.reasons.join("; ")}\n`);
   process.stdout.write(`PREPARATION_FRONTIER: ${JSON.stringify(state.preparation)}\n`);
   process.stdout.write(`READY_FOR_ACCEPTANCE: ${JSON.stringify(state.ready)}\n`);
   process.stdout.write(`INTEGRATION_FRONTIER: ${JSON.stringify(state.integration)}\n`);
@@ -407,7 +473,8 @@ const mutate = (path, expectedRevision, conductor, operation, options = {}) => {
     const current = readJson(path);
     if (current.revision !== Number(expectedRevision)) throw new Error(`stale revision: expected ${expectedRevision}, found ${current.revision}`);
     if (current.conductor.id !== conductor.id || current.conductor.epoch !== conductor.epoch) throw new Error(`stale conductor: expected ${current.conductor.id}@${current.conductor.epoch}, got ${conductor.id}@${conductor.epoch}`);
-    const candidate = operation(structuredClone(current));
+    if (options.beforeOperation) options.beforeOperation(current);
+    const candidate = deriveAttemptKeys(operation(structuredClone(current)));
     const reconciliationChanged = serialize(candidate.reconciliation) !== serialize(current.reconciliation);
     if (reconciliationChanged && !options.allowReconciliation) throw new Error("reconciliation state changes only through reconcile");
     const effectResolved = candidate.effects.some((effect) => {
@@ -476,7 +543,7 @@ const mutexPath = (resourceId) => join(stateRoot(), "mutexes", `${createHash("sh
 
 const normalize = (spec) => {
   const createdAt = now();
-  return {
+  return deriveAttemptKeys({
     schemaVersion: 1,
     runId: spec.runId,
     title: spec.title || spec.runId,
@@ -484,7 +551,7 @@ const normalize = (spec) => {
     createdAt,
     updatedAt: createdAt,
     conductor: spec.conductor,
-    authorization: { mode: spec.authorization?.mode || spec.mode || "default", recordedDecisions: spec.authorization?.recordedDecisions || [], cessations: spec.authorization?.cessations || [], effectRulings: spec.authorization?.effectRulings || [] },
+    authorization: { mode: spec.authorization?.mode || spec.mode || "default", recordedDecisions: spec.authorization?.recordedDecisions || [], cessations: spec.authorization?.cessations || [], effectRulings: spec.authorization?.effectRulings || [], reviewWaivers: spec.authorization?.reviewWaivers || [] },
     repo: { ...spec.repo, path: (() => { try { return execFileSync("git", ["-C", spec.repo.path, "rev-parse", "--show-toplevel"], { encoding: "utf8" }).trim(); } catch { return resolve(spec.repo.path); } })(), expectedHead: spec.repo.expectedHead || spec.repo.baseSha },
     parentCriteria: spec.parentCriteria || [],
     slices: (spec.slices || []).map((slice) => ({
@@ -504,14 +571,14 @@ const normalize = (spec) => {
     deferredGates: spec.deferredGates ?? [],
     checkpoints: spec.checkpoints ?? [],
     reconciliation: spec.reconciliation || { status: "unknown", at: null, notes: [] },
-  };
+  });
 };
 
 const command = process.argv[2];
 const args = parseArgs(process.argv.slice(3));
 
 if (!command || ["help", "--help", "-h"].includes(command)) {
-  process.stdout.write(`orchestrate-run.mjs commands:\n  preflight --repo DIR\n  classify --slices N --dependencies yes|no --integration-branch yes|no --shared-resource yes|no [--one-liner yes]\n  start --dir DIR --spec FILE            (preflight + init + locator + reconcile + first frontier)\n  adopt --dir DIR --spec FILE            (conservative import of an in-flight prose run; unproved state -> UNKNOWN)\n  checkpoint --run FILE --expected-revision N [--reason TEXT] [--observations FILE] --conductor-id ID --conductor-epoch N\n  checkpoint --run FILE --render-only     (regenerate RESUME.md from the committed ledger; no mutation)\n  init --dir DIR --spec FILE\n  update --run FILE --expected-revision N --patch FILE --conductor-id ID --conductor-epoch N\n  probe --run FILE --expected-revision N --resource ID --slice ID --action acquire|release --conductor-id ID --conductor-epoch N\n  reconcile --run FILE --expected-revision N [--observations FILE] --conductor-id ID --conductor-epoch N\n  takeover --run FILE --expected-revision N --conductor-id OLD --conductor-epoch N --new-conductor-id NEW\n  recover-lock --run FILE --conductor-id ID --conductor-epoch N --confirm-stale\n  recover-mutex --run FILE --expected-revision N --resource ID --conductor-id ID --conductor-epoch N --confirm-stale\n  inspect --run FILE\n  render --run FILE\n  assert-complete --run FILE\n  archive --run FILE --conductor-id ID --conductor-epoch N\n`);
+  process.stdout.write(`orchestrate-run.mjs commands:\n  preflight --repo DIR\n  classify --slices N --dependencies yes|no --integration-branch yes|no --shared-resource yes|no [--post-merge-work yes] [--one-liner yes]\n  start --dir DIR --spec FILE            (preflight + init + locator + reconcile + first frontier)\n  adopt --dir DIR --spec FILE            (conservative import of an in-flight prose run; unproved state -> UNKNOWN)\n  dispatch --run FILE --expected-revision N --slice ID --executor ID --session ID [--vendor ID] [--model ID] [--effort ID] [--pid N] --conductor-id ID --conductor-epoch N\n  observe --run FILE --expected-revision N --slice ID --session ID [--status active|between-calls|complete] [--pid N] --conductor-id ID --conductor-epoch N\n  handoff --run FILE --expected-revision N --slice ID --report FILE --commits RANGE --criteria-evidence FILE [--status between-calls|complete] --conductor-id ID --conductor-epoch N\n  accept --run FILE --expected-revision N --slice ID --conductor-review REF (--independent-review REF | --waiver ID) --conductor-id ID --conductor-epoch N\n  finish --run FILE --expected-revision N --slice ID --outcome OUTCOME --proof REF --conductor-id ID --conductor-epoch N\n  rebase-authority --run FILE --expected-revision N --to SHA [--observations FILE] --conductor-id ID --conductor-epoch N\n  checkpoint --run FILE --expected-revision N [--reason TEXT] [--observations FILE] --conductor-id ID --conductor-epoch N\n  checkpoint --run FILE --render-only     (regenerate RESUME.md from the committed ledger; no mutation)\n  init --dir DIR --spec FILE\n  update --run FILE --expected-revision N --patch FILE --conductor-id ID --conductor-epoch N\n  probe --run FILE --expected-revision N --resource ID --slice ID --action acquire|release --conductor-id ID --conductor-epoch N\n  reconcile --run FILE --expected-revision N [--observations FILE] --conductor-id ID --conductor-epoch N\n  takeover --run FILE --expected-revision N --conductor-id OLD --conductor-epoch N --new-conductor-id NEW\n  recover-lock --run FILE --conductor-id ID --conductor-epoch N --confirm-stale\n  recover-mutex --run FILE --expected-revision N --resource ID --conductor-id ID --conductor-epoch N --confirm-stale\n  validate --run FILE\n  inspect --run FILE\n  render --run FILE\n  assert-complete --run FILE\n  archive --run FILE --conductor-id ID --conductor-epoch N\n`);
   process.exit(0);
 }
 
@@ -539,7 +606,7 @@ if (command === "preflight") {
   }
   const activeLocator = locatorCandidates(root, repoIdentity(root)).find((candidate) => existsSync(candidate));
   const skillRoots = [join(root, ".agents", "skills"), join(homedir(), ".agents", "skills"), join(homedir(), ".claude", "skills")];
-  const adapters = ["codex-cli-runtime", "claude-cli-runtime", "cursor-subagent", "opencode-subagent"].filter((name) => skillRoots.some((skillRoot) => existsSync(join(skillRoot, name, "SKILL.md"))));
+  const adapters = ["codex-cli-runtime", "claude-cli-runtime", "cursor-subagent", "grok-cli-runtime", "opencode-subagent"].filter((name) => skillRoots.some((skillRoot) => existsSync(join(skillRoot, name, "SKILL.md"))));
   process.stdout.write(`REPO: ${root}\nBRANCH: ${branch}\nDIRTY: ${dirty}\nBASE_SHA: ${head}\nACTIVE_RUN: ${activeLocator || "none"}\nHELPER_SCHEMA: 1\nENGINE_OVERRIDE: ${override}\nNATIVE_EXECUTOR: runtime-owned\nNON_NATIVE_ADAPTERS: ${JSON.stringify(adapters)}\n`);
   process.exit(0);
 }
@@ -550,6 +617,7 @@ if (command === "classify") {
   const oneLiner = args["one-liner"] === "yes" && count === 1 && !orchestrated;
   process.stdout.write(`PATH: ${oneLiner ? "one-liner" : orchestrated ? "orchestrated" : "simple"}\n`);
   if (!oneLiner && orchestrated) process.stdout.write("REQUIRES_INIT: mutating dispatch is fail-closed until a ledger exists; next: orchestrate-run.mjs start --dir <scratchpad>/orchestrate/<run-id> --spec <spec.json>\n");
+  if (args["post-merge-work"] === "yes") process.stdout.write("POST_MERGE_HINT: work gated by this run's own merge belongs in deferredGates with its tracker reference, not in slices\n");
   process.exit(0);
 }
 
@@ -578,6 +646,133 @@ if (command === "update") {
   const patch = readJson(resolve(args.patch));
   const run = mutate(path, args["expected-revision"], caller(args), (current) => mergePatch(current, patch));
   process.stdout.write(`UPDATED: ${path}\nREVISION: ${run.revision}\n`);
+  process.exit(0);
+}
+
+const commandSlice = (run, id) => sliceMap(run).get(id) || fail(`unknown slice: ${id}`);
+const parsedPid = (value) => value === undefined ? undefined : Number(value);
+const runtimeRow = (run, slice, values) => ({
+  attemptKey: expectedAttemptKey(run, slice),
+  executor: slice.executor.verified.executor,
+  vendor: slice.executor.verified.vendor || "unknown",
+  sessionId: values.sessionId,
+  status: values.status,
+  observedAt: now(),
+  ...(values.pid === undefined ? {} : { pid: values.pid }),
+});
+const upsertRuntime = (rows, row) => [...rows.filter(({ attemptKey }) => attemptKey !== row.attemptKey), row];
+
+if (command === "dispatch") {
+  if (args["expected-revision"] === undefined || !args.slice || !args.executor || !args.session) fail("dispatch requires --expected-revision, --slice, --executor, and --session");
+  const path = runPath(args);
+  const conductor = caller(args);
+  const initial = readJson(path);
+  const slice = commandSlice(initial, args.slice);
+  if (slice.state !== "PLANNED") fail(`${slice.id}: dispatch requires PLANNED, found ${slice.state}`);
+  const verified = { executor: args.executor, vendor: args.vendor || "unknown", model: args.model || "unknown", effort: args.effort || "unknown" };
+  const routed = { ...initial, slices: initial.slices.map((item) => item.id === slice.id ? { ...item, executor: { ...item.executor, verified } } : item) };
+  if (!derived(routed).write.includes(slice.id)) fail(`${slice.id}: dispatch remains excluded after applying supplied executor metadata; run inspect for edge, effect, or reconciliation reasons`);
+  const attemptKey = expectedAttemptKey(initial, slice);
+  const effectId = `dispatch:${attemptKey}`;
+  if (initial.effects.some(({ id }) => id === effectId)) fail(`effect already exists: ${effectId}`);
+  const pid = parsedPid(args.pid);
+  const prepared = mutate(path, args["expected-revision"], conductor, (current) => ({
+    ...current,
+    slices: current.slices.map((item) => item.id === slice.id ? { ...item, executor: { ...item.executor, verified } } : item),
+    effects: [...current.effects, { id: effectId, type: "dispatch", sliceId: slice.id, status: "prepared", ownerEpoch: conductor.epoch, attemptKey, reconcile: { kind: "runtime", locator: args.session, expected: attemptKey }, metadata: { sessionId: args.session, ...(pid === undefined ? {} : { pid }) } }],
+  }));
+  const executing = mutate(path, prepared.revision, conductor, (current) => ({
+    ...current,
+    effects: current.effects.map((effect) => effect.id === effectId ? { ...effect, status: "executing", executingAt: now() } : effect),
+  }));
+  process.stdout.write(`DISPATCH_EXECUTING: ${slice.id}\nATTEMPT_KEY: ${attemptKey}\nEFFECT: ${effectId}\nREVISION: ${executing.revision}\n`);
+  process.exit(0);
+}
+
+if (command === "observe") {
+  if (args["expected-revision"] === undefined || !args.slice || !args.session) fail("observe requires --expected-revision, --slice, and --session");
+  const path = runPath(args);
+  const conductor = caller(args);
+  const initial = readJson(path);
+  const slice = commandSlice(initial, args.slice);
+  const status = args.status || "active";
+  if (!runtimeStatuses.has(status)) fail(`invalid runtime status: ${status}`);
+  const pid = parsedPid(args.pid);
+  const attemptKey = expectedAttemptKey(initial, slice);
+  const effectId = `dispatch:${attemptKey}`;
+  const effect = initial.effects.find(({ id }) => id === effectId);
+  if (slice.state !== "PLANNED" || effect?.status !== "executing") fail(`${slice.id}: observe requires PLANNED with an executing dispatch effect`);
+  if (effect.reconcile.locator !== args.session) fail(`${slice.id}: session mismatch; expected ${effect.reconcile.locator}, found ${args.session}`);
+  const row = runtimeRow(initial, slice, { sessionId: args.session, status, pid });
+  const run = mutate(path, args["expected-revision"], conductor, (current) => ({
+    ...current,
+    slices: current.slices.map((item) => item.id === slice.id ? { ...item, state: "ACTIVE" } : item),
+    effects: current.effects.map((item) => item.id === effectId ? { ...item, status: "observed", resolvedAt: now(), observation: { identity: args.session } } : item),
+    runtimeObservations: upsertRuntime(current.runtimeObservations, row),
+  }));
+  process.stdout.write(`OBSERVED: ${slice.id}\nRUNTIME_STATUS: ${status}\nREVISION: ${run.revision}\n`);
+  process.exit(0);
+}
+
+if (command === "handoff") {
+  if (args["expected-revision"] === undefined || !args.slice || !args.report || !args.commits || !args["criteria-evidence"]) fail("handoff requires --expected-revision, --slice, --report, --commits, and --criteria-evidence");
+  const path = runPath(args);
+  const conductor = caller(args);
+  const initial = readJson(path);
+  const slice = commandSlice(initial, args.slice);
+  if (slice.state !== "ACTIVE") fail(`${slice.id}: handoff requires ACTIVE, found ${slice.state}`);
+  const evidencePath = resolve(args["criteria-evidence"]);
+  const evidence = readJson(evidencePath);
+  if (!existsSync(resolve(args.report))) fail(`${slice.id}: handoff report not found: ${resolve(args.report)}`);
+  for (const criterion of slice.criteria) if (!nonEmptyStrings(evidence[criterion.id])) fail(`${slice.id}: criteria evidence missing for ${criterion.id}`);
+  const status = args.status || "complete";
+  if (!new Set(["between-calls", "complete"]).has(status)) fail("handoff --status must be between-calls or complete");
+  const existing = initial.runtimeObservations.find(({ attemptKey }) => attemptKey === expectedAttemptKey(initial, slice));
+  if (!existing?.sessionId) fail(`${slice.id}: handoff requires an observed runtime session`);
+  const row = runtimeRow(initial, slice, { sessionId: existing.sessionId, status, pid: existing.pid });
+  const run = mutate(path, args["expected-revision"], conductor, (current) => ({
+    ...current,
+    slices: current.slices.map((item) => item.id === slice.id ? {
+      ...item,
+      state: "READY_FOR_ACCEPTANCE",
+      criteria: item.criteria.map((criterion) => ({ ...criterion, status: "passed", evidence: evidence[criterion.id] })),
+      handoff: { report: resolve(args.report), commits: args.commits, criteriaEvidence: evidencePath },
+    } : item),
+    runtimeObservations: upsertRuntime(current.runtimeObservations, row),
+  }));
+  process.stdout.write(`HANDOFF_RECORDED: ${slice.id}\nSTATE: READY_FOR_ACCEPTANCE\nREVISION: ${run.revision}\n`);
+  process.exit(0);
+}
+
+if (command === "accept") {
+  if (args["expected-revision"] === undefined || !args.slice || !args["conductor-review"] || Boolean(args["independent-review"]) === Boolean(args.waiver)) fail("accept requires --expected-revision, --slice, --conductor-review, and exactly one of --independent-review or --waiver");
+  const path = runPath(args);
+  const conductor = caller(args);
+  const initial = readJson(path);
+  const slice = commandSlice(initial, args.slice);
+  if (slice.state !== "READY_FOR_ACCEPTANCE") fail(`${slice.id}: accept requires READY_FOR_ACCEPTANCE, found ${slice.state}`);
+  if (args.waiver && !(initial.authorization.reviewWaivers || []).some((waiver) => waiver.id === args.waiver && waiver.sliceId === slice.id && waiver.scope === "independent_review")) fail(`${slice.id}: unknown or mismatched review waiver ${args.waiver}`);
+  const run = mutate(path, args["expected-revision"], conductor, (current) => ({
+    ...current,
+    slices: current.slices.map((item) => item.id === slice.id ? { ...item, state: "ACCEPTED", reviews: { ...item.reviews, conductor: { verdict: "pass", evidence: [args["conductor-review"]] }, independent: args["independent-review"] ? { verdict: "pass", evidence: [args["independent-review"]] } : null, reviewWaiver: args.waiver || null } } : item),
+  }));
+  process.stdout.write(`ACCEPTED: ${slice.id}\nREVIEW_PATH: ${args.waiver ? `waiver:${args.waiver}` : "independent"}\nREVISION: ${run.revision}\n`);
+  process.exit(0);
+}
+
+if (command === "finish") {
+  if (args["expected-revision"] === undefined || !args.slice || !args.outcome || !args.proof) fail("finish requires --expected-revision, --slice, --outcome, and --proof");
+  const path = runPath(args);
+  const conductor = caller(args);
+  const initial = readJson(path);
+  const slice = commandSlice(initial, args.slice);
+  if (slice.state !== "ACCEPTED") fail(`${slice.id}: finish requires ACCEPTED, found ${slice.state}`);
+  if (!outcomes.has(args.outcome) || ["cancelled", "deferred"].includes(args.outcome)) fail(`finish requires a successful lane-valid outcome, found ${args.outcome}`);
+  const run = mutate(path, args["expected-revision"], conductor, (current) => ({
+    ...current,
+    slices: current.slices.map((item) => item.id === slice.id ? { ...item, state: "TERMINAL", outcome: args.outcome, terminalProof: args.proof } : item),
+  }));
+  process.stdout.write(`FINISHED: ${slice.id}\nOUTCOME: ${args.outcome}\nREVISION: ${run.revision}\n`);
   process.exit(0);
 }
 
@@ -776,11 +971,13 @@ const reconcileOperation = (observations) => (current) => {
     }
     for (const slice of current.slices.filter(({ worktree, branch }) => worktree || branch)) {
       try {
-        if (!slice.worktree || !existsSync(slice.worktree)) throw new Error("worktree absent");
-        const branch = git(slice.worktree, ["branch", "--show-current"]);
-        const head = git(slice.worktree, ["rev-parse", "HEAD"]);
-        if (slice.branch && branch !== slice.branch) throw new Error(`branch ${branch} != ${slice.branch}`);
-        if (slice.baseSha) git(slice.worktree, ["merge-base", "--is-ancestor", slice.baseSha, head]);
+        if (slice.worktree && !existsSync(slice.worktree)) throw new Error("worktree absent");
+        const head = slice.worktree ? git(slice.worktree, ["rev-parse", "HEAD"]) : git(current.repo.path, ["rev-parse", `refs/heads/${slice.branch}`]);
+        if (slice.worktree && slice.branch) {
+          const branch = git(slice.worktree, ["branch", "--show-current"]);
+          if (branch !== slice.branch) throw new Error(`branch ${branch} != ${slice.branch}`);
+        }
+        if (slice.baseSha) git(slice.worktree || current.repo.path, ["merge-base", "--is-ancestor", slice.baseSha, head]);
       } catch {
         status = "unknown";
         notes.push(`worktree/branch drift: ${slice.id}`);
@@ -788,16 +985,20 @@ const reconcileOperation = (observations) => (current) => {
       }
     }
     const active = current.slices.filter(({ state }) => ["ACTIVE", "READY_FOR_ACCEPTANCE"].includes(state));
-    if (active.length && !observationEnvelopeValid) {
+    const suppliedRuntimeObservations = observationEnvelopeValid ? observations.runtimeObservations || [] : [];
+    const storedStableObservation = (slice) => current.runtimeObservations.find(({ attemptKey, status: runtimeStatus }) => attemptKey === expectedAttemptKey(current, slice) && ["between-calls", "complete"].includes(runtimeStatus));
+    if (active.some((slice) => !storedStableObservation(slice)) && !observationEnvelopeValid) {
       status = status === "offline" ? "offline" : "unknown";
-      notes.push("active slices require a current bound runtime observation envelope");
+      notes.push("active runtime processes require a current bound observation envelope; use between-calls when a resumable executor is idle");
     }
-    const runtimeObservations = observationEnvelopeValid ? observations.runtimeObservations || [] : current.runtimeObservations;
+    const suppliedKeys = new Set(suppliedRuntimeObservations.map(({ attemptKey }) => attemptKey));
+    const runtimeObservations = observationEnvelopeValid ? [...current.runtimeObservations.filter(({ attemptKey }) => !suppliedKeys.has(attemptKey)), ...suppliedRuntimeObservations] : current.runtimeObservations;
     for (const slice of active) {
-      const key = `${current.runId}:${slice.id}:${slice.attempt}`;
-      const observation = observationEnvelopeValid ? runtimeObservations.find(({ attemptKey }) => attemptKey === key) : null;
+      const key = expectedAttemptKey(current, slice);
+      const observation = suppliedRuntimeObservations.find(({ attemptKey }) => attemptKey === key) || storedStableObservation(slice);
       const executorMatches = observation && observation.executor === slice.executor.verified.executor && (slice.executor.verified.vendor === "unknown" || observation.vendor === slice.executor.verified.vendor);
-      if (!observation || !runtimeStatuses.has(observation.status) || !observation.sessionId || !executorMatches || !freshTimestamp(observation.observedAt)) {
+      const freshnessValid = observation?.status === "active" ? observationEnvelopeValid && freshTimestamp(observation.observedAt) : ["between-calls", "complete"].includes(observation?.status);
+      if (!observation || !runtimeStatuses.has(observation.status) || !observation.sessionId || !executorMatches || !freshnessValid) {
         status = "unknown";
         notes.push(`runtime state unresolved: ${key}`);
         unknownSlices.add(slice.id);
@@ -890,6 +1091,102 @@ if (command === "reconcile") {
   const run = mutate(path, args["expected-revision"], caller(args), reconcileOperation(observations), { allowReconciliation: true });
   process.stdout.write(`RECONCILIATION: ${run.reconciliation.status}\nREVISION: ${run.revision}\n`);
   for (const note of run.reconciliation.notes) process.stdout.write(`NOTE: ${note}\n`);
+  process.exit(0);
+}
+
+const pathsOverlap = (left, right) => left === right || left.startsWith(`${right}/`) || right.startsWith(`${left}/`);
+
+if (command === "rebase-authority") {
+  if (args["expected-revision"] === undefined || !args.to) fail("rebase-authority requires --expected-revision and --to");
+  const path = runPath(args);
+  const conductor = caller(args);
+  const initial = readJson(path);
+  if (initial.effects.some(({ status }) => ["prepared", "executing", "unknown"].includes(status))) fail("rebase-authority refuses while an effect is unresolved");
+  const observations = args.observations ? readJson(resolve(args.observations)) : null;
+  const liveRuntimeSlices = initial.slices.filter(({ state }) => ["ACTIVE", "READY_FOR_ACCEPTANCE"].includes(state)).filter((slice) => initial.runtimeObservations.find(({ attemptKey, status }) => attemptKey === expectedAttemptKey(initial, slice) && status === "active"));
+  if (liveRuntimeSlices.length) {
+    const envelopeValid = observations?.runId === initial.runId && observations.conductor?.id === initial.conductor.id && observations.conductor?.epoch === initial.conductor.epoch && observations.observedForRevision === initial.revision && freshTimestamp(observations.observedAt);
+    if (!envelopeValid) fail(`rebase-authority requires fresh --observations for active runtime slices: ${liveRuntimeSlices.map(({ id }) => id).join(", ")}`);
+    for (const slice of liveRuntimeSlices) {
+      const row = observations.runtimeObservations?.find(({ attemptKey }) => attemptKey === expectedAttemptKey(initial, slice));
+      const matches = row?.status === "active" && row.sessionId && row.executor === slice.executor.verified.executor && (slice.executor.verified.vendor === "unknown" || row.vendor === slice.executor.verified.vendor) && freshTimestamp(row.observedAt);
+      if (!matches) fail(`${slice.id}: rebase-authority active runtime observation is missing, stale, or mismatched`);
+    }
+  }
+  const repo = initial.repo.path;
+  const oldHead = initial.repo.expectedHead;
+  try {
+    git(repo, ["fetch", "origin", initial.repo.targetBranch]);
+  } catch {
+    fail(`could not fetch origin/${initial.repo.targetBranch}`);
+  }
+  let newHead;
+  try {
+    newHead = git(repo, ["rev-parse", `${args.to}^{commit}`]);
+    git(repo, ["merge-base", "--is-ancestor", oldHead, newHead]);
+  } catch {
+    fail(`authority movement must be a fast-forward from ${oldHead} to ${args.to}`);
+  }
+  const remoteLine = git(repo, ["ls-remote", "origin", `refs/heads/${initial.repo.targetBranch}`]);
+  const remoteHead = remoteLine.split(/\s+/)[0] || null;
+  if (remoteHead !== newHead) fail(`origin/${initial.repo.targetBranch} is ${remoteHead || "missing"}, not ${newHead}`);
+  const changedPaths = git(repo, ["diff", "--name-only", `${oldHead}..${newHead}`]).split("\n").filter(Boolean);
+  const relevantSlices = initial.slices.filter(({ state }) => state !== "TERMINAL");
+  for (const slice of relevantSlices) if (!Array.isArray(slice.ownedPaths) || !Array.isArray(slice.collisionPaths)) fail(`${slice.id}: rebase-authority requires declared ownedPaths and collisionPaths`);
+  const protectedPaths = relevantSlices.flatMap(({ id, ownedPaths, collisionPaths }) => [...ownedPaths, ...collisionPaths].map((protectedPath) => ({ id, path: protectedPath })));
+  const collisions = changedPaths.flatMap((changedPath) => protectedPaths.filter(({ path: protectedPath }) => pathsOverlap(changedPath, protectedPath)).map(({ id, path: protectedPath }) => `${changedPath} overlaps ${id}:${protectedPath}`));
+  if (collisions.length) fail(`target movement overlaps slice authority: ${collisions.join(", ")}`);
+
+  const plannedBranches = [];
+  for (const slice of initial.slices.filter(({ state, branch }) => state === "PLANNED" && branch)) {
+    let head;
+    if (slice.worktree) {
+      if (!existsSync(slice.worktree)) fail(`${slice.id}: planned worktree is missing: ${slice.worktree}`);
+      if (git(slice.worktree, ["status", "--porcelain"])) fail(`${slice.id}: planned worktree is dirty`);
+      head = git(slice.worktree, ["rev-parse", "HEAD"]);
+    } else {
+      try {
+        head = git(repo, ["rev-parse", `refs/heads/${slice.branch}`]);
+      } catch {
+        fail(`${slice.id}: planned branch is missing: ${slice.branch}`);
+      }
+    }
+    if (![oldHead, newHead].includes(head)) fail(`${slice.id}: planned branch advanced from recorded authority (${head})`);
+    plannedBranches.push({ slice, head });
+  }
+
+  const applyGitMoves = () => {
+    const liveRemoteLine = git(repo, ["ls-remote", "origin", `refs/heads/${initial.repo.targetBranch}`]);
+    if ((liveRemoteLine.split(/\s+/)[0] || null) !== newHead) throw new Error(`origin/${initial.repo.targetBranch} moved during rebase-authority`);
+    const localTarget = git(repo, ["rev-parse", `refs/heads/${initial.repo.targetBranch}`]);
+    if (![oldHead, newHead].includes(localTarget)) throw new Error(`local ${initial.repo.targetBranch} advanced from recorded authority (${localTarget})`);
+    const currentBranch = git(repo, ["branch", "--show-current"]);
+    if (localTarget === oldHead) {
+      if (currentBranch === initial.repo.targetBranch) {
+        if (git(repo, ["status", "--porcelain"])) throw new Error(`checked-out target branch ${initial.repo.targetBranch} is dirty`);
+        git(repo, ["merge", "--ff-only", newHead]);
+      } else git(repo, ["update-ref", `refs/heads/${initial.repo.targetBranch}`, newHead, oldHead]);
+    }
+    for (const { slice } of plannedBranches) {
+      if (slice.worktree && git(slice.worktree, ["status", "--porcelain"])) throw new Error(`${slice.id}: planned worktree became dirty`);
+      const head = slice.worktree ? git(slice.worktree, ["rev-parse", "HEAD"]) : git(repo, ["rev-parse", `refs/heads/${slice.branch}`]);
+      if (head === newHead) continue;
+      if (head !== oldHead) throw new Error(`${slice.id}: planned branch advanced during rebase-authority (${head})`);
+      if (slice.worktree) git(slice.worktree, ["merge", "--ff-only", newHead]);
+      else git(repo, ["update-ref", `refs/heads/${slice.branch}`, newHead, oldHead]);
+    }
+  };
+
+  const decision = { id: `rebase-authority:${oldHead.slice(0, 12)}:${newHead.slice(0, 12)}`, type: "rebase_authority", at: now(), approvedBy: `${conductor.id}@${conductor.epoch}`, from: oldHead, to: newHead, changedPaths };
+  const run = mutate(path, args["expected-revision"], conductor, (current) => reconcileOperation(observations)({
+    ...current,
+    repo: { ...current.repo, baseSha: newHead, expectedHead: newHead },
+    slices: current.slices.map((slice) => slice.state === "PLANNED" ? { ...slice, baseSha: newHead } : slice),
+    preparations: current.preparations.map((preparation) => preparation.valid === false ? preparation : { ...preparation, valid: false, invalidatedAt: now(), invalidatedBy: newHead }),
+    authorization: { ...current.authorization, recordedDecisions: [...current.authorization.recordedDecisions, decision] },
+  }), { allowReconciliation: true, beforeOperation: applyGitMoves });
+  const diffstat = git(repo, ["diff", "--stat", `${oldHead}..${newHead}`]);
+  process.stdout.write(`AUTHORITY_REBASED: ${oldHead} -> ${newHead}\n${diffstat ? `DIFFSTAT:\n${diffstat}\n` : "DIFFSTAT: empty\n"}RECONCILIATION: ${run.reconciliation.status}\nREVISION: ${run.revision}\n`);
   process.exit(0);
 }
 
@@ -1079,6 +1376,14 @@ if (command === "checkpoint") {
   const state = derived(run);
   process.stdout.write(`CHECKPOINT: ${resumePath}\nRECONCILIATION: ${run.reconciliation.status}\nREVISION: ${run.revision}\nWRITE_FRONTIER: ${JSON.stringify(state.write)}\n`);
   process.exit(0);
+}
+
+if (command === "validate") {
+  const run = deriveAttemptKeys(readJson(runPath(args)));
+  const errors = validate(run);
+  process.stdout.write(`VALID: ${errors.length ? "no" : "yes"}\n`);
+  for (const error of errors) process.stdout.write(`INVALID: ${error}\n`);
+  process.exit(errors.length ? 1 : 0);
 }
 
 if (command === "inspect") {

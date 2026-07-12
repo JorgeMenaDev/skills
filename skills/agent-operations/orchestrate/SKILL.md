@@ -1,7 +1,7 @@
 ---
 name: orchestrate
 description: Orchestrate multi-slice work through dependency-aware waves, isolated executors, review gates, integration, and recovery. Use when a task spans parallel agents, worktrees, AFK runs, shared resources, cross-runtime delegation, or an issue chain that must be driven to verified completion.
-version: 2.0.2
+version: 2.1.0
 license: MIT
 mutating: true
 writes_to: [session-scratchpad/orchestrate/, worktrees, branches, pull-requests, issue-trackers]
@@ -55,6 +55,7 @@ node <skill>/scripts/orchestrate-run.mjs classify \
 |---|---|
 | Planning waves, lanes, executors, cross-runtime work | `references/planning-and-routing.md` |
 | Creating, updating, resuming, or completing a run | `references/run-ledger.md` |
+| Looking up ledger field shapes | `references/ledger-schema.md` |
 | Any mutating subagent/worktree/PR slice | `references/dev-lane.md` |
 | Writing a brief, executor report, or standing lessons | `references/brief-template.md` |
 | Shared resources, external effects, UI, or evidence | `references/resources-and-evidence.md` |
