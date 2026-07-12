@@ -742,12 +742,23 @@ try {
         verTimeout * 60_000
       );
 
+      // Docker-cloud recordings land inside .sandcastle/.sandcastle-artifacts
+      // (workspace-shared) — hoist them OUT before the control-plane assert,
+      // or the assert reads the artifact as a .sandcastle mutation and
+      // terminal-fails every recording=on docker-cloud run. The outer 'Move
+      // cloud-Docker recording' step tolerates the already-moved state (its
+      // -s check falls through; its rm -rf is a no-op). No blanket exclusion:
+      // the assert still runs on the now-clean tree and catches real
+      // mutations on every lane.
+      hoistCloudRecordingArtifacts();
+
       assertControlPlane(`verify (attempt ${k})`);
 
       // The vercel provider (and any lane writing through OUTPUT_DIR) lands
       // the recording under the per-attempt dir; the upload step reads
       // ${RUNNER_TEMP}/recording. Hoist per attempt — final attempt's ships
-      // (spec §7 per-attempt overwrite).
+      // (spec §7 per-attempt overwrite). No-op on docker-cloud (src absent),
+      // so it never clobbers the cloud-hoisted WebM above.
       hoistRecording(attemptDir);
 
       const verdictPath = path.join(attemptDir, "verdict.json");
@@ -1049,6 +1060,43 @@ function timeoutOutcome(
 ): "deadline-fail" | "infra-fail" {
   if (!isTimeout(r)) return "infra-fail";
   return clampedMinutes < defaultMinutes ? "deadline-fail" : "infra-fail";
+}
+
+/**
+ * Docker-cloud lane only: move the in-workspace recording artifact
+ * (.sandcastle/.sandcastle-artifacts/issue-N/interaction.webm) to the
+ * ${RUNNER_TEMP}/recording hoist destination and remove the artifacts dir,
+ * BEFORE the post-verify control-plane assert diffs .sandcastle. Mirrors the
+ * outer 'Move cloud-Docker recording' step, which stays as a tolerant no-op
+ * once the wrapper has moved the file. Other lanes unchanged.
+ */
+function hoistCloudRecordingArtifacts(): void {
+  if (RECORDING_MODE !== "on" || SANDCASTLE_SANDBOX !== "docker-cloud") return;
+  const artifacts = path.join(".sandcastle", ".sandcastle-artifacts");
+  const src = path.join(artifacts, `issue-${ISSUE_NUMBER}`, "interaction.webm");
+  try {
+    if (fs.existsSync(src) && fs.statSync(src).size > 0) {
+      const destDir = path.join(RUNNER_TEMP, "recording");
+      fs.mkdirSync(destDir, { recursive: true });
+      const dest = path.join(destDir, `issue-${ISSUE_NUMBER}.webm`);
+      try {
+        fs.renameSync(src, dest);
+      } catch {
+        // cross-device fallback
+        fs.copyFileSync(src, dest);
+      }
+    } else {
+      console.warn("[attempt-loop] no cloud-Docker recording artifact to hoist");
+    }
+  } catch (err) {
+    console.warn(
+      `[attempt-loop] cloud recording hoist failed: ${err instanceof Error ? err.message : err}`
+    );
+  } finally {
+    // Always clear the artifacts dir so recording debris can never read as
+    // a control-plane mutation (matches the outer step's rm -rf).
+    fs.rmSync(artifacts, { recursive: true, force: true });
+  }
 }
 
 /**
