@@ -22,6 +22,14 @@
 | Layout, locale structure, navigation, state, anything responsive | full | off (on only if requested) |
 | New feature, multi-file change, schema/API change | full | off (on only if requested) |
 
+## Retries flag (v2.13.0)
+
+- **Default `retries: 2`** — on a behavioral verify fail the pipeline re-enters implement with a fresh session up to twice (3 total attempts) inside the job budget. After consumer regen this is the new default for every brief.
+- **Stamp `retries: 0`** when the task must stay single-attempt (today's pre-loop behavior), or when a retry would burn cost without helping (purely exploratory / known flaky external dependency you will not re-hit).
+- **Leave default (or omit)** for ordinary product work where a structured `failedCriteria` re-entry can converge.
+- **Do not raise above 2** unless the requester asked for more budget; max is 3 (clamped). Higher is almost never worth the job wall-clock.
+- **`verify: off` makes retries inert** — there is no behavioral signal; the loop runs once regardless of the stamped value (the flag echo says so).
+
 ## Rules
 
 - **The Convex integrity gate is not a flag.** On repos with `convexDir` configured it always runs (real codegen + anonymous schema validation, fail-the-run on `_generated` divergence) — no brief line can turn it off, and briefs never need to ask for it.
