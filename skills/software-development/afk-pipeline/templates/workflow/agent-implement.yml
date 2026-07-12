@@ -124,6 +124,13 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           persist-credentials: false
 
+      - name: Record job start (UTC) for attempt-loop deadline
+        # Companion bound for the in-script deadline: min(loop+110m, job+115m).
+        # Written immediately post-checkout so setup tax cannot push the loop
+        # past the 120-minute job kill without the wrapper seeing it.
+        if: steps.preflight.outputs.refused != 'true'
+        run: date -u +"%Y-%m-%dT%H:%M:%SZ" > "${RUNNER_TEMP}/job-start"
+
       - name: Compute branch name
         if: steps.preflight.outputs.refused != 'true'
         id: branch
@@ -414,210 +421,33 @@ jobs:
             fail "Grok auth smoke failed before implement. Check GROK_AUTH_B64 seed freshness and the grok CLI install."
           fi
 
-      - name: Run implement phase
+      - name: Implement↔verify attempt loop
+        # Single wrapper owns the full per-attempt sequence: implement →
+        # advisory review → disposition → Convex gate → verify, with bounded
+        # retries on behavioral verify failure. Replaces six former steps plus
+        # mid-sequence control-plane asserts and Codex review-auth dance.
+        # Engine normalization (cursor/grok → claude for post-implement phases)
+        # lives here. Manifest always written to ${RUNNER_TEMP}/attempts-summary.json.
+        # Recording / push / write-pr / salvage / blocked stay outer steps.
         if: steps.preflight.outputs.refused != 'true'
         env:
-          CLAUDE_CODE_OAUTH_TOKEN: ${{ steps.flags.outputs.engine == 'claude' && secrets.CLAUDE_CODE_OAUTH_TOKEN || '' }}
-          CODEX_AUTH_B64: ${{ steps.flags.outputs.engine == 'codex' && github.event.label.name != 'agent:implement-local' && secrets.CODEX_AUTH_B64 || '' }}
+          # Provider credentials — wrapper applies least-privilege per phase
+          # (mirrors the prior per-step expressions for all four engines).
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          CODEX_AUTH_B64: ${{ github.event.label.name != 'agent:implement-local' && secrets.CODEX_AUTH_B64 || '' }}
           CURSOR_API_KEY: ${{ steps.flags.outputs.engine == 'cursor' && secrets.CURSOR_API_KEY || '' }}
           CURSOR_MODEL: ${{ vars.CURSOR_MODEL || 'grok-4.5-xhigh' }}
           GROK_MODEL: ${{ vars.GROK_MODEL || 'grok-4.5' }}
           GROK_EFFORT: ${{ vars.GROK_EFFORT || 'high' }}
           ENGINE: ${{ steps.flags.outputs.engine }}
-          BRANCH: ${{ steps.branch.outputs.name }}
-          OUTPUT_DIR: ${{ runner.temp }}
-        run: bun .sandcastle/implement/implement.ts
-
-      - name: Assert pipeline control plane unchanged after implement
-        if: steps.preflight.outputs.refused != 'true'
-        run: |
-          set -euo pipefail
-          trusted=$(mktemp -d "${RUNNER_TEMP}/afk-control-plane.XXXXXX")
-          trap 'rm -rf "$trusted"' EXIT
-          GIT_NO_REPLACE_OBJECTS=1 /usr/bin/git archive "$GITHUB_SHA" .sandcastle .github/workflows/agent-implement.yml | /usr/bin/tar -x -C "$trusted"
-          compare() {
-            local output="$1"
-            shift
-            if /usr/bin/diff "$@" > "$output"; then
-              return 0
-            else
-              local status=$?
-              [ "$status" -eq 1 ] || { echo "Control-plane comparison failed with diff status $status" >&2; exit 1; }
-            fi
-          }
-          compare "$trusted/sandcastle.diff" -qr "$trusted/.sandcastle" .sandcastle
-          compare "$trusted/workflow.diff" -q "$trusted/.github/workflows/agent-implement.yml" .github/workflows/agent-implement.yml
-          changes=$(printf '%s\n%s' "$(cat "$trusted/sandcastle.diff")" "$(cat "$trusted/workflow.diff")" | sed '/^$/d')
-          if [ -n "$changes" ]; then
-            reason="Pipeline control plane changed during implement; refusing to execute agent-modifiable orchestration code with provider or repository credentials."
-            printf '%s\n' "$changes" >&2
-            printf '%s\n' "$reason" > "${RUNNER_TEMP}/failure_reason.txt"
-            exit 1
-          fi
-
-      - name: Materialize hosted Codex review auth
-        if: steps.preflight.outputs.refused != 'true' && steps.flags.outputs.review != 'off' && steps.flags.outputs.review_engine == 'codex' && steps.flags.outputs.engine != 'codex' && env.SANDCASTLE_SANDBOX != 'docker'
-        continue-on-error: true
-        env:
-          CODEX_AUTH_B64: ${{ github.event.label.name != 'agent:implement-local' && secrets.CODEX_AUTH_B64 || '' }}
-        run: |
-          set -euo pipefail
-          if [ -z "$CODEX_AUTH_B64" ]; then
-            echo "CODEX_AUTH_B64 missing; hosted Codex review will skip advisory review." >&2
-            exit 0
-          fi
-          mkdir -p "${RUNNER_TEMP}/codex-home"
-          printf "%s" "$CODEX_AUTH_B64" | base64 -d > "${RUNNER_TEMP}/codex-home/auth.json"
-          chmod 600 "${RUNNER_TEMP}/codex-home/auth.json"
-
-      - name: Remove Codex implementation auth before hosted Claude review
-        if: steps.preflight.outputs.refused != 'true' && steps.flags.outputs.review != 'off' && steps.flags.outputs.engine == 'codex' && steps.flags.outputs.review_engine == 'claude' && env.SANDCASTLE_SANDBOX != 'docker'
-        run: rm -rf "${RUNNER_TEMP}/codex-home"
-
-      - name: Second-model review (advisory)
-        # Runs the repo's vendored autoreview skill against the branch diff
-        # BEFORE verify, so the disposition pass and the QA Evidence both cover
-        # reviewed code. Review engine defaults to the opposite vendor from the
-        # selected implementation engine; Cursor implement follows the Claude
-        # default (`review-engine: codex`). Explicit `review-engine` overrides
-        # are allowed and visible. No silent fallback: requested engine missing
-        # on the runner ⇒ loud skipped note, never a quiet engine swap.
-        # Advisory by construction: review.ts always
-        # exits 0 and every degrade path (skill missing, no engine, engine
-        # crash) becomes a summary note — continue-on-error is a second belt.
-        # Skipped entirely when the brief says `review: off`.
-        if: steps.preflight.outputs.refused != 'true' && steps.flags.outputs.review != 'off'
-        id: review
-        continue-on-error: true
-        env:
-          # Least privilege: the review subprocess receives only the selected
-          # vendor's credential, never both long-lived provider credentials.
-          CLAUDE_CODE_OAUTH_TOKEN: ${{ steps.flags.outputs.review_engine == 'claude' && secrets.CLAUDE_CODE_OAUTH_TOKEN || '' }}
-          BRANCH: ${{ steps.branch.outputs.name }}
-          OUTPUT_DIR: ${{ runner.temp }}
           REVIEW_ENGINE: ${{ steps.flags.outputs.review_engine }}
-        run: |
-          set -euo pipefail
-          review_output="${RUNNER_TEMP}/review-output"
-          rm -rf "$review_output"
-          mkdir -p "$review_output"
-          auth=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 | tr -d '\n')
-          /usr/bin/git -c http.https://github.com/.extraheader="AUTHORIZATION: basic $auth" \
-            fetch --no-tags origin {{BASE_BRANCH}}:refs/remotes/origin/{{BASE_BRANCH}}
-          args=(
-            --rm --entrypoint sh
-            --user "$(id -u):$(id -g)"
-            -v "$PWD:/workspace:ro"
-            -v "$review_output:/review-output"
-            -w /workspace
-            -e HOME=/home/agent
-            -e OUTPUT_DIR=/review-output
-            -e REVIEW_ENGINE
-            -e BRANCH
-            -e SANDCASTLE_SANDBOX=docker
-          )
-          if [ "$REVIEW_ENGINE" = "codex" ]; then
-            if [ "$SANDCASTLE_SANDBOX" = "docker" ]; then
-              codex_home="$HOME/.codex-afk"
-            else
-              codex_home="${RUNNER_TEMP}/codex-home"
-            fi
-            args+=(-v "$codex_home:/home/agent/.codex" -e CODEX_HOME=/home/agent/.codex)
-          else
-            args+=(-e CLAUDE_CODE_OAUTH_TOKEN)
-          fi
-          docker run "${args[@]}" {{IMAGE_NAME}} -c 'bun .sandcastle/review/review.ts'
-
-          result="$review_output/review-result.env"
-          test -s "$result"
-          outcome=$(sed -n 's/^outcome=//p' "$result")
-          engine=$(sed -n 's/^engine=//p' "$result")
-          has_findings=$(sed -n 's/^has_findings=//p' "$result")
-          case "$outcome" in clean|findings|skipped_missing_skill|skipped_no_engine|skipped_missing_auth|engine_error) ;; *) echo "Invalid review outcome: $outcome" >&2; exit 1 ;; esac
-          case "$engine" in codex|claude|none) ;; *) echo "Invalid review engine: $engine" >&2; exit 1 ;; esac
-          case "$has_findings" in true|false) ;; *) echo "Invalid review finding flag: $has_findings" >&2; exit 1 ;; esac
-          printf 'outcome=%s\nengine=%s\nhas_findings=%s\n' "$outcome" "$engine" "$has_findings" >> "$GITHUB_OUTPUT"
-          for file in review-summary.md review-findings.md; do
-            [ ! -f "$review_output/$file" ] || cp "$review_output/$file" "${RUNNER_TEMP}/$file"
-          done
-
-      - name: Remove cross-vendor Codex review auth
-        if: always() && steps.preflight.outputs.refused != 'true' && steps.flags.outputs.review_engine == 'codex' && steps.flags.outputs.engine != 'codex' && env.SANDCASTLE_SANDBOX != 'docker'
-        run: rm -rf "${RUNNER_TEMP}/codex-home"
-
-      - name: Restore Codex implementation auth after hosted Claude review
-        if: steps.preflight.outputs.refused != 'true' && steps.flags.outputs.review != 'off' && steps.flags.outputs.engine == 'codex' && steps.flags.outputs.review_engine == 'claude' && env.SANDCASTLE_SANDBOX != 'docker'
-        env:
-          CODEX_AUTH_B64: ${{ github.event.label.name != 'agent:implement-local' && secrets.CODEX_AUTH_B64 || '' }}
-        run: |
-          test -n "$CODEX_AUTH_B64"
-          mkdir -p "${RUNNER_TEMP}/codex-home"
-          printf "%s" "$CODEX_AUTH_B64" | base64 -d > "${RUNNER_TEMP}/codex-home/auth.json"
-          chmod 600 "${RUNNER_TEMP}/codex-home/auth.json"
-
-      - name: Review disposition pass (fix blockers or justify)
-        # Only when the reviewer flagged findings: a fresh agent session fixes
-        # real blocker/major findings or rejects them with a one-line rationale,
-        # records the disposition table in the evidence dir, and commits on the
-        # branch. Best-effort: a crash leaves the implement commits intact.
-        if: steps.preflight.outputs.refused != 'true' && steps.review.outputs.has_findings == 'true'
-        continue-on-error: true
-        env:
-          CLAUDE_CODE_OAUTH_TOKEN: ${{ (steps.flags.outputs.engine == 'claude' || steps.flags.outputs.engine == 'cursor' || steps.flags.outputs.engine == 'grok') && secrets.CLAUDE_CODE_OAUTH_TOKEN || '' }}
-          CODEX_AUTH_B64: ${{ steps.flags.outputs.engine == 'codex' && github.event.label.name != 'agent:implement-local' && secrets.CODEX_AUTH_B64 || '' }}
-          ENGINE: ${{ (steps.flags.outputs.engine == 'cursor' || steps.flags.outputs.engine == 'grok') && 'claude' || steps.flags.outputs.engine }}
+          REVIEW: ${{ steps.flags.outputs.review }}
+          VERIFY: ${{ steps.flags.outputs.verify }}
+          RECORDING: ${{ steps.flags.outputs.recording }}
+          RETRIES: ${{ steps.flags.outputs.retries }}
           BRANCH: ${{ steps.branch.outputs.name }}
-          OUTPUT_DIR: ${{ runner.temp }}
-        run: bun .sandcastle/review/review-fix.ts
-
-      - name: Assert pipeline control plane unchanged after review disposition
-        if: steps.preflight.outputs.refused != 'true'
-        run: |
-          set -euo pipefail
-          trusted=$(mktemp -d "${RUNNER_TEMP}/afk-control-plane.XXXXXX")
-          trap 'rm -rf "$trusted"' EXIT
-          GIT_NO_REPLACE_OBJECTS=1 /usr/bin/git archive "$GITHUB_SHA" .sandcastle .github/workflows/agent-implement.yml | /usr/bin/tar -x -C "$trusted"
-          compare() {
-            local output="$1"
-            shift
-            if /usr/bin/diff "$@" > "$output"; then
-              return 0
-            else
-              local status=$?
-              [ "$status" -eq 1 ] || { echo "Control-plane comparison failed with diff status $status" >&2; exit 1; }
-            fi
-          }
-          compare "$trusted/sandcastle.diff" -qr "$trusted/.sandcastle" .sandcastle
-          compare "$trusted/workflow.diff" -q "$trusted/.github/workflows/agent-implement.yml" .github/workflows/agent-implement.yml
-          changes=$(printf '%s\n%s' "$(cat "$trusted/sandcastle.diff")" "$(cat "$trusted/workflow.diff")" | sed '/^$/d')
-          if [ -n "$changes" ]; then
-            reason="Pipeline control plane changed during review disposition; refusing to execute agent-modifiable orchestration code with provider or repository credentials."
-            printf '%s\n' "$changes" >&2
-            printf '%s\n' "$reason" > "${RUNNER_TEMP}/failure_reason.txt"
-            exit 1
-          fi
-
-      - name: Comment review outcome on the issue
-        if: steps.preflight.outputs.refused != 'true' && steps.flags.outputs.review != 'off'
-        continue-on-error: true
-        run: |
-          [ -f "${RUNNER_TEMP}/review-summary.md" ] && gh issue comment "$ISSUE_NUMBER" --body-file "${RUNNER_TEMP}/review-summary.md" || true
-
-      - name: Run verify phase (e2e, agent-browser)
-        # Verify Profile from the parsed flags: `off` skips this step entirely
-        # (no QA Evidence — the degrade mode is picked up by write-pr and the
-        # completion comment); `slim` narrows the sweep to 2 viewports; `full`
-        # (default) keeps the full sweep. One prompt template, parameterized by
-        # env — never a per-profile prompt file.
-        if: steps.preflight.outputs.refused != 'true' && steps.flags.outputs.verify != 'off'
-        env:
-          CLAUDE_CODE_OAUTH_TOKEN: ${{ (steps.flags.outputs.engine == 'claude' || steps.flags.outputs.engine == 'cursor' || steps.flags.outputs.engine == 'grok') && secrets.CLAUDE_CODE_OAUTH_TOKEN || '' }}
-          CODEX_AUTH_B64: ${{ steps.flags.outputs.engine == 'codex' && github.event.label.name != 'agent:implement-local' && secrets.CODEX_AUTH_B64 || '' }}
-          ENGINE: ${{ (steps.flags.outputs.engine == 'cursor' || steps.flags.outputs.engine == 'grok') && 'claude' || steps.flags.outputs.engine }}
-          BRANCH: ${{ steps.branch.outputs.name }}
-          OUTPUT_DIR: ${{ runner.temp }}
-          VERIFY_MODE: ${{ steps.flags.outputs.verify }}
-          RECORDING_MODE: ${{ steps.flags.outputs.recording }}
+          JOB_START_PATH: ${{ runner.temp }}/job-start
+          RUNNER_TEMP: ${{ runner.temp }}
           VERIFY_VIEWPORTS: ${{ steps.flags.outputs.verify == 'slim' && '1440x900, 390x844' || '390x844, 768x1024, 1440x900, 1920x1080' }}
           VERIFY_LOCALES: ${{ steps.flags.outputs.verify == 'slim' && 'diff' || 'all' }}
           # Repo verify-boot secrets (from .sandcastle/config). These must ALSO be
@@ -625,7 +455,7 @@ jobs:
           # env line alone never reaches the agent (matias registry quirk, cost
           # a failed run on andesphere #26). The generator keeps both in sync.
 {{VERIFY_SECRETS_ENV}}
-        run: bun .sandcastle/verify/verify.ts
+        run: bun .sandcastle/loop/attempt-loop.ts
 
       - name: Move cloud-Docker recording to host artifact storage
         if: always() && steps.preflight.outputs.refused != 'true' && steps.flags.outputs.recording == 'on' && env.SANDCASTLE_SANDBOX == 'docker-cloud'
@@ -639,46 +469,6 @@ jobs:
             echo "No cloud-Docker recording was produced before verification stopped." >&2
           fi
           rm -rf .sandcastle/.sandcastle-artifacts
-
-      - name: Assert pipeline control plane unchanged after verify
-        if: steps.preflight.outputs.refused != 'true'
-        run: |
-          set -euo pipefail
-          trusted=$(mktemp -d "${RUNNER_TEMP}/afk-control-plane.XXXXXX")
-          trap 'rm -rf "$trusted"' EXIT
-          GIT_NO_REPLACE_OBJECTS=1 /usr/bin/git archive "$GITHUB_SHA" .sandcastle .github/workflows/agent-implement.yml | /usr/bin/tar -x -C "$trusted"
-          compare() {
-            local output="$1"
-            shift
-            if /usr/bin/diff "$@" > "$output"; then
-              return 0
-            else
-              local status=$?
-              [ "$status" -eq 1 ] || { echo "Control-plane comparison failed with diff status $status" >&2; exit 1; }
-            fi
-          }
-          compare "$trusted/sandcastle.diff" -qr "$trusted/.sandcastle" .sandcastle
-          compare "$trusted/workflow.diff" -q "$trusted/.github/workflows/agent-implement.yml" .github/workflows/agent-implement.yml
-          changes=$(printf '%s\n%s' "$(cat "$trusted/sandcastle.diff")" "$(cat "$trusted/workflow.diff")" | sed '/^$/d')
-          if [ -n "$changes" ]; then
-            reason="Pipeline control plane changed during verify; refusing to execute agent-modifiable orchestration code with provider or repository credentials."
-            printf '%s\n' "$changes" >&2
-            printf '%s\n' "$reason" > "${RUNNER_TEMP}/failure_reason.txt"
-            exit 1
-          fi
-
-      - name: Convex integrity gate (real codegen + anonymous schema validation)
-        # Regenerates Convex _generated with REAL codegen against a keyless
-        # anonymous local backend (CONVEX_AGENT_MODE=anonymous) and fails the
-        # RUN when committed files diverge or the schema/functions don't push
-        # cleanly — hand-applied codegen (acredix PR #72 incident, 2026-07-05)
-        # cannot reach the merge. Runs after Verify so implementation, review-disposition, and any small
-        # verification fixes are all covered before the branch can push. Repos without Convex leave convexDir
-        # empty in .sandcastle/config and this step self-skips instantly.
-        if: steps.preflight.outputs.refused != 'true'
-        env:
-          OUTPUT_DIR: ${{ runner.temp }}
-        run: bun .sandcastle/implement/convex-gate.ts
 
       - name: Upload recorded verification artifact
         if: always() && steps.preflight.outputs.refused != 'true' && steps.flags.outputs.recording == 'on'
