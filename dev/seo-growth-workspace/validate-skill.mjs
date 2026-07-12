@@ -1444,6 +1444,16 @@ section("cadence-status fixtures", () => {
     { name: "dedupe", format: "json", expected: "dedupe.expected.json" },
     { name: "malformed", format: "json", expected: "malformed.expected.json" },
     { name: "absent", format: "json", expected: "absent.expected.json" },
+    { name: "unreadable-backlog", format: "backlog", expected: "unreadable-backlog.expected.md" },
+    { name: "cross-file-duplicate", format: "json", expected: "cross-file-duplicate.expected.json" },
+    { name: "symlink", format: "backlog", expected: "symlink.expected.md" },
+    { name: "top-level-non-object", format: "json", expected: "top-level-non-object.expected.json" },
+    { name: "missing-workspace", format: "json", expected: "missing-workspace.expected.json" },
+    { name: "expired-backoff", format: "json", expected: "expired-backoff.expected.json" },
+    { name: "expired-backoff", format: "backlog", expected: "expired-backoff.expected.md" },
+    { name: "absurd-backlog-id", format: "backlog", expected: "absurd-backlog-id.expected.md" },
+    { name: "dual-schema-conflict", format: "json", expected: "dual-schema-conflict.expected.json" },
+    { name: "missing-schema", format: "json", expected: "missing-schema.expected.json" },
   ];
 
   for (const fixtureCase of cases) {
@@ -1464,6 +1474,20 @@ section("cadence-status fixtures", () => {
       `cadence-status ${fixtureCase.name} output drifted from its expected fixture`,
     );
   }
+
+  const zoneless = spawnCapture(process.execPath, [
+    path.join(skillRoot, "scripts/cadence-status.mjs"),
+    "--workspace",
+    fixture(path.join("cadence-status", "absent")),
+    "--format",
+    "json",
+    "--now",
+    "2026-07-12T10:30:00",
+  ]);
+  check(
+    zoneless.status !== 0 && zoneless.stderr.includes("timezone-qualified"),
+    "cadence-status must reject zoneless --now timestamps",
+  );
 });
 
 // --- gsc-opportunities.mjs: report format + golden file ---

@@ -1,0 +1,15 @@
+{
+  "now": "2026-07-12",
+  "status": "fail_closed",
+  "cadenceState": "invalid",
+  "due": [],
+  "deduplicated": [],
+  "earliestNextDue": null,
+  "obligations": [],
+  "failures": [
+    {
+      "file": ".",
+      "reason": "workspace root does not exist"
+    }
+  ]
+}

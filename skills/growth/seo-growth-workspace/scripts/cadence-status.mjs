@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { readFile, readdir } from "node:fs/promises";
+import { readFile, readdir, stat } from "node:fs/promises";
 import path from "node:path";
 
 const RESERVED_LOOP_FILES = new Set([
@@ -13,6 +13,7 @@ const RESULTS = new Set(["ok", "alerted"]);
 const ESCALATIONS = new Set(["none", "needs_human"]);
 const DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 const WINDOW_PATTERN = /^(\d{4}-\d{2}-\d{2})\/(\d{4}-\d{2}-\d{2})$/;
+const QUALIFIED_TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,9})?)?(?:Z|[+-]\d{2}:\d{2})$/;
 
 function usage() {
   return `Usage:
@@ -25,7 +26,7 @@ next-due date for sleep-certificate continuity.
 Options:
   --workspace  Explicit path to the resolved .seo workspace root.
   --format     backlog (default) or json.
-  --now        ISO date or timestamp used to evaluate due state (default: current time).
+  --now        YYYY-MM-DD or timezone-qualified ISO timestamp (default: current time).
 
 The script is read-only, uses no network, and never materializes tickets.`;
 }
@@ -53,8 +54,11 @@ function parseDate(value, field) {
 function parseNow(value) {
   if (!value) return new Date().toISOString().slice(0, 10);
   if (DATE_PATTERN.test(value)) return parseDate(value, "--now");
+  if (!QUALIFIED_TIMESTAMP_PATTERN.test(value)) {
+    throw new Error("--now must be YYYY-MM-DD or a timezone-qualified ISO timestamp");
+  }
   const parsed = new Date(value);
-  if (Number.isNaN(parsed.valueOf())) throw new Error("--now must be an ISO date or timestamp");
+  if (Number.isNaN(parsed.valueOf())) throw new Error("--now must be YYYY-MM-DD or a valid timezone-qualified ISO timestamp");
   return parsed.toISOString().slice(0, 10);
 }
 
@@ -162,37 +166,58 @@ function validateOccurrence(key, value, source) {
 
 async function readCadenceState(workspace) {
   const loops = path.join(workspace, "loops");
+  try {
+    if (!(await stat(workspace)).isDirectory()) {
+      return { cadenceState: "invalid", occurrences: [], failures: [{ file: ".", reason: "workspace root is not a directory" }] };
+    }
+  } catch (error) {
+    const reason = error.code === "ENOENT" ? "workspace root does not exist" : `cannot inspect workspace root (${error.code ?? error.name})`;
+    return { cadenceState: "invalid", occurrences: [], failures: [{ file: ".", reason }] };
+  }
   let entries;
   try {
     entries = await readdir(loops, { withFileTypes: true });
   } catch (error) {
     if (error.code === "ENOENT") return { cadenceState: "absent", occurrences: [], failures: [] };
-    return { cadenceState: "invalid", occurrences: [], failures: [{ file: loops, reason: error.message }] };
+    return { cadenceState: "invalid", occurrences: [], failures: [{ file: "loops", reason: `cannot read loops directory (${error.code ?? error.name})` }] };
   }
 
   const occurrences = [];
   const failures = [];
   let foundCadenceState = false;
   const files = entries
-    .filter((entry) => entry.isFile() && entry.name.endsWith(".json") && !RESERVED_LOOP_FILES.has(entry.name))
+    .filter((entry) => (entry.isFile() || entry.isSymbolicLink()) && entry.name.endsWith(".json") && !RESERVED_LOOP_FILES.has(entry.name))
     .sort((a, b) => a.name.localeCompare(b.name));
 
   for (const entry of files) {
     const absolute = path.join(loops, entry.name);
     const source = path.relative(workspace, absolute);
+    let text;
+    try {
+      text = await readFile(absolute, "utf-8");
+    } catch (error) {
+      failures.push({ file: source, reason: `cannot read loop state (${error.code ?? error.name})` });
+      continue;
+    }
     let payload;
     try {
-      payload = JSON.parse(await readFile(absolute, "utf-8"));
+      payload = JSON.parse(text);
     } catch (error) {
       failures.push({ file: source, reason: `invalid JSON: ${error.message}` });
       continue;
     }
-    if (!Object.hasOwn(payload ?? {}, "occurrences")) continue;
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+      failures.push({ file: source, reason: "loop state must be a JSON object" });
+      continue;
+    }
+    if (!Object.hasOwn(payload, "occurrences")) continue;
     foundCadenceState = true;
     try {
-      const schemas = [payload.schema, payload.schemaVersion].filter((value) => value !== undefined);
-      if (schemas.length === 0 || schemas.some((value) => value !== 1)) {
-        throw new Error(`schema must be 1; received ${JSON.stringify(payload.schema ?? payload.schemaVersion)}`);
+      const schemas = ["schema", "schemaVersion"].filter((field) => payload[field] !== undefined);
+      if (schemas.length === 0) throw new Error("schema or schemaVersion field is missing");
+      const invalidSchema = schemas.find((field) => payload[field] !== 1);
+      if (invalidSchema) {
+        throw new Error(`${invalidSchema} must be 1; received ${JSON.stringify(payload[invalidSchema])}`);
       }
       if (!payload.occurrences || typeof payload.occurrences !== "object" || Array.isArray(payload.occurrences)) {
         throw new Error("occurrences must be an object map");
@@ -205,6 +230,20 @@ async function readCadenceState(workspace) {
     }
   }
 
+  const identities = new Map();
+  for (const occurrence of occurrences) {
+    const identity = JSON.stringify([occurrence.cadenceId, occurrence.dueWindow]);
+    const prior = identities.get(identity);
+    if (prior) {
+      failures.push({
+        file: occurrence.source,
+        reason: `duplicate occurrence identity ${identity}; already defined in ${prior.source}`,
+      });
+    } else {
+      identities.set(identity, occurrence);
+    }
+  }
+
   if (failures.length > 0) return { cadenceState: "invalid", occurrences: [], failures };
   return {
     cadenceState: foundCadenceState ? "present" : "absent",
@@ -213,9 +252,9 @@ async function readCadenceState(workspace) {
   };
 }
 
-function nextDueFor(occurrence) {
+function nextDueFor(occurrence, now) {
   if (occurrence.state === "satisfied" || occurrence.state === "materialized" || occurrence.state === "attempted") return null;
-  if (occurrence.state === "blockedUntil") return occurrence.nextAt;
+  if (occurrence.state === "blockedUntil") return now > occurrence.maxAt ? null : occurrence.nextAt;
   return occurrence.dueAt;
 }
 
@@ -236,13 +275,16 @@ function analyze(state, now) {
   );
   const due = sorted.flatMap((occurrence) => {
     if (occurrence.state === "due" && occurrence.dueAt <= now) return [{ ...occurrence, action: "materialize" }];
+    if (occurrence.state === "blockedUntil" && now > occurrence.maxAt) {
+      return [{ ...occurrence, action: "needs_human", requiredEscalation: "needs_human" }];
+    }
     if (occurrence.state === "blockedUntil" && occurrence.nextAt <= now) return [{ ...occurrence, action: "retry" }];
     return [];
   });
   const deduplicated = sorted.filter((occurrence) =>
     occurrence.ticket?.status === "open" && occurrence.dueAt <= now
   );
-  const nextDates = sorted.map(nextDueFor).filter(Boolean).sort();
+  const nextDates = sorted.map((occurrence) => nextDueFor(occurrence, now)).filter(Boolean).sort();
   return {
     status: "ok",
     cadenceState: state.cadenceState,
@@ -286,25 +328,56 @@ ${markdownTable(
     `Run cadence ${occurrence.cadenceId} for ${occurrence.dueWindow}`,
     `Record ok, alerted, or honest blocked evidence for ${occurrence.cadenceId} due ${occurrence.dueAt}`,
   ]);
-  return `# Draft SEO backlog rows from cadence
+  const existingActions = report.due.filter((occurrence) => occurrence.action !== "materialize").map((occurrence) => [
+    occurrence.ticket.id,
+    occurrence.action === "retry" ? "Retry" : "Escalate to needs_human",
+    occurrence.cadenceId,
+    occurrence.dueWindow,
+    occurrence.action === "retry"
+      ? `Backoff elapsed at ${occurrence.nextAt}; reuse the existing ticket and fingerprint`
+      : `Backoff bound ${occurrence.maxAt} passed; do not retry automatically`,
+  ]);
+  const existingSection = existingActions.length === 0
+    ? ""
+    : `
+
+## Existing occurrence actions
+
+${markdownTable(["Ticket", "Action", "Cadence", "Due window", "Reason"], existingActions)}`;
+  const backlog = `# Draft SEO backlog rows from cadence
 
 This is a draft backlog, not a direct workspace mutation. Review every row before merging into .seo/backlog.md.
 
 Earliest next-due: ${report.earliestNextDue ?? "none"}
 
-${markdownTable(["ID", "P", "Area", "Ticket", "Verify"], rows)}
+${markdownTable(["ID", "P", "Area", "Ticket", "Verify"], rows)}${existingSection}
 `;
+  return existingActions.length === 0 ? backlog : backlog.trimEnd();
 }
 
 async function nextBacklogId(workspace) {
   try {
     const backlog = await readFile(path.join(workspace, "backlog.md"), "utf-8");
-    const ids = [...backlog.matchAll(/\bSEO-(\d+)\b/g)].map((match) => Number(match[1]));
+    const ids = [...backlog.matchAll(/\bSEO-(\d+)\b/g)]
+      .map((match) => Number(match[1]))
+      .filter((value) => Number.isSafeInteger(value) && value < Number.MAX_SAFE_INTEGER);
     return ids.length === 0 ? 1 : Math.max(...ids) + 1;
   } catch (error) {
     if (error.code === "ENOENT") return 1;
-    throw error;
+    return { file: "backlog.md", reason: `cannot read backlog for draft ID allocation (${error.code ?? error.name})` };
   }
+}
+
+function withFailure(report, failure) {
+  return {
+    ...report,
+    status: "fail_closed",
+    cadenceState: "invalid",
+    due: [],
+    deduplicated: [],
+    earliestNextDue: null,
+    failures: [...report.failures, failure],
+  };
 }
 
 async function main() {
@@ -322,8 +395,15 @@ async function main() {
   const now = parseNow(argValue("--now"));
   const state = await readCadenceState(workspace);
   const analysis = analyze(state, now);
-  const report = { now, ...analysis };
-  const output = format === "json" ? JSON.stringify(report, null, 2) : buildBacklog(report, await nextBacklogId(workspace));
+  let report = { now, ...analysis };
+  let startId = 1;
+  const draftsRows = report.status === "ok" && report.due.some((occurrence) => occurrence.action === "materialize");
+  if (format === "backlog" && draftsRows) {
+    const backlogState = await nextBacklogId(workspace);
+    if (typeof backlogState === "number") startId = backlogState;
+    else report = withFailure(report, backlogState);
+  }
+  const output = format === "json" ? JSON.stringify(report, null, 2) : buildBacklog(report, startId);
   console.log(output);
 }
 
