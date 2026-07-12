@@ -46,6 +46,14 @@ A system-first review loop for external articles, videos, repositories, prompts,
 npx skills@latest add JorgeMenaDev/skills --skill source-to-system
 ```
 
+### `grok-deep-research`
+
+A bounded deep-research loop over native xAI Grok Build CLI. It runs `grok-4.5` in one resumable session, uses web search to close evidence gaps iteratively, and emits a cited Markdown report plus a machine-readable iteration ledger. The caller may set a maximum iteration count; the finite default is six.
+
+```bash
+npx skills@latest add JorgeMenaDev/skills --skill grok-deep-research
+```
+
 ## Why These Skills Exist
 
 I built these skills to fix failure modes I keep seeing in AI growth and agent-ops work.
@@ -110,6 +118,7 @@ All skills below are **model-invoked** — the agent can reach for them when the
 - **[operator-handoff](./skills/agent-operations/operator-handoff/SKILL.md)** — Job-file handoff between a requesting agent and a human-supervised computer-use Operator: jobs, reports, evidence trails, and a per-repo `HOST.md` host profile.
 - **[orchestrate](./skills/agent-operations/orchestrate/SKILL.md)** — Conduct dependency-aware multi-agent work through typed waves, isolated executors, durable run state, review gates, and verified integration.
 - **[source-to-system](./skills/agent-operations/source-to-system/SKILL.md)** — Turn external material into one evidence-backed, owned system improvement or an explicit no-change decision.
+- **[grok-deep-research](./skills/agent-operations/grok-deep-research/SKILL.md)** — Run `grok-4.5` through a bounded, resumable web-research loop and produce a cited report plus iteration ledger.
 
 ### Software Development
 
