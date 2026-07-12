@@ -659,6 +659,7 @@ function evaluate() {
     "references/evidence-conventions.md",
     "references/commercial-integrity.md",
     "references/page-evidence.md",
+    "references/page-launch.md",
     "references/community-source-pages.md",
     "references/affiliate-promo-integrity.md",
     "references/ecommerce-seo.md",

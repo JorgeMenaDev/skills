@@ -68,9 +68,11 @@ Do not run every audit every time. Use stale evidence, missing reports, recent p
 | `ai-visibility`  | AI-crawler access evidence plus dated citation matrix or assistant-referral data               |
 | `reporting`      | Data source, date range, deltas, wins/problems/next action                                     |
 
+Any ticket that creates or materially revises a public SEO page also inherits the mandatory evidence and optional-submission decision in `references/page-launch.md`, regardless of Area.
+
 ## Blocker Rules
 
-- Block only on missing credentials, missing ownership, unsafe legal/business facts, or contradictory backend/UI state that would make the next action risky.
+- Block only on missing credentials, missing ownership, unsafe legal/business facts, contradictory backend/UI state that would make the next action risky, or any failed mandatory page-launch gate.
 - Each blocker needs: what is blocked, exact evidence, owner, and next unblock action.
 - If a route/tool has a safe fallback, use the fallback and log the limitation instead of blocking.
 - Park side infrastructure or monitoring tickets when they are not the requested target site's SEO growth work. Keep their evidence in a report/log entry, but do not let them consume the active `operate` loop.
