@@ -22,6 +22,11 @@ If a form or CTA has no real destination, do not fake the conversion path. Log t
 
 Do not treat analytics installation as conversion measurement. Distinguish pageviews flowing, CTA/action events firing, useful event properties, a real conversion destination, and admin/reporting proof.
 
+Two evidence pitfalls when filling the matrix:
+
+- **Verify analytics presence in the shipped JS, not the initial HTML.** Modern app routers bundle the analytics library and its key into JS chunks, so grepping the page HTML for the library name false-negatives even when tracking is live. Extract the chunk URLs from the page source and scan those for the library name or key prefix before concluding analytics is absent (or trusting an older audit that grepped HTML).
+- **A CTA that redirects to an external booking/checkout domain is unmeasured by default.** Once the visitor leaves for Cal.com/Calendly/Stripe/etc., no owned client event can fire on completion, and embed success hooks only cover embed paths — a redirect path silently bypasses them even when "booking tracking" exists and fires for embeds. Mark redirect CTAs `missing` in the matrix unless a provider-side webhook (configured in the provider's admin) feeds an owned sink, and check where each CTA variant actually points: the same site often mixes tracked embeds on some pages with untracked redirects on its highest-traffic ones.
+
 ## Naming Conventions
 
 Events: `object_action`, lowercase snake_case (`cta_hero_clicked`, `form_submitted`, `signup_completed`). Context goes in properties, not the event name. These names feed the conversion event matrix above.
@@ -44,6 +49,7 @@ Keep one documented list of event names and UTMs; inconsistent casing splits rep
 - Auth/login CTAs are not the only conversion path for SEO traffic unless that is intentional.
 - Mobile CTAs are visible and do not overlap content.
 - Thank-you/success states are tracked or documented.
+- Off-site booking/checkout CTAs have a provider-side webhook sink, or are explicitly recorded as unmeasured.
 
 ## Done Criteria
 
