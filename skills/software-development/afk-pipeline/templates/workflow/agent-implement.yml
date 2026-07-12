@@ -538,6 +538,10 @@ jobs:
           # Evidence, so write-pr must say so instead of pointing at screenshots.
           VERIFY_MODE: ${{ steps.flags.outputs.verify }}
           VERIFY_REASON: ${{ steps.flags.outputs.verify_reason }}
+          # Retry-loop manifest → Convergence section only when outcome is
+          # converged and executed attempts > 1 (empty otherwise).
+          ATTEMPTS_SUMMARY_PATH: ${{ runner.temp }}/attempts-summary.json
+          RUNNER_TEMP: ${{ runner.temp }}
         run: bun .sandcastle/write-pr/write-pr.ts
 
       - name: Open draft PR
@@ -597,11 +601,26 @@ jobs:
         run: |
           set -euo pipefail
           [ -n "$PR_URL" ] || { echo "missing PR_URL from open_pr step" >&2; exit 1; }
+          # Converged-after-retry clause (spec §8.3): exactly one append, only
+          # when the loop wrote outcome=converged. Clean first pass stays
+          # byte-identical in shape to today's comment.
+          converged_clause=""
+          manifest="${RUNNER_TEMP}/attempts-summary.json"
+          if [ -f "$manifest" ]; then
+            outcome=$(jq -r '.outcome // empty' "$manifest" 2>/dev/null || true)
+            if [ "$outcome" = "converged" ]; then
+              k=$(jq -r '[.attempts[] | select(.outcome != "skipped")] | last | .attempt // empty' "$manifest" 2>/dev/null || true)
+              n=$(jq -r '.maxAttempts // empty' "$manifest" 2>/dev/null || true)
+              if [ -n "$k" ] && [ -n "$n" ]; then
+                converged_clause=" Converged on attempt ${k} of ${n} after retry."
+              fi
+            fi
+          fi
           if [ "$VERIFY_MODE" = "off" ]; then
             reason="${VERIFY_REASON:-no reason provided}"
-            gh issue comment "$ISSUE_NUMBER" --body "AFK Task complete — draft PR: $PR_URL. verify skipped by design: $reason. This run committed no QA Evidence; review the diff in the Files changed tab. {{DEPLOY_NOTE}}"
+            gh issue comment "$ISSUE_NUMBER" --body "AFK Task complete — draft PR: $PR_URL. verify skipped by design: $reason. This run committed no QA Evidence; review the diff in the Files changed tab. {{DEPLOY_NOTE}}${converged_clause}"
           else
-            gh issue comment "$ISSUE_NUMBER" --body "AFK Task complete — draft PR with committed QA Evidence: $PR_URL. Review the screenshots in the Files changed tab; {{DEPLOY_NOTE_LOWER}}"
+            gh issue comment "$ISSUE_NUMBER" --body "AFK Task complete — draft PR with committed QA Evidence: $PR_URL. Review the screenshots in the Files changed tab; {{DEPLOY_NOTE_LOWER}}${converged_clause}"
           fi
 
       - name: Salvage push — preserve committed work on failure/cancel
@@ -632,37 +651,32 @@ jobs:
         # lossy class as an implement-crash before commit — upstream
         # sync-on-failure hook is the eventual fix). Docker/cloud lanes keep
         # full coverage via the shared workspace.
+        # Outputs: salvaged=true, salvage_sha=<full HEAD> for blocked-comment
+        # evidence pinning (spec §8.4).
         run: bash .sandcastle/salvage.sh
 
       - name: Mark blocked on failure
+        # Body is rendered from the parsed attempts manifest by
+        # .sandcastle/loop/blocked-comment.ts (never shell-expand agent text).
+        # Posts with --body-file. No-manifest fallback = today's reason-only shape.
         if: steps.preflight.outputs.refused != 'true' && failure()
         env:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           TRIGGER_LABEL: ${{ github.event.label.name }}
           SALVAGED: ${{ steps.salvage.outputs.salvaged }}
+          SALVAGE_SHA: ${{ steps.salvage.outputs.salvage_sha }}
           BRANCH: ${{ steps.branch.outputs.name }}
+          RUNNER_TEMP: ${{ runner.temp }}
+          ATTEMPTS_SUMMARY_PATH: ${{ runner.temp }}/attempts-summary.json
+          FAILURE_REASON_PATH: ${{ runner.temp }}/failure_reason.txt
+          BLOCKED_COMMENT_PATH: ${{ runner.temp }}/blocked-comment.md
+          GITHUB_SERVER_URL: ${{ github.server_url }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
-          reason="(no reason file written — check workflow logs)"
-          if [ -f "${RUNNER_TEMP}/failure_reason.txt" ]; then
-            reason=$(cat "${RUNNER_TEMP}/failure_reason.txt")
-          fi
-          salvage_note=""
-          if [ "$SALVAGED" = "true" ]; then
-            salvage_note="**Committed work preserved** on branch \`$BRANCH\` (unreviewed for merge — it failed this run; inspect/cherry-pick, or just retry: a successful retry force-replaces it)."
-          fi
+          set -euo pipefail
+          bun .sandcastle/loop/blocked-comment.ts
           gh issue edit "$ISSUE_NUMBER" --add-label "agent:blocked" || true
-          gh issue comment "$ISSUE_NUMBER" --body "$(cat <<EOF
-          \`$TRIGGER_LABEL\` run failed.
-
-          **Reason:** $reason
-
-          $salvage_note
-
-          **Workflow run:** $RUN_URL
-
-          Re-add \`$TRIGGER_LABEL\` to retry.
-          EOF
-          )"
+          gh issue comment "$ISSUE_NUMBER" --body-file "${RUNNER_TEMP}/blocked-comment.md"
 
       - name: Always remove in-progress
         if: always() && steps.preflight.outputs.refused != 'true'
