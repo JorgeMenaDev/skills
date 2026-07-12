@@ -445,6 +445,12 @@ jobs:
           VERIFY: ${{ steps.flags.outputs.verify }}
           RECORDING: ${{ steps.flags.outputs.recording }}
           RETRIES: ${{ steps.flags.outputs.retries }}
+          # Proof-only Tier-1 knob (spec §11): GitHub does NOT auto-export
+          # repo Actions variables, so map it through explicitly. The workflow
+          # never sets a VALUE — empty when the variable is unset, and the
+          # wrapper treats an empty string as absent. Remove the repo variable
+          # after the proof run.
+          RETRY_PROOF_VERDICTS: ${{ vars.RETRY_PROOF_VERDICTS || '' }}
           BRANCH: ${{ steps.branch.outputs.name }}
           JOB_START_PATH: ${{ runner.temp }}/job-start
           RUNNER_TEMP: ${{ runner.temp }}

@@ -466,6 +466,11 @@ try {
     const githubOutput = path.join(attemptDir, "github_output");
     fs.writeFileSync(githubOutput, "");
 
+    // Only the CURRENT attempt's recording may ever ship: clear the hoisted
+    // destination up front so a failed attempt K cannot inherit attempt K−1's
+    // WebM through the outer always() upload step.
+    fs.rmSync(path.join(RUNNER_TEMP, "recording"), { recursive: true, force: true });
+
     const startSha = headSha();
     const startedAt = new Date().toISOString();
     const row: AttemptRow = {
@@ -1098,25 +1103,40 @@ function runReviewInDocker(attemptDir: string, timeoutMinutes: number): void {
   fs.rmSync(reviewOutput, { recursive: true, force: true });
   fs.mkdirSync(reviewOutput, { recursive: true });
 
-  // Fetch base ref on host (same as YAML) before mounting ro.
-  if (GH_TOKEN) {
+  // Fetch base ref on host before mounting ro. HARDENED: the workspace's
+  // .git/config is agent-writable — a planted ext:: origin URL or credential
+  // helper would be host code execution under this process's env. So: fetch
+  // an explicit trusted URL (never the configured 'origin' remote), forbid
+  // the ext protocol, disable credential helpers and hooks, and run with the
+  // scrubbed harness env carrying ONLY the auth extraheader it needs.
+  if (GH_TOKEN && GH_REPO) {
     try {
       const auth = Buffer.from(`x-access-token:${GH_TOKEN}`).toString("base64");
       execFileSync(
         "git",
         [
           "-c",
+          `core.hooksPath=${emptyHooksPath()}`,
+          "-c",
+          "protocol.ext.allow=never",
+          "-c",
+          "credential.helper=",
+          "-c",
           `http.https://github.com/.extraheader=AUTHORIZATION: basic ${auth}`,
           "fetch",
           "--no-tags",
-          "origin",
+          `https://github.com/${GH_REPO}`,
           `${BASE_BRANCH}:refs/remotes/origin/${BASE_BRANCH}`,
         ],
-        { stdio: "inherit" }
+        { stdio: "inherit", env: harnessGitEnv() }
       );
     } catch {
       console.warn("[attempt-loop] base-branch fetch failed; review may degrade");
     }
+  } else {
+    console.warn(
+      "[attempt-loop] skipping base-branch fetch (missing GH_TOKEN or GH_REPO); review may degrade"
+    );
   }
 
   const uid = process.getuid?.() ?? 0;
@@ -1400,24 +1420,32 @@ function relocateEvidence(attemptK: number): void {
     const to = path.join(dest, ent.name);
     fs.renameSync(from, to);
   }
-  const add = harnessGit(["add", "-A", "--", canonical]);
-  if (add.status !== 0) {
-    console.warn(`[attempt-loop] evidence relocate add failed (exit ${add.status})`);
-    return;
-  }
-  const st = harnessGit(["diff", "--cached", "--quiet"], "ignore");
-  if (st.status === 0) {
-    // nothing staged
-    return;
-  }
-  const commit = harnessGit([
-    "commit",
-    "--no-verify",
-    "-m",
-    `docs(evidence): relocate attempt-${attemptK} evidence for #${ISSUE_NUMBER}`,
-  ]);
-  if (commit.status !== 0) {
-    console.warn(`[attempt-loop] evidence relocate commit failed (exit ${commit.status})`);
+  try {
+    const add = harnessGit(["add", "-A", "--", canonical]);
+    if (add.status !== 0) {
+      console.warn(`[attempt-loop] evidence relocate add failed (exit ${add.status})`);
+      return;
+    }
+    const st = harnessGit(["diff", "--cached", "--quiet"], "ignore");
+    if (st.status === 0) {
+      // nothing staged
+      return;
+    }
+    const commit = harnessGit([
+      "commit",
+      "--no-verify",
+      "-m",
+      `docs(evidence): relocate attempt-${attemptK} evidence for #${ISSUE_NUMBER}`,
+    ]);
+    if (commit.status !== 0) {
+      console.warn(`[attempt-loop] evidence relocate commit failed (exit ${commit.status})`);
+    }
+  } finally {
+    // Hooks are disabled and the env is scrubbed, but clean/smudge filters
+    // from agent-writable .git/config can still RUN during add/commit and
+    // rewrite .sandcastle — and the next credentialed spawn would execute
+    // it. Assert the control plane after every harness git write section.
+    assertControlPlane(`harness git (attempt ${attemptK} relocate)`);
   }
 }
 
@@ -1432,20 +1460,26 @@ function pruneFailedAttemptEvidence(): void {
     }
   }
   if (!removed) return;
-  const add = harnessGit(["add", "-A", "--", canonical]);
-  if (add.status !== 0) {
-    console.warn(`[attempt-loop] evidence prune add failed (exit ${add.status})`);
-    return;
-  }
-  const st = harnessGit(["diff", "--cached", "--quiet"], "ignore");
-  if (st.status === 0) return;
-  const commit = harnessGit([
-    "commit",
-    "--no-verify",
-    "-m",
-    `chore(evidence): prune failed-attempt evidence for #${ISSUE_NUMBER} (retained in git history)`,
-  ]);
-  if (commit.status !== 0) {
-    console.warn(`[attempt-loop] evidence prune commit failed (exit ${commit.status})`);
+  try {
+    const add = harnessGit(["add", "-A", "--", canonical]);
+    if (add.status !== 0) {
+      console.warn(`[attempt-loop] evidence prune add failed (exit ${add.status})`);
+      return;
+    }
+    const st = harnessGit(["diff", "--cached", "--quiet"], "ignore");
+    if (st.status === 0) return;
+    const commit = harnessGit([
+      "commit",
+      "--no-verify",
+      "-m",
+      `chore(evidence): prune failed-attempt evidence for #${ISSUE_NUMBER} (retained in git history)`,
+    ]);
+    if (commit.status !== 0) {
+      console.warn(`[attempt-loop] evidence prune commit failed (exit ${commit.status})`);
+    }
+  } finally {
+    // Same closure as relocate: catch any filter-driven control-plane
+    // mutation before the outer push/write-pr steps run.
+    assertControlPlane("harness git (prune)");
   }
 }
