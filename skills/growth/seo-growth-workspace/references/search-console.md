@@ -119,7 +119,11 @@ Manual URL Inspection requests are an exception, not a discovery strategy. Use t
 - A real improvement just shipped that affects their crawlability, internal links, content quality, canonical state, or indexability.
 - Each submitted, skipped, or blocked URL is logged in a dated `.seo/reports/gsc-indexing-YYYY-MM-DD.md` report.
 
-Do not turn this into a recurring manual submission habit. Scalable discovery should come from sitemap, internal links, and content quality.
+For ordinary pages, the Search Console URL Inspection API is inspection-only: it can inspect the indexed version but cannot run a live test or request indexing. Request indexing through the authenticated Search Console URL Inspection UI using the available browser/computer-use lane. The Google Indexing API is restricted to eligible `JobPosting` pages and livestream pages using `BroadcastEvent` inside `VideoObject`; never use it to submit ordinary SEO pages.
+
+A request does not guarantee indexing, and repeated requests do not improve priority. Missing UI access or an ineligible submission method blocks only the optional request when the URL is otherwise live, indexable, sitemap-listed, and internally linked. Log the decision and continue with scalable discovery from sitemap, internal links, and content quality.
+
+Official boundaries: [URL Inspection API](https://developers.google.com/webmaster-tools/v1/urlInspection.index/inspect), [Indexing API eligibility](https://developers.google.com/search/apis/indexing-api/v3/using-api).
 
 ## No-Mutation Validation
 

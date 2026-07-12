@@ -1,7 +1,7 @@
 ---
 name: seo-growth-workspace
 description: "Use when starting, auditing, or operating SEO or organic growth for a product or local-business website — technical SEO, Search Console, keyword/content ops, schema, pSEO, local SEO/GBP, backlinks, AI-search visibility, conversion, and monthly reporting. Triggers: \"set up SEO\", \"audit my site\", \"my traffic dropped\", \"why am I not ranking\", \"Search Console opportunities\", \"monthly SEO report\", \"how do we show up in ChatGPT/AI search\". Creates a durable .seo workspace, captures business context, audits live/code/admin evidence, prioritizes a backlog, implements one high-leverage action, verifies reality, and logs handoff notes. Installs in a single site repo (standalone) or in an orchestrator/agent-profile repo managing many sites (hub). For standalone copywriting, paid channels, or email, use a dedicated skill."
-version: 4.0.0
+version: 4.0.1
 license: MIT
 mutating: true
 writes_to: [".seo/", "operator-declared bootstrap plan path"]
@@ -99,6 +99,7 @@ Load only the file needed for the mode or ticket:
 - Keywords/blog/content-engine operations (research method, scoring, E-E-A-T): `references/content-ops.md`
 - Owned pages synthesizing forums, Q&A, or other community sources: `references/community-source-pages.md`
 - Page/revision claim, voice, asset, approval, and rendered-citation evidence for new or materially revised SEO pages: `references/page-evidence.md`
+- New-page implementation, deploy, live verification, and optional discovery submission: `references/page-launch.md`
 - Utility/free tool pages (calculators, generators, checkers, formatters, templates): `references/utility-tool-pages.md`
 - Content-engine webhook publishing (receive, verify, deploy; includes one worked example): `references/content-engine-webhooks.md`
 - pSEO publish gates and playbook chooser: `references/pseo-gates.md`
@@ -146,7 +147,8 @@ node "$SKILL_DIR/scripts/bootstrap-seo-workspace.mjs" --help
 5. Capture admin/auth evidence with `references/admin-preflight.md` before changing production or authenticated surfaces.
 6. Load `references/adapters.md` when the repo has a content engine, CMS, publisher bot, local skill customizations, or `.seo/adapters/` notes.
 7. Load `references/ticket-architecture.md` before writing or changing `.seo/backlog.md`.
-8. Execute the mode's reference workflow, verify live results (use at least one mobile viewport for UI/CTA work), and update `.seo/` files only where facts changed.
+8. When a ticket creates or materially revises a public SEO page, load `references/page-launch.md`, `references/page-evidence.md`, `references/technical-seo.md`, `references/schema-rich-results.md`, and `references/search-console.md`. Do not move the ticket to Done until every applicable launch gate has `PASS` evidence or a named blocker; the optional discovery-submission decision must still be logged.
+9. Execute the mode's reference workflow, verify live results (use at least one mobile viewport for UI/CTA work), and update `.seo/` files only where facts changed.
 
 ## Optional Expert Lenses
 

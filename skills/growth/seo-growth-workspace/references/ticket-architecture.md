@@ -68,6 +68,8 @@ Do not run every audit every time. Use stale evidence, missing reports, recent p
 | `ai-visibility`  | AI-crawler access evidence plus dated citation matrix or assistant-referral data               |
 | `reporting`      | Data source, date range, deltas, wins/problems/next action                                     |
 
+Any ticket that creates or materially revises a public SEO page also inherits the mandatory evidence and optional-submission decision in `references/page-launch.md`, regardless of Area.
+
 ## Blocker Rules
 
 - Block only on missing credentials, missing ownership, unsafe legal/business facts, or contradictory backend/UI state that would make the next action risky.
