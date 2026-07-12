@@ -474,6 +474,7 @@ function diagnose(options) {
   const unresolved = findings.filter((finding) => {
     if (finding.code === "stale_registry_row") return false;
     if (finding.code === "stale_canonical_route" && normalizedDomain && normalizeHost(finding.site) !== normalizedDomain) return false;
+    if (finding.code === "unmigrated_legacy_site" && normalizedDomain && normalizeHost(finding.site) !== normalizedDomain) return false;
     if (options.decision === "repair" && finding.code === "workspace_drift") {
       return stableJson(requestedRepair) !== stableJson((finding.files ?? []).filter((file) => requestedRepair.includes(file)).sort());
     }
