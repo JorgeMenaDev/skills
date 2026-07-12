@@ -43,6 +43,10 @@ Do not jump to content, backlinks, or pSEO until earlier blocking phases are che
 
 When a phase needs third-party keyword/backlink data or competitor evidence, load `references/data-tools.md` or `references/competitor-profiling.md`.
 
+## Lifecycle stage context
+
+`stage` is context state, not the site-type classifier above. When monthly data is missing or partial, stamp `stage: unknown` with its evaluation date and use the most conservative applicable cadence. Stage-dependent certification is blocked until fresh threshold evidence exists or a dated, evidenced operator override is recorded. A stamp older than the newest monthly report is schema debt and cannot certify sleep. Stage weighting and comparative scoring remain phase 2; this rule only prevents missing data from being treated as readiness.
+
 ## Scenario Routing
 
 Use the classifier to route the first useful mode:
