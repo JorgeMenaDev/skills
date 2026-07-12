@@ -84,6 +84,69 @@ export function remainingSeconds(deadlineMs: number, nowMs: number): number {
   return Math.max(0, Math.floor((deadlineMs - nowMs) / 1000));
 }
 
+/**
+ * Proof-only verdict override (spec §11). Env RETRY_PROOF_VERDICTS is a JSON
+ * map of attempt number → partial verdict. Generated workflow never sets it.
+ * Applied after the real verify verdict is read, before routing.
+ */
+export type VerdictShape = {
+  pass: boolean;
+  summary: string;
+  failedCriteria: string[];
+  failureClass: FailureClass;
+};
+
+export function applyProofVerdictOverride(
+  attempt: number,
+  verdict: VerdictShape | null,
+  rawEnv: string | undefined = process.env.RETRY_PROOF_VERDICTS
+): VerdictShape | null {
+  if (!rawEnv || !rawEnv.trim()) return verdict;
+  let map: Record<string, unknown>;
+  try {
+    map = JSON.parse(rawEnv) as Record<string, unknown>;
+  } catch {
+    console.warn("RETRY_PROOF_VERDICTS is not valid JSON — ignoring proof override");
+    return verdict;
+  }
+  const key = String(attempt);
+  const o = map[key] ?? map[attempt as unknown as string];
+  if (!o || typeof o !== "object") return verdict;
+
+  const ov = o as {
+    pass?: boolean;
+    summary?: string;
+    failedCriteria?: unknown;
+    failureClass?: string;
+  };
+  const base: VerdictShape = verdict ?? {
+    pass: true,
+    summary: "",
+    failedCriteria: [],
+    failureClass: "behavioral",
+  };
+  let failureClass: FailureClass = base.failureClass;
+  if (ov.failureClass === "indeterminate") failureClass = "indeterminate";
+  else if (ov.failureClass === "behavioral") failureClass = "behavioral";
+
+  const next: VerdictShape = {
+    pass: typeof ov.pass === "boolean" ? ov.pass : base.pass,
+    summary: typeof ov.summary === "string" ? ov.summary : base.summary,
+    failedCriteria: Array.isArray(ov.failedCriteria)
+      ? ov.failedCriteria.map(String)
+      : base.failedCriteria,
+    failureClass,
+  };
+  // When forcing a fail without criteria, keep a placeholder so rows aren't empty.
+  if (!next.pass && next.failedCriteria.length === 0) {
+    next.failedCriteria = ["(proof override: forced verify fail)"];
+  }
+  console.warn(
+    `RETRY_PROOF_VERDICTS applied on attempt ${attempt}: pass=${next.pass} failureClass=${next.failureClass}`
+  );
+  return next;
+}
+
 /** Attempt-start gate: remaining ≥ 1.25 × prev + 5 min. */
 export function attemptStartGate(
   remainingSec: number,
@@ -289,8 +352,15 @@ if (process.env.AFK_LOOP_SIMULATE === "1") {
     console.log(out);
     process.exit(0);
   }
+  if (mode === "proof-override") {
+    const attempt = Number(process.argv[3] ?? 1);
+    const fixture = JSON.parse(fs.readFileSync(0, "utf8")) as VerdictShape | null;
+    const next = applyProofVerdictOverride(attempt, fixture, process.env.RETRY_PROOF_VERDICTS);
+    console.log(JSON.stringify(next, null, 2));
+    process.exit(0);
+  }
   console.error(
-    "AFK_LOOP_SIMULATE modes: gate <remSec> <prevSec> | clamp <defMin> <remSec> | engine <e> | deadline <loopMs> <jobMs> [nowMs] | envelope (stdin) | manifest <out> (stdin)"
+    "AFK_LOOP_SIMULATE modes: gate <remSec> <prevSec> | clamp <defMin> <remSec> | engine <e> | deadline <loopMs> <jobMs> [nowMs] | envelope (stdin) | manifest <out> (stdin) | proof-override <attempt> (stdin)"
   );
   process.exit(2);
 }
@@ -635,6 +705,11 @@ try {
           verdict = null;
         }
       }
+
+      // Proof-only verdict override (spec §11). Read from env; the generated
+      // workflow NEVER sets RETRY_PROOF_VERDICTS — only a repo Actions variable
+      // for seeded Tier-1 proofs. Applied post-verdict, before routing.
+      verdict = applyProofVerdictOverride(k, verdict);
 
       if (ver.status === 0 && verdict?.pass) {
         row.outcome = "verify-pass";
