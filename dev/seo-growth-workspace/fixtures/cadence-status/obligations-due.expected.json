@@ -1,0 +1,34 @@
+{
+  "now": "2026-07-12",
+  "status": "ok",
+  "cadenceState": "present",
+  "obligationState": "present",
+  "due": [],
+  "deduplicated": [],
+  "earliestNextDue": "2026-07-10",
+  "obligations": [
+    {
+      "source": "loops/measurement-obligations.json",
+      "hypothesis": "Improve non-brand CTR",
+      "pageCohortFingerprint": "sha256:pricing-page",
+      "baseline": {
+        "measuredAt": "2026-07-01",
+        "value": "2.1% CTR",
+        "evidence": ".seo/reports/gsc-2026-07-01.json"
+      },
+      "metric": "non-brand CTR",
+      "decision": "keep the title treatment or revert it",
+      "dueAt": "2026-07-10",
+      "state": "due",
+      "candidateFingerprint": null,
+      "ticket": null,
+      "attempts": [],
+      "wakeAt": "2026-07-10",
+      "resolvedAt": null,
+      "calibrationNote": null,
+      "effectiveDueAt": "2026-07-10",
+      "action": "materialize"
+    }
+  ],
+  "failures": []
+}

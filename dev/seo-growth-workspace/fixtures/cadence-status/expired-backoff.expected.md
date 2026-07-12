@@ -1,10 +1,10 @@
-# Draft SEO backlog rows from cadence
+# Draft SEO backlog rows from cadence and obligations
 
 This is a draft backlog, not a direct workspace mutation. Review every row before merging into .seo/backlog.md.
 
 Earliest next-due: none
 
-_No cadence occurrences are due._
+_No cadence occurrences or measurement obligations are due._
 
 ## Existing occurrence actions
 

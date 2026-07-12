@@ -2,9 +2,9 @@
 
 This is a draft backlog, not a direct workspace mutation. Review every row before merging into .seo/backlog.md.
 
-Earliest next-due: 2026-07-12
+Earliest next-due: 2026-07-10
 
 | ID | P | Area | Ticket | Verify |
 | --- | --- | --- | --- | --- |
-| SEO-001 | P4 | reporting | Run cadence weekly-gsc for 2026-07-06/2026-07-12 | Record ok, alerted, or honest blocked evidence for weekly-gsc due 2026-07-12 |
+| SEO-001 | P1 | measurement | Measure non-brand CTR for sha256:pricing-page | Improve non-brand CTR; use the result to decide keep the title treatment or revert it |
 

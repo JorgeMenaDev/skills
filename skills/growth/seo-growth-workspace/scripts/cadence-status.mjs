@@ -6,9 +6,11 @@ import path from "node:path";
 const RESERVED_LOOP_FILES = new Set([
   "coverage-ledger.json",
   "measurement-obligations.json",
+  "ship-events.json",
   "site-lease.json",
 ]);
 const STATES = new Set(["due", "materialized", "attempted", "satisfied", "blockedUntil"]);
+const OBLIGATION_STATES = new Set(["pending", "due", "materialized", "resolved", "superseded"]);
 const RESULTS = new Set(["ok", "alerted"]);
 const ESCALATIONS = new Set(["none", "needs_human"]);
 const DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
@@ -20,8 +22,8 @@ function usage() {
   node cadence-status.mjs --workspace <path-to-.seo> [--format backlog|json] [--now <ISO date>]
 
 Cold-reads schema-1 cadence occurrences under <workspace>/loops/ and emits due
-occurrences as draft backlog rows or structured JSON. It also names the earliest
-next-due date for sleep-certificate continuity.
+occurrences and measurement obligations as draft backlog rows or structured JSON.
+It also names the earliest next-due date for sleep-certificate continuity.
 
 Options:
   --workspace  Explicit path to the resolved .seo workspace root.
@@ -252,22 +254,123 @@ async function readCadenceState(workspace) {
   };
 }
 
+function validateObligation(key, value, source) {
+  const field = `${source} obligations[${JSON.stringify(key)}]`;
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error(`${field} must be an object`);
+  }
+  for (const name of ["hypothesis", "pageCohortFingerprint", "metric", "decision"]) {
+    if (typeof value[name] !== "string" || value[name].trim() === "") {
+      throw new Error(`${field}.${name} must be a non-empty string`);
+    }
+  }
+  if (key !== JSON.stringify([value.hypothesis, value.pageCohortFingerprint])) {
+    throw new Error(`${field} key does not match hypothesis and pageCohortFingerprint`);
+  }
+  if (!value.baseline || typeof value.baseline !== "object" || Array.isArray(value.baseline)) {
+    throw new Error(`${field}.baseline must be an object`);
+  }
+  parseDate(value.baseline.measuredAt, `${field}.baseline.measuredAt`);
+  if (typeof value.baseline.value !== "string" || value.baseline.value.trim() === "") {
+    throw new Error(`${field}.baseline.value must be a non-empty string`);
+  }
+  if (typeof value.baseline.evidence !== "string" || value.baseline.evidence.trim() === "") {
+    throw new Error(`${field}.baseline.evidence must be a non-empty string`);
+  }
+  const dueAt = parseDate(value.dueAt, `${field}.dueAt`);
+  if (!OBLIGATION_STATES.has(value.state)) throw new Error(`${field}.state is unknown`);
+  const ticket = validateTicket(value.ticket, `${field}.ticket`);
+  if (!Array.isArray(value.attempts)) throw new Error(`${field}.attempts must be an array`);
+  for (const [index, attempt] of value.attempts.entries()) {
+    if (!attempt || typeof attempt !== "object" || Array.isArray(attempt)) {
+      throw new Error(`${field}.attempts[${index}] must be an object`);
+    }
+    parseDate(attempt.attemptedAt, `${field}.attempts[${index}].attemptedAt`);
+    if (typeof attempt.reason !== "string" || attempt.reason.trim() === "") {
+      throw new Error(`${field}.attempts[${index}].reason must be a non-empty string`);
+    }
+    if (typeof attempt.evidence !== "string" || attempt.evidence.trim() === "") {
+      throw new Error(`${field}.attempts[${index}].evidence must be a non-empty string`);
+    }
+  }
+  const wakeAt = nullableDate(value.wakeAt, `${field}.wakeAt`);
+  const resolvedAt = nullableDate(value.resolvedAt, `${field}.resolvedAt`);
+  if (value.calibrationNote !== null && typeof value.calibrationNote !== "string") {
+    throw new Error(`${field}.calibrationNote must be a string or null`);
+  }
+  if ((value.state === "pending" || value.state === "due") && ticket !== null) {
+    throw new Error(`${field}.ticket must be null before materialization`);
+  }
+  if ((value.state === "pending" || value.state === "due") && value.candidateFingerprint !== null) {
+    throw new Error(`${field}.candidateFingerprint must be null before materialization`);
+  }
+  if (value.state === "materialized") {
+    if (typeof value.candidateFingerprint !== "string" || value.candidateFingerprint.trim() === "") {
+      throw new Error(`${field}.candidateFingerprint must be non-empty after materialization`);
+    }
+    if (ticket?.status !== "open") throw new Error(`${field}.ticket must be open when materialized`);
+  }
+  if (value.state === "resolved") {
+    if (typeof value.candidateFingerprint !== "string" || value.candidateFingerprint.trim() === "") {
+      throw new Error(`${field}.candidateFingerprint must be non-empty when resolved`);
+    }
+    if (ticket?.status !== "closed") throw new Error(`${field}.ticket must be closed when resolved`);
+    if (resolvedAt === null) throw new Error(`${field}.resolvedAt is required when resolved`);
+    if (typeof value.calibrationNote !== "string" || value.calibrationNote.trim() === "") {
+      throw new Error(`${field}.calibrationNote must be non-empty when resolved`);
+    }
+  }
+  return { source, ...value, dueAt, wakeAt, resolvedAt, ticket };
+}
+
+async function readObligationState(workspace) {
+  const absolute = path.join(workspace, "loops", "measurement-obligations.json");
+  const source = "loops/measurement-obligations.json";
+  let text;
+  try {
+    text = await readFile(absolute, "utf-8");
+  } catch (error) {
+    if (error.code === "ENOENT") return { obligationState: "absent", obligations: [], failures: [] };
+    return { obligationState: "invalid", obligations: [], failures: [{ file: source, reason: `cannot read obligation ledger (${error.code ?? error.name})` }] };
+  }
+  try {
+    const payload = JSON.parse(text);
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) throw new Error("obligation ledger must be a JSON object");
+    const schemas = ["schema", "schemaVersion"].filter((field) => payload[field] !== undefined);
+    if (schemas.length === 0) throw new Error("schema or schemaVersion field is missing");
+    const invalidSchema = schemas.find((field) => payload[field] !== 1);
+    if (invalidSchema) throw new Error(`${invalidSchema} must be 1; received ${JSON.stringify(payload[invalidSchema])}`);
+    if (!payload.obligations || typeof payload.obligations !== "object" || Array.isArray(payload.obligations)) {
+      throw new Error("obligations must be an object map");
+    }
+    return {
+      obligationState: "present",
+      obligations: Object.entries(payload.obligations).map(([key, value]) => validateObligation(key, value, source)),
+      failures: [],
+    };
+  } catch (error) {
+    return { obligationState: "invalid", obligations: [], failures: [{ file: source, reason: error.message }] };
+  }
+}
+
 function nextDueFor(occurrence, now) {
   if (occurrence.state === "satisfied" || occurrence.state === "materialized" || occurrence.state === "attempted") return null;
   if (occurrence.state === "blockedUntil") return now > occurrence.maxAt ? null : occurrence.nextAt;
   return occurrence.dueAt;
 }
 
-function analyze(state, now) {
-  if (state.failures.length > 0) {
+function analyze(state, obligationState, now) {
+  const failures = [...state.failures, ...obligationState.failures];
+  if (failures.length > 0) {
     return {
       status: "fail_closed",
       cadenceState: state.cadenceState,
+      obligationState: obligationState.obligationState,
       due: [],
       deduplicated: [],
       earliestNextDue: null,
       obligations: [],
-      failures: state.failures,
+      failures,
     };
   }
   const sorted = [...state.occurrences].sort((a, b) =>
@@ -285,13 +388,30 @@ function analyze(state, now) {
     occurrence.ticket?.status === "open" && occurrence.dueAt <= now
   );
   const nextDates = sorted.map((occurrence) => nextDueFor(occurrence, now)).filter(Boolean).sort();
+  const obligations = obligationState.obligations
+    .filter((obligation) => obligation.state === "due" || obligation.state === "pending")
+    .map((obligation) => ({
+      ...obligation,
+      effectiveDueAt: obligation.state === "pending" ? obligation.wakeAt ?? obligation.dueAt : obligation.dueAt,
+    }))
+    .sort((a, b) =>
+      a.effectiveDueAt.localeCompare(b.effectiveDueAt)
+      || a.hypothesis.localeCompare(b.hypothesis)
+      || a.pageCohortFingerprint.localeCompare(b.pageCohortFingerprint)
+    );
+  const dueObligations = obligations
+    .filter((obligation) => obligation.effectiveDueAt <= now)
+    .map((obligation) => ({ ...obligation, action: "materialize" }));
+  nextDates.push(...obligations.map((obligation) => obligation.effectiveDueAt));
+  nextDates.sort();
   return {
     status: "ok",
     cadenceState: state.cadenceState,
+    obligationState: obligationState.obligationState,
     due,
     deduplicated,
     earliestNextDue: nextDates[0] ?? null,
-    obligations: [],
+    obligations: dueObligations,
     failures: [],
   };
 }
@@ -301,7 +421,7 @@ function escapeCell(value) {
 }
 
 function markdownTable(headers, rows) {
-  if (rows.length === 0) return "_No cadence occurrences are due._";
+  if (rows.length === 0) return "_No cadence occurrences or measurement obligations are due._";
   return [
     `| ${headers.map(escapeCell).join(" | ")} |`,
     `| ${headers.map(() => "---").join(" | ")} |`,
@@ -321,13 +441,21 @@ ${markdownTable(
   )}
 `;
   }
-  const rows = report.due.filter((occurrence) => occurrence.action === "materialize").map((occurrence, index) => [
+  const cadenceRows = report.due.filter((occurrence) => occurrence.action === "materialize");
+  const rows = cadenceRows.map((occurrence, index) => [
     `SEO-${String(startId + index).padStart(3, "0")}`,
     "P4",
     "reporting",
     `Run cadence ${occurrence.cadenceId} for ${occurrence.dueWindow}`,
     `Record ok, alerted, or honest blocked evidence for ${occurrence.cadenceId} due ${occurrence.dueAt}`,
   ]);
+  rows.push(...report.obligations.map((obligation, index) => [
+    `SEO-${String(startId + cadenceRows.length + index).padStart(3, "0")}`,
+    "P1",
+    "measurement",
+    `Measure ${obligation.metric} for ${obligation.pageCohortFingerprint}`,
+    `${obligation.hypothesis}; use the result to decide ${obligation.decision}`,
+  ]));
   const existingActions = report.due.filter((occurrence) => occurrence.action !== "materialize").map((occurrence) => [
     occurrence.ticket.id,
     occurrence.action === "retry" ? "Retry" : "Escalate to needs_human",
@@ -344,7 +472,7 @@ ${markdownTable(
 ## Existing occurrence actions
 
 ${markdownTable(["Ticket", "Action", "Cadence", "Due window", "Reason"], existingActions)}`;
-  const backlog = `# Draft SEO backlog rows from cadence
+  const backlog = `# Draft SEO backlog rows from cadence and obligations
 
 This is a draft backlog, not a direct workspace mutation. Review every row before merging into .seo/backlog.md.
 
@@ -376,6 +504,7 @@ function withFailure(report, failure) {
     due: [],
     deduplicated: [],
     earliestNextDue: null,
+    obligations: [],
     failures: [...report.failures, failure],
   };
 }
@@ -394,10 +523,13 @@ async function main() {
   const workspace = path.resolve(workspaceArg);
   const now = parseNow(argValue("--now"));
   const state = await readCadenceState(workspace);
-  const analysis = analyze(state, now);
+  const obligationState = await readObligationState(workspace);
+  const analysis = analyze(state, obligationState, now);
   let report = { now, ...analysis };
   let startId = 1;
-  const draftsRows = report.status === "ok" && report.due.some((occurrence) => occurrence.action === "materialize");
+  const draftsRows = report.status === "ok" && (
+    report.due.some((occurrence) => occurrence.action === "materialize") || report.obligations.length > 0
+  );
   if (format === "backlog" && draftsRows) {
     const backlogState = await nextBacklogId(workspace);
     if (typeof backlogState === "number") startId = backlogState;

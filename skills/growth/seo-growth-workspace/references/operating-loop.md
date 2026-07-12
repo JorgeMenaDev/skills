@@ -45,6 +45,8 @@ Label reports with the target surface at the top. When parking a side monitor, r
 
 Choose work using the Work Selection order in `references/ticket-architecture.md`. That file owns the order, duplicate rules, and done criteria; do not restate them here or in the workspace.
 
+At selection, after the state read and under the per-site lease, derive and persist a `candidateFingerprint` for each due measurement obligation before ticket creation. Reconcile by that fingerprint, find and reuse an active ticket carrying it or create one Ready row, then persist the materialized ticket ID in the obligation. If interrupted after either write, repeat the same sequence: fingerprint reconciliation converges on the one active Ready ticket and repairs the missing link instead of creating a duplicate. The script reports due obligations; `operate` performs this materialization.
+
 ## Lightweight Checkpoints
 
 When no current, in-progress, or Ready ticket exists, do not rerun every audit. Pick the smallest checkpoint suggested by stale evidence or the most likely growth constraint.
