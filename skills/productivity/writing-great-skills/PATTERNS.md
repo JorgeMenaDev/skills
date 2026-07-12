@@ -1,9 +1,11 @@
 # Reliability Patterns for Skills
 
-Distilled from two reference skills worth re-reading when designing a non-trivial skill:
+Reference skills worth re-reading when designing a non-trivial skill:
 
 - **gstack `office-hours`** — https://github.com/garrytan/gstack/blob/main/office-hours/SKILL.md (decision-tree machinery, deterministic state)
 - **gbrain `ingest`** — https://github.com/garrytan/gbrain/blob/master/skills/ingest/SKILL.md (contracts, anti-patterns, output formats)
+- **mattpocock/skills `wayfinder`** — https://github.com/mattpocock/skills/blob/main/skills/engineering/wayfinder/SKILL.md (leading words, fog-of-war state model, completion gates)
+- **mattpocock/skills `teach`** — https://github.com/mattpocock/skills/blob/main/skills/productivity/teach/SKILL.md (stateful workspace, progressive disclosure, durable learning records)
 
 Proven locally: the `operator` skill's role-routing bug (agent guessed it was the Requester and handed the job back to the user) was fixed by adopting pattern 1.
 
