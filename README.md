@@ -112,6 +112,7 @@ All skills below are **model-invoked** — the agent can reach for them when the
 ### Growth
 
 - **[seo-growth-workspace](./skills/growth/seo-growth-workspace/SKILL.md)** — Durable SEO operating workspace: bootstrap `.seo/`, capture business context, audit evidence, prioritize backlog, implement one action, verify live, log handoff. Technical SEO, Search Console, schema, local SEO, content ops, internal links, backlinks, pSEO, conversion paths, monthly reporting.
+- **[posthog-growth-workspace](./skills/growth/posthog-growth-workspace/SKILL.md)** — Durable product-data growth workspace on live PostHog data: bootstrap `.growth/`, funnels/activation/retention, experiment and campaign registries, session-replay mining, HogQL cookbook + query runner, monthly growth reviews. Sibling of `seo-growth-workspace` — SEO stays there; install doctrine stays with your stack.
 
 ### Agent Operations
 
