@@ -30,6 +30,8 @@ acceptance criteria in a real browser and produces the evidence.
 
 {{CONVEX_RULES}}
 
+{{RETRY_CONTEXT}}
+
 # COMMIT
 
 Make one or more git commits on `{{BRANCH}}`. Use conventional-commit

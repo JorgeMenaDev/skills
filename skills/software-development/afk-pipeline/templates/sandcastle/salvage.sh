@@ -19,7 +19,11 @@ fi
 test -n "${AGENT_PAT:-}" || { echo "AGENT_PAT missing — cannot salvage without persisting checkout credentials" >&2; exit 1; }
 auth=$(printf 'x-access-token:%s' "$AGENT_PAT" | base64 | tr -d '\n')
 git -c http.https://github.com/.extraheader="AUTHORIZATION: basic $auth" push --force origin "HEAD:refs/heads/${BRANCH}"
+# Pin blocked-comment evidence links to this SHA (never the force-replaceable
+# branch head later). Full 40-char object name.
+salvage_sha=$(git rev-parse HEAD)
 if [ -n "${GITHUB_OUTPUT:-}" ]; then
   echo "salvaged=true" >> "$GITHUB_OUTPUT"
+  echo "salvage_sha=$salvage_sha" >> "$GITHUB_OUTPUT"
 fi
-echo "Salvaged $(git rev-list --count "$base".."$head") commit(s) to $BRANCH"
+echo "Salvaged $(git rev-list --count "$base".."$head") commit(s) to $BRANCH (sha $salvage_sha)"

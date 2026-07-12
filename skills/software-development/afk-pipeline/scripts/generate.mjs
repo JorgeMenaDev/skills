@@ -154,6 +154,9 @@ const TOKENS = {
   "{{PASSTHROUGH_DOC}}": passthroughDoc,
   "{{PASSTHROUGH_KEYS}}": passthroughArr,
   "{{VERIFY_SECRETS_ENV}}": verifySecretsEnv || "          # (no repo verify secrets configured)",
+  // JSON array of verify-boot secret NAMES for the attempt-loop wrapper: it
+  // scopes the values (injected on the loop step env) to the verify child only.
+  "{{VERIFY_SECRET_KEYS}}": JSON.stringify(verifySecrets),
   "{{DEPLOY_NOTE}}": deployNote,
   "{{DEPLOY_NOTE_LOWER}}": deployNote.charAt(0).toLowerCase() + deployNote.slice(1),
   "{{IMPLEMENT_GATE}}": req("implementGate"),
@@ -207,6 +210,9 @@ const FILES = {
   "sandcastle/retry-feedback.ts": ".sandcastle/retry-feedback.ts",
   "sandcastle/run-with-retry.ts": ".sandcastle/run-with-retry.ts",
   "sandcastle/flags/parse-flags.ts": ".sandcastle/flags/parse-flags.ts",
+  "sandcastle/loop/attempt-loop.ts": ".sandcastle/loop/attempt-loop.ts",
+  "sandcastle/loop/blocked-comment.ts": ".sandcastle/loop/blocked-comment.ts",
+  "sandcastle/loop/hostile-text.ts": ".sandcastle/loop/hostile-text.ts",
   "sandcastle/implement/implement.ts": ".sandcastle/implement/implement.ts",
   "sandcastle/implement/prompt.md": ".sandcastle/implement/prompt.md",
   "sandcastle/implement/convex-gate.ts": ".sandcastle/implement/convex-gate.ts",
@@ -214,6 +220,7 @@ const FILES = {
   "sandcastle/verify/prompt.md": ".sandcastle/verify/prompt.md",
   "sandcastle/write-pr/write-pr.ts": ".sandcastle/write-pr/write-pr.ts",
   "sandcastle/write-pr/prompt.md": ".sandcastle/write-pr/prompt.md",
+  "sandcastle/write-pr/convergence.ts": ".sandcastle/write-pr/convergence.ts",
   "sandcastle/review/review.ts": ".sandcastle/review/review.ts",
   "sandcastle/review/review-fix.ts": ".sandcastle/review/review-fix.ts",
   "sandcastle/review/fix-prompt.md": ".sandcastle/review/fix-prompt.md",
@@ -226,7 +233,7 @@ for (const [tplRel, outRel] of Object.entries(FILES)) {
   const rendered = header(outRel) + render(fs.readFileSync(path.join(TPL, tplRel), "utf8"));
   const leftovers = [...rendered.matchAll(/\{\{[A-Z0-9_]+\}\}/g)]
     .map((m) => m[0])
-    .filter((t) => !["{{ISSUE_NUMBER}}", "{{ISSUE_TITLE}}", "{{ISSUE_BODY}}", "{{BRANCH}}", "{{VERIFY_VIEWPORTS}}", "{{VERIFY_LOCALES}}", "{{VERIFY_MODE}}", "{{VERIFY_REASON}}", "{{RECORDING_MODE}}", "{{RECORDING_PATH}}", "{{FINDINGS}}"].includes(t));
+    .filter((t) => !["{{ISSUE_NUMBER}}", "{{ISSUE_TITLE}}", "{{ISSUE_BODY}}", "{{BRANCH}}", "{{VERIFY_VIEWPORTS}}", "{{VERIFY_LOCALES}}", "{{VERIFY_MODE}}", "{{VERIFY_REASON}}", "{{RECORDING_MODE}}", "{{RECORDING_PATH}}", "{{FINDINGS}}", "{{RETRY_CONTEXT}}", "{{CONVERGENCE_SECTION}}"].includes(t));
   if (leftovers.length) {
     console.error(`Unresolved generator tokens in ${outRel}: ${[...new Set(leftovers)].join(", ")}`);
     process.exit(1);

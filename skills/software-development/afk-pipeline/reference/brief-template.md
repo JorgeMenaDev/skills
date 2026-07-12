@@ -20,6 +20,7 @@ review: on|off — <reason>
 recording: on|off — <EXPERIMENTAL; always stamped; `off` unless the requester explicitly asked for recorded proof>
 engine: claude|codex|cursor|grok — <always stamped by the dispatcher; use `engine: claude — override ignored: <reason>` when applicable>
 review-engine: codex|claude — <only when overriding the cross-vendor default; omit otherwise>
+retries: 0|1|2|3 — <optional; default 2 = up to two retries after the first attempt on behavioral verify fail; `0` restores single-attempt>
 
 ## Notes
 <pointers: relevant files, prior art, known gotchas>
@@ -33,8 +34,10 @@ Acceptance criteria are the verify phase's script — write each one as somethin
 
 Each repo's workflow implements this parser; the skill only authors the section.
 
-- Heading: `### Pipeline` (parser may accept `## Pipeline` too). Keys `verify:`, `recap:`, `review:`, `recording:`, `engine:`, `review-engine:`, one per line; the value ends at an optional ` — reason` suffix.
-- **Fail-safe:** absent section, unknown key, or unparseable value ⇒ that flag falls back to its default (`verify: full`, `recap: on`, `review: on`, `recording: off`, `engine: claude`, `review-engine: codex`). Parsing can only reduce work when the body explicitly and legibly says so; recording stays opt-in because it can capture sensitive UI.
+- Heading: `### Pipeline` (parser may accept `## Pipeline` too). Keys `verify:`, `recap:`, `review:`, `recording:`, `engine:`, `review-engine:`, `retries:`, one per line; the value ends at an optional ` — reason` suffix.
+- **Fail-safe:** absent section, unknown key, or unparseable value ⇒ that flag falls back to its default (`verify: full`, `recap: on`, `review: on`, `recording: off`, `engine: claude`, `review-engine: codex`, `retries: 2`). Parsing can only reduce work when the body explicitly and legibly says so; recording stays opt-in because it can capture sensitive UI.
+- **`retries:` (v2.13.0)** — counts extra implement→…→verify cycles after the first on a **behavioral** `pass: false` verdict (default **2** ⇒ up to 3 total attempts). Allowed integers **0–3**; values above 3 **clamp to 3** with an echo note; garbled/non-integer ⇒ fallback **2** with the standard fallback note. **`retries: 0`** restores today's single-attempt behavior per-brief without regen. **Inert under `verify: off`** (no behavioral signal ⇒ exactly one attempt; the flags echo notes that retries do not apply). Indeterminate verify outcomes and infra failures stay terminal immediately (no retry burned).
+- **Behavior-change callout (v2.13.0):** the default `retries: 2` changes default behavior for *every* brief after consumer regen — a failing run now retries up to twice before terminal-failing. Stamp `retries: 0` on a brief to keep single-attempt semantics.
 - **Recap is opt-in at authoring time** (2026-07-10): the dispatcher stamps `recap: off` on every brief unless the requester explicitly asked for a recap. Because the deployed parsers' fail-safe default is still `recap: on`, the line must never be omitted — leaving it out re-enables the recap.
 - The workflow **echoes the parsed flag set** in its first issue comment; if the echo mismatches intent, fix the body and retrigger — the label re-read picks up the same body.
 - `slim` reaches the verify phase as env (`VERIFY_VIEWPORTS`, `VERIFY_LOCALES`) into a single parameterized verify prompt — one prompt template per repo, never per-profile prompt forks.
