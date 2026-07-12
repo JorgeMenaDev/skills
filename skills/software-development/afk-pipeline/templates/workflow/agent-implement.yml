@@ -659,6 +659,10 @@ jobs:
         # Body is rendered from the parsed attempts manifest by
         # .sandcastle/loop/blocked-comment.ts (never shell-expand agent text).
         # Posts with --body-file. No-manifest fallback = today's reason-only shape.
+        # Failures BEFORE checkout / Setup Bun (preflight-adjacent, credential
+        # validation) still mark blocked: a printf-based shell fallback renders
+        # the reason-only shape when bun or the renderer is unavailable
+        # (printf %s never expands agent text — no heredoc command substitution).
         if: steps.preflight.outputs.refused != 'true' && failure()
         env:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
@@ -674,7 +678,30 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
           set -euo pipefail
-          bun .sandcastle/loop/blocked-comment.ts
+          render_fallback() {
+            reason="(no reason file written — check workflow logs)"
+            if [ -f "${RUNNER_TEMP}/failure_reason.txt" ]; then
+              reason=$(cat "${RUNNER_TEMP}/failure_reason.txt")
+            fi
+            salvage_note=""
+            if [ "${SALVAGED:-}" = "true" ] && [ -n "${BRANCH:-}" ]; then
+              salvage_note="**Committed work preserved** on branch \`$BRANCH\` (unreviewed for merge — it failed this run; inspect/cherry-pick, or just retry: a successful retry force-replaces it)."
+            fi
+            {
+              printf '%s\n\n' "\`${TRIGGER_LABEL}\` run failed."
+              printf '**Reason:** %s\n\n' "$reason"
+              if [ -n "$salvage_note" ]; then
+                printf '%s\n\n' "$salvage_note"
+              fi
+              printf '**Workflow run:** %s\n\n' "$RUN_URL"
+              printf 'Re-add `%s` to retry.\n' "$TRIGGER_LABEL"
+            } > "${RUNNER_TEMP}/blocked-comment.md"
+          }
+          if command -v bun >/dev/null 2>&1 && [ -f .sandcastle/loop/blocked-comment.ts ]; then
+            bun .sandcastle/loop/blocked-comment.ts || render_fallback
+          else
+            render_fallback
+          fi
           gh issue edit "$ISSUE_NUMBER" --add-label "agent:blocked" || true
           gh issue comment "$ISSUE_NUMBER" --body-file "${RUNNER_TEMP}/blocked-comment.md"
 

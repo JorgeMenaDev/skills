@@ -256,10 +256,11 @@ export function buildBlockedCommentBody(opts: {
     cwd: opts.cwd,
   });
 
+  // Spec §8.4: the discriminating `Stopped:` headline opens the comment.
   const lines: string[] = [
-    `\`${opts.triggerLabel}\` run failed.`,
-    "",
     headline,
+    "",
+    `\`${opts.triggerLabel}\` run failed.`,
     "",
     `**Reason:** ${reason}`,
     "",
@@ -326,21 +327,45 @@ if (SALVAGED === "true" && BRANCH) {
     `**Committed work preserved** on branch \`${BRANCH}\` (unreviewed for merge — it failed this run; inspect/cherry-pick, or just retry: a successful retry force-replaces it).`;
 }
 
-const manifest = loadManifest(MANIFEST_PATH);
-const reason = readReason(REASON_PATH);
+// This renderer must NEVER fail: the blocked step's label + comment posting
+// depend on it exiting 0 with a body file written. Any unexpected error
+// degrades to the reason-only shape (and, as a last resort, a static body).
+try {
+  const manifest = loadManifest(MANIFEST_PATH);
+  const reason = readReason(REASON_PATH);
 
-const body = buildBlockedCommentBody({
-  manifest,
-  triggerLabel: TRIGGER_LABEL,
-  reason,
-  salvageNote,
-  runUrl: RUN_URL,
-  salvageSha: SALVAGE_SHA,
-  serverUrl: SERVER_URL,
-  repository: REPOSITORY,
-  cwd: process.cwd(),
-});
+  const body = buildBlockedCommentBody({
+    manifest,
+    triggerLabel: TRIGGER_LABEL,
+    reason,
+    salvageNote,
+    runUrl: RUN_URL,
+    salvageSha: SALVAGE_SHA,
+    serverUrl: SERVER_URL,
+    repository: REPOSITORY,
+    cwd: process.cwd(),
+  });
 
-fs.mkdirSync(path.dirname(OUT_PATH), { recursive: true });
-fs.writeFileSync(OUT_PATH, body);
-console.log(`Wrote blocked comment body to ${OUT_PATH}`);
+  fs.mkdirSync(path.dirname(OUT_PATH), { recursive: true });
+  fs.writeFileSync(OUT_PATH, body);
+  console.log(`Wrote blocked comment body to ${OUT_PATH}`);
+} catch (err) {
+  console.error(
+    `blocked-comment renderer degraded to reason-only: ${err instanceof Error ? err.message : err}`
+  );
+  try {
+    const body = buildReasonOnlyBody({
+      triggerLabel: TRIGGER_LABEL,
+      reason: readReason(REASON_PATH),
+      salvageNote,
+      runUrl: RUN_URL,
+    });
+    fs.mkdirSync(path.dirname(OUT_PATH), { recursive: true });
+    fs.writeFileSync(OUT_PATH, body);
+  } catch {
+    fs.writeFileSync(
+      OUT_PATH,
+      `\`${TRIGGER_LABEL}\` run failed.\n\n**Workflow run:** ${RUN_URL}\n\nRe-add \`${TRIGGER_LABEL}\` to retry.\n`
+    );
+  }
+}
