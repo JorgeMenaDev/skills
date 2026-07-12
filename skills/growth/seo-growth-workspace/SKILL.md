@@ -9,7 +9,7 @@ writes_to: [".seo/", "operator-declared bootstrap plan path"]
 
 # SEO Growth Workspace
 
-> **🚧 In progress — contribute back.** This skill is open source and under active, top-priority development. See `references/never-dry-loop.md` for the post-run contribution boundary.
+> **🚧 In progress — contribute back.** This skill is open source and under active, top-priority development, and every run is also product development for the skill itself. Contribute improvements of every kind — bug fixes, new features and modes, sharper references, better runbooks, new scripts, smarter workflows — not just corrections of gaps you hit. When a run reveals anything that would make the skill better, implement it and open a pull request to `JorgeMenaDev/skills` in the same session (or record the idea in the run's handoff log if the session can't). Making this skill better is part of operating it. During a site run, the post-run contribution boundary in `references/never-dry-loop.md` applies.
 
 Run a durable SEO operating workspace for a product or local-business website. The goal is not generic advice; it is evidence, prioritization, implementation, verification, and continuity.
 
