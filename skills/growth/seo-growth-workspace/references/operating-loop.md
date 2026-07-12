@@ -19,7 +19,7 @@ Do not conclude SEO is done because the visible backlog is empty. Apply the Empt
 `.seo/` here means the resolved workspace root — repo-local `.seo/` in standalone mode, `.seo/sites/<slug>/` in hub mode (`references/hub-mode.md`). Read current state before choosing work:
 
 1. `.seo/backlog.md` for current focus, in-progress work, Ready rows, Blocked rows, and Done history.
-2. `.seo/loops/` for optional schema-1 loop state, wake predicates, certificates, occurrences, obligations, coverage, and lease contention; absence is not drift but cannot certify sleep.
+2. `.seo/loops/` for optional schema-1 loop state, wake predicates, certificates, occurrences, obligations, coverage, and lease contention; run `node "$SKILL_DIR/scripts/cadence-status.mjs" --workspace "$SITE_WORKSPACE" --format backlog` to derive the current cadence status.
 3. `.seo/log.md` for the last action, handoff notes, stale leads, and recheck dates.
 4. `.seo/audit.md` for evidence-backed findings and unresolved risks.
 5. `.seo/strategy.md` for durable decisions, tooling, market, language, and production paths.

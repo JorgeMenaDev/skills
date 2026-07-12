@@ -65,7 +65,7 @@ All new machine state is optional, additive schema 1 under the resolved workspac
 
 The optional state surfaces are:
 
-- Existing `.seo/loops/<loop-name>.json`: retain current fields and optionally add `schemaVersion: 1`, `nextWakeAt`, `wakeOn`, `sleepCertificate`, `occurrences`, `heartbeatAt`, and the context-only `stageStamp` (`stage` plus evaluation date).
+- Existing `.seo/loops/<loop-name>.json`: retain current fields and optionally add `schema: 1` or `schemaVersion: 1`, `nextWakeAt`, `wakeOn`, `sleepCertificate`, `occurrences`, `heartbeatAt`, and the context-only `stageStamp` (`stage` plus evaluation date).
 - `.seo/loops/measurement-obligations.json`: optional schema-1 obligation ledger defined below.
 - `.seo/loops/coverage-ledger.json`: optional schema-1 per-rung coverage artifacts defined below.
 - `.seo/loops/site-lease.json`: short-lived per-site writer lease defined below; it is coordination state, not a certificate.
@@ -81,6 +81,33 @@ An occurrence is identified by `{cadenceId, dueWindow}`. Its transitions are:
 `due → materialized → attempted → satisfied | blockedUntil`
 
 There is at most one active ticket for an occurrence; retries reuse it. A completed prior window never trips duplicate suppression for a later window, while same-window re-materialization always deduplicates. Advancement occurs only after a successful observation: both `ok` and `alerted` count as observed. `alerted` also creates or links remediation or `needs_human` work. Execution failures and blocked observations record bounded-backoff fields (`attempt`, `nextAt`, `maxAt`, and escalation state) and never silently satisfy the cadence. Backoff bounds are configurable defaults, not standards.
+
+### Schema-1 occurrence serialization
+
+An occurrence-bearing loop file carries `schema: 1`; readers also accept the existing schema-1 envelope's `schemaVersion: 1` for additive compatibility. If both fields are present, both must equal 1. Its `occurrences` field is an object map keyed by the compact JSON serialization of the identity tuple: `JSON.stringify([cadenceId, dueWindow])`. Writers use that field order with no whitespace; readers require the key to equal `JSON.stringify([cadenceId, dueWindow])` for the record. `cadenceId` is a stable non-empty string. `dueWindow` is a closed UTC calendar-date interval encoded `YYYY-MM-DD/YYYY-MM-DD`; repeat the date for a one-day window.
+
+```json
+{
+  "schema": 1,
+  "occurrences": {
+    "[\"weekly-gsc\",\"2026-07-06/2026-07-12\"]": {
+      "cadenceId": "weekly-gsc",
+      "dueWindow": "2026-07-06/2026-07-12",
+      "dueAt": "2026-07-12",
+      "state": "due",
+      "candidateFingerprint": "stable materialization fingerprint",
+      "ticket": null,
+      "result": null,
+      "attempt": 0,
+      "nextAt": null,
+      "maxAt": null,
+      "escalation": "none"
+    }
+  }
+}
+```
+
+`state` is one of `due`, `materialized`, `attempted`, `satisfied`, or `blockedUntil`. `result` is `null` unless `state` is `satisfied`, when it is `ok` or `alerted`. `escalation` is `none` or `needs_human`. `nextAt` and `maxAt` are `null` outside `blockedUntil`; in `blockedUntil` both are `YYYY-MM-DD` and `nextAt` is not after `maxAt`. `dueAt` is the dated source input that makes the occurrence due and must fall inside `dueWindow`; cadence owners supply it rather than readers inferring it from `lastRun`. Before materialization, `ticket` is null. After materialization it links the single ticket: its status is `open` through materialized, attempted, or blocked states and `closed` when satisfied. Retain the closed ticket as lineage so the same window remains deduplicated. Persist `candidateFingerprint` before ticket creation and use it to reconcile crash retries. A failed or blocked observation sets `state` to `blockedUntil`, increments `attempt` above zero, and records its backoff fields without setting `result`. For `blockedUntil`, `nextAt` is the next-due input and `maxAt` is the absolute retry bound; after `maxAt`, the reader surfaces `needs_human` instead of another retry. Backoff values are configured inputs; any numeric backoff defaults remain labeled configurable defaults pending JorgeMenaDev/matias#118.
 
 Apply the Emergency Selector in `references/ticket-architecture.md` for due-ness and P0 promotion.
 

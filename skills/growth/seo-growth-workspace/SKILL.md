@@ -129,6 +129,7 @@ Use templates from `templates/` for report shape. Use scripts when deterministic
 - `scripts/gsc-oauth.mjs` creates a local refresh-token env file without printing token values.
 - `scripts/gsc-fetch.mjs` fetches Search Console `query,page` rows with pagination using env credentials.
 - `scripts/gsc-opportunities.mjs` turns exported GSC rows into position-banded CTR, page-2, and cannibalization opportunity tables; on early-stage data with nothing inside positions 1-20 it falls back to impression-clusters-by-page so sparse exports still yield a next action. `--brand` excludes branded queries, `--format backlog` emits draft `.seo/backlog.md` rows for review.
+- `scripts/cadence-status.mjs` cold-reads schema-1 loop cadence state and emits draft backlog rows or structured JSON with the earliest next-due date.
 - `scripts/monthly-report.mjs` builds a one-page monthly SEO report from exported GSC, backlog, keyword, and calendar files.
 - `scripts/portfolio-status.mjs` reads the site registry and each workspace's `.seo/` state into a ranked cross-site "which site deserves the next SEO hour" table.
 

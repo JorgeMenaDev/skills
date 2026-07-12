@@ -1,0 +1,15 @@
+{
+  "now": "2026-07-12",
+  "status": "fail_closed",
+  "cadenceState": "invalid",
+  "due": [],
+  "deduplicated": [],
+  "earliestNextDue": null,
+  "obligations": [],
+  "failures": [
+    {
+      "file": "loops/b.json",
+      "reason": "duplicate occurrence identity [\"weekly-gsc\",\"2026-07-06/2026-07-12\"]; already defined in loops/a.json"
+    }
+  ]
+}

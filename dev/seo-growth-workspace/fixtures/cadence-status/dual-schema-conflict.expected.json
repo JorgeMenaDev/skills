@@ -1,0 +1,15 @@
+{
+  "now": "2026-07-12",
+  "status": "fail_closed",
+  "cadenceState": "invalid",
+  "due": [],
+  "deduplicated": [],
+  "earliestNextDue": null,
+  "obligations": [],
+  "failures": [
+    {
+      "file": "loops/weekly.json",
+      "reason": "schemaVersion must be 1; received 2"
+    }
+  ]
+}

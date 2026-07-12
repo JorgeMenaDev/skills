@@ -1,0 +1,48 @@
+{
+  "now": "2026-07-12",
+  "status": "ok",
+  "cadenceState": "present",
+  "due": [
+    {
+      "source": "loops/weekly.json",
+      "cadenceId": "weekly-gsc",
+      "dueWindow": "2026-07-01/2026-07-07",
+      "dueAt": "2026-07-07",
+      "state": "blockedUntil",
+      "candidateFingerprint": "expired-backoff",
+      "ticket": {
+        "id": "SEO-039",
+        "status": "open"
+      },
+      "result": null,
+      "attempt": 3,
+      "nextAt": "2026-07-10",
+      "maxAt": "2026-07-11",
+      "escalation": "none",
+      "action": "needs_human",
+      "requiredEscalation": "needs_human"
+    }
+  ],
+  "deduplicated": [
+    {
+      "source": "loops/weekly.json",
+      "cadenceId": "weekly-gsc",
+      "dueWindow": "2026-07-01/2026-07-07",
+      "dueAt": "2026-07-07",
+      "state": "blockedUntil",
+      "candidateFingerprint": "expired-backoff",
+      "ticket": {
+        "id": "SEO-039",
+        "status": "open"
+      },
+      "result": null,
+      "attempt": 3,
+      "nextAt": "2026-07-10",
+      "maxAt": "2026-07-11",
+      "escalation": "none"
+    }
+  ],
+  "earliestNextDue": null,
+  "obligations": [],
+  "failures": []
+}
