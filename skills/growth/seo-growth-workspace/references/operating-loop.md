@@ -74,7 +74,7 @@ Use this when the user asks to continue until no backlog items remain, or when a
 1. Read backlog, log, audit, strategy, latest reports, and live public sanity routes.
 2. Read `.seo/loops/` and acquire the per-site lease before any state mutation, as required by `references/never-dry-loop.md`.
 3. Separate unblocked repo-owned SEO actions from external gates such as GSC recrawl lag, missing profile ownership, missing contact destination, legal/business facts, or infrastructure monitoring.
-4. If no unblocked repo-owned action remains, complete the required coverage sweep. Then issue a scoped dated sleep certificate or record an honest blocker; do not write a dry checkpoint that bypasses the terminal contract or create a fake Ready ticket.
+4. If no unblocked repo-owned action remains, run the progressive frontier sweep in `references/frontier-sweep.md`. Then issue a scoped dated sleep certificate or record an honest blocker; do not write a dry checkpoint that bypasses the terminal contract or create a fake Ready ticket.
 5. Move out-of-scope side monitors out of the active backlog with evidence and an owner/surface note.
 6. Name the next unblock signals clearly without turning them into backlog items.
 

@@ -66,6 +66,7 @@ const requiredFiles = [
   "references/content-engine-webhooks.md",
   "references/pseo-gates.md",
   "references/ticket-architecture.md",
+  "references/frontier-sweep.md",
   "references/internal-linking.md",
   "references/schema-rich-results.md",
   "references/content-refresh.md",
@@ -88,6 +89,8 @@ const requiredFiles = [
   "references/scheduled-operation.md",
   "references/portfolio-registry.md",
   "templates/taxonomy.md",
+  "templates/frontier-sweep-ledger.md",
+  "templates/sleep-certificate.md",
   "templates/local-seo-gbp.md",
   "templates/backlink-gap.md",
   "templates/content-plan.md",
@@ -255,6 +258,25 @@ section("file inventory", () => {
     check(existsSync(path.join(scriptDir, file)), `Missing dev/seo-growth-workspace/${file}`);
   }
   check(existsSync(path.join(scriptDir, "criterion-matrix.md")), "Missing dev/seo-growth-workspace/criterion-matrix.md");
+});
+
+section("frontier sweep rung routing", () => {
+  const sweepPath = path.join(skillRoot, "references/frontier-sweep.md");
+  const rows = readFileSync(sweepPath, "utf-8")
+    .split(/\r?\n/)
+    .filter((line) => /^\| [A-J] \|/.test(line));
+  const rungs = rows.map((row) => row.split("|")[1].trim());
+
+  check(rows.length === 10 && "ABCDEFGHIJ".split("").every((rung) => rungs.filter((value) => value === rung).length === 1), "Frontier sweep must define exactly one row for each rung A-J");
+  for (const row of rows) {
+    const cells = row.slice(1, -1).split("|").map((cell) => cell.trim());
+    const [rung, question, source, ownerCell] = cells;
+    const owner = ownerCell.match(/`(references\/[^`]+\.md)`/)?.[1];
+    check(Boolean(question && source && owner), `Frontier rung ${rung || "unknown"} must have one question, data source, and reference owner`);
+    if (["A", "F"].includes(rung)) continue;
+    check(owner !== "references/frontier-sweep.md", `Frontier rung ${rung} must route outside frontier-sweep.md`);
+    check(Boolean(owner && existsSync(path.join(skillRoot, owner))), `Frontier rung ${rung} owner must exist: ${owner || "missing"}`);
+  }
 });
 
 section("slice 1 shared contracts", () => {
