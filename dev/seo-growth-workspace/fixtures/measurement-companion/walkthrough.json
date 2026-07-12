@@ -1,0 +1,110 @@
+{
+  "identity": "[\"Improve non-brand CTR\",\"sha256:pricing-page\"]",
+  "shipEvent": {
+    "schema": 1,
+    "events": [{
+      "eventId": "ship-2026-07-13-pricing",
+      "dedupeKey": "sha256:deploy-pricing-revision-7",
+      "publishedAt": "2026-07-13T12:00:00Z",
+      "initiatedBy": "agent-run-110",
+      "source": "deploy",
+      "ticketId": "SEO-110",
+      "urls": ["https://example.com/pricing"],
+      "qualification": "ambiguous",
+      "evidence": ["deploy succeeded; indexability probe unavailable"]
+    }]
+  },
+  "stages": [
+    {
+      "name": "recorded",
+      "obligation": {
+        "hypothesis": "Improve non-brand CTR",
+        "pageCohortFingerprint": "sha256:pricing-page",
+        "baseline": { "measuredAt": "2026-07-13", "value": "2.1% CTR", "evidence": ".seo/reports/gsc-2026-07-13.json" },
+        "metric": "non-brand CTR",
+        "decision": "keep the title treatment or revert it",
+        "dueAt": "2026-07-20",
+        "state": "pending",
+        "candidateFingerprint": null,
+        "ticket": null,
+        "attempts": [],
+        "wakeAt": "2026-07-20",
+        "resolvedAt": null,
+        "calibrationNote": null
+      }
+    },
+    {
+      "name": "due",
+      "obligation": {
+        "hypothesis": "Improve non-brand CTR",
+        "pageCohortFingerprint": "sha256:pricing-page",
+        "baseline": { "measuredAt": "2026-07-13", "value": "2.1% CTR", "evidence": ".seo/reports/gsc-2026-07-13.json" },
+        "metric": "non-brand CTR",
+        "decision": "keep the title treatment or revert it",
+        "dueAt": "2026-07-20",
+        "state": "due",
+        "candidateFingerprint": null,
+        "ticket": null,
+        "attempts": [],
+        "wakeAt": "2026-07-20",
+        "resolvedAt": null,
+        "calibrationNote": null
+      }
+    },
+    {
+      "name": "materialized",
+      "rerun": true,
+      "obligation": {
+        "hypothesis": "Improve non-brand CTR",
+        "pageCohortFingerprint": "sha256:pricing-page",
+        "baseline": { "measuredAt": "2026-07-13", "value": "2.1% CTR", "evidence": ".seo/reports/gsc-2026-07-13.json" },
+        "metric": "non-brand CTR",
+        "decision": "keep the title treatment or revert it",
+        "dueAt": "2026-07-20",
+        "state": "materialized",
+        "candidateFingerprint": "sha256:pricing-page-attempt-1",
+        "ticket": { "id": "SEO-111", "status": "open", "candidateFingerprint": "sha256:pricing-page-attempt-1" },
+        "attempts": [],
+        "wakeAt": "2026-07-20",
+        "resolvedAt": null,
+        "calibrationNote": null
+      }
+    },
+    {
+      "name": "inconclusive",
+      "obligation": {
+        "hypothesis": "Improve non-brand CTR",
+        "pageCohortFingerprint": "sha256:pricing-page",
+        "baseline": { "measuredAt": "2026-07-13", "value": "2.1% CTR", "evidence": ".seo/reports/gsc-2026-07-13.json" },
+        "metric": "non-brand CTR",
+        "decision": "keep the title treatment or revert it",
+        "dueAt": "2026-07-20",
+        "state": "pending",
+        "candidateFingerprint": null,
+        "ticket": null,
+        "attempts": [{ "attemptedAt": "2026-07-20", "reason": "GSC data lag", "evidence": ".seo/reports/gsc-2026-07-20.json" }],
+        "wakeAt": "2026-07-27",
+        "resolvedAt": null,
+        "calibrationNote": null
+      }
+    },
+    {
+      "name": "resolved",
+      "obligation": {
+        "hypothesis": "Improve non-brand CTR",
+        "pageCohortFingerprint": "sha256:pricing-page",
+        "baseline": { "measuredAt": "2026-07-13", "value": "2.1% CTR", "evidence": ".seo/reports/gsc-2026-07-13.json" },
+        "metric": "non-brand CTR",
+        "decision": "keep the title treatment or revert it",
+        "dueAt": "2026-07-20",
+        "state": "resolved",
+        "candidateFingerprint": "sha256:pricing-page-attempt-2",
+        "ticket": { "id": "SEO-112", "status": "closed", "candidateFingerprint": "sha256:pricing-page-attempt-2" },
+        "attempts": [{ "attemptedAt": "2026-07-20", "reason": "GSC data lag", "evidence": ".seo/reports/gsc-2026-07-20.json" }],
+        "wakeAt": "2026-07-27",
+        "resolvedAt": "2026-07-27",
+        "calibrationNote": "CTR rose from 2.1% to 2.8%; retain title treatment."
+      }
+    }
+  ]
+}

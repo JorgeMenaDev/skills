@@ -2,6 +2,7 @@
   "now": "2026-07-12",
   "status": "fail_closed",
   "cadenceState": "invalid",
+  "obligationState": "absent",
   "due": [],
   "deduplicated": [],
   "earliestNextDue": null,

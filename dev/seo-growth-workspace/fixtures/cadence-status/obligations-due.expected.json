@@ -1,0 +1,130 @@
+{
+  "now": "2026-07-12",
+  "status": "ok",
+  "cadenceState": "present",
+  "obligationState": "present",
+  "due": [],
+  "deduplicated": [],
+  "earliestNextDue": "2026-07-06",
+  "obligations": [
+    {
+      "source": "loops/measurement-obligations.json",
+      "hypothesis": "Finish inconclusive return",
+      "pageCohortFingerprint": "sha256:closed-crash",
+      "baseline": {
+        "measuredAt": "2026-07-01",
+        "value": "1.2% conversion",
+        "evidence": ".seo/reports/closed-crash.json"
+      },
+      "metric": "organic signup conversion",
+      "decision": "finish the atomic inconclusive return",
+      "dueAt": "2026-07-06",
+      "state": "materialized",
+      "candidateFingerprint": "sha256:closed-crash-attempt-1",
+      "ticket": {
+        "id": "SEO-106",
+        "status": "closed"
+      },
+      "attempts": [],
+      "wakeAt": "2026-07-06",
+      "resolvedAt": null,
+      "calibrationNote": null,
+      "successor": null,
+      "effectiveDueAt": "2026-07-06",
+      "action": "reconcile_inconclusive_return"
+    },
+    {
+      "source": "loops/measurement-obligations.json",
+      "hypothesis": "Reconcile ticket creation",
+      "pageCohortFingerprint": "sha256:ticket-crash",
+      "baseline": {
+        "measuredAt": "2026-07-01",
+        "value": "55% indexed",
+        "evidence": ".seo/reports/ticket-crash.json"
+      },
+      "metric": "indexed URL share",
+      "decision": "link the recovered ticket",
+      "dueAt": "2026-07-07",
+      "state": "materialized",
+      "candidateFingerprint": "sha256:ticket-crash-attempt-1",
+      "ticket": null,
+      "attempts": [],
+      "wakeAt": "2026-07-07",
+      "resolvedAt": null,
+      "calibrationNote": null,
+      "successor": null,
+      "effectiveDueAt": "2026-07-07",
+      "action": "reconcile_materialization"
+    },
+    {
+      "source": "loops/measurement-obligations.json",
+      "hypothesis": "Recover due materialization",
+      "pageCohortFingerprint": "sha256:due-crash",
+      "baseline": {
+        "measuredAt": "2026-07-01",
+        "value": "1.8% CTR",
+        "evidence": ".seo/reports/due-crash.json"
+      },
+      "metric": "non-brand CTR",
+      "decision": "create or reconcile the measurement ticket",
+      "dueAt": "2026-07-09",
+      "state": "due",
+      "candidateFingerprint": "sha256:due-crash-attempt-1",
+      "ticket": null,
+      "attempts": [],
+      "wakeAt": "2026-07-09",
+      "resolvedAt": null,
+      "calibrationNote": null,
+      "successor": null,
+      "effectiveDueAt": "2026-07-09",
+      "action": "reconcile_materialization"
+    },
+    {
+      "source": "loops/measurement-obligations.json",
+      "hypothesis": "Improve non-brand CTR",
+      "pageCohortFingerprint": "sha256:pricing-page",
+      "baseline": {
+        "measuredAt": "2026-07-01",
+        "value": "2.1% CTR",
+        "evidence": ".seo/reports/gsc-2026-07-01.json"
+      },
+      "metric": "non-brand CTR",
+      "decision": "keep the title treatment or revert it",
+      "dueAt": "2026-07-10",
+      "state": "due",
+      "candidateFingerprint": null,
+      "ticket": null,
+      "attempts": [],
+      "wakeAt": "2026-07-10",
+      "resolvedAt": null,
+      "calibrationNote": null,
+      "successor": null,
+      "effectiveDueAt": "2026-07-10",
+      "action": "materialize"
+    },
+    {
+      "source": "loops/measurement-obligations.json",
+      "hypothesis": "Recover pending materialization",
+      "pageCohortFingerprint": "sha256:pending-crash",
+      "baseline": {
+        "measuredAt": "2026-07-01",
+        "value": "3.2% conversion",
+        "evidence": ".seo/reports/pending-crash.json"
+      },
+      "metric": "organic signup conversion",
+      "decision": "create or reconcile the measurement ticket",
+      "dueAt": "2026-07-08",
+      "state": "pending",
+      "candidateFingerprint": "sha256:pending-crash-attempt-1",
+      "ticket": null,
+      "attempts": [],
+      "wakeAt": "2026-07-11",
+      "resolvedAt": null,
+      "calibrationNote": null,
+      "successor": null,
+      "effectiveDueAt": "2026-07-11",
+      "action": "reconcile_materialization"
+    }
+  ],
+  "failures": []
+}

@@ -132,7 +132,7 @@ For read-only runs:
 - Use existing `.seo` GSC reports, public sitemap/robots/status checks, and repo evidence.
 - Do not configure OAuth, request exports, inspect private GSC pages, click URL Inspection, or request indexing.
 - Mark query/page opportunity work as `partial` when no current GSC rows are already available.
-- Record the exact missing evidence and the safe follow-up owner.
+- Apply the single public-surface Done-transition rule in `references/ticket-architecture.md` for measurement follow-up; record other missing evidence with its safe owner without creating a second follow-up canon.
 
 ## Repeatable API Auth Setup
 

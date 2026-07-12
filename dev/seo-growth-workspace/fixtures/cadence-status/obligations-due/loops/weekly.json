@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "occurrences": {
+    "[\"weekly-gsc\",\"2026-07-20/2026-07-20\"]": {
+      "cadenceId": "weekly-gsc",
+      "dueWindow": "2026-07-20/2026-07-20",
+      "dueAt": "2026-07-20",
+      "state": "due",
+      "candidateFingerprint": "weekly-gsc:2026-07-20",
+      "ticket": null,
+      "result": null,
+      "attempt": 0,
+      "nextAt": null,
+      "maxAt": null,
+      "escalation": "none"
+    }
+  }
+}

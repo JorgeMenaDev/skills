@@ -67,12 +67,13 @@ The optional state surfaces are:
 
 - Existing `.seo/loops/<loop-name>.json`: retain current fields and optionally add `schema: 1` or `schemaVersion: 1`, `nextWakeAt`, `wakeOn`, `sleepCertificate`, `occurrences`, `heartbeatAt`, and the context-only `stageStamp` (`stage` plus evaluation date).
 - `.seo/loops/measurement-obligations.json`: optional schema-1 obligation ledger defined below.
+- `.seo/loops/ship-events.json`: optional schema-1 normalized ship-event ledger defined below.
 - `.seo/loops/coverage-ledger.json`: optional schema-1 per-rung coverage artifacts defined below.
 - `.seo/loops/site-lease.json`: short-lived per-site writer lease defined below; it is coordination state, not a certificate.
 
 Before any workspace mutation, the invocation acquires the site lease for the resolved `SITE_WORKSPACE`. The lease records `owner`, `runId`, acquisition time, and expiry/renewal data. Acquisition is atomic; lease updates and releases use a temporary file followed by atomic replacement. A live lease causes `blocked` and no workspace write. Stale recovery is bounded by a labeled configurable default, records the recovery, and never takes a lease whose owner is still live. All state generators share this lease; none may create a second writer path.
 
-Materialization must be crash-retryable: persist a candidate fingerprint, reconcile by that fingerprint, create or reuse the active ticket, then persist its ID. A crash between those steps is retried against the same fingerprint, never duplicated.
+Materialization must be crash-retryable: persist a candidate fingerprint, reconcile by that fingerprint, create or reuse the active ticket, then persist its ID. Store the same fingerprint in ticket metadata. A crash between those steps is retried against the same fingerprint, never duplicated.
 
 ## Cadence occurrences
 
@@ -117,7 +118,45 @@ A measurement companion is keyed by the hypothesis plus page/cohort fingerprint.
 
 `pending → due → materialized → resolved | superseded`
 
-An inconclusive due measurement records its attempt and reason, returns to the same pending lineage with a new wake date, and is never marked resolved merely because data is late, insufficient, or inaccessible. Deploy verification alone does not resolve a ranking, CTR, conversion, or indexation hypothesis. Materialization mechanics and per-area follow-up wiring land in a later slice.
+An inconclusive due measurement records its attempt, reason, and evidence, returns to the same pending lineage with a new `wakeAt`, and is never marked resolved merely because data is late, insufficient, or inaccessible. GSC lag and missing access are inconclusive reasons, not successful outcomes. Deploy verification alone does not resolve a ranking, CTR, conversion, or indexation hypothesis. Any numeric GSC-lag wait is a configurable default pending JorgeMenaDev/matias#118.
+
+### Schema-1 obligation serialization
+
+The ledger carries `schema: 1`; readers also accept `schemaVersion: 1` under the compatibility rules above. Its `obligations` field is an object map keyed by `JSON.stringify([hypothesis,pageCohortFingerprint])`. Writers use that field order with no whitespace, and readers require the key to equal the serialization of the record values.
+
+```json
+{
+  "schema": 1,
+  "obligations": {
+    "[\"Improve non-brand CTR\",\"sha256:page-or-cohort-fingerprint\"]": {
+      "hypothesis": "Improve non-brand CTR",
+      "pageCohortFingerprint": "sha256:page-or-cohort-fingerprint",
+      "baseline": {
+        "measuredAt": "2026-07-13",
+        "value": "2.1% CTR over the stated cohort and window",
+        "evidence": ".seo/reports/gsc-2026-07-13.json"
+      },
+      "metric": "non-brand CTR for the stated cohort and window",
+      "decision": "keep the title treatment or revert it",
+      "dueAt": "2026-08-10",
+      "state": "pending",
+      "candidateFingerprint": null,
+      "ticket": null,
+      "attempts": [],
+      "wakeAt": "2026-08-10",
+      "resolvedAt": null,
+      "calibrationNote": null,
+      "successor": null
+    }
+  }
+}
+```
+
+`state` is `pending`, `due`, `materialized`, `resolved`, or `superseded`. `hypothesis`, `pageCohortFingerprint`, `baseline.measuredAt`, `baseline.value`, `baseline.evidence`, `metric`, `decision`, and `dueAt` are required non-empty ship-time values. `dueAt`, `wakeAt`, `attempts[].attemptedAt`, and `resolvedAt` use `YYYY-MM-DD`; `wakeAt` is the next-due input for pending lineage. In `pending` or `due`, `ticket` is null and `candidateFingerprint` is either null or the stable non-empty fingerprint already persisted for an in-progress materialization. Materialization first persists that fingerprint while retaining the current `pending` or `due` state, uses it to create or reconcile the Ready row, stores the fingerprint in the ticket metadata, then sets `state` to `materialized` and links `ticket` as `{ "id": "SEO-NNN", "status": "open" }`. A `materialized` record with a non-empty fingerprint and null ticket is the legal crash intermediate between those writes; reconciliation surfaces it and repairs the missing link rather than failing closed. Resolution closes the open ticket, sets `resolvedAt`, and records a concise `calibrationNote` consumable as frontier-sweep calibration input; this contract does not implement sweep logic.
+
+`successor` is null except in `superseded`. Supersession retains the original obligation lineage and requires `successor` as `{ "hypothesis": "non-empty successor hypothesis", "pageCohortFingerprint": "non-empty successor cohort fingerprint", "evidence": "path, URL, ticket, or other non-empty successor evidence" }`. A superseded obligation has a null or closed ticket and a string-or-null `candidateFingerprint`; it cannot retain an open ticket.
+
+Each inconclusive measurement closes the materialized attempt ticket with an inconclusive disposition, then performs one atomic replacement of the obligation ledger that appends `{ "attemptedAt": "YYYY-MM-DD", "reason": "non-empty reason", "evidence": "path, URL, command, or access limitation" }`, returns `state` to `pending`, clears `candidateFingerprint` and `ticket`, and sets a later `wakeAt`. The ticket closure and ledger replacement cannot be one cross-system transaction, so a `materialized` record with a non-empty fingerprint and a closed ticket is the legal in-flight inconclusive-return intermediate; the reader surfaces it for reconciliation rather than failing closed. Writers must not separately mirror only the closed ticket status into the ledger as an ordinary transition. Reconciliation completes the single ledger replacement. The next materialization uses the same obligation identity and a new attempt-specific candidate fingerprint, so lineage persists without falsely resolving the hypothesis.
 
 ## Coverage certification
 
@@ -126,6 +165,29 @@ The coverage ledger records one dated artifact per frontier rung and that rung�
 ## Ship-rate ceiling
 
 Each site has a configurable default ship-rate ceiling for qualifying publications. It is independent of iteration rate: running more iterations does not authorize more ships. A cap hit records the counted ship events, blocks further qualifying publication, and routes the next action to `needs_human` or a dated wake; it does not certify sleep and does not manufacture a ticket. Numeric cap and window values remain labeled configurable defaults pending the knobs decision.
+
+An agent-initiated publication qualifies when an agent action directly causes a new or materially revised SEO surface to become publicly reachable and indexable, whether through a deploy, webhook publish, or pSEO batch publish. Preview, draft, `noindex`, and verification-only actions do not qualify. When the available evidence cannot determine whether the action qualifies, fail closed: record it as `ambiguous` and count it against the ceiling.
+
+For each qualifying or ambiguous publication, append exactly one normalized event to `.seo/loops/ship-events.json` under the per-site lease. Reconcile `dedupeKey` before append so a retry cannot create another event. A batch intentionally published by one action is one event whose `urls` contains the batch members; it consumes one publication slot unless the site's recorded ceiling policy explicitly defines a different unit.
+
+```json
+{
+  "schema": 1,
+  "events": [{
+    "eventId": "stable event identifier",
+    "dedupeKey": "stable fingerprint of publication action and public revision",
+    "publishedAt": "2026-07-13T12:00:00Z",
+    "initiatedBy": "agent run or actor identifier",
+    "source": "deploy | webhook | pseo-batch | other",
+    "ticketId": "SEO-000",
+    "urls": ["https://example.com/public-page"],
+    "qualification": "qualified | ambiguous",
+    "evidence": ["deployment, webhook, manifest, or live-URL evidence"]
+  }]
+}
+```
+
+`eventId`, `dedupeKey`, `publishedAt`, `initiatedBy`, `source`, `urls`, `qualification`, and `evidence` are required; `ticketId` is a ticket ID or null. `publishedAt` is an RFC 3339 UTC instant, `urls` is a non-empty sorted set of canonical public URLs, and `evidence` is non-empty. The ship-rate checker consumes these events and counts both qualification values.
 
 ## Contribute-back boundary
 

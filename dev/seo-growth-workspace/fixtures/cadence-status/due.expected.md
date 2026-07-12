@@ -1,4 +1,4 @@
-# Draft SEO backlog rows from cadence
+# Draft SEO backlog rows from cadence and obligations
 
 This is a draft backlog, not a direct workspace mutation. Review every row before merging into .seo/backlog.md.
 

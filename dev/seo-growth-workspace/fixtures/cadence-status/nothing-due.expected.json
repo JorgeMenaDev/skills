@@ -2,6 +2,7 @@
   "now": "2026-07-12",
   "status": "ok",
   "cadenceState": "present",
+  "obligationState": "absent",
   "due": [],
   "deduplicated": [],
   "earliestNextDue": "2026-07-20",

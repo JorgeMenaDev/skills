@@ -1461,6 +1461,8 @@ section("offline link-graph analyzer", () => {
 // --- cadence-status.mjs: deterministic workspace fixtures ---
 section("cadence-status fixtures", () => {
   const cases = [
+    { name: "obligations-due", format: "json", expected: "obligations-due.expected.json" },
+    { name: "obligations-due", format: "backlog", expected: "obligations-due.expected.md" },
     { name: "nothing-due", format: "json", expected: "nothing-due.expected.json" },
     { name: "due", format: "backlog", expected: "due.expected.md" },
     { name: "dedupe", format: "json", expected: "dedupe.expected.json" },
@@ -1476,6 +1478,7 @@ section("cadence-status fixtures", () => {
     { name: "absurd-backlog-id", format: "backlog", expected: "absurd-backlog-id.expected.md" },
     { name: "dual-schema-conflict", format: "json", expected: "dual-schema-conflict.expected.json" },
     { name: "missing-schema", format: "json", expected: "missing-schema.expected.json" },
+    { name: "invalid-superseded", format: "json", expected: "invalid-superseded.expected.json" },
   ];
 
   for (const fixtureCase of cases) {
@@ -1509,6 +1512,69 @@ section("cadence-status fixtures", () => {
   check(
     zoneless.status !== 0 && zoneless.stderr.includes("timezone-qualified"),
     "cadence-status must reject zoneless --now timestamps",
+  );
+
+  const crashIntermediates = JSON.parse(runScript("scripts/cadence-status.mjs", [
+    "--workspace",
+    fixture(path.join("cadence-status", "obligations-due")),
+    "--format",
+    "json",
+    "--now",
+    "2026-07-12",
+  ])).obligations;
+  check(
+    ["sha256:due-crash", "sha256:pending-crash", "sha256:ticket-crash", "sha256:closed-crash"]
+      .every((fingerprint) => crashIntermediates.some((obligation) => obligation.pageCohortFingerprint === fingerprint)),
+    "cadence-status must surface every legal materialization and inconclusive-return crash intermediate",
+  );
+  const hygienic = crashIntermediates.find((obligation) => obligation.pageCohortFingerprint === "sha256:pricing-page");
+  check(
+    hygienic?.source === "loops/measurement-obligations.json"
+      && !Object.hasOwn(hygienic, "unknownField"),
+    "cadence-status must whitelist obligation fields and let reader-derived provenance win",
+  );
+});
+
+section("measurement companion lifecycle fixture", () => {
+  const walkthrough = JSON.parse(readFileSync(fixture("measurement-companion/walkthrough.json"), "utf-8"));
+  const stages = Object.fromEntries(walkthrough.stages.map((stage) => [stage.name, stage]));
+  const obligations = walkthrough.stages.map(({ obligation }) => obligation);
+
+  check(
+    walkthrough.stages.map(({ name }) => name).join(" → ") === "recorded → due → materialized → inconclusive → resolved",
+    "Measurement companion fixture must exercise the complete lifecycle in order",
+  );
+  check(
+    obligations.every((obligation) => JSON.stringify([obligation.hypothesis, obligation.pageCohortFingerprint]) === walkthrough.identity),
+    "Every lifecycle stage must retain the same obligation identity",
+  );
+  check(
+    stages.materialized.rerun === true
+      && stages.materialized.obligation.ticket.candidateFingerprint === stages.materialized.obligation.candidateFingerprint,
+    "Materialization re-run must reconcile the ticket by its persisted fingerprint",
+  );
+  check(
+    stages.inconclusive.obligation.state === "pending"
+      && stages.inconclusive.obligation.attempts.length === 1
+      && stages.inconclusive.obligation.attempts[0].reason
+      && stages.inconclusive.obligation.wakeAt > stages.inconclusive.obligation.attempts[0].attemptedAt
+      && stages.inconclusive.obligation.resolvedAt === null,
+    "An inconclusive attempt must return to pending lineage with its reason and a later wake date",
+  );
+  check(
+    stages.resolved.obligation.ticket.status === "closed"
+      && stages.resolved.obligation.resolvedAt
+      && stages.resolved.obligation.calibrationNote,
+    "Resolution must close the ticket and provide calibration input",
+  );
+  check(
+    walkthrough.shipEvent.schema === 1
+      && walkthrough.shipEvent.events.length === 1
+      && walkthrough.shipEvent.events[0].qualification === "ambiguous"
+      && walkthrough.shipEvent.events[0].dedupeKey
+      && walkthrough.shipEvent.events[0].urls.length > 0
+      && walkthrough.shipEvent.events[0].evidence.length > 0,
+    "An ambiguous agent publication must be normalized once and fail closed into the ship-rate input",
   );
 });
 
