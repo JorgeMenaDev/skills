@@ -18,9 +18,11 @@
 }
 ```
 
-`ownedPaths` and `collisionPaths` are repo-relative files or directory prefixes. They are required by `rebase-authority` for every nonterminal slice.
+`ownedPaths` and `collisionPaths` are repo-relative files or directory prefixes. `start` defaults both to empty arrays and binds every slice's missing `baseBranch`/`baseSha` to the live target or declared integration head. Planned read-only slices hold no write authority: their path declarations are ignored by `rebase-authority`, while source-bound preparations still invalidate.
 
-`repo.integrationBranch` optionally declares one local integration branch. It is shared authority and must be distinct from every `slice.branch`. A slice may set `baseBranch` to either `repo.targetBranch` or that integration branch. Before `rebase-authority`, the integration branch must already contain the new target head and descend from every nonterminal integration-based slice's recorded `baseSha`; paths changed across each slice's actual `baseSha..integrationHead` range cannot overlap that slice's `ownedPaths` or `collisionPaths`, and those bindings are recorded in the authority decision. Physical movement is narrower: a PLANNED integration-based slice branch is accepted only at its recorded `baseSha` or the exact integration head, with the former atomically fast-forwarded and the latter left in place while untouched target-based branches advance.
+When vendor, model, or effort is required, `dispatch --runtime-proof <ref>` records launcher or runtime metadata evidence in `executor.verified.evidence`. A model's own response is not attestation.
+
+`repo.integrationBranch` optionally declares one local integration branch. It is shared authority and must be distinct from every `slice.branch`. A slice may set `baseBranch` to either `repo.targetBranch` or that integration branch. `start` requires the integration branch to include the target and records its actual head as every integration-based slice's default `baseSha`. During `rebase-authority`, an integration branch still exactly at the old target is fast-forwarded automatically; a branch with its own commits must contain the new target first. Paths changed across each slice's actual `baseSha..integrationHead` range cannot overlap mutating slice authority, and those bindings are recorded in the authority decision. Physical slice-branch movement is narrower: a PLANNED integration-based branch is accepted only at its recorded `baseSha` or the exact integration head.
 
 ## Handoff and criterion evidence
 
