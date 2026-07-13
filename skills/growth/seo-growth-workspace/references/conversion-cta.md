@@ -22,6 +22,8 @@ If a form or CTA has no real destination, do not fake the conversion path. Log t
 
 Do not treat analytics installation as conversion measurement. Distinguish pageviews flowing, CTA/action events firing, useful event properties, a real conversion destination, and admin/reporting proof.
 
+When `posthog-growth-workspace` is installed and the product has a verified PostHog project, use `posthog-outcome-bridge.md` to add aggregate organic landing-page outcomes to the audit. This is decision evidence, not a requirement to replace the SEO-only workflow or to identify visitors.
+
 Two evidence pitfalls when filling the matrix:
 
 - **Verify analytics presence in the shipped JS, not the initial HTML.** Modern app routers bundle the analytics library and its key into JS chunks, so grepping the page HTML for the library name false-negatives even when tracking is live. Extract the chunk URLs from the page source and scan those for the library name or key prefix before concluding analytics is absent (or trusting an older audit that grepped HTML).

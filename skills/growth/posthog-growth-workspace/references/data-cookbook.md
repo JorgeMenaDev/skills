@@ -35,6 +35,8 @@ FROM events WHERE event = '$pageview' AND timestamp > now() - INTERVAL 30 DAY
 GROUP BY properties.$referring_domain ORDER BY people DESC LIMIT 20
 ```
 
+For organic-search outcomes, do not infer channel from a hand-maintained referrer list or read a nonexistent raw `$channel_type` event property. PostHog computes channel attribution on sessions. Use the bounded queries and export contract in `organic-search-outcomes.md`.
+
 ## Funnel (stage-to-stage, people-counted)
 
 ```sql

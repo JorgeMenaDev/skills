@@ -1,7 +1,7 @@
 ---
 name: posthog-growth-workspace
 description: "Use when operating data-driven growth for a product instrumented with PostHog — funnels, activation, retention, experiments, session-replay mining, campaign plays, and periodic growth reviews. Triggers: \"growth review\", \"why aren't users activating\", \"run an experiment\", \"mine session replays\", \"what does the product data say\", \"set up the growth workspace\", \"monthly growth report\". Creates a durable .growth workspace per product, reads live PostHog data CLI-first, does one verified high-leverage action per pass, and logs handoffs. Installs in a single product repo (standalone) or in an orchestrator/agent-profile repo managing many products (hub). Install/instrumentation doctrine and SEO/search-channel work belong to other skills."
-version: 1.1.1
+version: 1.2.0
 license: MIT
 mutating: true
 writes_to: [".growth/"]
@@ -30,6 +30,7 @@ Three-way contract — respect it in both directions:
 - **Install doctrine** (SDK wiring, proxy, identify, consent, keys, provisioning) belongs to the consuming stack's doctrine — for the Andes fleet, `andes-stack` `references/analytics-posthog.md`. This skill audits install health *from the data side* only (`references/platform-ops.md`) and never edits product-repo instrumentation.
 - **This skill** owns everything done *with* the data: dashboards and insights (creation + audit), funnels, experiments, replay mining, campaign plays, growth reviews.
 - **Search-channel growth** (keywords, content, Search Console, AI-search visibility, SEO-page CTAs) belongs to `seo-growth-workspace`. `references/campaigns/channels.md` excludes organic search and points there.
+- **The Organic Outcome Bridge** is the narrow handoff between them: this skill produces aggregate landing-page outcomes from PostHog; `seo-growth-workspace` joins them to aggregate Search Console page demand. It never joins queries to people, sessions, or CRM identities (`references/organic-search-outcomes.md`).
 
 ## Required Workspace
 
@@ -83,6 +84,7 @@ Pick the narrowest mode that satisfies the request; default to `operate`.
 - Experiment method and registry discipline: `references/experiments.md`
 - Session-replay mining: `references/replay-mining.md`
 - HogQL cookbook: `references/data-cookbook.md`
+- Organic-search landing-page outcome export for SEO/marketing/sales: `references/organic-search-outcomes.md`
 - Self-driving / scouts (capability doc; adoption is a fleet-doctrine decision, not this skill's): `references/scouts-self-driving.md`
 - Marketing-budget framework: `references/budget-framework.md`
 - Campaign playbooks: `references/campaigns/positioning.md`, `launch.md`, `channels.md`, `pricing.md`, `sales.md`

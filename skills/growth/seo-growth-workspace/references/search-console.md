@@ -29,7 +29,7 @@ Only when all four miss do you initiate OAuth (Safe Helper Flow below). Store th
 Primary operating loop (Node >= 18; auth setup below):
 
 1. `node "$SKILL_DIR/scripts/gsc-oauth.mjs" --help` — review the one-time auth options before writing into a credential home or ignored env file. Never print token values.
-2. `node "$SKILL_DIR/scripts/gsc-fetch.mjs" --site https://example.com/ --start 2026-01-01 --end 2026-03-31 --output "$SITE_WORKSPACE/reports/gsc-2026-03-31.json"` — exports `query,page` rows, paginating past the 25k-row API cap.
+2. `node "$SKILL_DIR/scripts/gsc-fetch.mjs" --site https://example.com/ --start 2026-01-01 --end 2026-03-31 --output "$SITE_WORKSPACE/reports/gsc-2026-03-31.json"` — exports `query,page` rows, paginating past the 25k-row API cap. Use `--dimensions page` for page-dimensional metrics; this avoids summing query rows that omit anonymized queries, but Search Console still exposes top rows rather than a guaranteed-complete dataset.
 3. `node "$SKILL_DIR/scripts/gsc-opportunities.mjs" --input "$SITE_WORKSPACE/reports/gsc-2026-03-31.json" --brand "acme, acme app" --format report` — drafts the page-2 goldmine, CTR-vs-expected-band, and cannibalization tables. Always pass `--brand` with known branded terms. Use `--format backlog` to emit draft `.seo/backlog.md` rows instead. On early-stage sites, lower `--min-impressions` (default 100) to fit the data; when nothing ranks inside positions 1-20, both formats fall back to impression-clusters-by-page (where demand already sees the site) instead of returning empty tables.
 
 Review every generated row before merging; opportunity output is not a full prioritization model. Save opportunity results using `templates/gsc-opportunity.md`.

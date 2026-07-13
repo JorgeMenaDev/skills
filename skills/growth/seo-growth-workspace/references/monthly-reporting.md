@@ -14,7 +14,7 @@ Use for `monthly-report` mode.
 | Need                         | Preferred                | Fallback                                    |
 | ---------------------------- | ------------------------ | ------------------------------------------- |
 | Organic queries/pages        | GSC API/export           | Browser-visible GSC snapshot                |
-| Organic sessions/conversions | GA4                      | Available web analytics                     |
+| Organic sessions/conversions | Organic Outcome Bridge when PostHog is verified | Available web analytics                     |
 | Local actions                | GBP insights             | Public GBP review/photo/listing evidence    |
 | Rankings/opportunities       | GSC + paid tools         | Manual SERP/competitor inspection           |
 | Deploy/content state         | Hosting dashboard + repo | CLI/status commands                         |
@@ -33,6 +33,7 @@ Use `templates/monthly-report.md`. Include:
 - Indexing/sitemap state.
 - GBP/local state if applicable.
 - The single most important action for next month.
+- When a valid Organic Outcome Bridge export exists, whether its outcome evidence changed the next action. Missing PostHog data does not block an SEO-only report.
 
 When exports are available, draft it in one command:
 
