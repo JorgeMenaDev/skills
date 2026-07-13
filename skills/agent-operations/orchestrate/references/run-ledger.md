@@ -42,6 +42,16 @@ node <skill>/scripts/orchestrate-run.mjs update --run <run.json> \
 
 Updates use an atomic lock directory, re-read revision and conductor ID/epoch under lock, validate legal transitions, and rename the next revision atomically. A stale writer fails closed. Ownership changes use `takeover` after clean reconciliation; it changes the conductor ID and increments the epoch exactly once.
 
+For an ordinary field change on one slice, patch that slice directly instead of copying the full `slices` array into a stale run-level patch:
+
+```bash
+node <skill>/scripts/orchestrate-run.mjs update-slice --run <run.json> \
+  --expected-revision <n> --slice <id> --patch <slice-merge-patch.json> \
+  --conductor-id <id> --conductor-epoch <n>
+```
+
+The patch cannot change the slice ID and still passes the same revision, transition, and ledger validation as `update`.
+
 Before dispatch, external resume, global allocation, push, PR create/update, merge, issue close, or another external operation, add an effect with status `prepared`, owner epoch, attempt key, and exact reconciliation probe. The canonical attempt key is `<runId>:<sliceId>:<attempt>`; the helper derives it when omitted and rejects any other value with the expected key. Move it to `executing` immediately before the act and `observed` only with the real remote/runtime identity. A dangling or unprobeable effect becomes `unknown`; retry only provider-idempotent work with the same key.
 
 An `unknown` or executing effect may become `cancelled` only with proof of definite non-execution or an `authorization.effectRulings` entry naming the effect, ruling, approver, and evidence. Unprobeable irreversible acts remain unknown until that ruling.
@@ -60,7 +70,7 @@ Pass conductor ID/epoch to every mutating command (or set `ORCHESTRATE_CONDUCTOR
 
 Every adapter observation file is a current snapshot bound to `runId`, conductor ID/epoch, `observedForRevision`, and an `observedAt` no more than five minutes old. Runtime rows bind attempt key, executor/vendor, session identity, status, timestamp, and optional PID. `active` requires a fresh envelope; stable `between-calls` and `complete` rows remain bound without pretending a process is continuously live. Merge rows use a unique 40-hex source identity and either locally verified Git ancestry or provider-attested PR-head binding; all external rows bind effect ID, expected source, locator, observed identity, live remote target head where applicable, status, and timestamp. Missing, stale, or mismatched fields yield `UNKNOWN`; clean reconciliation itself expires after five minutes.
 
-When the target branch advances benignly, run `rebase-authority --run <run.json> --expected-revision <n> --to <sha> [--observations <file>]`. It accepts only a verified fast-forward whose changed paths do not overlap every nonterminal slice's declared `ownedPaths` or `collisionPaths`, refuses unresolved effects and dirty/advanced PLANNED branches, fast-forwards untouched PLANNED branches, records the decision, invalidates preparations, and re-reconciles. Raw authority edits are recovery-only.
+When the target branch advances benignly, run `rebase-authority --run <run.json> --expected-revision <n> --to <sha> [--observations <file>]`. It accepts only a verified fast-forward whose changed paths do not overlap every nonterminal slice's declared `ownedPaths` or `collisionPaths`, refuses unresolved effects and dirty/advanced PLANNED branches, fast-forwards untouched target-based PLANNED branches, records the decision, invalidates preparations, and re-reconciles. If `repo.integrationBranch` is declared, refresh that local branch by preserving every nonterminal integration-based slice's recorded base and adding the new target; the exact integration head must descend from every recorded slice base, and each slice's actual `baseSha..integrationHead` changed paths must not overlap that slice's authority. The decision binds every nonterminal prior slice base and its changed paths to the new integration head. Physical branch movement remains PLANNED-only: an untouched integration-based slice branch may be at exactly its recorded `baseSha` and is atomically fast-forwarded to the integration head; a branch already at that exact head is left in place, and every other head fails closed. Other branch checks are unchanged. Raw authority edits are recovery-only.
 
 Lifecycle: `PLANNED -> ACTIVE -> READY_FOR_ACCEPTANCE -> ACCEPTED -> TERMINAL`. `BLOCKED` and `UNKNOWN` interrupt but do not finish a slice. One formal failed handoff may return to `ACTIVE`; a second abandons that attempt and starts a new attempt key. Terminal outcomes are `merged`, `accepted_local`, `report_accepted`, `operation_verified`, `cancelled`, or `deferred`. Cancellation/defer may terminate without successful criteria only when `authorization.cessations` records slice, outcome, approver, and evidence; parent criteria must be marked accounted with evidence.
 
@@ -81,6 +91,14 @@ Rotate the conductor when time, wave count, or context growth crosses the thresh
 ## Deferred gates
 
 An external gate that cannot be discharged now (real-provider proof, human-only act) is recorded in `deferredGates` as `open` with the owning slice and description — never overclaimed as passed. Open gates block `assert-complete` until `discharged` with evidence or `authorized` with an approver and evidence.
+
+Discharge a proved gate without replacing the full register or its existing evidence:
+
+```bash
+node <skill>/scripts/orchestrate-run.mjs discharge-gate --run <run.json> \
+  --expected-revision <n> --gate <id> --evidence <ref> \
+  --conductor-id <id> --conductor-epoch <n>
+```
 
 ## Completion
 

@@ -20,6 +20,8 @@
 
 `ownedPaths` and `collisionPaths` are repo-relative files or directory prefixes. They are required by `rebase-authority` for every nonterminal slice.
 
+`repo.integrationBranch` optionally declares one local integration branch. It is shared authority and must be distinct from every `slice.branch`. A slice may set `baseBranch` to either `repo.targetBranch` or that integration branch. Before `rebase-authority`, the integration branch must already contain the new target head and descend from every nonterminal integration-based slice's recorded `baseSha`; paths changed across each slice's actual `baseSha..integrationHead` range cannot overlap that slice's `ownedPaths` or `collisionPaths`, and those bindings are recorded in the authority decision. Physical movement is narrower: a PLANNED integration-based slice branch is accepted only at its recorded `baseSha` or the exact integration head, with the former atomically fast-forwarded and the latter left in place while untouched target-based branches advance.
+
 ## Handoff and criterion evidence
 
 `handoff` is `{ "report": "/absolute/REPORT.md", "commits": "base..head", "criteriaEvidence": "/absolute/evidence.json" }`. The evidence file is an object whose keys cover every slice criterion and whose values are non-empty evidence-reference arrays:
@@ -80,8 +82,8 @@ Statuses are `active`, `between-calls`, and `complete`. Only `active` asserts a 
 
 ## Deferred gates
 
-An open gate is `{ "id": "post-merge-proof", "sliceId": null, "description": "Run tracker #N after this run merges", "status": "open", "evidence": [] }`. It may move once to `discharged` with non-empty evidence or `authorized` with evidence plus `approvedBy`; it is never removed.
+An open gate is `{ "id": "post-merge-proof", "sliceId": null, "description": "Run tracker #N after this run merges", "status": "open", "evidence": [] }`. Evidence may be absent; when present it is always an array of non-empty identifiers. The gate may move once to `discharged` with non-empty evidence or `authorized` with evidence plus `approvedBy`; it is never removed.
 
 ## Authority decisions
 
-`authorization.recordedDecisions` is append-only. `rebase-authority` appends a `rebase_authority` decision containing old/new target SHAs and changed paths. `authorization.reviewWaivers`, `cessations`, and `effectRulings` are separate authorities and never substitute for each other.
+`authorization.recordedDecisions` is append-only. `rebase-authority` appends a `rebase_authority` decision containing old/new target SHAs and changed paths plus, when declared, the integration branch, new integration head, and each slice's prior base with its actual fast-forward changed paths. `authorization.reviewWaivers`, `cessations`, and `effectRulings` are separate authorities and never substitute for each other.

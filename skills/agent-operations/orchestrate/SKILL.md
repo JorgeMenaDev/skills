@@ -1,7 +1,7 @@
 ---
 name: orchestrate
 description: Orchestrate multi-slice work through dependency-aware waves, isolated executors, review gates, integration, and recovery. Use when a task spans parallel agents, worktrees, AFK runs, shared resources, cross-runtime delegation, or an issue chain that must be driven to verified completion.
-version: 2.2.0
+version: 2.2.1
 license: MIT
 mutating: true
 writes_to: [session-scratchpad/orchestrate/, worktrees, branches, pull-requests, issue-trackers]
