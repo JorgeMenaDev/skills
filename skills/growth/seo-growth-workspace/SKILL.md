@@ -1,7 +1,7 @@
 ---
 name: seo-growth-workspace
 description: "Use when starting, auditing, or operating SEO or organic growth for a product or local-business website — technical SEO, Search Console, keyword/content ops, schema, pSEO, local SEO/GBP, backlinks, AI-search visibility, conversion, and monthly reporting. Triggers: \"set up SEO\", \"audit my site\", \"my traffic dropped\", \"why am I not ranking\", \"Search Console opportunities\", \"monthly SEO report\", \"how do we show up in ChatGPT/AI search\". Creates a durable .seo workspace, captures business context, audits live/code/admin evidence, prioritizes a backlog, implements one high-leverage action, verifies reality, and logs handoff notes. Installs in a single site repo (standalone) or in an orchestrator/agent-profile repo managing many sites (hub). For standalone copywriting, paid channels, or email, use a dedicated skill."
-version: 5.0.0
+version: 5.0.1
 license: MIT
 mutating: true
 writes_to: [".seo/", "operator-declared bootstrap plan path"]
@@ -131,6 +131,7 @@ Use templates from `templates/` for report shape. Use scripts when deterministic
 - `scripts/gsc-fetch.mjs` fetches Search Console `query,page` rows with pagination using env credentials.
 - `scripts/gsc-opportunities.mjs` turns exported GSC rows into position-banded CTR, page-2, and cannibalization opportunity tables; on early-stage data with nothing inside positions 1-20 it falls back to impression-clusters-by-page so sparse exports still yield a next action. `--brand` excludes branded queries, `--format backlog` emits draft `.seo/backlog.md` rows for review.
 - `scripts/cadence-status.mjs` cold-reads schema-1 loop cadence state and emits draft backlog rows or structured JSON with the earliest next-due date.
+- `scripts/site-lease.mjs` acquires, inspects, renews, and releases the schema-1 per-site writer lease; it safely creates an absent `loops/` directory but creates no cadence, coverage, obligation, ship-event, or certificate state.
 - `scripts/monthly-report.mjs` builds a one-page monthly SEO report from exported GSC, backlog, keyword, and calendar files.
 - `scripts/portfolio-status.mjs` reads the site registry and each workspace's `.seo/` state into a ranked cross-site "which site deserves the next SEO hour" table.
 
@@ -139,6 +140,7 @@ Check the lifecycle command contracts from any CWD:
 ```bash
 node "$SKILL_DIR/scripts/seo-doctor.mjs" --help
 node "$SKILL_DIR/scripts/bootstrap-seo-workspace.mjs" --help
+node "$SKILL_DIR/scripts/site-lease.mjs" --help
 ```
 
 ## Core Workflow
