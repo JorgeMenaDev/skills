@@ -66,6 +66,7 @@ const requiredFiles = [
   "references/content-engine-webhooks.md",
   "references/pseo-gates.md",
   "references/ticket-architecture.md",
+  "references/never-dry-loop.md",
   "references/frontier-sweep.md",
   "references/internal-linking.md",
   "references/schema-rich-results.md",
@@ -279,6 +280,26 @@ section("frontier sweep rung routing", () => {
   }
 });
 
+section("never-dry structural contracts", () => {
+  const neverDry = readFileSync(path.join(skillRoot, "references/never-dry-loop.md"), "utf-8");
+  const tickets = readFileSync(path.join(skillRoot, "references/ticket-architecture.md"), "utf-8");
+  const evidence = readFileSync(path.join(skillRoot, "references/evidence-conventions.md"), "utf-8");
+  const hub = readFileSync(path.join(skillRoot, "references/hub-mode.md"), "utf-8");
+  const phase = readFileSync(path.join(skillRoot, "references/phase-architecture.md"), "utf-8");
+
+  check(["Executed work", "Scoped dated sleep", "Honest blocked"].every((terminal) => neverDry.includes(terminal)), "Never-dry contract must define exactly the three named run terminals");
+  check(["dedupeKey", "target", "requestedSurface", "remit", "mutationCeiling", "authorizationClass"].every((field) => neverDry.includes(`\"${field}\"`)), "Sleep certificates must bind dedupe and the complete invocation fingerprint");
+  check(neverDry.includes("nextWakeAt") && neverDry.includes("wakeOn") && neverDry.includes("paused/needs_human") && neverDry.includes("do not invent a date"), "Wake continuity must support dated and observable wakes and pause unobservable event gates");
+  check(tickets.includes("## Binary Eligibility Gate") && tickets.includes("Dated source signal") && tickets.includes("Target-owned outcome") && tickets.includes("Non-duplicate fingerprint") && tickets.includes("The metric and decision") && tickets.includes("existing Done Criteria"), "Binary eligibility must stay nonnumeric, evidenced, target-owned, deduplicated, measurable, and Done-verifiable");
+  check(evidence.includes("`[H]` and `[V]` can support a labeled research lead") && evidence.includes("cannot independently qualify an implementation ticket"), "Hypothesis and vendor evidence may lead research but cannot independently qualify implementation");
+  check(tickets.includes("## Emergency Selector") && tickets.includes("never evidence of a P0") && tickets.includes("Only an observed red delta promotes to P0") && tickets.includes("exact resume point"), "Emergency selection must require an observed red delta and preserve interrupted-work handoff");
+  check(neverDry.includes("Before any workspace mutation") && neverDry.includes("A live lease causes `blocked` and no workspace write") && neverDry.includes("never takes a lease whose owner is still live") && neverDry.includes("none may create a second writer path"), "The per-site lease must enforce one writer, live contention blocking, and bounded stale recovery");
+  check(hub.includes("resolve exactly one target site") && hub.includes("read no site state except the resolved target's") && hub.includes("reads no sibling-site state") && hub.includes("Unattended runs never self-select a target"), "Hub operation must isolate one resolved target and forbid unattended self-selection");
+  check(phase.includes("stage: unknown") && phase.includes("most conservative applicable cadence") && phase.includes("Stage-dependent certification is blocked") && phase.includes("cannot certify sleep"), "Unknown or stale lifecycle stage must use conservative cadence and block certification");
+  check(neverDry.includes("Contribute-back never satisfies an eligibility gate, frontier rung, cadence occurrence, or three-terminal result") && neverDry.includes("never enters a site backlog"), "Contribute-back must remain post-run and outside frontier, terminal, and site backlog credit");
+  check(neverDry.includes("Each site has a configurable default ship-rate ceiling") && neverDry.includes("running more iterations does not authorize more ships") && neverDry.includes("routes the next action to `needs_human` or a dated wake") && neverDry.includes("does not certify sleep"), "Ship-rate ceilings must be per site, iteration-independent, and fail closed on cap hits");
+});
+
 section("slice 1 shared contracts", () => {
   const evidence = readFileSync(path.join(skillRoot, "references/evidence-conventions.md"), "utf-8");
   const commercial = readFileSync(path.join(skillRoot, "references/commercial-integrity.md"), "utf-8");
@@ -288,10 +309,15 @@ section("slice 1 shared contracts", () => {
   check(commercial.includes("typical mobile viewport") && commercial.includes("directly to each named alternative") && commercial.includes("Anti-authority-rental boundary"), "Commercial integrity must define disclosure visibility, direct alternative links, and the anti-authority-rental boundary");
   const rows = matrix.split(/\r?\n/).filter((line) => /^\| C\d+-\d{2} \|/.test(line));
   const ids = rows.map((line) => line.split("|")[1].trim());
-  const expectedCounts = { 32: 6, 33: 8, 34: 20, 35: 12, 36: 18, 37: 13, 38: 11, 39: 15, 40: 16, 41: 10, 42: 12, 43: 12 };
-  check(rows.length === 153 && new Set(ids).size === rows.length, "Criterion matrix must contain all 153 unique source criteria");
+  const expectedCounts = { 32: 6, 33: 8, 34: 20, 35: 12, 36: 18, 37: 13, 38: 11, 39: 15, 40: 16, 41: 10, 42: 12, 43: 12, 106: 16 };
+  check(rows.length === 169 && new Set(ids).size === rows.length, "Criterion matrix must contain all 169 unique source criteria and parent properties");
   check(Object.entries(expectedCounts).every(([issue, count]) => ids.filter((id) => id.startsWith(`C${issue}-`)).length === count), "Criterion matrix per-issue row counts must match the source issue contracts");
-  check(rows.every((line) => /\| \((?:a|b)\) [^|]+ \| (?:open|closed-by-slice-[1-7]) \|/.test(line)), "Every criterion row must have exactly one typed scenario and a valid status");
+  check(rows.every((line) => {
+    const status = /^\| C106-/.test(line)
+      ? /\| \((?:a|b)\) [^|]+ \| (?:open|closed-by-never-dry-release) \|/
+      : /\| \((?:a|b)\) [^|]+ \| (?:open|closed-by-slice-[1-7]) \|/;
+    return status.test(line);
+  }), "Every criterion row must have exactly one typed scenario and a status valid for its issue family");
 });
 
 section("slice 3 page-evidence contracts", () => {
