@@ -28,7 +28,7 @@ const ENGINE =
       : process.env.ENGINE === "grok"
         ? "grok"
         : "claude";
-const CODEX_HOST_HOME = "~/.codex-afk";
+const CODEX_HOST_HOME = `${os.homedir()}/.codex-afk`;
 const CODEX_SANDBOX_HOME = "/home/agent/.codex";
 const CODEX_CLOUD_HOME = `${process.env.RUNNER_TEMP ?? "/tmp"}/codex-home`;
 const CODEX_DOCKER_HOST_HOME = useHostedDocker ? CODEX_CLOUD_HOME : CODEX_HOST_HOME;
