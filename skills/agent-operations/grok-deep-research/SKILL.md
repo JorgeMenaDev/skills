@@ -1,22 +1,23 @@
 ---
 name: grok-deep-research
-description: Use when the user wants iterative web research, asks Grok to investigate a topic deeply, or requests a bounded research loop. Runs Grok Build CLI with grok-4.5, preserves one resumable session, and produces a cited report plus an iteration ledger.
-version: 1.0.1
+description: Use when the user wants iterative web research, asks Grok to investigate a topic deeply, or requests a bounded research loop. Runs Grok Build CLI in an isolated runtime, defaults to native web search, optionally enables only Firecrawl MCP, and produces a stable cited report plus an iteration ledger.
+version: 2.0.0
 mutating: true
-writes_to: ["requested output directory or ./AGENT-DESK/research/<run-id>/", "~/.grok/sessions"]
+writes_to: ["requested output directory or ./AGENT-DESK/research/<run-id>/"]
 ---
 
 # Grok Deep Research
 
-Run a recursive research loop with native xAI **Grok Build CLI**, `grok-4.5`, and web search. Each pass resumes one session, closes a named evidence gap, and decides whether another pass is needed.
+Run a bounded, iterative research loop with native xAI **Grok Build CLI** and a self-contained research brief.
 
 ## Contract
 
-- Research is read-only: web search/fetch only; no repository edits, shell work, external sends, or production actions.
-- Preserve source URLs and distinguish sourced facts, inference, and uncertainty.
-- The iteration cap is optional to the caller and defaults to **6**. A finite cap is always enforced; raise it explicitly rather than allowing an unbounded cost loop.
-- Stop early when Grok returns `done`; hitting the cap produces a report marked `capped`, not a fabricated completion.
-- Deliver `report.md`, `iterations.jsonl`, and `run.json` only after verifying all are non-empty.
+- The research runtime is isolated from ambient instructions, skills, plugins, hooks, memories, files, MCP servers, and unrelated environment variables. It receives the brief, selected provider, and only the minimum auth/network runtime environment.
+- Native Grok web search/fetch is the default. Firecrawl is opt-in and is the only MCP exposed in that mode.
+- Prefer owner-controlled primary sources. Use secondary sources for discovery, then trace material claims to the organisation that owns the fact.
+- Cite material claims inline. Distinguish observed facts, inference, disagreement, uncertainty, web-researchable gaps, and external gaps.
+- A finite iteration cap always applies: 6 by default. `done` requires zero web-researchable gaps; otherwise the result is `capped`.
+- Deliver `report.md`, `iterations.jsonl`, and `run.json` only after wrapper validation succeeds.
 
 ## Preamble
 
@@ -29,6 +30,8 @@ $GROK --version || echo "GROK: missing"
 
 ## Run
 
+Write one self-contained brief containing all domain context, scope, geography, dates, comparison criteria, and requested decisions. Do not rely on workspace memories or ambient instructions.
+
 From this skill directory:
 
 ```bash
@@ -37,28 +40,29 @@ python3 scripts/grok_deep_research.py \
   --output-dir "<absolute output directory>"
 ```
 
-Use `--query "<research question>"` for short prompts. Exactly one of `--query` or `--query-file` is required.
+Use `--query "<research brief>"` for short briefs. Exactly one input is required.
 
 Optional controls:
 
 ```bash
-# Explicit loop cap and per-call agent-turn cap
 python3 scripts/grok_deep_research.py \
-  --query "<research question>" \
+  --query "<research brief>" \
+  --search-provider firecrawl \
+  --exhaustive \
   --max-iterations 10 \
   --max-turns 20 \
   --output-dir "<absolute output directory>"
 ```
 
-The wrapper uses `grok-4.5` at high effort, creates one UUID session, resumes it across passes, disables subagents, and asks each pass for schema-constrained state. It then resumes once more to synthesize the report from the accumulated session evidence.
+Provider choices are `native` (default) and `firecrawl`. Firecrawl uses its remote MCP transport in the isolated home, authenticated from `FIRECRAWL_API_KEY` or the existing `firecrawl` entry in `~/.claude.json`; otherwise it uses Firecrawl's keyless remote endpoint. No other MCP is copied. Omit `--exhaustive` unless the requested report may exceed the default 2,500-word body ceiling.
 
 ## Workflow
 
-1. Turn the request into one research question. Record any scope, date, geography, or comparison constraints in that question.
-2. Choose the smallest reasonable cap: 3 for a focused fact pattern, 6 by default, 10–15 for broad comparative work.
-3. Run the wrapper. Do not treat process exit alone as success.
-4. Read `run.json`; require `status` to be `done` or `capped`, every iteration to contain a summary, and every cited source to retain a URL.
-5. Read the beginning and end of `report.md`. If capped with material open gaps, state them and offer a higher-cap continuation rather than silently rerunning.
+1. Create the self-contained brief. Choose the smallest reasonable cap: 3 for focused research, 6 by default, 10–15 for broad comparisons.
+2. Run the wrapper. It preflights isolation, preserves one Grok session across iterations, and audits premature `done` claims.
+3. Read `run.json`. Require `isolatedRuntime: true`, the requested `searchProvider`, recorded provider calls, and `status: done|capped`.
+4. Read `report.md`. The wrapper enforces one H1 followed by `Executive answer`, `Findings`, `Conflicts and limitations`, `Open gaps`, and final `Sources` H2 sections.
+5. If capped, report the material open gaps and offer to rerun with a higher cap instead of silently doing so.
 
 ## Output
 
@@ -67,17 +71,16 @@ Reply with:
 ```text
 Status: done | capped
 Iterations: <used>/<cap>
+Provider: native | firecrawl
 Report: <absolute path>/report.md
 Ledger: <absolute path>/iterations.jsonl
 Open gaps: <none or short list>
 ```
 
-Attach `report.md` when the channel supports files.
-
 ## Failure modes
 
-- **Infinite research:** the finite default exists to prevent runaway cost. Increase the cap explicitly.
-- **Fresh session per pass:** destroys accumulated context. The wrapper must create once with `-s` and continue with `-r`.
-- **Exit-0 trust:** Grok can exit 0 without a valid research result. Parse `.stopReason` and `.structuredOutput`.
-- **Citation theatre:** a URL list without claim linkage is not a cited report. Require inline links attached to the claims they support.
-- **Premature synthesis:** generating the report before the loop returns `done` or reaches its cap hides unresolved gaps.
+- **Tool leakage:** never weaken the explicit non-research tool removal or reuse the caller's home/workspace; the wrapper audits actual tool calls before writing the report.
+- **Citation theatre:** a Sources list does not replace inline claim citations.
+- **Premature completion:** `done` with web-researchable gaps forces another audit pass.
+- **Provider fiction:** provider use is verified from Grok's session trace and recorded in `run.json`.
+- **Fresh sessions inside one run:** create once with `-s`; continue with `-r` so later passes retain evidence. The isolated session is deleted after publication.
