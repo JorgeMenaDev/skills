@@ -8,7 +8,7 @@ const DEFAULT_MAX_ROWS = 100000;
 
 function usage() {
   return `Usage:
-  GSC_ACCESS_TOKEN=<access-token> node gsc-fetch.mjs --site https://example.com/ --start 2026-01-01 --end 2026-03-31 [--output gsc.json] [--max-rows ${DEFAULT_MAX_ROWS}]
+  GSC_ACCESS_TOKEN=<access-token> node gsc-fetch.mjs --site https://example.com/ --start 2026-01-01 --end 2026-03-31 [--dimensions query,page|page] [--output gsc.json] [--max-rows ${DEFAULT_MAX_ROWS}]
 
   # Or use refresh-token auth from environment variables:
   GSC_CLIENT_ID=... GSC_CLIENT_SECRET=... GSC_REFRESH_TOKEN=... node gsc-fetch.mjs --site https://example.com/ --start 2026-01-01 --end 2026-03-31 [--output gsc.json]
@@ -20,7 +20,10 @@ function usage() {
 --site accepts both GSC property forms: sc-domain:example.com (domain property) and
 https://example.com/ (URL-prefix property). The wrong form for the verified property yields a 403.
 
-Fetches Google Search Console searchAnalytics.query data for query+page rows.
+Fetches Google Search Console searchAnalytics.query data. Defaults to query+page
+rows for opportunity analysis; use --dimensions page for page-dimensional metrics
+such as Organic Outcome Bridge joins. Search Console still returns top rows rather
+than a guaranteed complete dataset.
 Pages through results with startRow (25,000 rows per request) until the export is
 complete or --max-rows (default ${DEFAULT_MAX_ROWS}) is reached; a note is printed
 to stderr if the cap is hit.
@@ -110,7 +113,7 @@ async function getAccessToken() {
   return payload.access_token;
 }
 
-async function fetchPage({ endpoint, token, startDate, endDate, rowLimit, startRow }) {
+async function fetchPage({ endpoint, token, startDate, endDate, dimensions, rowLimit, startRow }) {
   const response = await fetch(endpoint, {
     method: "POST",
     headers: {
@@ -120,7 +123,7 @@ async function fetchPage({ endpoint, token, startDate, endDate, rowLimit, startR
     body: JSON.stringify({
       startDate,
       endDate,
-      dimensions: ["query", "page"],
+      dimensions,
       rowLimit,
       startRow,
     }),
@@ -144,6 +147,11 @@ async function main() {
   const startDate = argValue("--start");
   const endDate = argValue("--end");
   const output = argValue("--output");
+  const dimensionsArg = argValue("--dimensions") ?? "query,page";
+  if (!["query,page", "page"].includes(dimensionsArg)) {
+    throw new Error("--dimensions must be query,page or page");
+  }
+  const dimensions = dimensionsArg.split(",");
   const maxRows = Number(argValue("--max-rows") ?? DEFAULT_MAX_ROWS);
   if (!Number.isInteger(maxRows) || maxRows < 1) {
     throw new Error("--max-rows must be a positive integer");
@@ -169,6 +177,7 @@ async function main() {
       token,
       startDate,
       endDate,
+      dimensions,
       rowLimit,
       startRow,
     });
@@ -186,7 +195,7 @@ async function main() {
     );
   }
 
-  const result = { responseAggregationType, rows };
+  const result = { dimensions, responseAggregationType, rows };
   const text = `${JSON.stringify(result, null, 2)}\n`;
 
   if (output) {

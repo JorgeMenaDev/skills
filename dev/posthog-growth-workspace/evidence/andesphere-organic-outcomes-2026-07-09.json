@@ -1,0 +1,43 @@
+{
+  "schema": "organic-outcome-bridge/v1",
+  "product": "andesphere-site",
+  "site_origin": "https://www.andesphere.com",
+  "window": {
+    "gsc_start_date": "2026-06-12",
+    "gsc_end_date": "2026-07-09",
+    "gsc_timezone": "America/Los_Angeles",
+    "posthog_start_timestamp": "2026-06-12T07:00:00Z",
+    "posthog_end_exclusive_timestamp": "2026-07-10T07:00:00Z"
+  },
+  "source": {
+    "posthog_project_id": "302810",
+    "channel_type": "Organic Search",
+    "allowed_entry_hosts": ["www.andesphere.com"],
+    "primary_conversion_events": [
+      "quote_form_submitted",
+      "cal_booking_completed"
+    ],
+    "same_session_qualified_lead_event": null,
+    "same_session_customer_event": null
+  },
+  "quality": {
+    "evidence_grade": "baseline",
+    "flags": [
+      "low_sample",
+      "consent_unknown"
+    ],
+    "consent_coverage": "unknown",
+    "identity_coverage": "not_required_for_aggregate_bridge",
+    "withheld_nonpublic_path_count": 0
+  },
+  "rows": [
+    {
+      "landing_page": "https://www.andesphere.com/es",
+      "organic_sessions": 2,
+      "primary_conversions": 0,
+      "qualified_leads": null,
+      "customers": null,
+      "revenue_by_currency": null
+    }
+  ]
+}

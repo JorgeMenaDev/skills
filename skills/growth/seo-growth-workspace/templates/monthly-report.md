@@ -9,6 +9,7 @@ YoY basis (if 13+ months of data):
 Core updates in window:
 Branded terms:
 Data sources:
+Organic Outcome Bridge export (optional):
 
 ## Summary
 
@@ -39,11 +40,16 @@ Data sources:
 | Indexed pages             |         |          |        |     |       |
 | Organic sessions          |         |          |        |     |       |
 | Organic conversions/leads |         |          |        |     |       |
+| Organic qualified leads   |         |          |        |     |       |
+| Organic customers         |         |          |        |     |       |
+| Organic revenue           |         |          |        |     |       |
 | GBP calls                 |         |          |        |     |       |
 | GBP website clicks        |         |          |        |     |       |
 | Reviews                   |         |          |        |     |       |
 
 Zero-click note (impressions up, clicks down — why?):
+
+Outcome evidence changed the single next action: yes / no / unavailable — why:
 
 ## Movers
 

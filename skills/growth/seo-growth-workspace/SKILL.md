@@ -1,7 +1,7 @@
 ---
 name: seo-growth-workspace
 description: "Use when starting, auditing, or operating SEO or organic growth for a product or local-business website — technical SEO, Search Console, keyword/content ops, schema, pSEO, local SEO/GBP, backlinks, AI-search visibility, conversion, and monthly reporting. Triggers: \"set up SEO\", \"audit my site\", \"my traffic dropped\", \"why am I not ranking\", \"Search Console opportunities\", \"monthly SEO report\", \"how do we show up in ChatGPT/AI search\". Creates a durable .seo workspace, captures business context, audits live/code/admin evidence, prioritizes a backlog, implements one high-leverage action, verifies reality, and logs handoff notes. Installs in a single site repo (standalone) or in an orchestrator/agent-profile repo managing many sites (hub). For standalone copywriting, paid channels, or email, use a dedicated skill."
-version: 5.1.1
+version: 5.1.2
 license: MIT
 mutating: true
 writes_to: [".seo/", "operator-declared bootstrap plan path"]
@@ -111,6 +111,7 @@ Load only the file needed for the mode or ticket:
 - Schema and rich-results work: `references/schema-rich-results.md`
 - Content decay and refresh/consolidate/remove decisions: `references/content-refresh.md`
 - Conversion and CTA audits: `references/conversion-cta.md`
+- Aggregate PostHog landing-page outcomes for SEO/marketing/sales decisions: `references/posthog-outcome-bridge.md`
 - Local SEO/GBP/citations: `references/local-seo-gbp.md`
 - Backlinks/entity authority, directories, digital PR: `references/backlinks-entity.md`
 - Image distribution, reuse discovery, and rights-gated attribution outreach: `references/image-rights.md`
@@ -129,7 +130,7 @@ Use templates from `templates/` for report shape. Use scripts when deterministic
 - `scripts/seo-doctor.mjs` classifies exact schema-1 state, canonical/legacy registries, installs/lock/active paths, generated drift, and stat-only credential permissions. Its short-lived plan binds every reviewed source.
 - `scripts/bootstrap-seo-workspace.mjs` consumes that plan: create scaffolds once, adopt writes config only, verify writes nothing, repair creates only the reviewed missing generated allowlist, and create-optional creates only a reviewed absent optional artifact.
 - `scripts/gsc-oauth.mjs` creates a local refresh-token env file without printing token values.
-- `scripts/gsc-fetch.mjs` fetches Search Console `query,page` rows with pagination using env credentials.
+- `scripts/gsc-fetch.mjs` fetches Search Console `query,page` rows (default) or page-dimensional metrics with pagination using env credentials; Search Console still exposes top rows, not guaranteed-complete data.
 - `scripts/gsc-opportunities.mjs` turns exported GSC rows into position-banded CTR, page-2, and cannibalization opportunity tables; on early-stage data with nothing inside positions 1-20 it falls back to impression-clusters-by-page so sparse exports still yield a next action. `--brand` excludes branded queries, `--format backlog` emits draft `.seo/backlog.md` rows for review.
 - `scripts/cadence-status.mjs` cold-reads schema-1 loop cadence state and emits draft backlog rows or structured JSON with the earliest next-due date.
 - `scripts/monthly-report.mjs` builds a one-page monthly SEO report from exported GSC, backlog, keyword, and calendar files.
