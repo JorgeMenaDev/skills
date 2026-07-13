@@ -17,7 +17,18 @@ The replay asks whether the recorded final checkpoint could reach a valid termin
 | 5. Re-rule the six rejected surfaces | GSC, pSEO, conversion, backlinks/entity, AI search, and publisher monitoring were each dismissed with prose conditions such as “fresh data,” “approved contact email,” or “a decision.” | `references/ticket-architecture.md § Binary Eligibility Gate` retains every failed candidate with its failing gate, owner, and dated recheck or `closed:<reason>`; `references/never-dry-loop.md § Wake taxonomy and continuity` permits an observable `wakeOn` with source, owner, and fingerprint and routes unobservable event gates to `paused/needs_human`. | The undated phrases are not legal continuity. Give time-checkable items a dated recheck; give observable events a structured `wakeOn`; route dependencies without an observer to honest blocked/paused. Do not invent dates for event-gated blockers. |
 | 6. Test coverage freshness | The record contains no dated artifact for every applicable rung and therefore no max-age comparison. | `references/never-dry-loop.md § Coverage certification` requires one dated artifact per applicable rung within its configured max-age; missing or stale coverage becomes work or an honest blocker. `references/frontier-sweep.md § Progressive traversal and state` labels the initial max-age as a configurable default. | Coverage certification fails closed. The next action is to observe a due rung or record why it is blocked, not to certify that no immediate action remains. |
 | 7. Test completed-sweep strength | The checkpoint names six surfaces but does not show a completed A–J traversal or the top three rejected candidates with failing gates. | `references/never-dry-loop.md § Three-terminal contract` allows a partial sweep to claim only `no candidate from rungs checked`; `nothing valuable this cycle` requires completed fresh coverage and the top three rejected candidates with failing gates. | The recorded “active backlog is empty” fact may stand, but the stronger “no immediate repo-owned action remains” certification is unreachable. At most, the evidence supports a partial, explicitly scoped claim. |
-| 8. Resolve the terminal | The report ended with an undated list of future changes. The next recorded operation was 2026-07-10, 42 elapsed days later, when fresh GSC evidence created work. | `references/never-dry-loop.md § Three-terminal contract`, `§ Wake taxonomy and continuity`, and `§ Sleep certificate` require one valid terminal plus dated or observable continuity; a certificate with missing or incomparable fields fails closed. | A 42-day silent gap is unreachable by contract. The run must execute an eligible action, issue a scoped certificate with `earliestNextDue` and/or observable `wakeOn`, or record an honest blocker with owner, evidence, and recheck state. A later invocation can deduplicate/heartbeat unchanged state without report spam. |
+| 8. Resolve the terminal | The report ended with an undated list of future changes. A 2026-06-07 non-operate skill-dogfood entry appears in the log; the next recorded operate-mode operation was 2026-07-10, 42 elapsed days after May 29, when fresh GSC evidence created work. | `references/never-dry-loop.md § Three-terminal contract`, `§ Wake taxonomy and continuity`, and `§ Sleep certificate` require one valid terminal plus dated or observable continuity; a certificate with missing or incomparable fields fails closed. | The recorded silent dry exit that preceded the 42-day operate-mode gap is unreachable by contract. The run must execute an eligible action, issue a scoped certificate with `earliestNextDue` and/or observable `wakeOn`, or record an honest blocker with owner, evidence, and recheck state. The contract records continuity; it does not guarantee that a later invocation occurs. |
+
+### Lifecycle and explicit-exhaust walk
+
+The May checkpoint's goal — “keep operating until no unblocked SuperaSEO-owned SEO backlog action remains” — is an explicit exhaust request. Applying `references/scheduled-operation.md § Three lifecycles` and `§ Bounded Remit`:
+
+1. **Iteration:** the May 29 checkpoint is one bounded SuperaSEO iteration. It must end in executed work, scoped dated sleep, or honest blocked. Its recorded dry conclusion is not an iteration terminal.
+2. **Continuity:** any remaining dated `nextWakeAt` or observable `wakeOn` waits for a later invocation. Continuity may pause without claiming the site is done; the undated future-condition list fails to record that state.
+3. **Schedule:** the explicit exhaust request may legally end the schedule with `done` after the required coverage sweep. That schedule completion is distinct from the current iteration's terminal and does not prove that the frontier was clear.
+4. **Remit:** exhaust applies only to the resolved SuperaSEO target and authorized mutation ceiling. It does not authorize sibling-site or side-infrastructure work merely to keep the run alive.
+
+Therefore stop, cancellation, and explicit exhaust remain valid schedule lifecycle exits. Per `references/never-dry-loop.md § Sleep certificate`, a schedule's `done` marker is lifecycle metadata, not a fourth dry-run terminal; the current iteration still records one of the three terminals. The frozen input genuinely supports the exhaust branch, while stop and cancellation are contract-preserved sibling exits rather than events claimed to have occurred on May 29.
 
 ### Surface routing, not invented findings
 
@@ -40,7 +51,7 @@ Canonical rule: `references/never-dry-loop.md § Optional schema-1 state and one
 1. Invocation A resolves the SuperaSEO `SITE_WORKSPACE` and, before any workspace mutation, atomically acquires `.seo/loops/site-lease.json`. The lease records owner, run ID, acquisition time, expiry, and renewal data.
 2. Invocation B resolves the same site and attempts the same atomic acquisition. It observes A's live lease.
 3. B does not update backlog, loop state, reports, logs, or the lease. It resolves as honest blocked with the contention evidence and recheck state.
-4. A writes candidate state through temporary files and atomic replacement, reconciles any ticket using the persisted candidate fingerprint, then atomically releases the lease.
+4. A reconciles any ticket using the persisted candidate fingerprint, completes state persistence per the canon's atomic-replacement rules, then releases the lease through temporary-file atomic replacement.
 5. Because B made zero workspace writes and every generator shares the same lease, there is one writer and no corrupt or duplicated state.
 
 ### Verified stale recovery
@@ -58,8 +69,9 @@ The repository validator is the framework-free structural and fixture harness. I
 | Parent property | Proving artifact |
 | --- | --- |
 | Three-terminal behavior, wake continuity, coverage certification, mandated traversal, and terminal skip treatment | This document, `§ 2026-05-29 SuperaSEO replay` |
+| Distinct iteration, continuity, and schedule lifecycles; bounded remit; stop/cancel/exhaust lifecycle exits | This document, `§ Lifecycle and explicit-exhaust walk` |
 | One-writer behavior under live contention and stale recovery | This document, `§ Concurrency walkthrough` |
-| Structural contracts, A–J DRY routing, cadence expected outputs, and measurement-companion lifecycle | `validate-skill.mjs`; `fixtures/cadence-status/*.expected.{json,md}`; `fixtures/measurement-companion/walkthrough.json` |
+| Structural contracts, A–J DRY routing, cadence expected outputs, and measurement-companion lifecycle | `validate-skill.mjs` sections `never-dry structural contracts`, `frontier sweep rung routing`, `cadence-status fixtures`, and `measurement companion lifecycle fixture`; `fixtures/cadence-status/*.expected.{json,md}`; `fixtures/measurement-companion/walkthrough.json` |
 | Executable command portability and classification | `command-inventory.mjs --verify` |
 
 Harness run from the repository root:
@@ -75,4 +87,4 @@ The measurement-companion audit advisory remains a release follow-up: a material
 
 ## Result
 
-PASS for the release-validation slice. The May 29 broad dry certification and undated 42-day silence cannot be produced by the new rules; concurrent writers cannot both mutate the site; structural, cadence, measurement, DRY-rung, and command-inventory checks match the expected candidate state. The two validator findings remain the explicitly accepted release-artifact baselines for the next release slice.
+PASS for the release-validation slice. The May 29 broad dry certification and its recorded silent dry exit cannot be produced by the new rules; the contract records wake continuity but does not guarantee later invocations. Concurrent writers cannot both mutate the site; structural, cadence, measurement, DRY-rung, and command-inventory checks match the expected candidate state. The two validator findings remain the explicitly accepted release-artifact baselines for the next release slice.
