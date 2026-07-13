@@ -14,6 +14,30 @@ Run the purpose-split check in `references/technical-seo.md`. Separate training/
 
 Do not scrape assistant products or add a provider integration. Manual observation is the default. If a future site sampler is investigated separately, require same-origin enforcement, private-address rejection, redirect revalidation, byte/page/time limits, and raw provenance before implementation.
 
+## Optional machine-readable companion experiment
+
+Consider a companion Markdown or read-only JSON surface only when the canonical HTML has already passed the raw/server-rendered extractability check and a specific access gap remains. Plausible targets are data-heavy profiles, directories, catalogs, documentation, or public datasets whose important facts are otherwise interaction-heavy or difficult to retrieve. If ordinary HTML already exposes the useful content, record `no action`; a companion surface is neither a Google gate nor a replacement for normal SEO.
+
+### Representation contract
+
+- Keep canonical HTML primary. Generate HTML, Markdown, `llms.txt`, and any API response from one authoritative data source and update them in the same release; stale or contradictory representations fail the experiment.
+- Give each companion a stable public URL, a successful response without client-side execution, an accurate `text/plain`, `text/markdown`, or JSON content type, and a link back to the canonical HTML page. Where a non-HTML URL could enter search indexes, declare the HTML canonical through a supported HTTP `Link` relation and verify observed canonical behavior rather than assuming it.
+- Make the representation self-contained: identify the entity and page purpose, expose only public facts, preserve source/provenance and last-updated context where material, state limitations, and mark user-provided text as untrusted data rather than instructions.
+- Keep private, gated, personal, credential, and commercially sensitive data out. A public companion must not reveal more than the approved public page or API policy.
+- Treat `llms.txt` as an optional navigation aid, never a ranking signal or required file. Add a limited read-only API only when agents need filtering or retrieval that individual documents cannot serve; require documented fields, bounded responses, rate limits, and privacy review.
+
+### Discovery and bounded pilot
+
+Start with 5–25 representative URLs and a recorded access hypothesis. Do not blindly add every companion URL to the general sitemap: first document the canonical strategy and how the route will be discovered, then monitor Search Console for duplicate/canonical/index-bloat behavior if companion URLs enter a sitemap. A sitemap submission is an action completed, not evidence that an assistant indexed, trained on, cited, or referred from the URL.
+
+Before expansion, verify every sampled pair for source parity, intended public/missing-route status, canonical relationship, response headers, no-JS readability, and privacy boundaries. Expand only when the batch remains maintainable, the access gap is observably reduced, and no material indexing regression appears; otherwise fix, hold, or remove the experiment.
+
+### Provider-independent bot evidence
+
+Use existing application, CDN, WAF, or hosting logs where available; a paid analytics provider is optional and never a dependency. Group observations by route family such as `/profiles/*.md`, but retain the underlying period, bot family, user agent, verified-bot/IP evidence when available, URL, status, latency, bytes, sample/coverage, and limitations. User-agent text alone is spoofable.
+
+A bot request proves only a request in the observed log. Keep successful fetch, search indexation, training use, assistant mention, citation, referral, qualified conversion, customer, and revenue as separate states on the shared non-causal outcome ladder. Reuse the manual observation rows below for assistant fetch/citation tests and require later referral or conversion evidence for business outcomes.
+
 ## 2. Observation contract
 
 Maintain a prompt set in the dated report. Give every prompt a stable prompt ID and version; retain the verbatim query and declared intent. Change the version when wording changes. Use a stable prompt panel and repeated runs for local or personalized observations.

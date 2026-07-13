@@ -55,6 +55,7 @@ Diff `curl` output against the rendered DOM for key pages: headings, money copy,
 
 - Patch the smallest surface that fixes the evidence-backed issue.
 - For Next.js, prefer framework files such as `app/robots.ts`, `app/sitemap.ts`, layout metadata, and JSON-LD components.
+- When a machine-readable companion experiment is justified, follow `references/ai-search-visibility.md`; keep canonical HTML primary and do not add companion URLs to a sitemap by default.
 - After adding public routes, update sitemap generation.
 - After CTA/UI changes, verify desktop and at least one mobile viewport.
 - Keep user-facing copy in the target project's language and market.
