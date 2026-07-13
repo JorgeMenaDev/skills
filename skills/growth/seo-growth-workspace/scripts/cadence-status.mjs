@@ -100,6 +100,13 @@ function validateTicket(value, field) {
   return { id: value.id, status: value.status };
 }
 
+function validateSchemaEnvelope(payload) {
+  const schemas = ["schema", "schemaVersion"].filter((field) => payload[field] !== undefined);
+  if (schemas.length === 0) throw new Error("schema or schemaVersion field is missing");
+  const invalidSchema = schemas.find((field) => payload[field] !== 1);
+  if (invalidSchema) throw new Error(`${invalidSchema} must be 1; received ${JSON.stringify(payload[invalidSchema])}`);
+}
+
 function validateOccurrence(key, value, source) {
   const field = `${source} occurrences[${JSON.stringify(key)}]`;
   if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -158,6 +165,14 @@ function validateOccurrence(key, value, source) {
   if (value.state === "blockedUntil" && value.attempt < 1) {
     throw new Error(`${field}.attempt must be positive when blockedUntil`);
   }
+  const priority = value.priority === undefined ? null : value.priority;
+  if (priority !== null && !/^P[0-4]$/.test(String(priority))) {
+    throw new Error(`${field}.priority must be P0-P4 or omitted`);
+  }
+  const area = value.area === undefined ? null : value.area;
+  if (area !== null && (typeof area !== "string" || area.trim() === "")) {
+    throw new Error(`${field}.area must be a non-empty string or omitted`);
+  }
   return {
     source,
     cadenceId: value.cadenceId,
@@ -171,6 +186,8 @@ function validateOccurrence(key, value, source) {
     nextAt,
     maxAt,
     escalation: value.escalation,
+    priority,
+    area,
   };
 }
 
@@ -223,12 +240,7 @@ async function readCadenceState(workspace) {
     if (!Object.hasOwn(payload, "occurrences")) continue;
     foundCadenceState = true;
     try {
-      const schemas = ["schema", "schemaVersion"].filter((field) => payload[field] !== undefined);
-      if (schemas.length === 0) throw new Error("schema or schemaVersion field is missing");
-      const invalidSchema = schemas.find((field) => payload[field] !== 1);
-      if (invalidSchema) {
-        throw new Error(`${invalidSchema} must be 1; received ${JSON.stringify(payload[invalidSchema])}`);
-      }
+      validateSchemaEnvelope(payload);
       if (!payload.occurrences || typeof payload.occurrences !== "object" || Array.isArray(payload.occurrences)) {
         throw new Error("occurrences must be an object map");
       }
@@ -384,10 +396,7 @@ async function readObligationState(workspace) {
   try {
     const payload = JSON.parse(text);
     if (!payload || typeof payload !== "object" || Array.isArray(payload)) throw new Error("obligation ledger must be a JSON object");
-    const schemas = ["schema", "schemaVersion"].filter((field) => payload[field] !== undefined);
-    if (schemas.length === 0) throw new Error("schema or schemaVersion field is missing");
-    const invalidSchema = schemas.find((field) => payload[field] !== 1);
-    if (invalidSchema) throw new Error(`${invalidSchema} must be 1; received ${JSON.stringify(payload[invalidSchema])}`);
+    validateSchemaEnvelope(payload);
     if (!payload.obligations || typeof payload.obligations !== "object" || Array.isArray(payload.obligations)) {
       throw new Error("obligations must be an object map");
     }
@@ -503,8 +512,8 @@ ${markdownTable(
   const cadenceRows = report.due.filter((occurrence) => occurrence.action === "materialize");
   const rows = cadenceRows.map((occurrence, index) => [
     `SEO-${String(startId + index).padStart(3, "0")}`,
-    "P4",
-    "reporting",
+    occurrence.priority ?? "P4",
+    occurrence.area ?? "reporting",
     `Run cadence ${occurrence.cadenceId} for ${occurrence.dueWindow}`,
     `Record ok, alerted, or honest blocked evidence for ${occurrence.cadenceId} due ${occurrence.dueAt}`,
   ]);
@@ -605,11 +614,11 @@ async function main() {
   const analysis = analyze(state, obligationState, now);
   let report = { now, ...analysis };
   let startId = 1;
-  const draftsRows = report.status === "ok" && (
+  const hasDraftRows = report.status === "ok" && (
     report.due.some((occurrence) => occurrence.action === "materialize")
     || report.obligations.some((obligation) => obligation.action === "materialize")
   );
-  if (format === "backlog" && draftsRows) {
+  if (format === "backlog" && hasDraftRows) {
     const backlogState = await nextBacklogId(workspace);
     if (typeof backlogState === "number") startId = backlogState;
     else report = withFailure(report, backlogState);

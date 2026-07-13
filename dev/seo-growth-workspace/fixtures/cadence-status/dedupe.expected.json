@@ -20,7 +20,9 @@
       "attempt": 0,
       "nextAt": null,
       "maxAt": null,
-      "escalation": "none"
+      "escalation": "none",
+      "priority": null,
+      "area": null
     }
   ],
   "earliestNextDue": null,

@@ -67,7 +67,7 @@ When no current, in-progress, or Ready ticket exists, do not rerun every audit. 
 | Local | GBP, reviews, citations, service-area pages, local competitor changes | `local-seo` |
 | Reporting | missing monthly report, stale metrics, no single next action | `reporting` |
 
-If all checks look healthy, record the evidence in the coverage ledger and route the result through the three-terminal contract. A sleep certificate is valid only when the required coverage is fresh; otherwise select the stale rung or record the missing observation as blocked.
+If all checks look healthy, record the evidence in the coverage ledger and route the result through the three-terminal contract in `references/never-dry-loop.md`, whose coverage-certification rules decide whether a sleep certificate is available or a stale rung must be selected or blocked.
 
 ## Empty Backlog Final Checkpoint
 
