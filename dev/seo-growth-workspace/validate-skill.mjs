@@ -288,10 +288,10 @@ section("slice 1 shared contracts", () => {
   check(commercial.includes("typical mobile viewport") && commercial.includes("directly to each named alternative") && commercial.includes("Anti-authority-rental boundary"), "Commercial integrity must define disclosure visibility, direct alternative links, and the anti-authority-rental boundary");
   const rows = matrix.split(/\r?\n/).filter((line) => /^\| C\d+-\d{2} \|/.test(line));
   const ids = rows.map((line) => line.split("|")[1].trim());
-  const expectedCounts = { 32: 6, 33: 8, 34: 20, 35: 12, 36: 18, 37: 13, 38: 11, 39: 15, 40: 16, 41: 10, 42: 12, 43: 12 };
-  check(rows.length === 153 && new Set(ids).size === rows.length, "Criterion matrix must contain all 153 unique source criteria");
+  const expectedCounts = { 32: 6, 33: 8, 34: 20, 35: 12, 36: 18, 37: 13, 38: 11, 39: 15, 40: 16, 41: 10, 42: 12, 43: 12, 106: 16 };
+  check(rows.length === 169 && new Set(ids).size === rows.length, "Criterion matrix must contain all 169 unique source criteria and parent properties");
   check(Object.entries(expectedCounts).every(([issue, count]) => ids.filter((id) => id.startsWith(`C${issue}-`)).length === count), "Criterion matrix per-issue row counts must match the source issue contracts");
-  check(rows.every((line) => /\| \((?:a|b)\) [^|]+ \| (?:open|closed-by-slice-[1-7]) \|/.test(line)), "Every criterion row must have exactly one typed scenario and a valid status");
+  check(rows.every((line) => /\| \((?:a|b)\) [^|]+ \| (?:open|closed-by-slice-[1-7]|closed-by-never-dry-release) \|/.test(line)), "Every criterion row must have exactly one typed scenario and a valid status");
 });
 
 section("slice 3 page-evidence contracts", () => {
