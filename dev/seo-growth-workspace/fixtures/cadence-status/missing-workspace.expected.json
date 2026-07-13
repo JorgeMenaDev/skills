@@ -1,0 +1,21 @@
+{
+  "now": "2026-07-12",
+  "status": "fail_closed",
+  "cadenceState": "invalid",
+  "obligationState": "absent",
+  "coverageState": "absent",
+  "due": [],
+  "deduplicated": [],
+  "earliestNextDue": null,
+  "obligations": [],
+  "inFlightOccurrences": [],
+  "inFlightObligations": [],
+  "loopWakes": [],
+  "coverageDue": [],
+  "failures": [
+    {
+      "file": ".",
+      "reason": "workspace root does not exist"
+    }
+  ]
+}

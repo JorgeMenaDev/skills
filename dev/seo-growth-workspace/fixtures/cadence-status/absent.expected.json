@@ -1,0 +1,16 @@
+{
+  "now": "2026-07-12",
+  "status": "ok",
+  "cadenceState": "absent",
+  "obligationState": "absent",
+  "coverageState": "absent",
+  "due": [],
+  "deduplicated": [],
+  "earliestNextDue": null,
+  "obligations": [],
+  "inFlightOccurrences": [],
+  "inFlightObligations": [],
+  "loopWakes": [],
+  "coverageDue": [],
+  "failures": []
+}

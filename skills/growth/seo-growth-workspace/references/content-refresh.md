@@ -40,4 +40,4 @@ Never bump `dateModified` or visible dates without substantive content change.
 - Changes are deployed.
 - Updated metadata/content verified live.
 - GSC URL inspection or sitemap recrawl is requested only when useful.
-- Follow-up review date is recorded.
+- Apply the single public-surface Done-transition rule in `references/ticket-architecture.md`; do not create a separate refresh follow-up.

@@ -1,0 +1,21 @@
+{
+  "now": "2026-07-12",
+  "status": "fail_closed",
+  "cadenceState": "invalid",
+  "obligationState": "absent",
+  "coverageState": "absent",
+  "due": [],
+  "deduplicated": [],
+  "earliestNextDue": null,
+  "obligations": [],
+  "inFlightOccurrences": [],
+  "inFlightObligations": [],
+  "loopWakes": [],
+  "coverageDue": [],
+  "failures": [
+    {
+      "file": "loops/weekly.json",
+      "reason": "schema must be 1; received 2"
+    }
+  ]
+}

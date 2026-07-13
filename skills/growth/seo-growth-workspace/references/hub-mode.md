@@ -65,6 +65,10 @@ The only behavioral addition in hub mode: **read hub routing state only (`config
 
 After resolution, everything is standalone behavior against the resolved workspace. One target per run; never a blended workspace.
 
+## Hub boundary during a site run
+
+After target resolution, a site run reads no sibling-site state and never calls `portfolio-status.mjs`. Portfolio ranking belongs before resolution or to an explicit outer sweep that invokes each target as a separate site run; it is never an inner selection step. Unattended runs never self-select a target. A pre-resolution sleep or blocked result, such as a missing named target, writes hub-level loop state at `HUB_ROOT/loops/` and does not read site state. Once resolved, the per-site three-terminal and writer-lease rules in `references/never-dry-loop.md` apply.
+
 ## Ticket IDs
 
 `SEO-NNN` stays monotonically increasing **per site folder** — each `sites/<slug>/` is a "target workspace" in the sense of `references/ticket-architecture.md`. There is no hub-global ticket namespace.

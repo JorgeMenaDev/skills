@@ -1,0 +1,57 @@
+{
+  "now": "2026-07-12",
+  "status": "ok",
+  "cadenceState": "present",
+  "obligationState": "absent",
+  "coverageState": "absent",
+  "due": [],
+  "deduplicated": [
+    {
+      "source": "loops/weekly.json",
+      "cadenceId": "weekly-gsc",
+      "dueWindow": "2026-07-06/2026-07-12",
+      "dueAt": "2026-07-12",
+      "state": "materialized",
+      "candidateFingerprint": "weekly-gsc:2026-07-06:2026-07-12",
+      "ticket": {
+        "id": "SEO-042",
+        "status": "open"
+      },
+      "result": null,
+      "attempt": 0,
+      "nextAt": null,
+      "maxAt": null,
+      "escalation": "none",
+      "priority": null,
+      "area": null
+    }
+  ],
+  "earliestNextDue": null,
+  "obligations": [],
+  "inFlightOccurrences": [
+    {
+      "source": "loops/weekly.json",
+      "cadenceId": "weekly-gsc",
+      "dueWindow": "2026-07-06/2026-07-12",
+      "dueAt": "2026-07-12",
+      "state": "materialized",
+      "candidateFingerprint": "weekly-gsc:2026-07-06:2026-07-12",
+      "ticket": {
+        "id": "SEO-042",
+        "status": "open"
+      },
+      "result": null,
+      "attempt": 0,
+      "nextAt": null,
+      "maxAt": null,
+      "escalation": "none",
+      "priority": null,
+      "area": null,
+      "action": "reconcile_in_flight"
+    }
+  ],
+  "inFlightObligations": [],
+  "loopWakes": [],
+  "coverageDue": [],
+  "failures": []
+}

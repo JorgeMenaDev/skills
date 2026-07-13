@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "occurrences": {
+    "[\"weekly-gsc\",\"2026-07-06/2026-07-12\"]": {
+      "cadenceId": "weekly-gsc",
+      "dueWindow": "2026-07-06/2026-07-12",
+      "dueAt": "2026-07-12",
+      "state": "materialized",
+      "candidateFingerprint": "weekly-gsc:2026-07-06:2026-07-12",
+      "ticket": { "id": "SEO-042", "status": "open" },
+      "result": null,
+      "attempt": 0,
+      "nextAt": null,
+      "maxAt": null,
+      "escalation": "none"
+    }
+  }
+}

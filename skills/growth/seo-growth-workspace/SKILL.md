@@ -1,7 +1,7 @@
 ---
 name: seo-growth-workspace
 description: "Use when starting, auditing, or operating SEO or organic growth for a product or local-business website — technical SEO, Search Console, keyword/content ops, schema, pSEO, local SEO/GBP, backlinks, AI-search visibility, conversion, and monthly reporting. Triggers: \"set up SEO\", \"audit my site\", \"my traffic dropped\", \"why am I not ranking\", \"Search Console opportunities\", \"monthly SEO report\", \"how do we show up in ChatGPT/AI search\". Creates a durable .seo workspace, captures business context, audits live/code/admin evidence, prioritizes a backlog, implements one high-leverage action, verifies reality, and logs handoff notes. Installs in a single site repo (standalone) or in an orchestrator/agent-profile repo managing many sites (hub). For standalone copywriting, paid channels, or email, use a dedicated skill."
-version: 4.0.3
+version: 5.0.0
 license: MIT
 mutating: true
 writes_to: [".seo/", "operator-declared bootstrap plan path"]
@@ -9,7 +9,7 @@ writes_to: [".seo/", "operator-declared bootstrap plan path"]
 
 # SEO Growth Workspace
 
-> **🚧 In progress — contribute back.** This skill is open source and under active, top-priority development, and every run is also product development for the skill itself. Contribute improvements of every kind — bug fixes, new features and modes, sharper references, better runbooks, new scripts, smarter workflows — not just corrections of gaps you hit. When a run reveals anything that would make the skill better, implement it and open a pull request to `JorgeMenaDev/skills` in the same session (or record the idea in the run's handoff log if the session can't). Making this skill better is part of operating it.
+> **🚧 In progress — contribute back.** This skill is open source and under active, top-priority development, and every run is also product development for the skill itself. Contribute improvements of every kind — bug fixes, new features and modes, sharper references, better runbooks, new scripts, smarter workflows — not just corrections of gaps you hit. When a run reveals anything that would make the skill better, implement it and open a pull request to `JorgeMenaDev/skills` in the same session (or record the idea in the run's handoff log if the session can't). Making this skill better is part of operating it. During a site run, the post-run contribution boundary in `references/never-dry-loop.md` applies.
 
 Run a durable SEO operating workspace for a product or local-business website. The goal is not generic advice; it is evidence, prioritization, implementation, verification, and continuity.
 
@@ -69,11 +69,11 @@ Workspace-file prose like `.seo/backlog.md` in this file and the references mean
 
 ## Choose A Mode
 
-Pick the narrowest mode that satisfies the request. If no narrower mode is requested, use `operate`: read existing `.seo/` state, choose the next evidence-backed action, do one useful step, verify it, and log the handoff. If the user asks for a full first run, load `references/phase-architecture.md`, start with `bootstrap`, then continue in `operate`. In hub mode, resolve the target site first (`references/hub-mode.md`); the modes themselves are unchanged.
+Pick the narrowest mode that satisfies the request. If no narrower mode is requested, use `operate`: read existing `.seo/` state, choose the next evidence-backed action, and resolve the run through the three-terminal contract in `references/never-dry-loop.md`. If the user asks for a full first run, load `references/phase-architecture.md`, start with `bootstrap`, then continue in `operate`. In hub mode, resolve the target site first (`references/hub-mode.md`); the modes themselves are unchanged.
 
 | Mode | Use when | Exit criteria |
 | --- | --- | --- |
-| `operate` | Continuing SEO work without a narrower request | Current state is read, next work is chosen, one useful step is verified, and `.seo/log.md` is updated |
+| `operate` | Continuing SEO work without a narrower request | Current state is read, next work is chosen, and one three-terminal result is recorded with its evidence and handoff |
 | `bootstrap` | Starting or auditing an SEO workspace | `.seo/` exists, business context exists, first audit/backlog are populated |
 | `technical-seo-fix` | Fixing robots, sitemap, canonicals, metadata, schema, redirects, analytics, CWV, hreflang, AI-crawler access, or indexability | Change is deployed or documented as blocked, then live verified |
 | `content-ops` | Planning or operating keywords, blog calendars, briefs, articles, utility/tool pages, internal links, or a content engine | Keyword/content state is visible, publish path is verified or blocked, and next rows are documented |
@@ -90,6 +90,7 @@ Load only the file needed for the mode or ticket:
 - Migration (standalone → hub), uninstall, and post-migration hygiene: `references/migrate-uninstall.md`
 - First-run phase architecture and site-type classifier: `references/phase-architecture.md`
 - Operating loop and handoff: `references/operating-loop.md`
+- Three-terminal loop contract, wake state, certificates, cadence occurrences, measurement obligations, coverage, and writer lease: `references/never-dry-loop.md`
 - Business context intake: `references/business-context.md`
 - Admin/auth evidence: `references/admin-preflight.md`
 - Local adapters and repo-specific bridges: `references/adapters.md`
@@ -104,6 +105,7 @@ Load only the file needed for the mode or ticket:
 - Content-engine webhook publishing (receive, verify, deploy; includes one worked example): `references/content-engine-webhooks.md`
 - pSEO publish gates and playbook chooser: `references/pseo-gates.md`
 - Ticket taxonomy, work selection, statuses, and done criteria: `references/ticket-architecture.md`
+- Empty-Ready opportunity discovery and progressive coverage: `references/frontier-sweep.md`
 - Internal linking audits: `references/internal-linking.md`
 - Schema and rich-results work: `references/schema-rich-results.md`
 - Content decay and refresh/consolidate/remove decisions: `references/content-refresh.md`
@@ -128,6 +130,7 @@ Use templates from `templates/` for report shape. Use scripts when deterministic
 - `scripts/gsc-oauth.mjs` creates a local refresh-token env file without printing token values.
 - `scripts/gsc-fetch.mjs` fetches Search Console `query,page` rows with pagination using env credentials.
 - `scripts/gsc-opportunities.mjs` turns exported GSC rows into position-banded CTR, page-2, and cannibalization opportunity tables; on early-stage data with nothing inside positions 1-20 it falls back to impression-clusters-by-page so sparse exports still yield a next action. `--brand` excludes branded queries, `--format backlog` emits draft `.seo/backlog.md` rows for review.
+- `scripts/cadence-status.mjs` cold-reads schema-1 loop cadence state and emits draft backlog rows or structured JSON with the earliest next-due date.
 - `scripts/monthly-report.mjs` builds a one-page monthly SEO report from exported GSC, backlog, keyword, and calendar files.
 - `scripts/portfolio-status.mjs` reads the site registry and each workspace's `.seo/` state into a ranked cross-site "which site deserves the next SEO hour" table.
 

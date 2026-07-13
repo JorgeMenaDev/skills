@@ -66,6 +66,8 @@ const requiredFiles = [
   "references/content-engine-webhooks.md",
   "references/pseo-gates.md",
   "references/ticket-architecture.md",
+  "references/never-dry-loop.md",
+  "references/frontier-sweep.md",
   "references/internal-linking.md",
   "references/schema-rich-results.md",
   "references/content-refresh.md",
@@ -88,6 +90,8 @@ const requiredFiles = [
   "references/scheduled-operation.md",
   "references/portfolio-registry.md",
   "templates/taxonomy.md",
+  "templates/frontier-sweep-ledger.md",
+  "templates/sleep-certificate.md",
   "templates/local-seo-gbp.md",
   "templates/backlink-gap.md",
   "templates/content-plan.md",
@@ -257,6 +261,45 @@ section("file inventory", () => {
   check(existsSync(path.join(scriptDir, "criterion-matrix.md")), "Missing dev/seo-growth-workspace/criterion-matrix.md");
 });
 
+section("frontier sweep rung routing", () => {
+  const sweepPath = path.join(skillRoot, "references/frontier-sweep.md");
+  const rows = readFileSync(sweepPath, "utf-8")
+    .split(/\r?\n/)
+    .filter((line) => /^\| [A-J] \|/.test(line));
+  const rungs = rows.map((row) => row.split("|")[1].trim());
+
+  check(rows.length === 10 && "ABCDEFGHIJ".split("").every((rung) => rungs.filter((value) => value === rung).length === 1), "Frontier sweep must define exactly one row for each rung A-J");
+  for (const row of rows) {
+    const cells = row.slice(1, -1).split("|").map((cell) => cell.trim());
+    const [rung, question, source, ownerCell] = cells;
+    const owner = ownerCell.match(/`(references\/[^`]+\.md)`/)?.[1];
+    check(Boolean(question && source && owner), `Frontier rung ${rung || "unknown"} must have one question, data source, and reference owner`);
+    if (["A", "F"].includes(rung)) continue;
+    check(owner !== "references/frontier-sweep.md", `Frontier rung ${rung} must route outside frontier-sweep.md`);
+    check(Boolean(owner && existsSync(path.join(skillRoot, owner))), `Frontier rung ${rung} owner must exist: ${owner || "missing"}`);
+  }
+});
+
+section("never-dry structural contracts", () => {
+  const neverDry = readFileSync(path.join(skillRoot, "references/never-dry-loop.md"), "utf-8");
+  const tickets = readFileSync(path.join(skillRoot, "references/ticket-architecture.md"), "utf-8");
+  const evidence = readFileSync(path.join(skillRoot, "references/evidence-conventions.md"), "utf-8");
+  const hub = readFileSync(path.join(skillRoot, "references/hub-mode.md"), "utf-8");
+  const phase = readFileSync(path.join(skillRoot, "references/phase-architecture.md"), "utf-8");
+
+  check(["Executed work", "Scoped dated sleep", "Honest blocked"].every((terminal) => neverDry.includes(terminal)), "Never-dry contract must define exactly the three named run terminals");
+  check(["dedupeKey", "target", "requestedSurface", "remit", "mutationCeiling", "authorizationClass"].every((field) => neverDry.includes(`\"${field}\"`)), "Sleep certificates must bind dedupe and the complete invocation fingerprint");
+  check(neverDry.includes("nextWakeAt") && neverDry.includes("wakeOn") && neverDry.includes("paused/needs_human") && neverDry.includes("do not invent a date"), "Wake continuity must support dated and observable wakes and pause unobservable event gates");
+  check(tickets.includes("## Binary Eligibility Gate") && tickets.includes("Dated source signal") && tickets.includes("Target-owned outcome") && tickets.includes("Non-duplicate fingerprint") && tickets.includes("The metric and decision") && tickets.includes("existing Done Criteria"), "Binary eligibility must stay nonnumeric, evidenced, target-owned, deduplicated, measurable, and Done-verifiable");
+  check(evidence.includes("`[H]` and `[V]` can support a labeled research lead") && evidence.includes("cannot independently qualify an implementation ticket"), "Hypothesis and vendor evidence may lead research but cannot independently qualify implementation");
+  check(tickets.includes("## Emergency Selector") && tickets.includes("never evidence of a P0") && tickets.includes("Only an observed red delta promotes to P0") && tickets.includes("exact resume point"), "Emergency selection must require an observed red delta and preserve interrupted-work handoff");
+  check(neverDry.includes("Before any workspace mutation") && neverDry.includes("A live lease causes `blocked` and no workspace write") && neverDry.includes("never takes a lease whose owner is still live") && neverDry.includes("none may create a second writer path"), "The per-site lease must enforce one writer, live contention blocking, and bounded stale recovery");
+  check(hub.includes("resolve exactly one target site") && hub.includes("read no site state except the resolved target's") && hub.includes("reads no sibling-site state") && hub.includes("Unattended runs never self-select a target"), "Hub operation must isolate one resolved target and forbid unattended self-selection");
+  check(phase.includes("stage: unknown") && phase.includes("most conservative applicable cadence") && phase.includes("Stage-dependent certification is blocked") && phase.includes("cannot certify sleep"), "Unknown or stale lifecycle stage must use conservative cadence and block certification");
+  check(neverDry.includes("Contribute-back never satisfies an eligibility gate, frontier rung, cadence occurrence, or three-terminal result") && neverDry.includes("never enters a site backlog"), "Contribute-back must remain post-run and outside frontier, terminal, and site backlog credit");
+  check(neverDry.includes("Each site has a configurable default ship-rate ceiling") && neverDry.includes("running more iterations does not authorize more ships") && neverDry.includes("routes the next action to `needs_human` or a dated wake") && neverDry.includes("does not certify sleep"), "Ship-rate ceilings must be per site, iteration-independent, and fail closed on cap hits");
+});
+
 section("slice 1 shared contracts", () => {
   const evidence = readFileSync(path.join(skillRoot, "references/evidence-conventions.md"), "utf-8");
   const commercial = readFileSync(path.join(skillRoot, "references/commercial-integrity.md"), "utf-8");
@@ -266,10 +309,15 @@ section("slice 1 shared contracts", () => {
   check(commercial.includes("typical mobile viewport") && commercial.includes("directly to each named alternative") && commercial.includes("Anti-authority-rental boundary"), "Commercial integrity must define disclosure visibility, direct alternative links, and the anti-authority-rental boundary");
   const rows = matrix.split(/\r?\n/).filter((line) => /^\| C\d+-\d{2} \|/.test(line));
   const ids = rows.map((line) => line.split("|")[1].trim());
-  const expectedCounts = { 32: 6, 33: 8, 34: 20, 35: 12, 36: 18, 37: 13, 38: 11, 39: 15, 40: 16, 41: 10, 42: 12, 43: 12 };
-  check(rows.length === 153 && new Set(ids).size === rows.length, "Criterion matrix must contain all 153 unique source criteria");
+  const expectedCounts = { 32: 6, 33: 8, 34: 20, 35: 12, 36: 18, 37: 13, 38: 11, 39: 15, 40: 16, 41: 10, 42: 12, 43: 12, 106: 16 };
+  check(rows.length === 169 && new Set(ids).size === rows.length, "Criterion matrix must contain all 169 unique source criteria and parent properties");
   check(Object.entries(expectedCounts).every(([issue, count]) => ids.filter((id) => id.startsWith(`C${issue}-`)).length === count), "Criterion matrix per-issue row counts must match the source issue contracts");
-  check(rows.every((line) => /\| \((?:a|b)\) [^|]+ \| (?:open|closed-by-slice-[1-7]) \|/.test(line)), "Every criterion row must have exactly one typed scenario and a valid status");
+  check(rows.every((line) => {
+    const status = /^\| C106-/.test(line)
+      ? /\| \((?:a|b)\) [^|]+ \| (?:open|closed-by-never-dry-release) \|/
+      : /\| \((?:a|b)\) [^|]+ \| (?:open|closed-by-slice-[1-7]) \|/;
+    return status.test(line);
+  }), "Every criterion row must have exactly one typed scenario and a status valid for its issue family");
 });
 
 section("slice 3 page-evidence contracts", () => {
@@ -1436,6 +1484,126 @@ section("offline link-graph analyzer", () => {
   }
 });
 
+// --- cadence-status.mjs: deterministic workspace fixtures ---
+section("cadence-status fixtures", () => {
+  const cases = [
+    { name: "obligations-due", format: "json", expected: "obligations-due.expected.json" },
+    { name: "obligations-due", format: "backlog", expected: "obligations-due.expected.md" },
+    { name: "nothing-due", format: "json", expected: "nothing-due.expected.json" },
+    { name: "due", format: "backlog", expected: "due.expected.md" },
+    { name: "dedupe", format: "json", expected: "dedupe.expected.json" },
+    { name: "malformed", format: "json", expected: "malformed.expected.json" },
+    { name: "absent", format: "json", expected: "absent.expected.json" },
+    { name: "unreadable-backlog", format: "backlog", expected: "unreadable-backlog.expected.md" },
+    { name: "cross-file-duplicate", format: "json", expected: "cross-file-duplicate.expected.json" },
+    { name: "symlink", format: "backlog", expected: "symlink.expected.md" },
+    { name: "top-level-non-object", format: "json", expected: "top-level-non-object.expected.json" },
+    { name: "missing-workspace", format: "json", expected: "missing-workspace.expected.json" },
+    { name: "expired-backoff", format: "json", expected: "expired-backoff.expected.json" },
+    { name: "expired-backoff", format: "backlog", expected: "expired-backoff.expected.md" },
+    { name: "absurd-backlog-id", format: "backlog", expected: "absurd-backlog-id.expected.md" },
+    { name: "dual-schema-conflict", format: "json", expected: "dual-schema-conflict.expected.json" },
+    { name: "missing-schema", format: "json", expected: "missing-schema.expected.json" },
+    { name: "invalid-superseded", format: "json", expected: "invalid-superseded.expected.json" },
+  ];
+
+  for (const fixtureCase of cases) {
+    const output = runScript("scripts/cadence-status.mjs", [
+      "--workspace",
+      fixture(path.join("cadence-status", fixtureCase.name)),
+      "--format",
+      fixtureCase.format,
+      "--now",
+      "2026-07-12",
+    ]);
+    const expected = readFileSync(
+      fixture(path.join("cadence-status", fixtureCase.expected)),
+      "utf-8",
+    );
+    check(
+      output === expected,
+      `cadence-status ${fixtureCase.name} output drifted from its expected fixture`,
+    );
+  }
+
+  const zoneless = spawnCapture(process.execPath, [
+    path.join(skillRoot, "scripts/cadence-status.mjs"),
+    "--workspace",
+    fixture(path.join("cadence-status", "absent")),
+    "--format",
+    "json",
+    "--now",
+    "2026-07-12T10:30:00",
+  ]);
+  check(
+    zoneless.status !== 0 && zoneless.stderr.includes("timezone-qualified"),
+    "cadence-status must reject zoneless --now timestamps",
+  );
+
+  const crashIntermediates = JSON.parse(runScript("scripts/cadence-status.mjs", [
+    "--workspace",
+    fixture(path.join("cadence-status", "obligations-due")),
+    "--format",
+    "json",
+    "--now",
+    "2026-07-12",
+  ])).obligations;
+  check(
+    ["sha256:due-crash", "sha256:pending-crash", "sha256:ticket-crash", "sha256:closed-crash"]
+      .every((fingerprint) => crashIntermediates.some((obligation) => obligation.pageCohortFingerprint === fingerprint)),
+    "cadence-status must surface every legal materialization and inconclusive-return crash intermediate",
+  );
+  const hygienic = crashIntermediates.find((obligation) => obligation.pageCohortFingerprint === "sha256:pricing-page");
+  check(
+    hygienic?.source === "loops/measurement-obligations.json"
+      && !Object.hasOwn(hygienic, "unknownField"),
+    "cadence-status must whitelist obligation fields and let reader-derived provenance win",
+  );
+});
+
+section("measurement companion lifecycle fixture", () => {
+  const walkthrough = JSON.parse(readFileSync(fixture("measurement-companion/walkthrough.json"), "utf-8"));
+  const stages = Object.fromEntries(walkthrough.stages.map((stage) => [stage.name, stage]));
+  const obligations = walkthrough.stages.map(({ obligation }) => obligation);
+
+  check(
+    walkthrough.stages.map(({ name }) => name).join(" → ") === "recorded → due → materialized → inconclusive → resolved",
+    "Measurement companion fixture must exercise the complete lifecycle in order",
+  );
+  check(
+    obligations.every((obligation) => JSON.stringify([obligation.hypothesis, obligation.pageCohortFingerprint]) === walkthrough.identity),
+    "Every lifecycle stage must retain the same obligation identity",
+  );
+  check(
+    stages.materialized.rerun === true
+      && stages.materialized.obligation.ticket.candidateFingerprint === stages.materialized.obligation.candidateFingerprint,
+    "Materialization re-run must reconcile the ticket by its persisted fingerprint",
+  );
+  check(
+    stages.inconclusive.obligation.state === "pending"
+      && stages.inconclusive.obligation.attempts.length === 1
+      && stages.inconclusive.obligation.attempts[0].reason
+      && stages.inconclusive.obligation.wakeAt > stages.inconclusive.obligation.attempts[0].attemptedAt
+      && stages.inconclusive.obligation.resolvedAt === null,
+    "An inconclusive attempt must return to pending lineage with its reason and a later wake date",
+  );
+  check(
+    stages.resolved.obligation.ticket.status === "closed"
+      && stages.resolved.obligation.resolvedAt
+      && stages.resolved.obligation.calibrationNote,
+    "Resolution must close the ticket and provide calibration input",
+  );
+  check(
+    walkthrough.shipEvent.schema === 1
+      && walkthrough.shipEvent.events.length === 1
+      && walkthrough.shipEvent.events[0].qualification === "ambiguous"
+      && walkthrough.shipEvent.events[0].dedupeKey
+      && walkthrough.shipEvent.events[0].urls.length > 0
+      && walkthrough.shipEvent.events[0].evidence.length > 0,
+    "An ambiguous agent publication must be normalized once and fail closed into the ship-rate input",
+  );
+});
+
 // --- gsc-opportunities.mjs: report format + golden file ---
 section("gsc-opportunities report", () => {
   const report = runScript("scripts/gsc-opportunities.mjs", [
@@ -2243,7 +2411,7 @@ section("release evaluator gate-results artifact consumption", () => {
     gateResultsVersion: 1,
     boundReportVersion: 1,
     skill: "seo-growth-workspace",
-    skillVersion: "4.0.1",
+    skillVersion: readFileSync(path.join(skillRoot, "SKILL.md"), "utf-8").match(/^version:\s*(\S+)/m)[1],
     generatedAt: new Date().toISOString(),
     operator: "matias/opus-4.8",
     sourceDigest: digest,

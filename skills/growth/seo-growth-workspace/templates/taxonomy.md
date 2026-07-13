@@ -49,4 +49,4 @@
 
 ## Work Selection
 
-The work-selection order, duplicate rules, empty-backlog rule, and blocker rules live in the skill's `references/ticket-architecture.md`. Follow that file; do not restate its rules here. An empty Ready/In progress queue does not mean SEO is done — run the smallest useful operating-loop checkpoint and write the handoff in `.seo/log.md`.
+The work-selection order, duplicate rules, empty-backlog rule, and blocker rules live in the skill's `references/ticket-architecture.md`. Follow that file; do not restate its rules here. An empty Ready/In progress queue does not mean SEO is done — run the smallest useful operating-loop checkpoint and route the checkpoint result through the three-terminal contract in `references/never-dry-loop.md`.
