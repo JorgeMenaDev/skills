@@ -44,7 +44,9 @@ A scheduled weekly GSC monitor cold-resumes, reads loop state (`cadence-status -
 
 ## Priority honesty at materialization
 
-Due checks materialize at their area's normal, outcome-based priority: occurrence records may carry additive `priority`/`area` fields; `cadence-status.mjs` renders draft rows with them and falls back to the labeled configurable defaults `P4`/`reporting` when absent. Due-ness never raises priority — promotion to P0 belongs exclusively to the Emergency Selector on an observed red delta (`references/ticket-architecture.md`).
+Due checks and measurement obligations materialize at their area's normal, outcome-based priority: occurrence and obligation records may carry additive `priority`/`area` fields; `cadence-status.mjs` renders draft rows with them and falls back to the labeled configurable defaults (`P4`/`reporting` for cadences, `P3`/`measurement` for obligations) when absent.
+
+The reported earliest next-due folds in every canonical wake source: occurrence dates, obligation due/wake dates, each loop file's `nextWakeAt`, and coverage-ledger rung expiries (`observedAt + maxAgeDays`) - a workspace whose only pending input is a loop wake or expiring coverage can no longer read as "nothing due". The site lease has a concrete interoperable protocol (free = absent, exclusive-create acquire, owner-only renewal, unlink release, liveness-probed recovery). Due-ness never raises priority — promotion to P0 belongs exclusively to the Emergency Selector on an observed red delta (`references/ticket-architecture.md`).
 
 ## Manual gate re-attestation rationale (gate-results-5.0.0.json)
 
