@@ -66,6 +66,7 @@ const requiredFiles = [
   "references/content-engine-webhooks.md",
   "references/pseo-gates.md",
   "references/ticket-architecture.md",
+  "references/operating-policy.md",
   "references/never-dry-loop.md",
   "references/frontier-sweep.md",
   "references/internal-linking.md",
@@ -286,6 +287,15 @@ section("never-dry structural contracts", () => {
   const evidence = readFileSync(path.join(skillRoot, "references/evidence-conventions.md"), "utf-8");
   const hub = readFileSync(path.join(skillRoot, "references/hub-mode.md"), "utf-8");
   const phase = readFileSync(path.join(skillRoot, "references/phase-architecture.md"), "utf-8");
+  const policy = readFileSync(path.join(skillRoot, "references/operating-policy.md"), "utf-8");
+  const frontier = readFileSync(path.join(skillRoot, "references/frontier-sweep.md"), "utf-8");
+  const cadence = readFileSync(path.join(skillRoot, "scripts/cadence-status.mjs"), "utf-8");
+  const portableText = (function visit(dir) {
+    return readdirSync(dir).sort().flatMap((entry) => {
+      const absolute = path.join(dir, entry);
+      return lstatSync(absolute).isDirectory() ? visit(absolute) : [readFileSync(absolute, "utf-8")];
+    }).join("\n");
+  })(skillRoot);
 
   check(["Executed work", "Scoped dated sleep", "Honest blocked"].every((terminal) => neverDry.includes(terminal)), "Never-dry contract must define exactly the three named run terminals");
   check(["dedupeKey", "target", "requestedSurface", "remit", "mutationCeiling", "authorizationClass"].every((field) => neverDry.includes(`\"${field}\"`)), "Sleep certificates must bind dedupe and the complete invocation fingerprint");
@@ -293,11 +303,17 @@ section("never-dry structural contracts", () => {
   check(tickets.includes("## Binary Eligibility Gate") && tickets.includes("Dated source signal") && tickets.includes("Target-owned outcome") && tickets.includes("Non-duplicate fingerprint") && tickets.includes("The metric and decision") && tickets.includes("existing Done Criteria"), "Binary eligibility must stay nonnumeric, evidenced, target-owned, deduplicated, measurable, and Done-verifiable");
   check(evidence.includes("`[H]` and `[V]` can support a labeled research lead") && evidence.includes("cannot independently qualify an implementation ticket"), "Hypothesis and vendor evidence may lead research but cannot independently qualify implementation");
   check(tickets.includes("## Emergency Selector") && tickets.includes("never evidence of a P0") && tickets.includes("Only an observed red delta promotes to P0") && tickets.includes("exact resume point"), "Emergency selection must require an observed red delta and preserve interrupted-work handoff");
-  check(neverDry.includes("Before any workspace mutation") && neverDry.includes("A live lease causes `blocked` and no workspace write") && neverDry.includes("never takes a lease whose owner is still live") && neverDry.includes("none may create a second writer path"), "The per-site lease must enforce one writer, live contention blocking, and bounded stale recovery");
+  check(!existsSync(path.join(skillRoot, "scripts/site-lease.mjs")) && !/site-lease|writer lease|per-site lease|recovery lock|--ttl-minutes/i.test(portableText) && policy.includes("provides no lease, lock, or replacement coordination system") && !cadence.includes('"site-lease.json"'), "The lease system must be absent across portable source with no replacement coordination machinery");
   check(hub.includes("resolve exactly one target site") && hub.includes("read no site state except the resolved target's") && hub.includes("reads no sibling-site state") && hub.includes("Unattended runs never self-select a target"), "Hub operation must isolate one resolved target and forbid unattended self-selection");
-  check(phase.includes("stage: unknown") && phase.includes("most conservative applicable cadence") && phase.includes("Stage-dependent certification is blocked") && phase.includes("cannot certify sleep"), "Unknown or stale lifecycle stage must use conservative cadence and block certification");
+  check(phase.includes("stage: unknown") && phase.includes("use `early` defaults") && phase.includes("never changes authority, gates, or certification eligibility") && policy.includes("1,000 non-brand impressions") && policy.includes("two consecutive 30-day periods"), "Lifecycle stage must use the fixed monthly thresholds while Unknown uses Early defaults without changing gates");
   check(neverDry.includes("Contribute-back never satisfies an eligibility gate, frontier rung, cadence occurrence, or three-terminal result") && neverDry.includes("never enters a site backlog"), "Contribute-back must remain post-run and outside frontier, terminal, and site backlog credit");
-  check(neverDry.includes("Each site has a configurable default ship-rate ceiling") && neverDry.includes("running more iterations does not authorize more ships") && neverDry.includes("routes the next action to `needs_human` or a dated wake") && neverDry.includes("does not certify sleep"), "Ship-rate ceilings must be per site, iteration-independent, and fail closed on cap hits");
+  check(neverDry.includes("running more iterations does not authorize more ships") && neverDry.includes("routes the next action to `needs_human` or a dated wake") && neverDry.includes("does not certify sleep") && policy.includes("`unknown` / `early` | 2") && policy.includes("`growth` | 4") && policy.includes("`mature` | 7"), "SEO Ship caps must be stage-based, iteration-independent, and fail closed on cap hits");
+  check(["`dependency:<id>`", "`access:<system>`", "`browser-slot:<surface>`", "`human-approval:<decision>`"].every((gate) => policy.includes(gate)) && policy.includes("Evidence may explain a gate but cannot introduce a fifth family"), "Operating policy must define exactly the four canonical gate families");
+  check(["daily fallback", "after seven unchanged days", "after 72 hours", "after seven days", "after 30 minutes", "two hours", "eight hours", "after 24 hours", "never auto-retry", "one reminder after seven days"].every((value) => policy.includes(value)), "Canonical gates must retain every approved wake and escalation timing");
+  check(policy.includes("seven days per rung") && policy.includes("at most ten distinct candidates") && policy.includes("at most one Ready ticket") && policy.includes("top three rejected candidates") && ["14 days | B", "30 days | A, C, E, F, J", "60 days | D", "90 days | G, H, I"].every((value) => policy.includes(value)), "Frontier policy must keep the approved cooldown, candidate, ticket, rejection, and coverage bounds");
+  check(policy.includes("batch counts once per URL") && policy.includes("dated, site-specific exception") && policy.includes("additional URLs and reason") && policy.includes("changes capacity only"), "SEO Ship policy must count canonical URLs and keep Jorge exceptions URL-specific and gate-preserving");
+  check(policy.includes("next day") && policy.includes("three days after that retry") && policy.includes("another failure becomes `needs_human`") && cadence.includes('occurrence.escalation === "needs_human"') && cadence.includes("occurrence.attempt >= 3"), "Cadence failures must use the approved retry sequence and honor persisted human escalation");
+  check(policy.includes("first measurement check 28 days") && policy.includes("wakes 14 days later") && policy.includes("P4` / `reporting") && policy.includes("P3` / `measurement"), "Measurement timing and default priorities must match the approved policy");
 });
 
 section("slice 1 shared contracts", () => {
@@ -314,7 +330,7 @@ section("slice 1 shared contracts", () => {
   check(Object.entries(expectedCounts).every(([issue, count]) => ids.filter((id) => id.startsWith(`C${issue}-`)).length === count), "Criterion matrix per-issue row counts must match the source issue contracts");
   check(rows.every((line) => {
     const status = /^\| C106-/.test(line)
-      ? /\| \((?:a|b)\) [^|]+ \| (?:open|closed-by-never-dry-release) \|/
+      ? /\| \((?:a|b)\) [^|]+ \| (?:open|closed-by-never-dry-release|superseded-by-v5\.1-policy) \|/
       : /\| \((?:a|b)\) [^|]+ \| (?:open|closed-by-slice-[1-7]) \|/;
     return status.test(line);
   }), "Every criterion row must have exactly one typed scenario and a status valid for its issue family");
@@ -1489,7 +1505,6 @@ section("cadence-status fixtures", () => {
   const cases = [
     { name: "obligations-due", format: "json", expected: "obligations-due.expected.json" },
     { name: "obligations-due", format: "backlog", expected: "obligations-due.expected.md" },
-    { name: "nothing-due", format: "json", expected: "nothing-due.expected.json" },
     { name: "due", format: "backlog", expected: "due.expected.md" },
     { name: "dedupe", format: "json", expected: "dedupe.expected.json" },
     { name: "malformed", format: "json", expected: "malformed.expected.json" },
@@ -1558,6 +1573,20 @@ section("cadence-status fixtures", () => {
     hygienic?.source === "loops/measurement-obligations.json"
       && !Object.hasOwn(hygienic, "unknownField"),
     "cadence-status must whitelist obligation fields and let reader-derived provenance win",
+  );
+
+  const fixedCoverage = JSON.parse(runScript("scripts/cadence-status.mjs", [
+    "--workspace",
+    fixture(path.join("cadence-status", "nothing-due")),
+    "--format",
+    "json",
+    "--now",
+    "2026-07-12",
+  ]));
+  check(
+    fixedCoverage.coverageDue.find(({ rung }) => rung === "B")?.expiresAt === "2026-07-15"
+      && fixedCoverage.earliestNextDue === "2026-07-15",
+    "cadence-status must derive rung B's fixed 14-day coverage age instead of trusting stale stored defaults",
   );
 });
 

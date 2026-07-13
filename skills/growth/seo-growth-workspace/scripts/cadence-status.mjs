@@ -7,12 +7,12 @@ const RESERVED_LOOP_FILES = new Set([
   "coverage-ledger.json",
   "measurement-obligations.json",
   "ship-events.json",
-  "site-lease.json",
 ]);
 const STATES = new Set(["due", "materialized", "attempted", "satisfied", "blockedUntil"]);
 const OBLIGATION_STATES = new Set(["pending", "due", "materialized", "resolved", "superseded"]);
 const RESULTS = new Set(["ok", "alerted"]);
 const ESCALATIONS = new Set(["none", "needs_human"]);
+const COVERAGE_MAX_AGE_DAYS = { A: 30, B: 14, C: 30, D: 60, E: 30, F: 30, G: 90, H: 90, I: 90, J: 30 };
 const DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 const WINDOW_PATTERN = /^(\d{4}-\d{2}-\d{2})\/(\d{4}-\d{2}-\d{2})$/;
 const QUALIFIED_TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,9})?)?(?:Z|[+-]\d{2}:\d{2})$/;
@@ -438,7 +438,7 @@ async function readCoverageState(workspace) {
       if (typeof row.artifact !== "string" || row.artifact.trim() === "") {
         throw new Error(`rungs.${rung}.artifact must be a non-empty string`);
       }
-      coverageDue.push({ rung, expiresAt: addDays(observedAt, row.maxAgeDays) });
+      coverageDue.push({ rung, expiresAt: addDays(observedAt, COVERAGE_MAX_AGE_DAYS[rung]) });
     }
     coverageDue.sort((a, b) => a.expiresAt.localeCompare(b.expiresAt) || a.rung.localeCompare(b.rung));
     return { coverageState: "present", coverageDue, failures: [] };
@@ -476,7 +476,10 @@ async function readObligationState(workspace) {
 
 function nextDueFor(occurrence, now) {
   if (occurrence.state === "satisfied" || occurrence.state === "materialized" || occurrence.state === "attempted") return null;
-  if (occurrence.state === "blockedUntil") return now > occurrence.maxAt ? null : occurrence.nextAt;
+  if (occurrence.state === "blockedUntil") {
+    if (occurrence.escalation === "needs_human" || occurrence.attempt >= 3 || now > occurrence.maxAt) return null;
+    return occurrence.nextAt;
+  }
   return occurrence.dueAt;
 }
 
@@ -504,7 +507,7 @@ function analyze(state, obligationState, coverageState, now) {
   );
   const due = sorted.flatMap((occurrence) => {
     if (occurrence.state === "due" && occurrence.dueAt <= now) return [{ ...occurrence, action: "materialize" }];
-    if (occurrence.state === "blockedUntil" && now > occurrence.maxAt) {
+    if (occurrence.state === "blockedUntil" && (occurrence.escalation === "needs_human" || occurrence.attempt >= 3 || now > occurrence.maxAt)) {
       return [{ ...occurrence, action: "needs_human", requiredEscalation: "needs_human" }];
     }
     if (occurrence.state === "blockedUntil" && occurrence.nextAt <= now) return [{ ...occurrence, action: "retry" }];

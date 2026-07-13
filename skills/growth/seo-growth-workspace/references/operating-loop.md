@@ -19,7 +19,7 @@ Do not conclude SEO is done because the visible backlog is empty. Apply the Empt
 `.seo/` here means the resolved workspace root — repo-local `.seo/` in standalone mode, `.seo/sites/<slug>/` in hub mode (`references/hub-mode.md`). Read current state before choosing work:
 
 1. `.seo/backlog.md` for current focus, in-progress work, Ready rows, Blocked rows, and Done history.
-2. `.seo/loops/` for optional schema-1 loop state, wake predicates, certificates, occurrences, obligations, coverage, and lease contention; run `node "$SKILL_DIR/scripts/cadence-status.mjs" --workspace "$SITE_WORKSPACE" --format backlog` to derive the current cadence status.
+2. `.seo/loops/` for optional schema-1 loop state, wake predicates, certificates, occurrences, obligations, and coverage; run `node "$SKILL_DIR/scripts/cadence-status.mjs" --workspace "$SITE_WORKSPACE" --format backlog` to derive the current cadence status.
 3. `.seo/log.md` for the last action, handoff notes, stale leads, and recheck dates.
 4. `.seo/audit.md` for evidence-backed findings and unresolved risks.
 5. `.seo/strategy.md` for durable decisions, tooling, market, language, and production paths.
@@ -45,7 +45,7 @@ Label reports with the target surface at the top. When parking a side monitor, r
 
 Choose work using the Work Selection order in `references/ticket-architecture.md`. That file owns the order, duplicate rules, and done criteria; do not restate them here or in the workspace.
 
-At selection, after the state read and under the per-site lease, derive and persist a `candidateFingerprint` for each due measurement obligation before ticket creation; the obligation may remain `pending` or `due` with a null ticket during this legal intermediate. Reconcile by that fingerprint, find and reuse an active ticket carrying it or create one Ready row, then set the obligation to `materialized` and persist the ticket ID. A `materialized` obligation with a fingerprint and null ticket is also a legal interruption state. If interrupted after either write, repeat the same sequence: fingerprint reconciliation converges on the one active Ready ticket, surfaces either intermediate, and repairs the missing link instead of creating a duplicate. A `materialized` obligation whose linked ticket is already closed is surfaced as an in-flight inconclusive return and reconciled through the one atomic ledger replacement defined in `references/never-dry-loop.md`. The script reports due and repairable in-flight obligations; `operate` performs this materialization and reconciliation.
+At selection, after the state read, derive and persist a `candidateFingerprint` for each due measurement obligation before ticket creation; the obligation may remain `pending` or `due` with a null ticket during this legal intermediate. Reconcile by that fingerprint, find and reuse an active ticket carrying it or create one Ready row, then set the obligation to `materialized` and persist the ticket ID. A `materialized` obligation with a fingerprint and null ticket is also a legal interruption state. If interrupted after either write, repeat the same sequence: fingerprint reconciliation converges on the one active Ready ticket, surfaces either intermediate, and repairs the missing link instead of creating a duplicate. A `materialized` obligation whose linked ticket is already closed is surfaced as an in-flight inconclusive return and reconciled through the one atomic ledger replacement defined in `references/never-dry-loop.md`. The script reports due and repairable in-flight obligations; `operate` performs this materialization and reconciliation.
 
 ## Lightweight Checkpoints
 
@@ -74,7 +74,7 @@ If all checks look healthy, record the evidence in the coverage ledger and route
 Use this when the user asks to continue until no backlog items remain, or when all visible work is external-gated.
 
 1. Read backlog, log, audit, strategy, latest reports, and live public sanity routes.
-2. Read `.seo/loops/` and acquire the per-site lease before any state mutation, as required by `references/never-dry-loop.md`.
+2. Read `.seo/loops/` before any state mutation and preserve the crash-retryable reconciliation rules in `references/never-dry-loop.md`.
 3. Separate unblocked repo-owned SEO actions from external gates such as GSC recrawl lag, missing profile ownership, missing contact destination, legal/business facts, or infrastructure monitoring.
 4. If no unblocked repo-owned action remains, run the progressive frontier sweep in `references/frontier-sweep.md`. Then issue a scoped dated sleep certificate or record an honest blocker; do not write a dry checkpoint that bypasses the terminal contract or create a fake Ready ticket.
 5. Move out-of-scope side monitors out of the active backlog with evidence and an owner/surface note.

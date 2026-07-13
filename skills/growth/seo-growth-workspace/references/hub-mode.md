@@ -67,7 +67,7 @@ After resolution, everything is standalone behavior against the resolved workspa
 
 ## Hub boundary during a site run
 
-After target resolution, a site run reads no sibling-site state and never calls `portfolio-status.mjs`. Portfolio ranking belongs before resolution or to an explicit outer sweep that invokes each target as a separate site run; it is never an inner selection step. Unattended runs never self-select a target. A pre-resolution sleep or blocked result, such as a missing named target, writes hub-level loop state at `HUB_ROOT/loops/` and does not read site state. Once resolved, the per-site three-terminal and writer-lease rules in `references/never-dry-loop.md` apply.
+After target resolution, a site run reads no sibling-site state and never calls `portfolio-status.mjs`. Portfolio ranking belongs before resolution or to an explicit outer sweep that invokes each target as a separate site run; it is never an inner selection step. Unattended runs never self-select a target. A pre-resolution sleep or blocked result, such as a missing named target, writes hub-level loop state at `HUB_ROOT/loops/` and does not read site state. Once resolved, the per-site three-terminal rules in `references/never-dry-loop.md` and the concurrency assumption in `references/operating-policy.md` apply.
 
 ## Ticket IDs
 

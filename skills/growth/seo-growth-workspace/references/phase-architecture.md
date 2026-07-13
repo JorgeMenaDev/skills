@@ -45,7 +45,7 @@ When a phase needs third-party keyword/backlink data or competitor evidence, loa
 
 ## Lifecycle stage context
 
-`stage` is context state, not the site-type classifier above. When monthly data is missing or partial, stamp `stage: unknown` with its evaluation date and use the most conservative applicable cadence. Stage-dependent certification is blocked until fresh threshold evidence exists or a dated, evidenced operator override is recorded. A stamp older than the newest monthly report is schema debt and cannot certify sleep. Stage weighting and comparative scoring remain phase 2; this rule only prevents missing data from being treated as readiness.
+`stage` is context state, not the site-type classifier above. Recompute it monthly using the thresholds, qualified-outcome rule, and expiring override contract in `references/operating-policy.md`. When the current monthly report or trustworthy outcome tracking is missing, stamp `stage: unknown` with its evaluation date and use `early` defaults. Stage changes operating intensity only; it never changes authority, gates, or certification eligibility. A stamp older than the newest monthly report is schema debt and must be refreshed.
 
 ## Scenario Routing
 

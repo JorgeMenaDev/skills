@@ -15,7 +15,7 @@ An unattended run is a *bounded* operate iteration: it resumes from workspace st
 ## Cold Resume
 
 1. Read state in the State Read Order from `references/operating-loop.md` — the workspace is the only memory an unattended run has. Do not rely on conversation context, prior run output, or anything not written down.
-2. Run `node "$SKILL_DIR/scripts/cadence-status.mjs" --workspace "$SITE_WORKSPACE" --format json` to derive due cadence occurrences and the earliest next-due date, then read the run's own loop state (below) for cooldowns and prior alerts.
+2. Run `node "$SKILL_DIR/scripts/cadence-status.mjs" --workspace "$SITE_WORKSPACE" --format json` to derive due cadence occurrences and the earliest next-due date, then read the run's own loop state (below) for prior alerts.
 3. If `.seo/` is missing, do not bootstrap unattended — exit with status `blocked` and a note that the workspace needs an interactive first run. Never ask the install-mode question unattended (`references/hub-mode.md`).
 4. In a hub workspace, the invoking prompt must name the target site; without one, exit `blocked` — never pick a target unattended.
 
@@ -47,31 +47,35 @@ Work above the ceiling becomes a Ready ticket plus a `needs_human` entry in the 
 
 Scheduled runs default to silent: emit the summary payload, and only flag for human attention when an alert condition is met — a metric crossed a threshold the loop state defines, a previously-green check went red, an external gate opened, or a `needs_human` action exists. Never send "all fine" filler to a human channel; the log entry is the record. The invoking scheduler decides delivery; this contract decides *whether there is anything to deliver*.
 
-## Loop State (dedupe and cooldowns)
+## Loop State (dedupe)
 
 Persist per-loop state at `.seo/loops/<loop-name>.json` — meaning the resolved workspace root, so `.seo/sites/<slug>/loops/` in hub mode; hub-level sweep loops that iterate the registry may keep state at the hub's own `.seo/loops/`. Loop state exists so repeated runs do not re-alert or re-do work:
 
 ```json
 {
   "schemaVersion": 1,
-  "loop": "weekly-gsc-monitor",
-  "cadence": "weekly",
+  "loop": "gsc-monitor",
+  "cadence": "monthly",
   "lastRun": "YYYY-MM-DD",
   "lastResult": "ok | alerted | blocked",
   "alerted": { "<alert-fingerprint>": "YYYY-MM-DD" },
-  "cooldownDays": 14,
   "nextWakeAt": "YYYY-MM-DD",
   "wakeOn": [{ "predicate": "...", "source": "...", "owner": "...", "fingerprint": "..." }],
   "sleepCertificate": {},
   "occurrences": {},
   "heartbeatAt": "YYYY-MM-DDTHH:mm:ssZ",
-  "stageStamp": { "stage": "unknown", "evaluated": "YYYY-MM-DD" },
+  "stageStamp": {
+    "stage": "unknown",
+    "evaluated": "YYYY-MM-DD",
+    "basis": "current monthly report or tracking gap",
+    "override": null
+  },
   "stop": "condition that ends this loop, or null"
 }
 ```
 
-- The fields added above are optional additive schema-1 state; existing fields remain compatible and malformed or incomparable new values fail closed. The shared state, certificate, occurrence, and lease rules live in `references/never-dry-loop.md`.
-- An alert already in `alerted` within its cooldown is logged, not re-raised.
+- The fields added above are optional additive schema-1 state; existing fields remain compatible and malformed or incomparable new values fail closed. The shared state, certificate, and occurrence rules live in `references/never-dry-loop.md`.
+- An alert already in `alerted` is logged, not re-raised. Clear its fingerprint only after the probe returns green; a later red transition can then raise it again.
 - A loop whose `stop` condition is met exits `done` and says so once — the human retires the schedule.
 
 ## Summary Payload

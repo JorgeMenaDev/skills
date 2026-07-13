@@ -5,9 +5,12 @@
 - Target:
 - Sweep cadence ID / due window:
 - Cursor before / after:
+- SEO Stage / evaluated at / override expiry:
 - Coverage max-age policy:
-- Cooldown policy:
-- Candidate cap / ship-rate ceiling:
+- Seven-day rung cooldown / invalidating evidence:
+- Candidate count (max 10) / Ready tickets created or reused (max 1):
+- Rolling seven-day SEO Ship cap / counted canonical URLs:
+- Jorge-granted URL-specific exception evidence:
 - Engine `autoPublish` / gate state (`armed | gated | disarmed | unknown`):
 - Engine state checked at / evidence:
 - Engine schedule `enabled`:
@@ -26,7 +29,7 @@ Copy the canonical fingerprint values from `references/never-dry-loop.md`; do no
 
 ## Traversal
 
-| Rung | Due reason | Source / checked at | Coverage artifact | Candidate fingerprint | Gate result / failing gate | Owner + recheck or closure |
+| Rung | Due reason | Source / checked at | Coverage artifact | Candidate fingerprint | Gate result / canonical failing gate | Owner + recheck or closure |
 | --- | --- | --- | --- | --- | --- | --- |
 |  |  |  |  |  |  |  |
 

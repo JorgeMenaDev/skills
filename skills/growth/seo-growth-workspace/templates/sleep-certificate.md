@@ -13,7 +13,7 @@ Materialize this human-readable certificate only from the owning schema-1 loop s
 - Owning loop state / dedupe key:
 - Dated:
 - Checked evidence:
-- Gate failures:
+- Gate failures (canonical family + evidence):
 - Coverage (`complete | partial`):
 - Earliest next due:
 - Wake predicates:
@@ -21,4 +21,3 @@ Materialize this human-readable certificate only from the owning schema-1 loop s
 - Frontier ledger:
 
 Cross-check the autopublish state in that ledger against `references/frontier-sweep.md`. Do not issue this certificate while an ungated auto-publish path is armed.
-

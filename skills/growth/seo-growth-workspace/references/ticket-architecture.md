@@ -43,6 +43,8 @@ An implementation ticket is eligible only when every condition below is satisfie
 
 If any condition fails, retain the candidate as a dated skip or blocked record with the failing gate, owner, and either a dated recheck value or `closed:<reason>`. `closed:<reason>` requires human provenance and is exempt from recheck liveness. A gate without an observable predicate or honest recheck value is blocked, not silently eligible.
 
+Classify every failed gate with one of the four canonical families and apply its wake/escalation timing from `references/operating-policy.md`. Evidence can explain a gate but cannot create another family.
+
 ### Gate and cadence composition
 
 For a due cadence occurrence, due-ness is its dated source signal, and the cadence row’s stated check and decision satisfy the hypothesis and metric conditions. Dedupe and all other eligibility conditions still apply. A still-open ticket for the same `{cadenceId, dueWindow}` reuses that ticket instead of materializing another one. See `references/never-dry-loop.md` for the occurrence lifecycle and state contract.
@@ -74,7 +76,7 @@ Do not run every audit every time. Use stale evidence, missing reports, recent p
 
 ## Done Criteria By Area
 
-At the ticket's transition to Done, if the completed work created or materially revised a public surface, acquire the per-site lease and create or reuse the deduplicated measurement companion in `.seo/loops/measurement-obligations.json` defined by `references/never-dry-loop.md`. Record the ship-time baseline, metric, decision the measurement can change, due date, hypothesis, and page/cohort fingerprint. Apply the exemption only when the outcome is operationally final at ship time: ask whether any plausible post-ship observation could change a keep, rollback, iterate, or follow-up decision; if yes, the obligation is required, and only a recorded `no` with its final outcome and evidence is exempt. Due-date offsets by change type are configurable defaults (knobs rule: `references/never-dry-loop.md`).
+At the ticket's transition to Done, if the completed work produced an SEO Ship, create or reuse the deduplicated measurement companion in `.seo/loops/measurement-obligations.json` defined by `references/never-dry-loop.md`. Record the ship-time baseline, metric, decision the measurement can change, due date, hypothesis, and page/cohort fingerprint. Apply the exemption only when the outcome is operationally final at ship time: ask whether any plausible post-ship observation could change a keep, rollback, iterate, or follow-up decision; if yes, the obligation is required, and only a recorded `no` with its final outcome and evidence is exempt. The first check is 28 days after the SEO Ship, with the explicit-window exception defined in `references/operating-policy.md`.
 
 | Area             | Done requires                                                                                  |
 | ---------------- | ---------------------------------------------------------------------------------------------- |

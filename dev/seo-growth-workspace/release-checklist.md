@@ -49,7 +49,7 @@ If the target already has local-only or modified same-path files, the exporter s
 
 ## Disposable Registry Rehearsal (blocking — cannot be waived)
 
-This release does not activate or repair a live hub — no live-hub activation or mutation, writer lease, or live install ships. Run the existing deterministic rehearsal only:
+This release does not activate or repair a live hub — no live-hub activation, mutation, or live install ships. Run the existing deterministic rehearsal only:
 
 1. Build six synthetic hub site workspaces and a six-row canonical registry under a temp root.
 2. Add an eight-row legacy inventory: six missing retired repo-local roots plus two recognized legacy-only sites.
@@ -248,5 +248,5 @@ Before publishing:
 - Confirm pSEO guidance still says plan early, publish late.
 - Confirm the skill asks for explicit approval before production deploys, authenticated admin mutations, external submissions, or `skills.sh` publication.
 - Confirm the clean export includes every current portable file — including all references, scripts, and templates added this release — and that the exported copy's `SKILL.md` `version` and bootstrap `SKILL_VERSION` agree on the shipping version. Dev tooling (validator, evaluator, command inventory, exporter, fixtures, the gate-results artifact, and the dated release log) stays excluded from the export.
-- Confirm the canonical gate-results artifact (`dev/seo-growth-workspace/gate-results-<shipped version>.json (currently gate-results-5.0.0.json; evaluate-release.mjs GATE_RESULTS_FILENAME names the canonical file)`) is the single source of truth for scenario results: `evaluate-release.mjs` self-executes the validator, imports its deterministic rows bound by digest, reads the manual rows, and rejects a missing/stale/wrong-digest/duplicate/malformed/non-PASS artifact. The dated release log renders this artifact and is never an alternate source of truth.
-- Confirm the release diff contains no schema-2 contracts, migration implementation, live-hub mutation, or live install. The schema-1 per-site writer lease defined in `references/never-dry-loop.md` (v5.0.0 never-dry contract) is sanctioned; any OTHER writer-lease or lock mechanism remains prohibited.
+- Confirm the canonical gate-results artifact (`dev/seo-growth-workspace/gate-results-<shipped version>.json (currently gate-results-5.1.0.json; evaluate-release.mjs GATE_RESULTS_FILENAME names the canonical file)`) is the single source of truth for scenario results: `evaluate-release.mjs` self-executes the validator, imports its deterministic rows bound by digest, reads the manual rows, and rejects a missing/stale/wrong-digest/duplicate/malformed/non-PASS artifact. The dated release log renders this artifact and is never an alternate source of truth.
+- Confirm the release diff contains no schema-2 contracts, migration implementation, live-hub mutation, or live install. Portable source contains no writer lease, lock helper/state, or runtime contention branch; `references/operating-policy.md` owns the simple no-concurrent-mutation assumption.
