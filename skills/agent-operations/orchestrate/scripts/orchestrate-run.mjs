@@ -89,6 +89,14 @@ const readJsonSafe = (path) => {
 };
 const runPath = (args) => resolve(args.run || (args.dir && join(args.dir, "run.json")) || fail("pass --run or --dir"));
 const git = (repo, values) => execFileSync("git", ["-C", repo, ...values], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+const branchWorktree = (repo, branch) => {
+  let worktree = null;
+  for (const field of git(repo, ["worktree", "list", "--porcelain", "-z"]).split("\0")) {
+    if (field.startsWith("worktree ")) worktree = field.slice("worktree ".length);
+    if (field === `branch refs/heads/${branch}`) return worktree;
+  }
+  return null;
+};
 const pidAlive = (pid) => {
   if (!Number.isInteger(pid) || pid < 1) return false;
   try {
@@ -1184,6 +1192,7 @@ if (command === "rebase-authority") {
   const integrationBranch = initial.repo.integrationBranch;
   let integrationHeadBefore = null;
   let integrationHead = null;
+  let integrationWorktree = null;
   let advanceIntegration = false;
   if (integrationBranch) {
     try {
@@ -1196,7 +1205,8 @@ if (command === "rebase-authority") {
       integrationHead = integrationHeadBefore;
     } catch {
       if (integrationHeadBefore !== oldHead) fail(`integration branch ${integrationBranch} has diverged from ${oldHead}; merge or rebase ${newHead} explicitly before rebase-authority`);
-      if (git(repo, ["branch", "--show-current"]) === integrationBranch && git(repo, ["status", "--porcelain"])) fail(`checked-out integration branch ${integrationBranch} is dirty`);
+      integrationWorktree = branchWorktree(repo, integrationBranch);
+      if (integrationWorktree && git(integrationWorktree, ["status", "--porcelain"])) fail(`checked-out integration branch ${integrationBranch} is dirty at ${integrationWorktree}`);
       integrationHead = newHead;
       advanceIntegration = true;
     }
@@ -1246,6 +1256,7 @@ if (command === "rebase-authority") {
     const liveRemoteLine = git(repo, ["ls-remote", "origin", `refs/heads/${initial.repo.targetBranch}`]);
     if ((liveRemoteLine.split(/\s+/)[0] || null) !== newHead) throw new Error(`origin/${initial.repo.targetBranch} moved during rebase-authority`);
     if (integrationBranch && git(repo, ["rev-parse", `refs/heads/${integrationBranch}`]) !== integrationHeadBefore) throw new Error(`integration branch ${integrationBranch} moved during rebase-authority`);
+    if (advanceIntegration && branchWorktree(repo, integrationBranch) !== integrationWorktree) throw new Error(`integration branch ${integrationBranch} worktree binding changed during rebase-authority`);
     const localTarget = git(repo, ["rev-parse", `refs/heads/${initial.repo.targetBranch}`]);
     if (![oldHead, newHead].includes(localTarget)) throw new Error(`local ${initial.repo.targetBranch} advanced from recorded authority (${localTarget})`);
     const currentBranch = git(repo, ["branch", "--show-current"]);
@@ -1256,8 +1267,10 @@ if (command === "rebase-authority") {
       } else git(repo, ["update-ref", `refs/heads/${initial.repo.targetBranch}`, newHead, oldHead]);
     }
     if (advanceIntegration) {
-      if (currentBranch === integrationBranch) git(repo, ["merge", "--ff-only", newHead]);
-      else git(repo, ["update-ref", `refs/heads/${integrationBranch}`, newHead, integrationHeadBefore]);
+      if (integrationWorktree) {
+        if (git(integrationWorktree, ["status", "--porcelain"])) throw new Error(`checked-out integration branch ${integrationBranch} became dirty at ${integrationWorktree}`);
+        git(integrationWorktree, ["merge", "--ff-only", newHead]);
+      } else git(repo, ["update-ref", `refs/heads/${integrationBranch}`, newHead, integrationHeadBefore]);
     }
     for (const { slice, baseBranch } of plannedBranches) {
       if (slice.worktree && git(slice.worktree, ["status", "--porcelain"])) throw new Error(`${slice.id}: planned worktree became dirty`);
