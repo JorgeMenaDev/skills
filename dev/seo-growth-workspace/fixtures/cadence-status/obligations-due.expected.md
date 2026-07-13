@@ -12,7 +12,7 @@ Earliest next-due: 2026-07-06
 
 | Ticket | Action | Hypothesis | Page cohort | Reason |
 | --- | --- | --- | --- | --- |
-| SEO-106 | Complete inconclusive return | Finish inconclusive return | sha256:closed-crash | Atomically clear the fingerprint and ticket, append the attempt, and set wakeAt |
+| SEO-106 | Reconcile closed ticket | Finish inconclusive return | sha256:closed-crash | Canonical ticket disposition decides: complete the interrupted resolution or the inconclusive return in one atomic ledger replacement |
 | unlinked | Reconcile materialization | Reconcile ticket creation | sha256:ticket-crash | Reuse the persisted fingerprint and repair the missing ticket link |
 | unlinked | Reconcile materialization | Recover due materialization | sha256:due-crash | Reuse the persisted fingerprint and repair the missing ticket link |
 | unlinked | Reconcile materialization | Recover pending materialization | sha256:pending-crash | Reuse the persisted fingerprint and repair the missing ticket link |

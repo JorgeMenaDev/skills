@@ -8,6 +8,7 @@
   "deduplicated": [],
   "earliestNextDue": "2026-07-18",
   "obligations": [],
+  "inFlightOccurrences": [],
   "inFlightObligations": [],
   "loopWakes": [
     {

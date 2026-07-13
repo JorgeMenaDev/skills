@@ -34,7 +34,7 @@
       "priority": null,
       "area": null,
       "effectiveDueAt": "2026-07-06",
-      "action": "reconcile_inconclusive_return"
+      "action": "reconcile_closed_ticket"
     },
     {
       "source": "loops/measurement-obligations.json",
@@ -137,6 +137,7 @@
       "action": "reconcile_materialization"
     }
   ],
+  "inFlightOccurrences": [],
   "inFlightObligations": [
     {
       "source": "loops/measurement-obligations.json",

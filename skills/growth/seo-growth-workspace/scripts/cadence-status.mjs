@@ -492,6 +492,7 @@ function analyze(state, obligationState, coverageState, now) {
       deduplicated: [],
       earliestNextDue: null,
       obligations: [],
+      inFlightOccurrences: [],
       inFlightObligations: [],
       loopWakes: [],
       coverageDue: [],
@@ -528,6 +529,9 @@ function analyze(state, obligationState, coverageState, now) {
       || a.hypothesis.localeCompare(b.hypothesis)
       || a.pageCohortFingerprint.localeCompare(b.pageCohortFingerprint)
     );
+  const inFlightOccurrences = sorted
+    .filter((occurrence) => (occurrence.state === "materialized" || occurrence.state === "attempted") && occurrence.ticket?.status === "open")
+    .map((occurrence) => ({ ...occurrence, action: "reconcile_in_flight" }));
   const inFlightObligations = obligationState.obligations
     .filter((obligation) => obligation.state === "materialized" && obligation.ticket?.status === "open")
     .map((obligation) => ({ ...obligation, action: "reconcile_in_flight" }))
@@ -537,7 +541,7 @@ function analyze(state, obligationState, coverageState, now) {
     .map((obligation) => ({
       ...obligation,
       action: obligation.state === "materialized" && obligation.ticket?.status === "closed"
-        ? "reconcile_inconclusive_return"
+        ? "reconcile_closed_ticket"
         : obligation.candidateFingerprint === null
           ? "materialize"
           : "reconcile_materialization",
@@ -556,6 +560,7 @@ function analyze(state, obligationState, coverageState, now) {
     deduplicated,
     earliestNextDue: nextDates[0] ?? null,
     obligations: dueObligations,
+    inFlightOccurrences,
     inFlightObligations,
     loopWakes,
     coverageDue: coverageState.coverageDue,
@@ -611,23 +616,25 @@ ${markdownTable(
         ? "Reconcile materialization"
         : obligation.action === "reconcile_in_flight"
           ? "Reconcile in-flight obligation"
-          : "Complete inconclusive return",
+          : "Reconcile closed ticket",
       obligation.hypothesis,
       obligation.pageCohortFingerprint,
       obligation.action === "reconcile_materialization"
         ? "Reuse the persisted fingerprint and repair the missing ticket link"
         : obligation.action === "reconcile_in_flight"
           ? "Active ticket owns execution; verify it is still open in the canonical backlog before any sleep decision"
-          : "Atomically clear the fingerprint and ticket, append the attempt, and set wakeAt",
+          : "Canonical ticket disposition decides: complete the interrupted resolution or the inconclusive return in one atomic ledger replacement",
     ]);
-  const existingActions = report.due.filter((occurrence) => occurrence.action !== "materialize").map((occurrence) => [
+  const existingActions = [...report.due.filter((occurrence) => occurrence.action !== "materialize"), ...(report.inFlightOccurrences ?? [])].map((occurrence) => [
     occurrence.ticket.id,
-    occurrence.action === "retry" ? "Retry" : "Escalate to needs_human",
+    occurrence.action === "retry" ? "Retry" : occurrence.action === "reconcile_in_flight" ? "Reconcile in-flight occurrence" : "Escalate to needs_human",
     occurrence.cadenceId,
     occurrence.dueWindow,
     occurrence.action === "retry"
       ? `Backoff elapsed at ${occurrence.nextAt}; reuse the existing ticket and fingerprint`
-      : `Backoff bound ${occurrence.maxAt} passed; do not retry automatically`,
+      : occurrence.action === "reconcile_in_flight"
+        ? "Active ticket owns execution; verify it is still open in the canonical backlog before any sleep decision"
+        : `Backoff bound ${occurrence.maxAt} passed; do not retry automatically`,
   ]);
   const existingSection = existingActions.length === 0
     ? ""
@@ -676,6 +683,7 @@ function withFailure(report, failure) {
     deduplicated: [],
     earliestNextDue: null,
     obligations: [],
+    inFlightOccurrences: [],
     inFlightObligations: [],
     loopWakes: [],
     coverageDue: [],

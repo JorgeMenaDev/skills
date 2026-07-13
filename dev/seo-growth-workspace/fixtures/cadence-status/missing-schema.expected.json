@@ -8,6 +8,7 @@
   "deduplicated": [],
   "earliestNextDue": null,
   "obligations": [],
+  "inFlightOccurrences": [],
   "inFlightObligations": [],
   "loopWakes": [],
   "coverageDue": [],
