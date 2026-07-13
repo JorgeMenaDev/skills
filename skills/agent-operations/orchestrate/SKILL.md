@@ -1,14 +1,14 @@
 ---
 name: orchestrate
 description: Orchestrate multi-slice work through dependency-aware waves, isolated executors, review gates, integration, and recovery. Use when a task spans parallel agents, worktrees, AFK runs, shared resources, cross-runtime delegation, or an issue chain that must be driven to verified completion.
-version: 2.2.2
+version: 2.2.3
 license: MIT
 mutating: true
 writes_to: [session-scratchpad/orchestrate/, worktrees, branches, pull-requests, issue-trackers]
 triggers: [orchestrate, orchestration, parallel-agents, issue-chain, autopilot]
 ---
 
-> **🚧 In progress — contribute back.** This skill is open source and under active, top-priority development, and every run is also product development for the skill itself. Contribute improvements of every kind — bug fixes, new features and modes, sharper references, better runbooks, new scripts, smarter workflows — not just corrections of gaps you hit. When a run reveals anything that would make the skill better, implement it and open a pull request to `JorgeMenaDev/skills` in the same session (or record the idea in the run's handoff log if the session can't). Making this skill better is part of operating it.
+> **Contribute within authority.** The active workspace contract and current task scope decide whether a run may modify this skill, open an upstream pull request, or record portable friction. When authorized, fix the canonical source and use its normal release flow. Otherwise leave the skill untouched; record the observation only in an existing in-scope handoff or `knownLessons` artifact. Invoking orchestrate never implies product-development scope.
 
 # Orchestrate
 
