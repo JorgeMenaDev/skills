@@ -6,6 +6,7 @@ Read this for every mutating agent/worktree/PR slice.
 
 1. Refresh the canonical base and capture SHA. Check dirty state, ref/worktree collisions, and capacity.
 2. Centrally create one branch/worktree per slice using Git's atomic ref creation. Workers receive an exact path and base.
+   If a shared-worktree environment cannot write `.git/index.lock` and reports `EPERM`, use a full clone for that slice and record the clone path/base in the brief; retrying the same shared Git directory does not restore isolation.
 3. Allocate unique ports, deployments, QA actors, and browser sessions. Warm shared caches sequentially when installs contend.
 4. Write the brief to disk before spawn from `references/brief-template.md`: scope/non-scope, decisions, base SHA, criteria/evidence matrix, owned paths, generated/formatter allowlist, execution-context matrix, stop rules, and handoff schema. Append the run's `standing-lessons.md` verbatim instead of re-typing tooling facts per brief.
 5. Dispatch through the selected executor. Native runtimes use native subagent tools; non-native sessions use the installed adapter's launch/resume contract.
