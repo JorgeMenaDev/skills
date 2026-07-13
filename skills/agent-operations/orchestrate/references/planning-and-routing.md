@@ -4,11 +4,14 @@ Read this before assigning waves, lanes, or executors.
 
 ## Modes and blockers
 
-Default mode asks once for the routing plan plus Wave 1, then at each frontier. Autopilot records the same decisions and may perform reversible merges. A blocker halts its slice while independent work continues:
+Default mode presents and records the routing plan plus Wave 1, then each frontier. It pauses only when the active workspace contract exposes a gate. Autopilot records the same decisions and may perform reversible merges under that contract. A blocker halts its slice while independent work continues:
 
-- `human-only`: 2FA on the user's device, captcha, ID/liveness capture;
-- `irreversible`: external send, purchase, deletion, force-push, production secret rotation;
+- `human-only`: payment, CAPTCHA, passkey or biometric prompt, 2FA requiring the user's device, ID/liveness verification, or a credential only the user possesses and the system cannot retrieve;
+- `judgment`: choosing a new goal, making a material trade-off, making a promise or commitment, or taking a public position for the user;
+- `permanent-loss`: permanently losing data, access, or ownership without an already-stated decision authorizing that exact loss;
 - `ambiguity`: context cannot make the slice dispatchable without risking the wrong result.
+
+External sends, production actions, credential use, secret rotation, deletion, and account actions are not gates by themselves. The active workspace contract decides whether their specific consequences cross one of the gate classes above.
 
 A task whose start edge is this run's own merge is post-merge work, not a slice in the current run. Record it as an open deferred gate with its tracker reference; discharge or separately authorize it after the merge. `classify --post-merge-work yes` prints this routing hint.
 
@@ -20,7 +23,7 @@ A task whose start edge is this run's own merge is post-merge work, not a slice 
 | `acceptance` | Target may implement but cannot pass until source evidence/state exists. |
 | `integration` | Peers may implement together; source merges before target rebases/merges. |
 | `resource` | Target must atomically acquire named capacity or exclusive state. |
-| `human_gate` | The named transition needs explicit authority or a human-only act. |
+| `human_gate` | The named transition crosses a workspace-contract judgment, permanent-loss, or human-only gate. |
 
 Every edge records source, target, gated transition, reason, and clearing evidence. Compute `wave` from `start` edges only. Integration edges create `mergeAfter` without changing waves. Recompute integration order from actual diffs before publication.
 
@@ -34,7 +37,7 @@ Every edge records source, target, gated transition, reason, and clearing eviden
 
 Repo instructions and installed lane skills own their mechanics. Orchestrate owns selection and gates.
 
-Investigations use the read-only lane, not AFK: AFK ships changes, not answers. In default mode, paid AFK work requires the user to see its brief and flags before batch approval. Autopilot invocation preauthorizes eligible AFK dispatch and reversible merges, subject to the AFK skill's own hard gates.
+Investigations use the read-only lane, not AFK: AFK ships changes, not answers. Before dispatch, show the AFK brief and flags, record the routing decision, and proceed unless the active workspace contract exposes an unresolved gate.
 
 ## Executors
 
@@ -55,7 +58,7 @@ Selection order:
 
 A missing required executor/model/effort fails closed. A preferred choice may use only its recorded fallback. Unknown runtime metadata remains `unknown`; self-report never attests vendor/model.
 
-Examples: Claude may use its native agents or an installed `codex-cli-runtime`; Codex may use native agents or an installed `claude-cli-runtime`; Cursor/Grok uses `cursor-subagent`; native xAI Grok (Grok Build CLI headless, default `grok-4.5` effort high, structured output + resumable sessions) uses `grok-cli-runtime`; OpenCode remains unavailable until a real adapter is installed and probed.
+Examples: Claude may use its native agents or an installed `codex-cli-runtime`; Codex may use native agents or an installed `claude-cli-runtime`; Cursor or Cursor-hosted Grok uses `cursor-subagent`; native xAI Grok (Grok Build CLI headless, default `grok-4.5` effort high, structured output + resumable sessions) uses `grok-cli-runtime`; OpenCode remains unavailable until a real adapter is installed and probed.
 
 Before every new dispatch, inspect `.agents/engine-override.json`. An absent file means off; malformed means off plus a warning. Translate an active override into per-field executor constraints while preserving workspace/runtime carve-outs and their reasons. It never changes an already-active attempt silently.
 

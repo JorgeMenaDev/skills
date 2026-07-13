@@ -1,7 +1,7 @@
 ---
 name: counsel
-description: Convene a two-vendor counsel — flagship reviewers from different vendors at high effort — to adversarially review an important architecture/design decision or proposal before committing. Use when the user says "counsel", wants a second opinion on a plan, or a hard-to-reverse decision deserves cross-vendor review.
-version: 1.2.0
+description: Convene a two-vendor counsel — flagship reviewers from different vendors at high effort — to adversarially review an important architecture/design decision or proposal before committing. Use when the user explicitly asks for counsel or a two-vendor adversarial review.
+version: 1.2.1
 ---
 
 # Counsel (portable protocol)

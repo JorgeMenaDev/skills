@@ -38,4 +38,4 @@
 - **Recording is experimental and opt-in:** stamp `recording: off` unless the requester explicitly asks for video proof. `recording: on` requires browser verify and, in v1, a hosted cloud or Vercel Sandbox lane. Read [experimental-recording.md](experimental-recording.md) before recommending it.
 - When the requester does ask for a recap, stamp `recap: on — requested` and move on; no rubric judgment needed.
 - **The frame trap: task framing lies.** Worked example — a task framed "replace the hero logo strip copy" actually required responsive layout decisions across four viewports and locale-file restructuring; "copy-only → skip verify" would have shipped unverified mobile layout. Predict the diff, don't parse the title. When in doubt, escalate one level.
-- The flag decision is a **recommendation the user confirms**, never an auto-decision; its reason ships in the brief where the PR reviewer can see it.
+- The flag decision is a recorded routing recommendation governed by the active workspace authority contract; its reason ships in the brief where the PR reviewer can see it.

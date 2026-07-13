@@ -1,7 +1,7 @@
 ---
 name: operator-handoff
-description: Job-file handoff between a requesting agent and the Operator — a human-supervised computer-use agent driving the machine's real desktop and browser. Use when a task needs real clicks or credentials the agent doesn't hold (desktop app setup, third-party dashboards, OAuth consents, captchas, 2FA), when delegating a Gherkin-spec QA run or a fully-designed code slice, or when resuming after a run ("check the operator report", "run job NNN").
-version: 1.3.0
+description: Job-file handoff between a requesting agent and the Operator — a human-supervised computer-use agent driving the machine's real desktop and browser. Use when the user explicitly requests the Operator, resumes an Operator run ("check the operator report", "run job NNN"), or a native browser/computer-use run reaches an actual human-only gate.
+version: 1.3.1
 mutating: true
 writes_to: [.agents/operator/]
 ---
@@ -106,7 +106,7 @@ The skill is generic; everything machine-, account-, or repo-specific lives in `
 
 ## Requester workflow
 
-1. Decide the work actually needs the Operator (see Division of labor). If the host has a headless computer-use executor (`HOST.md` names it) and no human-only gate is expected, route the job there instead — same job/report contract, unattended. If neither applies, do it yourself.
+1. Decide the work actually needs the Operator (see Division of labor). Use the runtime's native semantic browser or computer-use capability first for ordinary UI work. If no native capability exists and `HOST.md` names a headless computer-use executor, route the job there — same job/report contract, unattended. Use the Operator only when explicitly requested or when a native/headless run reaches a human-only gate it cannot clear; otherwise do it yourself.
 2. For `qa` jobs: write/update the `.feature` spec first, commit it under `tests/gherkin/<domain>/`. Put the actor, entry URL, sign-in path, and selected scenario IDs in the job, not the spec.
 3. For `code` jobs: only delegate when design is fully decided — no open questions. The job must carry every decision the Operator needs (glossary terms, design-doc links, file-level plan, validation commands, repo conventions). If you'd have to leave a decision open, don't delegate — settle it first or implement yourself.
 4. Write `jobs/<NNN>-<slug>.md` from the matching template, with `<NNN>` = the preamble's `NEXT_ID` (rerun the preamble first if you didn't just run it). After writing, `ls` the jobs dir and confirm your `NNN` appears exactly once — if not, you collided with a parallel session: renumber yours to the new `NEXT_ID`. Always include: goal, exact steps/URLs/app names, what to produce, where to put it, and the secrets rule. For desktop app jobs, name the app, the exact menus/buttons, and what "done" looks like on screen.
@@ -122,7 +122,8 @@ When a job MINTS a credential (a PAT, API token, key), the job spec sets its lif
 
 ## Division of labor
 
-- **Headless computer-use executor** (only if `HOST.md` names one): the default for UI/browser/desktop jobs with NO human-only gate expected. It executes the same job files and writes the same reports, unattended; the report states it ran headless. A headless run that hits a gate comes back BLOCKED — append a `## Run <N>` brief and route that run to the Operator.
-- **Operator** (human-supervised): human-only gates — passwords/2FA entry, payments, captchas, OAuth consents likely to challenge, deletions, account-creation final steps — plus browser control the headless executor lacks, full Gherkin regression packs, `code` jobs whose architecture is already fully decided, and anything the human wants supervised.
+- **Native browser/computer-use**: the default for ordinary UI/browser/desktop work, including retrievable credentials, OAuth consent, external sends, production actions, reversible deletion, and account creation when the active workspace contract authorizes them.
+- **Headless computer-use executor** (only if `HOST.md` names one): fallback when the runtime lacks a native capability. It executes the same job files and writes the same reports, unattended; the report states it ran headless. A run that hits a human-only gate comes back BLOCKED — append a `## Run <N>` brief and route that run to the Operator.
+- **Operator** (human-supervised): explicit Operator requests and human-only gates — payment, CAPTCHA, passkey or biometric prompt, device-bound 2FA, ID/liveness verification, or a credential only the human possesses and the system cannot retrieve. Full Gherkin regression packs and fully decided `code` jobs belong here only when the user explicitly asks for Operator supervision.
 - **Requester directly**: design work, drafting, repo edits, anything scriptable (curl/CLI/API). No job file needed.
-- Rule of thumb: if it takes real credentials the agent doesn't hold or a GUI it can't drive from its own session — hand it off; the gate question then picks the lane. `HOST.md` may sharpen this split for the repo.
+- Rule of thumb: ordinary UI stays with native browser/computer-use. Hand off only an explicit Operator request or the exact human-only gate a prior run reached. `HOST.md` may sharpen mechanics, not expand the gate taxonomy.
