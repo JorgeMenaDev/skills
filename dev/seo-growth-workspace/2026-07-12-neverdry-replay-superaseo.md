@@ -48,19 +48,20 @@ Canonical rule: `references/never-dry-loop.md § Optional schema-1 state and one
 
 ### Live contention
 
-1. Invocation A resolves the SuperaSEO `SITE_WORKSPACE` and, before any workspace mutation, atomically acquires `.seo/loops/site-lease.json`. The lease records owner, run ID, acquisition time, expiry, and renewal data.
-2. Invocation B resolves the same site and attempts the same atomic acquisition. It observes A's live lease.
+1. Invocation A resolves the SuperaSEO `SITE_WORKSPACE` and, before any workspace mutation, acquires `.seo/loops/site-lease.json` by exclusive creation (create-exclusive/`wx` — free state is the file's absence). The lease records owner, run ID, acquisition time, expiry, and renewal data.
+2. Invocation B resolves the same site and attempts the same exclusive creation. It fails because A's claim file exists, reads the live lease, and treats it as live.
 3. B does not update backlog, loop state, reports, logs, or the lease. It resolves as honest blocked with the contention evidence and recheck state.
-4. A reconciles any ticket using the persisted candidate fingerprint, completes state persistence per the canon's atomic-replacement rules, then releases the lease through temporary-file atomic replacement.
+4. A reconciles any ticket using the persisted candidate fingerprint, completes state persistence per the canon's atomic-replacement rules (owner-only temp-file renames for lease renewal, one atomic replacement per ledger), then releases the lease by unlinking it — restoring the free state.
 5. Because B made zero workspace writes and every generator shares the same lease, there is one writer and no corrupt or duplicated state.
 
 ### Verified stale recovery
 
 1. Invocation A stops renewing and its lease passes the configured bounded stale threshold.
-2. Invocation B verifies that A's owner is no longer live; expiry alone is insufficient to steal a live owner's lease.
-3. B records the recovery, atomically replaces the stale lease with its own owner/run ID, and only then mutates workspace state.
-4. If A crashed between candidate fingerprint persistence and ticket linkage, B reconciles by the same fingerprint and reuses the active ticket rather than duplicating it.
-5. B completes atomic state replacement and lease release. The recorded recovery and fingerprint reconciliation preserve a single lineage without corruption.
+2. Invocation B first acquires the exclusive recovery lock `site-lease.recovery.lock` by exclusive creation; a competing recoverer C fails that create and backs off to honest blocked. Holding the lock, B RE-READS the lease and re-probes A's owner liveness and the stale threshold — expiry alone is insufficient to steal a live owner's lease.
+3. Only because the re-read shows the same stale claim does B unlink the stale lease and re-acquire by exclusive creation (a fresh acquirer that wins that create beats B, whose create fails and who backs off); B then unlinks its recovery lock and records the recovery. The lease path stayed occupied until the under-lock unlink, so no fresh acquirer could slip between the re-read and the unlink.
+4. If A crashed between candidate fingerprint persistence and ticket linkage, B reconciles by the same fingerprint and reuses the active ticket rather than duplicating it; a crash-interrupted transition with an externally closed ticket surfaces as an in-flight reconciliation row and blocks sleep until reconciled.
+5. B completes its atomic state replacements and releases the lease by unlink. Had B instead crashed while holding the recovery lock, the orphaned lock is never auto-removed: later invocations resolve to honest blocked/needs_human and a human removes it under the runbook — the manual step is the fencing.
+6. The recorded recovery and fingerprint reconciliation preserve a single lineage without corruption; criterion C106-09's proof now exercises the shipping recovery-lock protocol.
 
 ## Harness and traceability
 
