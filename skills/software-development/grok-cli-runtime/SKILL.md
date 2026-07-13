@@ -1,7 +1,7 @@
 ---
 name: grok-cli-runtime
-description: Runtime contract for delegating work to xAI's Grok Build CLI (grok-4.5) as a headless sidecar — exploration, review, structured output, or isolated implementation. Use when a task or skill routes to the grok engine/seat, or the user asks to spawn Grok directly.
-version: 1.0.2
+description: Runtime contract for delegating work to native xAI Grok Build CLI (grok-4.5) as a headless sidecar. Use when a task or skill routes to native xAI Grok for exploration, review, structured output, or isolated implementation. Cursor-hosted Grok belongs to cursor-subagent.
+version: 1.0.3
 mutating: true
 writes_to: ["target workspace only in write-capable mode", "~/.grok/auth.json during explicit auth recovery", "configured encrypted credential store during explicit deposition", "GROK_AUTH_B64 during explicit cloud seeding"]
 ---
@@ -15,7 +15,7 @@ Contract for calling **Grok Build CLI** (`~/.grok/bin/grok`, on PATH as `grok`) 
 - Grok is a **sidecar**: an external `grok -p` headless process with its own session store (`~/.grok/sessions`), tools, and auth. The parent agent reviews everything before integration.
 - Read-only is the default posture: restrict tools with `--tools "read_file,grep,list_dir"`.
 - Write-capable runs only in an isolated branch, worktree (`--worktree`), or scratch workspace — never a dirty shared checkout.
-- Grok never receives secrets, production mutations, external sends, or final-click authority.
+- The active workspace authority contract governs credentials, production mutations, external sends, destructive actions, and final confirmation. Include that contract in any sidecar prompt that may reach those surfaces. Without one, stay read-only and stop before external effects.
 - Auth lives under `$GROK_HOME` (default `~/.grok`). Treat `auth.json` as an opaque whole file: never extract, merge, or document its fields. Current CLI precedence is per-model `api_key` → per-model `env_key` → active session token → global `XAI_API_KEY`; a plain global key does not override a working OAuth session.
 - `401` means missing or invalid authentication. `403 permission-denied` means xAI rejected the selected credential or team for that endpoint; it can be a wrong principal/policy, a stale cloud seed, or transient provider-side authorization state. It does not by itself prove a lapsed subscription.
 
@@ -70,7 +70,7 @@ cd <repo> && $GROK -p "<explore/review prompt>. Do not modify anything." \
 Write-capable implementation — isolated worktree, auto-approved tools, guarded by `--deny`:
 
 ```bash
-cd <clean-isolated-workspace> && $GROK -p "<bounded change>. Stop before external side effects." \
+cd <clean-isolated-workspace> && $GROK -p "<bounded change>. Follow this workspace authority contract exactly: <contract-or-read-only-fallback>." \
   -m grok-4.5 --effort high --always-approve --deny "Bash(git push*)" --deny "Bash(sudo*)" \
   --output-format json
 ```

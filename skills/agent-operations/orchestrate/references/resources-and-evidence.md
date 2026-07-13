@@ -50,4 +50,4 @@ Check image evidence readable, non-empty, and showing the required UI state befo
 | read-only | report covers every criterion/source | conductor accepted report |
 | computer-use | report plus sensitivity-safe evidence | operation verified or exact human-only blocker |
 
-Human gates and irreversible effects remain uncleared until the exact authorization/evidence is written to the ledger.
+Workspace-contract gates remain uncleared until the exact authorization or human-act evidence is written to the ledger. External effects that do not cross such a gate follow the normal prepared-to-observed lifecycle.

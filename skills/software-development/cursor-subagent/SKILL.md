@@ -1,7 +1,7 @@
 ---
 name: cursor-subagent
-description: "Cursor sidecar delegation. Use when explicitly asked to spawn Cursor/Grok for exploration, review, or isolated implementation."
-version: 1.0.0
+description: "Cursor sidecar delegation. Use when explicitly asked to spawn Cursor or a Cursor-hosted Grok model for exploration, review, or isolated implementation. Native xAI Grok Build CLI requests belong to grok-cli-runtime."
+version: 1.0.1
 license: MIT
 metadata:
   mutating: true
@@ -17,7 +17,7 @@ metadata:
 - Read-only is default: use `ask` for exploration/review and `plan` for planning.
 - Implementation uses `agent` mode only in an isolated branch, worktree, or scratch workspace.
 - Parent agent reviews all reports or diffs before integration.
-- Cursor never receives secrets, production mutations, external sends, payments, account creation, destructive operations, or final-click authority without explicit user approval.
+- The active workspace authority contract governs credentials, production mutations, external sends, account actions, destructive operations, and final confirmation. Include that contract in any sidecar prompt that may reach those surfaces. Without one, stay read-only and stop before external effects.
 
 ## Preamble
 
@@ -65,7 +65,7 @@ Write-capable implementation:
 
 ```bash
 "$WRAPPER" --workspace "$WORKSPACE" --mode agent --force --model "$MODEL" -- \
-  "You are a Cursor CLI sidecar launched by another agent. Implement <bounded change>. Scope: <files>. Do not revert unrelated changes. Stop before external side effects. Return changed files and validation."
+  "You are a Cursor CLI sidecar launched by another agent. Implement <bounded change>. Scope: <files>. Do not revert unrelated changes. Follow this workspace authority contract exactly: <contract-or-read-only-fallback>. Return changed files and validation."
 ```
 
 Use `--force` only for intentional write-capable runs. The wrapper refuses `--mode agent` without it.

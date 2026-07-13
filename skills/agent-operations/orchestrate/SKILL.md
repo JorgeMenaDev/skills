@@ -1,7 +1,7 @@
 ---
 name: orchestrate
 description: Orchestrate multi-slice work through dependency-aware waves, isolated executors, review gates, integration, and recovery. Use when a task spans parallel agents, worktrees, AFK runs, shared resources, cross-runtime delegation, or an issue chain that must be driven to verified completion.
-version: 2.2.1
+version: 2.2.2
 license: MIT
 mutating: true
 writes_to: [session-scratchpad/orchestrate/, worktrees, branches, pull-requests, issue-trackers]
@@ -20,7 +20,7 @@ You are the **conductor**: plan, dispatch, inspect, steer, integrate, and verify
 - Lane describes operational lifecycle; executor describes the runtime/vendor. Native spawning stays runtime-owned. Non-native agents use installed adapters.
 - `run.json` is the sole authority for orchestrated runs; `RUN.md` is generated. Workers write handoffs, never ledger state.
 - On the orchestrated path, mutating dispatch is fail-closed behind ledger authority: an initialized run, fresh clean reconciliation, and an emitted write frontier. `REQUIRES_INIT` means run `start` — or `adopt` for work already in flight — before any external act.
-- Default mode confirms routing and each frontier. `autopilot` records those decisions and advances independently, but stops for human-only gates, irreversible external acts, or irreducible ambiguity.
+- Default mode presents and records routing and each frontier; it pauses only when the active workspace contract exposes an unresolved judgment, permanent-loss, or human-only gate. `autopilot` records the same decisions and advances independently under that contract. Irreducible ambiguity still fails closed.
 - The write frontier is rolling: a slice may dispatch the moment its start edges clear; waves are the reporting view, not batch barriers. Read-only preparation may cross a future wave; writes may begin only from the emitted write frontier.
 - Long runs checkpoint at wave boundaries; a fresh conductor resumes from `RESUME.md` plus `takeover`, never from prose memory.
 - Orchestration friction compounds into `knownLessons` and, when portable, a canonical skill improvement.
@@ -44,10 +44,10 @@ node <skill>/scripts/orchestrate-run.mjs classify \
 
 1. **Intake.** Read repo instructions and source issues/specs. For issue chains prefer native tracker edges, then `## Blocked by` sections. Extract every slice, criterion, hidden semantic dependency, collision surface, external effect, and human gate. A single task needs a repo, goal, and checkable done criteria. Done when no brief requires invention.
 2. **Plan.** Read `references/planning-and-routing.md`. Discover real executor capabilities, classify constraints as required/preferred, assign lanes/executors, type all edges, and compute start waves separately from integration order. Budget depletable capacity — engine/review quota, agent slots, disk, QA actors — with a pre-declared failover ladder per resource, and stage the next wave's external inputs one wave ahead. Done when every slice and criterion has an owner and proof.
-3. **Confirm.** In default mode, present the complete routing table and recommend the picks; one approval covers Wave 1. In autopilot, record the same decisions and reasons in the ledger. Done when authorization is explicit and durable.
+3. **Authorize.** Present the complete routing table and recommend the picks, then record the decisions and reasons in the ledger. The active workspace contract decides whether a pick crosses a judgment gate and needs confirmation; otherwise proceed. Done when authorization is explicit and durable.
 4. **Dispatch.** Reconcile first. Acquire resources and commit write-ahead effect intent before each external act. For mutating dev slices read `references/dev-lane.md`; for other lanes follow their installed skill. Done when every dispatch has an observed runtime identity or is `UNKNOWN`/`BLOCKED`.
 5. **Supervise and verify.** Inspect real diffs, reports, evidence, and runtime state, tiering review depth by slice risk. Allow one grounding checkpoint; interrupt only for scope, safety, or concrete defects. After handoff, classify findings as contract-violating or advisory and follow the convergence and correction ladder in `references/dev-lane.md`; escalation triggers are defect recurrence or executor degradation, never round count. Done when each slice is accepted or carries an exact blocker.
-6. **Integrate and advance.** Follow integration edges, conductor-owned publication, CI/preview gates, refreshed-target verification, and `assert-complete`. External gates that cannot be discharged now enter the ledger's deferred-gate register and block completion until discharged or separately authorized. Default mode confirms the next frontier; autopilot continues. Done when every slice and parent criterion is terminal with proof.
+6. **Integrate and advance.** Follow integration edges, conductor-owned publication, CI/preview gates, refreshed-target verification, and `assert-complete`. Workspace-contract gates that cannot be discharged now enter the ledger's deferred-gate register and block completion until discharged or separately authorized. Present and record the next frontier, pausing only when that contract requires it. Done when every slice and parent criterion is terminal with proof.
 
 ## Operator visibility
 
