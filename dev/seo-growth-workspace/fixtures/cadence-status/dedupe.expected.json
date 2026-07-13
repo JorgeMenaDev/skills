@@ -3,6 +3,7 @@
   "status": "ok",
   "cadenceState": "present",
   "obligationState": "absent",
+  "coverageState": "absent",
   "due": [],
   "deduplicated": [
     {
@@ -27,5 +28,7 @@
   ],
   "earliestNextDue": null,
   "obligations": [],
+  "loopWakes": [],
+  "coverageDue": [],
   "failures": []
 }

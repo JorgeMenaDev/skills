@@ -6,7 +6,7 @@ Earliest next-due: 2026-07-06
 
 | ID | P | Area | Ticket | Verify |
 | --- | --- | --- | --- | --- |
-| SEO-001 | P1 | measurement | Measure non-brand CTR for sha256:pricing-page | Improve non-brand CTR; use the result to decide keep the title treatment or revert it |
+| SEO-001 | P3 | measurement | Measure non-brand CTR for sha256:pricing-page | Improve non-brand CTR; use the result to decide keep the title treatment or revert it |
 
 ## Obligation reconciliation actions
 

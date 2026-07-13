@@ -3,9 +3,26 @@
   "status": "ok",
   "cadenceState": "present",
   "obligationState": "absent",
+  "coverageState": "present",
   "due": [],
   "deduplicated": [],
-  "earliestNextDue": "2026-07-20",
+  "earliestNextDue": "2026-07-18",
   "obligations": [],
+  "loopWakes": [
+    {
+      "source": "loops/weekly.json",
+      "nextWakeAt": "2026-07-18"
+    }
+  ],
+  "coverageDue": [
+    {
+      "rung": "A",
+      "expiresAt": "2026-07-20"
+    },
+    {
+      "rung": "B",
+      "expiresAt": "2026-07-31"
+    }
+  ],
   "failures": []
 }

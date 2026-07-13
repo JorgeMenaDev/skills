@@ -3,6 +3,7 @@
   "status": "ok",
   "cadenceState": "present",
   "obligationState": "absent",
+  "coverageState": "absent",
   "due": [
     {
       "source": "loops/weekly.json",
@@ -49,5 +50,7 @@
   ],
   "earliestNextDue": null,
   "obligations": [],
+  "loopWakes": [],
+  "coverageDue": [],
   "failures": []
 }

@@ -3,10 +3,13 @@
   "status": "fail_closed",
   "cadenceState": "absent",
   "obligationState": "invalid",
+  "coverageState": "absent",
   "due": [],
   "deduplicated": [],
   "earliestNextDue": null,
   "obligations": [],
+  "loopWakes": [],
+  "coverageDue": [],
   "failures": [
     {
       "file": "loops/measurement-obligations.json",

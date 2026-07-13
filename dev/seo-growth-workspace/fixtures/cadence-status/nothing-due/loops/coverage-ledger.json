@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "rungs": {
+    "A": {
+      "observedAt": "2026-06-20",
+      "maxAgeDays": 30,
+      "artifact": "reports/sweep-2026-06-20.md"
+    },
+    "B": {
+      "observedAt": "2026-07-01",
+      "maxAgeDays": 30,
+      "artifact": "reports/gsc-2026-07-01.md"
+    }
+  }
+}

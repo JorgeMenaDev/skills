@@ -195,22 +195,23 @@ async function readCadenceState(workspace) {
   const loops = path.join(workspace, "loops");
   try {
     if (!(await stat(workspace)).isDirectory()) {
-      return { cadenceState: "invalid", occurrences: [], failures: [{ file: ".", reason: "workspace root is not a directory" }] };
+      return { cadenceState: "invalid", occurrences: [], loopWakes: [], failures: [{ file: ".", reason: "workspace root is not a directory" }] };
     }
   } catch (error) {
     const reason = error.code === "ENOENT" ? "workspace root does not exist" : `cannot inspect workspace root (${error.code ?? error.name})`;
-    return { cadenceState: "invalid", occurrences: [], failures: [{ file: ".", reason }] };
+    return { cadenceState: "invalid", occurrences: [], loopWakes: [], failures: [{ file: ".", reason }] };
   }
   let entries;
   try {
     entries = await readdir(loops, { withFileTypes: true });
   } catch (error) {
-    if (error.code === "ENOENT") return { cadenceState: "absent", occurrences: [], failures: [] };
-    return { cadenceState: "invalid", occurrences: [], failures: [{ file: "loops", reason: `cannot read loops directory (${error.code ?? error.name})` }] };
+    if (error.code === "ENOENT") return { cadenceState: "absent", occurrences: [], loopWakes: [], failures: [] };
+    return { cadenceState: "invalid", occurrences: [], loopWakes: [], failures: [{ file: "loops", reason: `cannot read loops directory (${error.code ?? error.name})` }] };
   }
 
   const occurrences = [];
   const failures = [];
+  const loopWakes = [];
   let foundCadenceState = false;
   const files = entries
     .filter((entry) => (entry.isFile() || entry.isSymbolicLink()) && entry.name.endsWith(".json") && !RESERVED_LOOP_FILES.has(entry.name))
@@ -236,6 +237,14 @@ async function readCadenceState(workspace) {
     if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
       failures.push({ file: source, reason: "loop state must be a JSON object" });
       continue;
+    }
+    if (Object.hasOwn(payload, "nextWakeAt") && payload.nextWakeAt !== null) {
+      try {
+        loopWakes.push({ source, nextWakeAt: parseDate(payload.nextWakeAt, `${source} nextWakeAt`) });
+      } catch (error) {
+        failures.push({ file: source, reason: error.message });
+        continue;
+      }
     }
     if (!Object.hasOwn(payload, "occurrences")) continue;
     foundCadenceState = true;
@@ -266,10 +275,11 @@ async function readCadenceState(workspace) {
     }
   }
 
-  if (failures.length > 0) return { cadenceState: "invalid", occurrences: [], failures };
+  if (failures.length > 0) return { cadenceState: "invalid", occurrences: [], loopWakes: [], failures };
   return {
     cadenceState: foundCadenceState ? "present" : "absent",
     occurrences,
+    loopWakes,
     failures,
   };
 }
@@ -360,6 +370,14 @@ function validateObligation(key, value, source) {
   } else if (successor !== null) {
     throw new Error(`${field}.successor must be null unless superseded`);
   }
+  const priority = value.priority === undefined ? null : value.priority;
+  if (priority !== null && !/^P[0-4]$/.test(String(priority))) {
+    throw new Error(`${field}.priority must be P0-P4 or omitted`);
+  }
+  const area = value.area === undefined ? null : value.area;
+  if (area !== null && (typeof area !== "string" || area.trim() === "")) {
+    throw new Error(`${field}.area must be a non-empty string or omitted`);
+  }
   return {
     source,
     hypothesis: value.hypothesis,
@@ -380,7 +398,53 @@ function validateObligation(key, value, source) {
     resolvedAt,
     calibrationNote: value.calibrationNote,
     successor,
+    priority,
+    area,
   };
+}
+
+function addDays(date, days) {
+  const [y, m, d] = date.split("-").map(Number);
+  const out = new Date(Date.UTC(y, m - 1, d + days));
+  return out.toISOString().slice(0, 10);
+}
+
+async function readCoverageState(workspace) {
+  const source = path.join("loops", "coverage-ledger.json");
+  let text;
+  try {
+    text = await readFile(path.join(workspace, source), "utf-8");
+  } catch (error) {
+    if (error.code === "ENOENT") return { coverageState: "absent", coverageDue: [], failures: [] };
+    return { coverageState: "invalid", coverageDue: [], failures: [{ file: source, reason: `cannot read coverage ledger (${error.code ?? error.name})` }] };
+  }
+  try {
+    const payload = JSON.parse(text);
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+      throw new Error("coverage ledger must be a JSON object");
+    }
+    validateSchemaEnvelope(payload);
+    if (!payload.rungs || typeof payload.rungs !== "object" || Array.isArray(payload.rungs)) {
+      throw new Error("rungs must be an object map");
+    }
+    const coverageDue = [];
+    for (const [rung, row] of Object.entries(payload.rungs)) {
+      if (!/^[A-J]$/.test(rung)) throw new Error(`rung key ${JSON.stringify(rung)} must be a letter A-J`);
+      if (!row || typeof row !== "object" || Array.isArray(row)) throw new Error(`rungs.${rung} must be an object`);
+      const observedAt = parseDate(row.observedAt, `rungs.${rung}.observedAt`);
+      if (!Number.isInteger(row.maxAgeDays) || row.maxAgeDays < 1) {
+        throw new Error(`rungs.${rung}.maxAgeDays must be a positive integer`);
+      }
+      if (typeof row.artifact !== "string" || row.artifact.trim() === "") {
+        throw new Error(`rungs.${rung}.artifact must be a non-empty string`);
+      }
+      coverageDue.push({ rung, expiresAt: addDays(observedAt, row.maxAgeDays) });
+    }
+    coverageDue.sort((a, b) => a.expiresAt.localeCompare(b.expiresAt) || a.rung.localeCompare(b.rung));
+    return { coverageState: "present", coverageDue, failures: [] };
+  } catch (error) {
+    return { coverageState: "invalid", coverageDue: [], failures: [{ file: source, reason: error.message }] };
+  }
 }
 
 async function readObligationState(workspace) {
@@ -416,17 +480,20 @@ function nextDueFor(occurrence, now) {
   return occurrence.dueAt;
 }
 
-function analyze(state, obligationState, now) {
-  const failures = [...state.failures, ...obligationState.failures];
+function analyze(state, obligationState, coverageState, now) {
+  const failures = [...state.failures, ...obligationState.failures, ...coverageState.failures];
   if (failures.length > 0) {
     return {
       status: "fail_closed",
       cadenceState: state.cadenceState,
       obligationState: obligationState.obligationState,
+      coverageState: coverageState.coverageState,
       due: [],
       deduplicated: [],
       earliestNextDue: null,
       obligations: [],
+      loopWakes: [],
+      coverageDue: [],
       failures,
     };
   }
@@ -471,15 +538,21 @@ function analyze(state, obligationState, now) {
           : "reconcile_materialization",
     }));
   nextDates.push(...obligations.map((obligation) => obligation.effectiveDueAt));
+  const loopWakes = [...state.loopWakes].sort((a, b) => a.nextWakeAt.localeCompare(b.nextWakeAt) || a.source.localeCompare(b.source));
+  nextDates.push(...loopWakes.map((wake) => wake.nextWakeAt));
+  nextDates.push(...coverageState.coverageDue.map((row) => row.expiresAt));
   nextDates.sort();
   return {
     status: "ok",
     cadenceState: state.cadenceState,
     obligationState: obligationState.obligationState,
+    coverageState: coverageState.coverageState,
     due,
     deduplicated,
     earliestNextDue: nextDates[0] ?? null,
     obligations: dueObligations,
+    loopWakes,
+    coverageDue: coverageState.coverageDue,
     failures: [],
   };
 }
@@ -520,8 +593,8 @@ ${markdownTable(
   const materializedObligations = report.obligations.filter((obligation) => obligation.action === "materialize");
   rows.push(...materializedObligations.map((obligation, index) => [
     `SEO-${String(startId + cadenceRows.length + index).padStart(3, "0")}`,
-    "P1",
-    "measurement",
+    obligation.priority ?? "P3",
+    obligation.area ?? "measurement",
     `Measure ${obligation.metric} for ${obligation.pageCohortFingerprint}`,
     `${obligation.hypothesis}; use the result to decide ${obligation.decision}`,
   ]));
@@ -592,6 +665,8 @@ function withFailure(report, failure) {
     deduplicated: [],
     earliestNextDue: null,
     obligations: [],
+    loopWakes: [],
+    coverageDue: [],
     failures: [...report.failures, failure],
   };
 }
@@ -611,7 +686,8 @@ async function main() {
   const now = parseNow(argValue("--now"));
   const state = await readCadenceState(workspace);
   const obligationState = await readObligationState(workspace);
-  const analysis = analyze(state, obligationState, now);
+  const coverageState = await readCoverageState(workspace);
+  const analysis = analyze(state, obligationState, coverageState, now);
   let report = { now, ...analysis };
   let startId = 1;
   const hasDraftRows = report.status === "ok" && (

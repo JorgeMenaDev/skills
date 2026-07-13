@@ -3,10 +3,13 @@
   "status": "fail_closed",
   "cadenceState": "invalid",
   "obligationState": "absent",
+  "coverageState": "absent",
   "due": [],
   "deduplicated": [],
   "earliestNextDue": null,
   "obligations": [],
+  "loopWakes": [],
+  "coverageDue": [],
   "failures": [
     {
       "file": "loops/weekly.json",

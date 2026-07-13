@@ -3,6 +3,7 @@
   "status": "ok",
   "cadenceState": "present",
   "obligationState": "present",
+  "coverageState": "absent",
   "due": [],
   "deduplicated": [],
   "earliestNextDue": "2026-07-06",
@@ -30,6 +31,8 @@
       "resolvedAt": null,
       "calibrationNote": null,
       "successor": null,
+      "priority": null,
+      "area": null,
       "effectiveDueAt": "2026-07-06",
       "action": "reconcile_inconclusive_return"
     },
@@ -53,6 +56,8 @@
       "resolvedAt": null,
       "calibrationNote": null,
       "successor": null,
+      "priority": null,
+      "area": null,
       "effectiveDueAt": "2026-07-07",
       "action": "reconcile_materialization"
     },
@@ -76,6 +81,8 @@
       "resolvedAt": null,
       "calibrationNote": null,
       "successor": null,
+      "priority": null,
+      "area": null,
       "effectiveDueAt": "2026-07-09",
       "action": "reconcile_materialization"
     },
@@ -99,6 +106,8 @@
       "resolvedAt": null,
       "calibrationNote": null,
       "successor": null,
+      "priority": null,
+      "area": null,
       "effectiveDueAt": "2026-07-10",
       "action": "materialize"
     },
@@ -122,9 +131,13 @@
       "resolvedAt": null,
       "calibrationNote": null,
       "successor": null,
+      "priority": null,
+      "area": null,
       "effectiveDueAt": "2026-07-11",
       "action": "reconcile_materialization"
     }
   ],
+  "loopWakes": [],
+  "coverageDue": [],
   "failures": []
 }
