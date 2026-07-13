@@ -168,6 +168,10 @@ const requiredExecutorSatisfied = (slice) => {
     .every(({ field, value }) => verified[field] !== undefined && verified[field] !== "unknown" && verified[field] === value);
 };
 
+const requiredRuntimeFields = (slice) => (slice.executor?.constraints || [])
+  .filter(({ field, strength }) => strength === "required" && ["vendor", "model", "effort"].includes(field))
+  .map(({ field }) => field);
+
 const edgeCleared = (run, edge) => {
   const source = sliceMap(run).get(edge.source);
   if (["start", "acceptance", "integration"].includes(edge.type)) return Boolean(source && successOutcome(source));
@@ -219,6 +223,7 @@ const validate = (run, previous = null) => {
     if (!lanes.has(slice.lane)) errors.push(`${slice.id}: invalid lane ${slice.lane}`);
     if (run.repo.integrationBranch && slice.branch === run.repo.integrationBranch) errors.push(`${slice.id}: slice branch must be distinct from repo integrationBranch`);
     if (slice.baseBranch !== undefined && ![run.repo.targetBranch, run.repo.integrationBranch].includes(slice.baseBranch)) errors.push(`${slice.id}: baseBranch must name the target or declared integration branch`);
+    if (slice.baseBranch === run.repo.integrationBranch && !slice.baseSha) errors.push(`${slice.id}: integration-based slice requires baseSha`);
     if (!Number.isInteger(slice.attempt) || slice.attempt < 1) errors.push(`${slice.id}: invalid attempt`);
     const attemptKey = expectedAttemptKey(run, slice);
     if (attempts.has(attemptKey)) errors.push(`${slice.id}: duplicate attempt key`);
@@ -558,14 +563,21 @@ const normalize = (spec) => {
     authorization: { mode: spec.authorization?.mode || spec.mode || "default", recordedDecisions: spec.authorization?.recordedDecisions || [], cessations: spec.authorization?.cessations || [], effectRulings: spec.authorization?.effectRulings || [], reviewWaivers: spec.authorization?.reviewWaivers || [] },
     repo: { ...spec.repo, path: (() => { try { return execFileSync("git", ["-C", spec.repo.path, "rev-parse", "--show-toplevel"], { encoding: "utf8" }).trim(); } catch { return resolve(spec.repo.path); } })(), expectedHead: spec.repo.expectedHead || spec.repo.baseSha },
     parentCriteria: spec.parentCriteria || [],
-    slices: (spec.slices || []).map((slice) => ({
-      ...slice,
-      executor: slice.executor || { constraints: [], verified: {}, fallback: [] },
-      criteria: slice.criteria || [],
-      reviews: slice.reviews || { conductor: null, independent: null, correctionCount: 0, interventions: { scope: 0, defect: 0, safety: 0, decision: 0 } },
-      blocker: slice.blocker || null,
-      resumeState: slice.resumeState || null,
-    })),
+    slices: (spec.slices || []).map((slice) => {
+      const baseBranch = slice.baseBranch || spec.repo.targetBranch;
+      return {
+        ...slice,
+        baseBranch,
+        baseSha: !slice.baseSha || slice.baseSha === "auto" ? (baseBranch === spec.repo.targetBranch ? spec.repo.baseSha : null) : slice.baseSha,
+        ownedPaths: slice.ownedPaths || [],
+        collisionPaths: slice.collisionPaths || [],
+        executor: slice.executor || { constraints: [], verified: {}, fallback: [] },
+        criteria: slice.criteria || [],
+        reviews: slice.reviews || { conductor: null, independent: null, correctionCount: 0, interventions: { scope: 0, defect: 0, safety: 0, decision: 0 } },
+        blocker: slice.blocker || null,
+        resumeState: slice.resumeState || null,
+      };
+    }),
     edges: spec.edges || [],
     resources: spec.resources || [],
     effects: spec.effects || [],
@@ -583,6 +595,7 @@ const args = parseArgs(process.argv.slice(3));
 
 if (!command || ["help", "--help", "-h"].includes(command)) {
   process.stdout.write(`orchestrate-run.mjs commands:\n  preflight --repo DIR\n  classify --slices N --dependencies yes|no --integration-branch yes|no --shared-resource yes|no [--post-merge-work yes] [--one-liner yes]\n  start --dir DIR --spec FILE            (preflight + init + locator + reconcile + first frontier)\n  adopt --dir DIR --spec FILE            (conservative import of an in-flight prose run; unproved state -> UNKNOWN)\n  dispatch --run FILE --expected-revision N --slice ID --executor ID --session ID [--vendor ID] [--model ID] [--effort ID] [--pid N] --conductor-id ID --conductor-epoch N\n  observe --run FILE --expected-revision N --slice ID --session ID [--status active|between-calls|complete] [--pid N] --conductor-id ID --conductor-epoch N\n  handoff --run FILE --expected-revision N --slice ID --report FILE --commits RANGE --criteria-evidence FILE [--status between-calls|complete] --conductor-id ID --conductor-epoch N\n  accept --run FILE --expected-revision N --slice ID --conductor-review REF (--independent-review REF | --waiver ID) --conductor-id ID --conductor-epoch N\n  finish --run FILE --expected-revision N --slice ID --outcome OUTCOME --proof REF --conductor-id ID --conductor-epoch N\n  rebase-authority --run FILE --expected-revision N --to SHA [--observations FILE] --conductor-id ID --conductor-epoch N\n  checkpoint --run FILE --expected-revision N [--reason TEXT] [--observations FILE] --conductor-id ID --conductor-epoch N\n  checkpoint --run FILE --render-only     (regenerate RESUME.md from the committed ledger; no mutation)\n  init --dir DIR --spec FILE\n  update --run FILE --expected-revision N --patch FILE --conductor-id ID --conductor-epoch N\n  update-slice --run FILE --expected-revision N --slice ID --patch FILE --conductor-id ID --conductor-epoch N\n  discharge-gate --run FILE --expected-revision N --gate ID --evidence REF --conductor-id ID --conductor-epoch N\n  probe --run FILE --expected-revision N --resource ID --slice ID --action acquire|release --conductor-id ID --conductor-epoch N\n  reconcile --run FILE --expected-revision N [--observations FILE] --conductor-id ID --conductor-epoch N\n  takeover --run FILE --expected-revision N --conductor-id OLD --conductor-epoch N --new-conductor-id NEW\n  recover-lock --run FILE --conductor-id ID --conductor-epoch N --confirm-stale\n  recover-mutex --run FILE --expected-revision N --resource ID --conductor-id ID --conductor-epoch N --confirm-stale\n  validate --run FILE\n  inspect --run FILE\n  render --run FILE\n  assert-complete --run FILE\n  archive --run FILE --conductor-id ID --conductor-epoch N\n`);
+  process.stdout.write("dispatch note: required vendor/model/effort also needs --runtime-proof REF\nrebase note: --to latest resolves the fetched remote target\n");
   process.exit(0);
 }
 
@@ -703,7 +716,10 @@ if (command === "dispatch") {
   const initial = readJson(path);
   const slice = commandSlice(initial, args.slice);
   if (slice.state !== "PLANNED") fail(`${slice.id}: dispatch requires PLANNED, found ${slice.state}`);
-  const verified = { executor: args.executor, vendor: args.vendor || "unknown", model: args.model || "unknown", effort: args.effort || "unknown" };
+  const runtimeProof = args["runtime-proof"];
+  const proofFields = requiredRuntimeFields(slice);
+  if (proofFields.length && !runtimeProof) fail(`${slice.id}: required ${proofFields.join(", ")} needs --runtime-proof with launcher or runtime metadata evidence; model self-report is not proof`);
+  const verified = { executor: args.executor, vendor: args.vendor || "unknown", model: args.model || "unknown", effort: args.effort || "unknown", evidence: runtimeProof ? [runtimeProof] : [] };
   const routed = { ...initial, slices: initial.slices.map((item) => item.id === slice.id ? { ...item, executor: { ...item.executor, verified } } : item) };
   if (!derived(routed).write.includes(slice.id)) fail(`${slice.id}: dispatch remains excluded after applying supplied executor metadata; run inspect for edge, effect, or reconciliation reasons`);
   const attemptKey = expectedAttemptKey(initial, slice);
@@ -1156,28 +1172,39 @@ if (command === "rebase-authority") {
   }
   let newHead;
   try {
-    newHead = git(repo, ["rev-parse", `${args.to}^{commit}`]);
+    const requestedHead = args.to === "latest" ? `refs/remotes/origin/${initial.repo.targetBranch}` : `${args.to}^{commit}`;
+    newHead = git(repo, ["rev-parse", requestedHead]);
     git(repo, ["merge-base", "--is-ancestor", oldHead, newHead]);
   } catch {
     fail(`authority movement must be a fast-forward from ${oldHead} to ${args.to}`);
   }
   const remoteLine = git(repo, ["ls-remote", "origin", `refs/heads/${initial.repo.targetBranch}`]);
   const remoteHead = remoteLine.split(/\s+/)[0] || null;
-  if (remoteHead !== newHead) fail(`origin/${initial.repo.targetBranch} is ${remoteHead || "missing"}, not ${newHead}`);
+  if (remoteHead !== newHead) fail(`origin/${initial.repo.targetBranch} is ${remoteHead || "missing"}, not ${newHead}; rerun with --to latest`);
   const integrationBranch = initial.repo.integrationBranch;
+  let integrationHeadBefore = null;
   let integrationHead = null;
+  let advanceIntegration = false;
   if (integrationBranch) {
     try {
-      integrationHead = git(repo, ["rev-parse", `refs/heads/${integrationBranch}`]);
-      git(repo, ["merge-base", "--is-ancestor", newHead, integrationHead]);
+      integrationHeadBefore = git(repo, ["rev-parse", `refs/heads/${integrationBranch}`]);
     } catch {
-      fail(`integration branch ${integrationBranch} must exist locally and include ${newHead} before rebase-authority`);
+      fail(`integration branch ${integrationBranch} must exist locally before rebase-authority`);
+    }
+    try {
+      git(repo, ["merge-base", "--is-ancestor", newHead, integrationHeadBefore]);
+      integrationHead = integrationHeadBefore;
+    } catch {
+      if (integrationHeadBefore !== oldHead) fail(`integration branch ${integrationBranch} has diverged from ${oldHead}; merge or rebase ${newHead} explicitly before rebase-authority`);
+      if (git(repo, ["branch", "--show-current"]) === integrationBranch && git(repo, ["status", "--porcelain"])) fail(`checked-out integration branch ${integrationBranch} is dirty`);
+      integrationHead = newHead;
+      advanceIntegration = true;
     }
   }
   const changedPaths = git(repo, ["diff", "--name-only", `${oldHead}..${newHead}`]).split("\n").filter(Boolean);
   const relevantSlices = initial.slices.filter(({ state }) => state !== "TERMINAL");
   for (const slice of relevantSlices) if (!Array.isArray(slice.ownedPaths) || !Array.isArray(slice.collisionPaths)) fail(`${slice.id}: rebase-authority requires declared ownedPaths and collisionPaths`);
-  const protectedPaths = relevantSlices.flatMap(({ id, ownedPaths, collisionPaths }) => [...ownedPaths, ...collisionPaths].map((protectedPath) => ({ id, path: protectedPath })));
+  const protectedPaths = relevantSlices.filter(({ lane, state }) => lane !== "read-only" || state !== "PLANNED").flatMap(({ id, ownedPaths, collisionPaths }) => [...ownedPaths, ...collisionPaths].map((protectedPath) => ({ id, path: protectedPath })));
   const collisions = changedPaths.flatMap((changedPath) => protectedPaths.filter(({ path: protectedPath }) => pathsOverlap(changedPath, protectedPath)).map(({ id, path: protectedPath }) => `${changedPath} overlaps ${id}:${protectedPath}`));
   if (collisions.length) fail(`target movement overlaps slice authority: ${collisions.join(", ")}`);
 
@@ -1190,7 +1217,7 @@ if (command === "rebase-authority") {
       fail(`${slice.id}: integration head ${integrationHead} does not descend from recorded base ${slice.baseSha || "missing"}`);
     }
     const sliceChangedPaths = git(repo, ["diff", "--name-only", `${slice.baseSha}..${integrationHead}`]).split("\n").filter(Boolean);
-    const integrationCollisions = sliceChangedPaths.flatMap((changedPath) => [...slice.ownedPaths, ...slice.collisionPaths].filter((protectedPath) => pathsOverlap(changedPath, protectedPath)).map((protectedPath) => `${changedPath} overlaps ${protectedPath}`));
+    const integrationCollisions = slice.lane === "read-only" && slice.state === "PLANNED" ? [] : sliceChangedPaths.flatMap((changedPath) => [...slice.ownedPaths, ...slice.collisionPaths].filter((protectedPath) => pathsOverlap(changedPath, protectedPath)).map((protectedPath) => `${changedPath} overlaps ${protectedPath}`));
     if (integrationCollisions.length) fail(`${slice.id}: integration movement overlaps slice authority: ${integrationCollisions.join(", ")}`);
     integrationBindings.push({ sliceId: slice.id, from: slice.baseSha, changedPaths: sliceChangedPaths });
   }
@@ -1218,7 +1245,7 @@ if (command === "rebase-authority") {
   const applyGitMoves = () => {
     const liveRemoteLine = git(repo, ["ls-remote", "origin", `refs/heads/${initial.repo.targetBranch}`]);
     if ((liveRemoteLine.split(/\s+/)[0] || null) !== newHead) throw new Error(`origin/${initial.repo.targetBranch} moved during rebase-authority`);
-    if (integrationBranch && git(repo, ["rev-parse", `refs/heads/${integrationBranch}`]) !== integrationHead) throw new Error(`integration branch ${integrationBranch} moved during rebase-authority`);
+    if (integrationBranch && git(repo, ["rev-parse", `refs/heads/${integrationBranch}`]) !== integrationHeadBefore) throw new Error(`integration branch ${integrationBranch} moved during rebase-authority`);
     const localTarget = git(repo, ["rev-parse", `refs/heads/${initial.repo.targetBranch}`]);
     if (![oldHead, newHead].includes(localTarget)) throw new Error(`local ${initial.repo.targetBranch} advanced from recorded authority (${localTarget})`);
     const currentBranch = git(repo, ["branch", "--show-current"]);
@@ -1227,6 +1254,10 @@ if (command === "rebase-authority") {
         if (git(repo, ["status", "--porcelain"])) throw new Error(`checked-out target branch ${initial.repo.targetBranch} is dirty`);
         git(repo, ["merge", "--ff-only", newHead]);
       } else git(repo, ["update-ref", `refs/heads/${initial.repo.targetBranch}`, newHead, oldHead]);
+    }
+    if (advanceIntegration) {
+      if (currentBranch === integrationBranch) git(repo, ["merge", "--ff-only", newHead]);
+      else git(repo, ["update-ref", `refs/heads/${integrationBranch}`, newHead, integrationHeadBefore]);
     }
     for (const { slice, baseBranch } of plannedBranches) {
       if (slice.worktree && git(slice.worktree, ["status", "--porcelain"])) throw new Error(`${slice.id}: planned worktree became dirty`);
@@ -1334,6 +1365,20 @@ if (command === "start") {
   spec.repo.identity = identity;
   if (!spec.repo.baseSha || spec.repo.baseSha === "auto") spec.repo.baseSha = liveHead;
   if (!spec.repo.expectedHead || spec.repo.expectedHead === "auto") spec.repo.expectedHead = liveHead;
+  let integrationHead = null;
+  if (spec.repo.integrationBranch) {
+    try {
+      integrationHead = git(repoRoot, ["rev-parse", `refs/heads/${spec.repo.integrationBranch}`]);
+      git(repoRoot, ["merge-base", "--is-ancestor", liveHead, integrationHead]);
+    } catch {
+      fail(`integration branch ${spec.repo.integrationBranch} must exist locally and include ${spec.repo.targetBranch} at ${liveHead}`);
+    }
+  }
+  spec.slices = (spec.slices || []).map((slice) => {
+    const baseBranch = slice.baseBranch || spec.repo.targetBranch;
+    const defaultBase = baseBranch === spec.repo.integrationBranch ? integrationHead : liveHead;
+    return { ...slice, baseBranch, baseSha: !slice.baseSha || slice.baseSha === "auto" ? defaultBase : slice.baseSha };
+  });
   const root = resolve(args.dir);
   mkdirSync(root, { recursive: true });
   const path = join(root, "run.json");
