@@ -492,6 +492,7 @@ function analyze(state, obligationState, coverageState, now) {
       deduplicated: [],
       earliestNextDue: null,
       obligations: [],
+      inFlightObligations: [],
       loopWakes: [],
       coverageDue: [],
       failures,
@@ -527,6 +528,10 @@ function analyze(state, obligationState, coverageState, now) {
       || a.hypothesis.localeCompare(b.hypothesis)
       || a.pageCohortFingerprint.localeCompare(b.pageCohortFingerprint)
     );
+  const inFlightObligations = obligationState.obligations
+    .filter((obligation) => obligation.state === "materialized" && obligation.ticket?.status === "open")
+    .map((obligation) => ({ ...obligation, action: "reconcile_in_flight" }))
+    .sort((a, b) => a.dueAt.localeCompare(b.dueAt) || a.hypothesis.localeCompare(b.hypothesis));
   const dueObligations = obligations
     .filter((obligation) => obligation.state === "materialized" || obligation.effectiveDueAt <= now)
     .map((obligation) => ({
@@ -551,6 +556,7 @@ function analyze(state, obligationState, coverageState, now) {
     deduplicated,
     earliestNextDue: nextDates[0] ?? null,
     obligations: dueObligations,
+    inFlightObligations,
     loopWakes,
     coverageDue: coverageState.coverageDue,
     failures: [],
@@ -598,16 +604,21 @@ ${markdownTable(
     `Measure ${obligation.metric} for ${obligation.pageCohortFingerprint}`,
     `${obligation.hypothesis}; use the result to decide ${obligation.decision}`,
   ]));
-  const obligationActions = report.obligations
-    .filter((obligation) => obligation.action !== "materialize")
+  const obligationActions = [...report.obligations.filter((obligation) => obligation.action !== "materialize"), ...(report.inFlightObligations ?? [])]
     .map((obligation) => [
       obligation.ticket?.id ?? "unlinked",
-      obligation.action === "reconcile_materialization" ? "Reconcile materialization" : "Complete inconclusive return",
+      obligation.action === "reconcile_materialization"
+        ? "Reconcile materialization"
+        : obligation.action === "reconcile_in_flight"
+          ? "Reconcile in-flight obligation"
+          : "Complete inconclusive return",
       obligation.hypothesis,
       obligation.pageCohortFingerprint,
       obligation.action === "reconcile_materialization"
         ? "Reuse the persisted fingerprint and repair the missing ticket link"
-        : "Atomically clear the fingerprint and ticket, append the attempt, and set wakeAt",
+        : obligation.action === "reconcile_in_flight"
+          ? "Active ticket owns execution; verify it is still open in the canonical backlog before any sleep decision"
+          : "Atomically clear the fingerprint and ticket, append the attempt, and set wakeAt",
     ]);
   const existingActions = report.due.filter((occurrence) => occurrence.action !== "materialize").map((occurrence) => [
     occurrence.ticket.id,
@@ -665,6 +676,7 @@ function withFailure(report, failure) {
     deduplicated: [],
     earliestNextDue: null,
     obligations: [],
+    inFlightObligations: [],
     loopWakes: [],
     coverageDue: [],
     failures: [...report.failures, failure],

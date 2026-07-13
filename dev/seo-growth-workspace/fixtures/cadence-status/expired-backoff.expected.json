@@ -50,6 +50,7 @@
   ],
   "earliestNextDue": null,
   "obligations": [],
+  "inFlightObligations": [],
   "loopWakes": [],
   "coverageDue": [],
   "failures": []

@@ -137,6 +137,62 @@
       "action": "reconcile_materialization"
     }
   ],
+  "inFlightObligations": [
+    {
+      "source": "loops/measurement-obligations.json",
+      "hypothesis": "Verify schema lift",
+      "pageCohortFingerprint": "sha256:inflight-cohort",
+      "baseline": {
+        "measuredAt": "2026-06-25",
+        "value": "0 rich results",
+        "evidence": "reports/schema-2026-06-25.md"
+      },
+      "metric": "rich-result impressions",
+      "decision": "keep or revert schema block",
+      "dueAt": "2026-07-08",
+      "state": "materialized",
+      "candidateFingerprint": "fp-inflight-1",
+      "ticket": {
+        "id": "SEO-051",
+        "status": "open"
+      },
+      "attempts": [],
+      "wakeAt": null,
+      "resolvedAt": null,
+      "calibrationNote": null,
+      "successor": null,
+      "priority": null,
+      "area": null,
+      "action": "reconcile_in_flight"
+    },
+    {
+      "source": "loops/measurement-obligations.json",
+      "hypothesis": "Improve indexation",
+      "pageCohortFingerprint": "sha256:docs-cohort",
+      "baseline": {
+        "measuredAt": "2026-07-01",
+        "value": "60% indexed",
+        "evidence": ".seo/reports/indexation-2026-07-01.json"
+      },
+      "metric": "indexed URL share",
+      "decision": "retain or revert internal links",
+      "dueAt": "2026-07-10",
+      "state": "materialized",
+      "candidateFingerprint": "sha256:docs-attempt-1",
+      "ticket": {
+        "id": "SEO-105",
+        "status": "open"
+      },
+      "attempts": [],
+      "wakeAt": "2026-07-10",
+      "resolvedAt": null,
+      "calibrationNote": null,
+      "successor": null,
+      "priority": null,
+      "area": null,
+      "action": "reconcile_in_flight"
+    }
+  ],
   "loopWakes": [],
   "coverageDue": [],
   "failures": []

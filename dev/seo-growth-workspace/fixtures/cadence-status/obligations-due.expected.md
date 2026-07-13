@@ -16,3 +16,5 @@ Earliest next-due: 2026-07-06
 | unlinked | Reconcile materialization | Reconcile ticket creation | sha256:ticket-crash | Reuse the persisted fingerprint and repair the missing ticket link |
 | unlinked | Reconcile materialization | Recover due materialization | sha256:due-crash | Reuse the persisted fingerprint and repair the missing ticket link |
 | unlinked | Reconcile materialization | Recover pending materialization | sha256:pending-crash | Reuse the persisted fingerprint and repair the missing ticket link |
+| SEO-051 | Reconcile in-flight obligation | Verify schema lift | sha256:inflight-cohort | Active ticket owns execution; verify it is still open in the canonical backlog before any sleep decision |
+| SEO-105 | Reconcile in-flight obligation | Improve indexation | sha256:docs-cohort | Active ticket owns execution; verify it is still open in the canonical backlog before any sleep decision |

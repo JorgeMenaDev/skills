@@ -54,7 +54,7 @@ The 17 manual (b)-gates are v4 scenario attestations (2026-07-11, operator matia
 
 ## Known follow-ups
 
-- Materialized obligations with an open ticket are intentionally absent from the due list (the active ticket owns execution) and are not yet surfaced in a summary field — deliberate output-contract follow-up, not a silent gap.
+- Materialized obligations with an open ticket are surfaced as in-flight reconciliation rows in every output format (never hidden); the contract forbids sleep certificates while an unreconciled in-flight obligation exists, covering the cross-system crash between external ticket closure and ledger replacement.
 - A `pending` obligation carrying an in-flight fingerprint with a future `wakeAt` surfaces only at wake; unreachable under the documented selection-time protocol.
 - SKILL.md is over the writing-great-skills 100-line guideline (pre-existing); a future pruning pass owns it.
 - Consumer propagation and per-workspace initialization are post-merge work: the consumer hub npx update (this release) and matias#119 (initialization runs).
