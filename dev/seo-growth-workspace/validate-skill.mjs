@@ -2411,7 +2411,7 @@ section("release evaluator gate-results artifact consumption", () => {
     gateResultsVersion: 1,
     boundReportVersion: 1,
     skill: "seo-growth-workspace",
-    skillVersion: "4.0.1",
+    skillVersion: readFileSync(path.join(skillRoot, "SKILL.md"), "utf-8").match(/^version:\s*(\S+)/m)[1],
     generatedAt: new Date().toISOString(),
     operator: "matias/opus-4.8",
     sourceDigest: digest,
