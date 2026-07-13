@@ -194,4 +194,4 @@ For each qualifying or ambiguous SEO Ship, append one normalized event to `.seo/
 
 ## Contribute-back boundary
 
-When a run reveals concrete, non-duplicate friction in this skill, contribute-back may be recorded after the site run as upstream maintenance or a handoff-log note. An unattended run may write only its handoff-log note. Contribute-back never satisfies an eligibility gate, frontier rung, cadence occurrence, or three-terminal result, and never enters a site backlog.
+When a run reveals concrete, non-duplicate friction in this skill, the active workspace contract and current task scope decide whether it may be recorded after the site run as upstream maintenance or an existing in-scope handoff-log note. An unattended run may write only its normal handoff-log note when that write is already in scope. Contribute-back never satisfies an eligibility gate, frontier rung, cadence occurrence, or three-terminal result, and never enters a site backlog.

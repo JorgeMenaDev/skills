@@ -1,6 +1,6 @@
 # HogQL Data Cookbook
 
-Recurring queries for `scripts/pg-query.mjs`. Start here before writing a query from scratch; when a new query recurs across sessions, add it here (that's a contribute-back PR). All queries run as:
+Recurring queries for `scripts/pg-query.mjs`. Start here before writing a query from scratch. When a new query recurs across sessions, the active workspace contract and current task scope decide whether to add it here through the canonical release flow or record it in an existing in-scope `.growth/log.md` handoff. All queries run as:
 
 ```bash
 node scripts/pg-query.mjs --project <id> --hogql "<query>"

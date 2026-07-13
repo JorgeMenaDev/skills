@@ -1,7 +1,7 @@
 ---
 name: seo-growth-workspace
 description: "Use when starting, auditing, or operating SEO or organic growth for a product or local-business website — technical SEO, Search Console, keyword/content ops, schema, pSEO, local SEO/GBP, backlinks, AI-search visibility, conversion, and monthly reporting. Triggers: \"set up SEO\", \"audit my site\", \"my traffic dropped\", \"why am I not ranking\", \"Search Console opportunities\", \"monthly SEO report\", \"how do we show up in ChatGPT/AI search\". Creates a durable .seo workspace, captures business context, audits live/code/admin evidence, prioritizes a backlog, implements one high-leverage action, verifies reality, and logs handoff notes. Installs in a single site repo (standalone) or in an orchestrator/agent-profile repo managing many sites (hub). For standalone copywriting, paid channels, or email, use a dedicated skill."
-version: 5.1.0
+version: 5.1.1
 license: MIT
 mutating: true
 writes_to: [".seo/", "operator-declared bootstrap plan path"]
@@ -9,7 +9,7 @@ writes_to: [".seo/", "operator-declared bootstrap plan path"]
 
 # SEO Growth Workspace
 
-> **🚧 In progress — contribute back.** This skill is open source and under active, top-priority development, and every run is also product development for the skill itself. Contribute improvements of every kind — bug fixes, new features and modes, sharper references, better runbooks, new scripts, smarter workflows — not just corrections of gaps you hit. When a run reveals anything that would make the skill better, implement it and open a pull request to `JorgeMenaDev/skills` in the same session (or record the idea in the run's handoff log if the session can't). Making this skill better is part of operating it. During a site run, the post-run contribution boundary in `references/never-dry-loop.md` applies.
+> **Contribute within authority.** The active workspace contract and current task scope decide whether a run may modify this skill, open an upstream pull request, or record portable SEO-operations friction. When authorized, fix the canonical source and use its normal release flow. When upstream maintenance is not authorized, leave the skill untouched; if the normal `.seo/log.md` handoff is already in scope, record concrete, non-duplicate friction there. Invoking this skill never implies product-development scope. During a site run, the post-run contribution boundary in `references/never-dry-loop.md` applies.
 
 Run a durable SEO operating workspace for a product or local-business website. The goal is not generic advice; it is evidence, prioritization, implementation, verification, and continuity.
 

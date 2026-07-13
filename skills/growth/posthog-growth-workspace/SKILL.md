@@ -1,7 +1,7 @@
 ---
 name: posthog-growth-workspace
 description: "Use when operating data-driven growth for a product instrumented with PostHog — funnels, activation, retention, experiments, session-replay mining, campaign plays, and periodic growth reviews. Triggers: \"growth review\", \"why aren't users activating\", \"run an experiment\", \"mine session replays\", \"what does the product data say\", \"set up the growth workspace\", \"monthly growth report\". Creates a durable .growth workspace per product, reads live PostHog data CLI-first, does one verified high-leverage action per pass, and logs handoffs. Installs in a single product repo (standalone) or in an orchestrator/agent-profile repo managing many products (hub). Install/instrumentation doctrine and SEO/search-channel work belong to other skills."
-version: 1.1.0
+version: 1.1.1
 license: MIT
 mutating: true
 writes_to: [".growth/"]
@@ -9,7 +9,7 @@ writes_to: [".growth/"]
 
 # PostHog Growth Workspace
 
-> **🚧 In progress — contribute back.** This skill is open source and under active, top-priority development, and every run is also product development for the skill itself. Contribute improvements of every kind — bug fixes, new features and modes, sharper references, new cookbook queries, better playbooks, new scripts, smarter workflows — not just corrections of gaps you hit. When a run reveals anything that would make the skill better, implement it and open a pull request to `JorgeMenaDev/skills` in the same session (or record the idea in the run's handoff log if the session can't). Making this skill better is part of operating it.
+> **Contribute within authority.** The active workspace contract and current task scope decide whether a run may modify this skill, open an upstream pull request, or record portable growth-tooling friction. When authorized, fix the canonical source and use its normal release flow. When upstream maintenance is not authorized, leave the skill untouched; if the normal `.growth/log.md` handoff is already in scope, record concrete, non-duplicate friction there. Invoking this skill never implies product-development scope.
 
 Run a durable growth operating workspace on top of a product's live PostHog data. The goal is not advice; it is evidence from real events, one verified action per pass, and continuity between sessions.
 
@@ -73,7 +73,7 @@ Pick the narrowest mode that satisfies the request; default to `operate`.
 
 ## Data Access
 
-`scripts/pg-query.mjs` runs HogQL (`--project <id> --hogql "…"`) and raw API reads (`--get /api/projects/<id>/…`). Recurring queries live in `references/data-cookbook.md` — start there before writing a query from scratch; graduate a new query into the cookbook when it recurs.
+`scripts/pg-query.mjs` runs HogQL (`--project <id> --hogql "…"`) and raw API reads (`--get /api/projects/<id>/…`). Recurring queries live in `references/data-cookbook.md` — start there before writing a query from scratch; route a recurring query through that reference's contribution boundary.
 
 ## Progressive References
 
