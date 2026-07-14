@@ -127,6 +127,10 @@ All skills below are **model-invoked** — the agent can reach for them when the
 - **[cursor-subagent](./skills/software-development/cursor-subagent/SKILL.md)** — Cursor sidecar delegation for explicit Cursor/Grok exploration, review, or isolated implementation.
 - **[work-tracking](./skills/software-development/work-tracking/SKILL.md)** — Decide where multi-step work should live: repo markdown, GitHub Issues, Linear, memory, or a mix. When to promote tasks to issues and how future agents find current state.
 
+### Productivity
+
+- **[product-feedback-report](./skills/productivity/product-feedback-report/SKILL.md)** — Create resumable founder-led feedback reports for web and mobile products, with conversational capture, screenshot/video evidence, automatic prioritization, and an always-current PDF.
+
 ### DevOps
 
 - **[shiploop](./skills/devops/shiploop/SKILL.md)** — Turn a plan, fix, or feature into an unattended shipping run: GitHub issue ledger, dependency-gated phases, gated PRs, review evidence, optional worker adapters.
