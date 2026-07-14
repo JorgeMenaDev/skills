@@ -1,7 +1,7 @@
 ---
 name: seo-growth-workspace
 description: "Use when starting, auditing, or operating SEO or organic growth for a product or local-business website — technical SEO, Search Console, keyword/content ops, schema, pSEO, local SEO/GBP, backlinks, AI-search visibility, conversion, and monthly reporting. Triggers: \"set up SEO\", \"audit my site\", \"my traffic dropped\", \"why am I not ranking\", \"Search Console opportunities\", \"monthly SEO report\", \"how do we show up in ChatGPT/AI search\". Creates a durable .seo workspace, captures business context, audits live/code/admin evidence, prioritizes a backlog, implements one high-leverage action, verifies reality, and logs handoff notes. Installs in a single site repo (standalone) or in an orchestrator/agent-profile repo managing many sites (hub). For standalone copywriting, paid channels, or email, use a dedicated skill."
-version: 5.1.2
+version: 5.1.3
 license: MIT
 mutating: true
 writes_to: [".seo/", "operator-declared bootstrap plan path"]
@@ -20,6 +20,7 @@ Use this skill as a mode router. Load only the reference needed for the selected
 - Speak to the user in their preferred language; keep code identifiers in English.
 - Match the target site's language, market, and brand voice for public content.
 - Use the target repo's package manager, deployment path, auth workflow, and available UI/browser validation tool. The bundled scripts are dependency-free and run with `node` (Node 18+) in any repo.
+- When the runtime provides a research skill (for example `/research`), delegate online research legwork — documentation, third-party facts, claim-source reading — through it instead of ad-hoc web searching. Each mode's own evidence and recording contract still governs what gets captured.
 - Do not print secrets from environment files, hosting dashboards, analytics, Search Console, OAuth, email, billing, or admin surfaces.
 - Keep one current focus ticket at a time.
 - Do not create task lists outside `.seo/backlog.md`.
