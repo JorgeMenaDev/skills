@@ -263,8 +263,11 @@ function stampReconciled(workspace) {
   check(boundary.status === 7 && boundary.json?.counted === 2, "cap: event just under seven days old still counts");
   const rolledOff = run(["cap", "--workspace", ws, "--now", "2026-07-18T12:00:00Z"]);
   check(rolledOff.status === 0 && rolledOff.json?.counted === 1 && rolledOff.json?.remaining === 1, "cap: an event exactly seven days old has rolled out (window is half-open)");
-  const override = run(["cap", "--workspace", ws, "--now", "2026-07-12T12:00:00Z", "--stage", "growth"]);
-  check(override.status === 0 && override.json?.cap === 4 && override.json?.remaining === 2, "cap: --stage override wins");
+  check(run(["cap", "--workspace", ws, "--now", "2026-07-12T12:00:00Z", "--stage", "growth"]).status === 8, "cap: --stage cannot raise the cap above the persisted stage");
+  const lowered = run(["cap", "--workspace", ws, "--now", "2026-07-12T12:00:00Z", "--stage", "unknown"]);
+  check(lowered.status === 7 && lowered.json?.cap === 2, "cap: --stage may hold capacity at or below the persisted stage");
+  const preflight = run(["cap", "--workspace", ws, "--now", "2026-07-18T12:00:00Z", "--planned", "2"]);
+  check(preflight.status === 7 && preflight.json?.remaining === 1, "cap: preflight refuses a batch larger than remaining capacity");
   const ships = JSON.parse(readFileSync(path.join(ws, "loops", "ship-events.json"), "utf-8"));
   ships.capExceptions = [{ dated: "2026-07-12", grantedBy: "Jorge", site: "example.com", urls: ["https://example.com/b"], reason: "fixture exception" }];
   writeFileSync(path.join(ws, "loops", "ship-events.json"), `${JSON.stringify(ships, null, 2)}\n`);
@@ -358,6 +361,14 @@ function stampReconciled(workspace) {
   wrongIdLoop.occurrences[JSON.stringify([w.cadenceId, w.dueWindow])] = w;
   writeFileSync(wrongIdPath, `${JSON.stringify(wrongIdLoop, null, 2)}\n`);
   check(certify(wrongId, { earliestNextDue: "2026-07-14" }).status === 6, "sleep: an unrelated autopublish-* occurrence is not a quality watch (exit 6)");
+
+  const deadWatch = temp(staticFixture("autopublish-gated"));
+  const deadWatchPath = path.join(deadWatch, "loops", "frontier-sweep.json");
+  const deadWatchLoop = JSON.parse(readFileSync(deadWatchPath, "utf-8"));
+  const dw = Object.values(deadWatchLoop.occurrences)[0];
+  Object.assign(dw, { state: "blockedUntil", attempt: 1, nextAt: "2026-07-15", maxAt: "2026-07-18", ticket: { id: "SEO-900", status: "open" } });
+  writeFileSync(deadWatchPath, `${JSON.stringify(deadWatchLoop, null, 2)}\n`);
+  check(certify(deadWatch, { earliestNextDue: "2026-07-14" }).status === 6, "sleep: a blocked watch whose retry lands after the publish date does not gate it (exit 6)");
 }
 {
   const ws = temp();
@@ -407,6 +418,10 @@ function stampReconciled(workspace) {
   mkdirSync(path.join(ws, "reports"), { recursive: true });
   check(run(["stamp", "write", "--workspace", ws, "--installed", VERSION, "--now", NOW, "--report", "backlog.md"]).status === 1, "stamp: an arbitrary existing file cannot serve as the upgrade report");
   check(run(["stamp", "write", "--workspace", ws, "--installed", VERSION, "--now", NOW, "--report", "reports"]).status === 1, "stamp: a directory cannot serve as the upgrade report");
+  writeFileSync(path.join(ws, "reports", "2026-07-01-upgrade-pass-5.2.3.md"), "old report");
+  check(run(["stamp", "write", "--workspace", ws, "--installed", VERSION, "--now", NOW, "--report", "reports/2026-07-01-upgrade-pass-5.2.3.md"]).status === 1, "stamp: an old version's report cannot clear drift to the installed version");
+  writeFileSync(path.join(ws, "reports", `${NOW}-upgrade-pass-${VERSION}-2.md`), "collision-suffixed report");
+  check(run(["stamp", "write", "--workspace", ws, "--installed", VERSION, "--now", NOW, "--report", `reports/${NOW}-upgrade-pass-${VERSION}-2.md`]).status === 0, "stamp: the documented numeric collision suffix is accepted");
 }
 {
   const ws = temp();

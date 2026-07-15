@@ -78,12 +78,15 @@ Commands (every command prints one JSON object; exit codes are stable and docume
       Recording is post-publication audit truth and always succeeds — run cap
       BEFORE publishing; the report carries capExceeded for over-cap recordings.
 
-  cap [--now <date|timestamp>] [--stage unknown|early|growth|mature]
+  cap [--now <date|timestamp>] [--stage unknown|early|growth|mature] [--planned <n>]
       Rolling seven-day ship usage vs the stage cap (unknown/early 2, growth 4,
-      mature 7). Stage comes from --stage, else the newest stageStamp in loops/*.json,
-      else unknown. An event is exception-covered when every URL it counts appears in
-      a capExceptions grant in ship-events.json; covered events do not consume cap.
-      Exit 7 when no capacity remains.
+      mature 7). Stage comes from the newest stageStamp in loops/*.json, else
+      unknown; --stage may only hold capacity at or below the persisted stage —
+      raising the cap requires a dated stageStamp. Run BEFORE any qualifying
+      publication with --planned <n> for an n-Ship batch (a batch counts once
+      per URL). An event is exception-covered only when one capExceptions grant
+      names every URL it counts and the ship happened within seven days of the
+      grant's dated field. Exit 7 when the planned ships exceed remaining capacity.
 
   sleep certify --loop <file> --payload <json-file|-> [--now <date|timestamp>] [--installed <version>|--skill <SKILL.md path>]
       Validate the certificate payload (dedupeKey, fingerprint with target/mode/
@@ -782,6 +785,8 @@ function analyzeWorkspace(state, now, options = {}) {
   for (const [rung, row] of Object.entries(state.coverageFile.payload?.rungs ?? {})) {
     const expiresAt = addDays(row.observedAt, COVERAGE_MAX_AGE_DAYS[rung]);
     if (expiresAt > now.date) futureDates.push(expiresAt);
+    // A future staleAsOf invalidates the rung on that date — wake by then.
+    if (row.staleAsOf !== undefined && row.staleAsOf > now.date) futureDates.push(row.staleAsOf);
   }
   const earliestFutureDue = futureDates.sort()[0] ?? null;
   return { inFlightOccurrences, inFlightObligations, staleRungs, annotatedRungs, mirrorDrift, autopublish, dueWork, earliestFutureDue };
@@ -798,7 +803,12 @@ function qualityWatchCovers(state, windowValue) {
     for (const value of Object.values(file.payload.occurrences ?? {})) {
       if (!/quality-watch/i.test(value.cadenceId)) continue;
       const [start, end] = value.dueWindow.split("/");
-      if (start <= publishDate && publishDate <= end) return true;
+      if (!(start <= publishDate && publishDate <= end)) continue;
+      // The watch must still be able to observe the publish: active states
+      // qualify; a satisfied watch already observed its window; a blocked
+      // watch counts only when its retry arrives by the publish date.
+      if (value.state === "due" || value.state === "materialized" || value.state === "attempted" || value.state === "satisfied") return true;
+      if (value.state === "blockedUntil" && value.escalation === "none" && value.attempt < 3 && value.nextAt <= publishDate) return true;
     }
   }
   return false;
@@ -1199,10 +1209,21 @@ function cmdShipRecord(workspace, args) {
 }
 
 function resolveStage(state, args) {
+  const persisted = resolvePersistedStage(state);
   if (args.stage) {
     if (!STAGES.has(args.stage)) throw usageError("--stage must be unknown, early, growth, or mature");
-    return { stage: args.stage, source: "--stage" };
+    // The override may only hold capacity at or below the persisted policy:
+    // raising the cap requires a dated stageStamp (or a Jorge capException),
+    // never a command-line flag.
+    if (SHIP_CAPS[args.stage] > SHIP_CAPS[persisted.stage]) {
+      throw refusal(EXIT.REFUSED, `--stage ${args.stage} would raise the cap above the persisted stage ${persisted.stage} (${persisted.source}); record a dated stageStamp instead`);
+    }
+    return { stage: args.stage, source: `--stage (persisted: ${persisted.stage})` };
   }
+  return persisted;
+}
+
+function resolvePersistedStage(state) {
   const stamps = [];
   for (const file of state.loopFiles) {
     const stampValue = file.payload.stageStamp;
@@ -1250,8 +1271,15 @@ function cmdCap(workspace, args) {
   const now = parseNow(args.now);
   const state = requireValidWorkspace(workspace);
   const usage = capUsage(state, now, resolveStage(state, args));
-  const report = { command: "cap", now: now.instant.toISOString(), ...usage };
-  return { exitCode: usage.remaining > 0 ? EXIT.OK : EXIT.CAP, report };
+  // --planned <n>: preflight for an intended publication of n SEO Ships (a
+  // batch counts once per URL), so an atomic batch cannot pass on one slot.
+  let planned = 1;
+  if (args.planned !== undefined) {
+    planned = Number(args.planned);
+    if (!Number.isInteger(planned) || planned < 1) throw usageError("--planned must be a positive integer of intended SEO Ships");
+  }
+  const report = { command: "cap", now: now.instant.toISOString(), planned, ...usage };
+  return { exitCode: usage.remaining >= planned ? EXIT.OK : EXIT.CAP, report };
 }
 
 function cmdSleepCertify(workspace, args) {
@@ -1361,8 +1389,18 @@ function cmdStamp(workspace, action, args) {
     if (path.posix.isAbsolute(report) || path.win32.isAbsolute(report) || /^[A-Za-z]:/.test(report) || report.split(/[\\/]/).includes("..")) {
       throw usageError("--report must be a workspace-relative path");
     }
-    if (!/^reports\/\d{4}-\d{2}-\d{2}-upgrade-pass-[A-Za-z0-9._-]+\.md$/.test(report)) {
+    const reportMatch = /^reports\/(\d{4}-\d{2}-\d{2})-upgrade-pass-(.+?)(?:-\d+)?\.md$/.exec(report);
+    if (!reportMatch) {
       throw usageError(`--report ${report} must be the dated upgrade-pass report path that stamp report-path names`);
+    }
+    // The report must belong to THIS reconciliation: same installed version,
+    // dated today (or yesterday, for a pass crossing midnight) — an old
+    // version's report cannot clear drift to a new one.
+    if (reportMatch[2] !== installed) {
+      throw usageError(`--report names version ${reportMatch[2]} but the installed version is ${installed}; run the upgrade pass against the installed skill`);
+    }
+    if (reportMatch[1] !== now.date && reportMatch[1] !== addDays(now.date, -1)) {
+      throw usageError(`--report is dated ${reportMatch[1]} but the reconciliation date is ${now.date}; write a fresh upgrade-pass report`);
     }
     const reportAbsolute = path.join(workspace, report);
     let reportStat;
