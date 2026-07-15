@@ -1,6 +1,6 @@
 # International SEO
 
-Use for `technical-seo-fix` when the site targets multiple languages or regions. The site-type classifier in `references/phase-architecture.md` routes multilingual/multi-region sites here.
+Use for `technical-seo-fix` when the site targets multiple languages or regions. The site-type classifier in `references/first-run.md` routes multilingual/multi-region sites here.
 
 Misconfigured hreflang fails silently: Google drops broken pairs without warning and may index only one locale. Verify rendered output, never framework config.
 

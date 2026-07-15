@@ -1,6 +1,6 @@
 # Commercial Integrity
 
-Load for comparisons, alternatives, rankings, listicles, community-source pages, affiliate/referral pages, or any inclusion/order influenced by ownership or material benefit. Use the shared evidence terms in `references/evidence-conventions.md`.
+Load for comparisons, alternatives, rankings, listicles, community-source pages, affiliate/referral pages, or any inclusion/order influenced by ownership or material benefit. Use the shared evidence terms in `references/operating.md`.
 
 ## Selection and comparison contract
 
@@ -11,7 +11,7 @@ Load for comparisons, alternatives, rankings, listicles, community-source pages,
 - Link directly to each named alternative's relevant official page so readers can verify the comparison. Do not route through an affiliate redirect when a direct evidence link is needed.
 - Show a visible “last checked” or update date on the page and date material comparison evidence. Recheck rather than silently carrying stale claims forward.
 
-Substantiation belongs to `references/page-evidence.md` when that reference lands. Sponsored-link attributes and backlink mechanics belong to `references/backlinks-entity.md`; conversion-event definitions belong to `references/conversion-cta.md`.
+Substantiation belongs to `references/pages.md` when that reference lands. Sponsored-link attributes and backlink mechanics belong to `references/backlinks-entity.md`; conversion-event definitions belong to `references/conversion.md`.
 
 ## Anti-authority-rental boundary
 
@@ -23,7 +23,7 @@ Third-party publishing must serve that host's audience with original, useful con
 
 Use this specialist contract only for affiliate links, referral codes or links, coupon or promo-code pages, CPA offers, partner-funded placements, sponsored comparisons, or commission-influenced recommendations.
 
-Use [Commercial Integrity](commercial-integrity.md) for material-benefit disclosure, comparison methodology, editorial conflicts, and the anti-authority-rental boundary. Every commission-bearing relationship must appear in that required disclosure; a commission-bearing link without it fails publication. Use [Page Evidence](page-evidence.md) for claim substantiation, revision approval, and the publish gate. Use [Conversion and CTA Audits](conversion-cta.md) for event mechanics and [Evidence Conventions](evidence-conventions.md) for the shared evidence states and non-causal outcome ladder. Those references own their rules; this contract adds only affiliate-, referral-, and offer-specific controls.
+Use [Commercial Integrity](commercial-integrity.md) for material-benefit disclosure, comparison methodology, editorial conflicts, and the anti-authority-rental boundary. Every commission-bearing relationship must appear in that required disclosure; a commission-bearing link without it fails publication. Use [Page Evidence](pages.md) for claim substantiation, revision approval, and the publish gate. Use [Conversion and CTA Audits](conversion.md) for event mechanics and [Evidence Conventions](operating.md) for the shared evidence states and non-causal outcome ladder. Those references own their rules; this contract adds only affiliate-, referral-, and offer-specific controls.
 
 ### Offer evidence and publication state
 
@@ -40,7 +40,7 @@ Before publication, record one evidence entry per offer, discount code, referral
 
 Schedule a human recheck before expiry, with timing proportional to volatility and enough lead time to change the page. At expiry, promptly remove, unpublish, or update the offer and its CTA; do not silently redirect it or replace it with an unrelated affiliate destination. Broken, incorrect, withdrawn, or terminated offers follow the same prompt removal/update path. Automated checks may alert but never establish truth or publish changes without human verification. Never describe a dated offer as evergreen, “live,” or “real-time” beyond what dated evidence supports.
 
-Price, savings, fees, urgency, exclusivity, earnings, availability, and “best” claims must pass [Page Evidence](page-evidence.md) with the applicable date, geography, audience eligibility, comparison basis, inclusions/exclusions, and limitations. False scarcity or unsupported superlatives fail publication.
+Price, savings, fees, urgency, exclusivity, earnings, availability, and “best” claims must pass [Page Evidence](pages.md) with the applicable date, geography, audience eligibility, comparison basis, inclusions/exclusions, and limitations. False scarcity or unsupported superlatives fail publication.
 
 ### Program and trademark capture
 
@@ -54,13 +54,13 @@ This is an escalation and evidence gate, not legal approval. Do not embed jurisd
 
 ### Commission lifecycle and reporting
 
-Use the observable events owned by [Conversion and CTA Audits](conversion-cta.md), then keep these affiliate states distinct:
+Use the observable events owned by [Conversion and CTA Audits](conversion.md), then keep these affiliate states distinct:
 
 `tracked conversion` → `merchant validation` → `confirmed/approved conversion` → `approved commission` → `paid commission` → `reversed/adjusted` → `net revenue`
 
 A tracked click is not a conversion. A tracked conversion is not confirmed or approved. An approved conversion is not an approved commission: the merchant may validate the conversion before calculating or approving the commission payable, so conversion approval is never evidence of commission approval or amount. None of those states is payout or revenue. Approved commission is the pre-deduction gross amount the program approved. Paid commission is the cash actually received, which may already reflect withheld reversals or fees — record the reconciliation: paid commission must equal approved commission minus each separately identified withheld deduction. `reversed/adjusted` records refunds, cancellations, reversals, chargebacks, invalid leads, or later merchant adjustments as a distinct state and separately identified amount; reports must never show only a figure netted into revenue. Net revenue is paid commission minus only those reversal/adjustment amounts and genuine program revenue deductions NOT already reflected in the cash received — a deduction is subtracted exactly once, either inside the payout reconciliation or after it, never both. Media spend, tooling, and attributable content/operating costs are expenses, not revenue deductions — report them separately and label the result of subtracting them `contribution/profit`, never `net revenue`. Record state, amount/currency, period, merchant/program evidence location, checked date, limitations, and adjustments without upgrading one state into another. Code use, direct-code journeys, cookie windows, cross-device paths, QR traffic, last-click rules, and blocked tracking are attribution limitations, not proof of source causation.
 
-Report results with the [shared non-causal outcome ladder](evidence-conventions.md#non-causal-outcome-ladder). Keep tracked/approved pipeline values visibly separate from paid commission and net revenue; never call pending commission revenue. The [Commercial Integrity disclosure](commercial-integrity.md#material-benefit-disclosure) is a structural prerequisite for every commission-bearing relationship, including links whose commission is only possible or pending.
+Report results with the shared non-causal outcome ladder (`references/operating.md`). Keep tracked/approved pipeline values visibly separate from paid commission and net revenue; never call pending commission revenue. The material-benefit disclosure above is a structural prerequisite for every commission-bearing relationship, including links whose commission is only possible or pending.
 
 ### Sensitive codes and terms
 

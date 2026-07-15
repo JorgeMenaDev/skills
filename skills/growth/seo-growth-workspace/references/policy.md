@@ -1,6 +1,6 @@
 # SEO Operating Policy
 
-Use this reference for the fixed operating values shared by lifecycle classification, cadence, frontier discovery, gates, publishing capacity, and measurement. These values change defaults and capacity only; they never grant publishing authority or bypass an existing review, evidence, safety, or human-approval gate.
+Use this reference for the fixed operating values shared by lifecycle classification, cadence, frontier discovery, gates, publishing capacity, and measurement (loop semantics: references/operating.md; machine enforcement: scripts/loop-state.mjs). These values change defaults and capacity only; they never grant publishing authority or bypass an existing review, evidence, safety, or human-approval gate.
 
 ## SEO Stage
 

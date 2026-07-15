@@ -1,6 +1,6 @@
 # Backlinks, Citations, And Entity Authority
 
-Use the evidence states, provenance fields, and non-causal outcome ladder in `references/evidence-conventions.md`. Comparisons and commercial relationships consume `references/commercial-integrity.md` rather than redefining disclosure rules here.
+Use the evidence states, provenance fields, and non-causal outcome ladder in `references/operating.md`. Comparisons and commercial relationships consume `references/commercial-integrity.md` rather than redefining disclosure rules here.
 
 Use for backlink audits, authority planning, local citations, and brand/entity optimization.
 
@@ -14,7 +14,16 @@ Columns:
 
 Prioritize: domains linking to all top competitors but not the target, then two competitors, then relevant one-offs, then legitimate directories/associations/partner/resource pages.
 
-Save gap analysis using `templates/backlink-gap.md`.
+Save gap analysis to a dated report shaped as:
+
+```md
+# Backlink and entity gap report - YYYY-MM-DD
+Scope: target, competitors, data source
+## Competitor backlink overlap | Domain | URL | Competitors linked | Site type | Link type | Authority | Chance | Effort | Outreach strategy | Next action |
+## Citation/NAP issues         | Platform | Exists | Name | Address | Phone | Website | Duplicate | Issue | Fix priority |
+## Entity authority            | Signal (schema, brand SERP, profiles, associations, sameAs) | Status | Evidence | Next action |
+## 90-day plan                 | Month | Targets | Outreach/citation work | Expected outcome |
+```
 
 ## Listicle inclusion outreach
 
@@ -24,9 +33,9 @@ Qualify the page before contact. Prefer page relevance, editorial legitimacy, pu
 
 Before outreach begins, declare a prospect cap and a review threshold (for example, review after the first 10 individually researched contacts). Stop at that threshold until a human reviews qualification quality, reply dispositions, complaints, paid requests, and message specificity and explicitly approves the next bounded batch. Never silently turn manual-first outreach into bulk or generic volume outreach.
 
-Record each prospect in `.seo/backlinks/work-log.md` under **Authority funnel (v4)**. Preserve the legacy six-column table untouched; whole-file migration is an explicit operator opt-in only. Use the lifecycle `discovered → qualified → contacted → replied → won → live/verified → lost/expired` and fill query, market/geo, source URL, qualification, limitations, and date plus reply disposition, paid request and amount, link-live and indexable as separate facts, 30/90-day check dates, referral, qualified conversion, cost, evidence, and next step. A won link does not skip live verification; a live link does not prove indexability. Label observations and outcomes using `references/evidence-conventions.md`.
+Record each prospect in `.seo/backlinks/work-log.md` under **Authority funnel (v4)**. Preserve the legacy six-column table untouched; whole-file migration is an explicit operator opt-in only. Use the lifecycle `discovered → qualified → contacted → replied → won → live/verified → lost/expired` and fill query, market/geo, source URL, qualification, limitations, and date plus reply disposition, paid request and amount, link-live and indexable as separate facts, 30/90-day check dates, referral, qualified conversion, cost, evidence, and next step. A won link does not skip live verification; a live link does not prove indexability. Label observations and outcomes using `references/operating.md`.
 
-Paid-placement requests do not become undisclosed editorial wins: apply the disclosure contract in `references/commercial-integrity.md` and the sponsored-link mechanics below. Reject reciprocal schemes, link farms, mass outreach, authority rental, and opaque indexers; consume the anti-authority-rental boundary in `references/commercial-integrity.md` rather than recreating it here. Image distribution or rights-based reclamation additionally passes `references/image-rights.md` before it can enter this same funnel.
+Paid-placement requests do not become undisclosed editorial wins: apply the disclosure contract in `references/commercial-integrity.md` and the sponsored-link mechanics below. Reject reciprocal schemes, link farms, mass outreach, authority rental, and opaque indexers; consume the anti-authority-rental boundary in `references/commercial-integrity.md` rather than recreating it here. Image distribution or rights-based reclamation additionally passes `references/backlinks-entity.md` before it can enter this same funnel.
 
 ## Directory Submissions
 

@@ -1,6 +1,6 @@
 # Local SEO / GBP report - YYYY-MM-DD
 
-Use the shared vocabulary in the skill's `references/evidence-conventions.md`. Keep observation, action-completed, and outcome records separate. Local-AI observations do not belong in this report.
+Use the shared vocabulary in the skill's `references/operating.md`. Keep observation, action-completed, and outcome records separate. Local-AI observations do not belong in this report.
 
 ## Scope
 

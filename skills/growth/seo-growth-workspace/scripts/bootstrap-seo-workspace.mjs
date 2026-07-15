@@ -78,7 +78,7 @@ function parseArgs(argv) {
 
 const taxonomyStub = `# SEO ticket taxonomy (stub)
 
-This install is missing templates/taxonomy.md. Read references/ticket-architecture.md and fill this file in.
+This install is missing templates/taxonomy.md. Read references/operating.md and fill this file in.
 `;
 
 async function taxonomyContent() {
@@ -212,7 +212,7 @@ This is the current-state master for assets considered for distribution or recla
 function hubReadme() {
   return `# SEO hub workspace
 
-This hub manages several site workspaces. See references/hub-mode.md.
+This hub manages several site workspaces. See references/workspace.md.
 
 - \`.seo/registry.md\` is the canonical route registry.
 - \`.seo/sites/<id>/\` holds each site's schema-1 workspace.
@@ -223,7 +223,7 @@ This hub manages several site workspaces. See references/hub-mode.md.
 function registrySeed() {
   return `# Portfolio Registry
 
-See references/portfolio-registry.md. Hub roots are relative to this file.
+See references/workspace.md. Hub roots are relative to this file.
 
 | Site | Workspace root | GSC property | Credentials | Market / language | Publish gate | Notes |
 |---|---|---|---|---|---|---|
@@ -281,7 +281,7 @@ async function writeMissing(baseDir, files, allowlist = null, root = baseDir) {
 
 function reconciliationContent() {
   // Creation-time stamp: a workspace created under the current version is
-  // reconciled by construction (references/never-dry-loop.md § Upgrade recap).
+  // reconciled by construction (references/operating.md § Upgrade recap).
   // `report: null` marks initial provenance, not a recap product.
   return `${JSON.stringify({ schema: 1, reconciledSkillVersion: SKILL_VERSION, reconciledAt: new Date().toISOString().slice(0, 10), report: null }, null, 2)}\n`;
 }

@@ -26,7 +26,7 @@ occurrences and measurement obligations as draft backlog rows or structured JSON
 It also names the earliest next-due date for sleep-certificate continuity, and
 the JSON report carries an advisory reconciliation block read from
 <workspace>/reconciliation.json (stampState present|absent|malformed plus the
-stamp fields); drift semantics stay owned by the never-dry-loop contract.
+stamp fields); drift semantics stay owned by the operating contract (references/operating.md).
 
 Options:
   --workspace  Explicit path to the resolved .seo workspace root.

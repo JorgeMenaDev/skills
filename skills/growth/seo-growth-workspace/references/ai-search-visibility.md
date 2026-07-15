@@ -1,10 +1,10 @@
 # AI Search Visibility
 
-Use the [shared evidence states, provenance fields, buyer stages, and non-causal outcome ladder](evidence-conventions.md). This reference adds AI-observation fields; it does not redefine the shared vocabulary.
+Use the [shared evidence states, provenance fields, buyer stages, and non-causal outcome ladder](operating.md). This reference adds AI-observation fields; it does not redefine the shared vocabulary.
 
 Use for the `ai-visibility` phase of every first run, for `operate` checkpoints and tickets in the `ai-visibility` area, and whenever the user asks how the site shows up in an assistant or AI search surface. AI visibility is part of ordinary organic growth work, not a separate GEO mode or backlog.
 
-No special markup tricks exist for Google AI surfaces: AI Overviews and AI Mode use core Search systems, and Google says no AI-specific markup or files are required. This workflow is about access, extractability, and honest measurement, not a scoring model, preferred word count, or visibility forecast. Keep the framing from the AI Search Note in `references/phase-architecture.md`.
+No special markup tricks exist for Google AI surfaces: AI Overviews and AI Mode use core Search systems, and Google says no AI-specific markup or files are required. This workflow is about access, extractability, and honest measurement, not a scoring model, preferred word count, or visibility forecast. Keep the framing from the AI Search Note in `references/first-run.md`.
 
 Index backing matters, but engines may combine their own crawlers, partner indexes, and user-triggered fetches. Treat a missing direct-crawler path as reduced eligibility, not proof that a URL can never surface through another source.
 
@@ -46,7 +46,7 @@ AI answers are nondeterministic dated samples, never rankings or exhaustive tele
 
 ### Interpretation and outcomes
 
-Keep these observations distinct: impression/exposure, mention, recommendation, citation/link, referral session, conversion event, qualified lead or completed/qualified call, customer, revenue, and assisted-conversion interpretation. The [shared outcome ladder](evidence-conventions.md) supplies the canonical evidence states; `references/conversion-cta.md` owns conversion and qualification workflows, and `references/local-seo-gbp.md` owns local/GBP measurement.
+Keep these observations distinct: impression/exposure, mention, recommendation, citation/link, referral session, conversion event, qualified lead or completed/qualified call, customer, revenue, and assisted-conversion interpretation. The [shared outcome ladder](operating.md) supplies the canonical evidence states; `references/conversion.md` owns conversion and qualification workflows, and `references/local-seo-gbp.md` owns local/GBP measurement.
 
 A recommendation is not a click; a referral is not a lead; and a conversion event is not automatically qualified. A GBP or assistant call-button click is not proof of a completed, answered, or qualified call. UTMs help only where a controllable tagged link survives. Assistant-selected links and offline/direct journeys often do not preserve them. Geo-grid scanning is a sampling methodology, not a Google metric.
 
@@ -89,7 +89,7 @@ Use a non-scored passage-extractability matrix for a page/query pair. Do not pre
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | verbatim query | public URL | page family | locator | observed evidence | observed evidence | yes/no/not checked + artifact | evidence limit | existing content, technical, or AI-visibility ticket | dated recheck + artifact |
 
-Use `references/technical-seo.md` for raw/server-rendered HTML proof and `references/page-evidence.md` for claim substantiation. A successful fetch does not prove support or extractability.
+Use `references/technical-seo.md` for raw/server-rendered HTML proof and `references/pages.md` for claim substantiation. A successful fetch does not prove support or extractability.
 
 Use a dated URL-backed source footprint to distinguish owned sources from independent evidence:
 

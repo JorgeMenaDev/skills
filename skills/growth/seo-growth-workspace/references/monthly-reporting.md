@@ -50,8 +50,8 @@ Missing inputs become recorded gaps, not fabricated numbers. When GSC exports ar
 
 `$SKILL_DIR/scripts/monthly-report.mjs` reports one target per run. For a portfolio, do not blend sites into one report:
 
-- Iterate the registry (`references/portfolio-registry.md`), one target per run, writing one dated report per site into that site's `.seo/reports/` (hub mode: `.seo/sites/<slug>/reports/`).
-- Then build one cross-site rollup from `templates/portfolio-index.md`, using `node "$SKILL_DIR/scripts/portfolio-status.mjs" --registry <file>` for the ranked table. In hub mode the rollup lives at the hub's `.seo/portfolio-index.md`.
+- Iterate the registry (`references/workspace.md`), one target per run, writing one dated report per site into that site's `.seo/reports/` (hub mode: `.seo/sites/<slug>/reports/`).
+- Then build one cross-site rollup at the hub's `.seo/portfolio-index.md`: the dated ranked table from `node "$SKILL_DIR/scripts/portfolio-status.mjs" --registry <file>` (ranking is prioritization evidence, not the decision), links to each site's dated report (never blended), and one line per site-owed action (approvals, missing credentials, blocked publish gates).
 - Link the per-site reports from the index; never merge their metrics. Ticket IDs, deltas, and next actions stay per-site.
 
 ## No-Mutation Validation

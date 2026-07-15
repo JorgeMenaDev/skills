@@ -20,7 +20,7 @@ Seed sources, strongest evidence first:
 1. First-party GSC data: `node "$SKILL_DIR/scripts/gsc-opportunities.mjs" --input "$SITE_WORKSPACE/reports/gsc-latest.json" --format backlog` — queries already earning impressions.
 2. Competitor demand gaps (matrix below).
 3. Utility/tool opportunities: calculators, generators, checkers, formatters, templates, and public datasets where the SERP intent is task completion; load `utility-tool-pages.md` before planning these.
-4. Community demand research: manually inspect relevant forums and Q&A sources for questions and frustrations. This is research input only; publishing an owned synthesis of community material is a separate specialist surface governed by [Community-source Pages](community-source-pages.md).
+4. Community demand research: manually inspect relevant forums and Q&A sources for questions and frustrations. This is research input only; publishing an owned synthesis of community material is a separate specialist surface governed by [Community-source Pages](content-ops.md).
 5. Support tickets and sales-call questions/objections.
 
 Validate each candidate against the live SERP: what ranks, in what format (guide, listicle, tool, comparison), which SERP features. Write only where the format matches intent and you can add information gain.
@@ -68,7 +68,7 @@ Actions: optimize an existing page, create a page/article, import to the content
 
 When competitor or keyword research shows task-completion demand, consider a real utility page before a blog post. Good candidates are calculators, generators, checkers, formatters, analyzers, templates, or curated examples that solve the query on-page and naturally lead to the product.
 
-Load `utility-tool-pages.md` and use `templates/utility-tool-page-plan.md` when creating more than one utility page or a tools hub. Do not treat empty forms, thin AI wrappers, or keyword-swapped generators as publish-ready content.
+Load `utility-tool-pages.md` (its Plan artifact section owns the plan shape) when creating more than one utility page or a tools hub. Do not treat empty forms, thin AI wrappers, or keyword-swapped generators as publish-ready content.
 
 ## Calendar Verification
 
@@ -94,7 +94,7 @@ A human reviews every published article for added value. Automated calendar publ
 
 ### Page-evidence publish gate
 
-For every new or materially revised SEO page, apply [Page Evidence](page-evidence.md) before drafting/import and again before publish. Material factual claims must trace to fetched original sources; assistants may discover sources but are not final authority when an original exists. A reachable URL is not proof that it supports a claim. Start with statistics, dates, prices, legal/regulatory assertions, comparative claims, and named third-party assertions; record dated checks for time-sensitive evidence and use short paraphrased support notes or locators, not long copied passages.
+For every new or materially revised SEO page, apply [Page Evidence](pages.md) before drafting/import and again before publish. Material factual claims must trace to fetched original sources; assistants may discover sources but are not final authority when an original exists. A reachable URL is not proof that it supports a claim. Start with statistics, dates, prices, legal/regulatory assertions, comparative claims, and named third-party assertions; record dated checks for time-sensitive evidence and use short paraphrased support notes or locators, not long copied passages.
 
 The evidence belongs to the exact page revision. Engine-native revision evidence is authoritative when available; otherwise use the dated per-page fallback defined there. Publish only when the page has credible information gain, applicable claim/voice/asset support, an immutable rights snapshot, and human approval. Completion also requires rendered-citation survival through the delivery check. Do not publish, schedule, or auto-publish past a failed gate.
 
@@ -123,7 +123,7 @@ Use `templates/content-plan.md`. Include:
 
 When the target uses a content engine:
 
-- Load `references/adapters.md` and the repo's local adapter before creating/importing/scheduling content work.
+- Load `references/workspace.md` and the repo's local adapter before creating/importing/scheduling content work.
 - If the engine pushes finished articles to the target via webhook, build or audit the receiving endpoint with `references/content-engine-webhooks.md`.
 - Store durable project config and keyword batches in the target repo's established content-engine paths.
 - Prefer a small import script for repeatability.
@@ -136,7 +136,7 @@ When the target uses a content engine:
 
 Use this contract only for an owned page that synthesizes manually accessed, **publicly accessible** community sources: forums, Reddit-like communities, and Q&A sites readable without membership, login, or invitation. Access-controlled conversations (private Discord/Slack workspaces, members-only forums, closed groups) are NOT publishable sources by default — being a member does not grant republication rights. Access-controlled content may be used only with explicit, recorded authorization from both the author of each used message and the community's owner/administrator, and it still follows every attribution, redaction, and removal rule below. Community language used only for demand research remains governed by [Content Operations](content-ops.md).
 
-Use the vocabulary in [Evidence Conventions](evidence-conventions.md). Use [Page Evidence](page-evidence.md) for substantiation, information gain, revision approval, and the publish gate. When a page has commercial elements, use [Commercial Integrity](commercial-integrity.md) for selection methodology, disclosure, and the anti-authority-rental boundary. Those shared contracts own their rules; this reference adds only community-specific requirements.
+Use the vocabulary in [Evidence Conventions](operating.md). Use [Page Evidence](pages.md) for substantiation, information gain, revision approval, and the publish gate. When a page has commercial elements, use [Commercial Integrity](commercial-integrity.md) for selection methodology, disclosure, and the anti-authority-rental boundary. Those shared contracts own their rules; this reference adds only community-specific requirements.
 
 ## Community-source publishing contract
 
@@ -190,7 +190,7 @@ The week-12 gate passes expansion only when all pre-registered criteria pass. No
 - **No scraping:** gather sources only through manual, lawful access; do not bulk copy comments or use opaque indexers.
 - **No covert participation:** no astroturfing, undisclosed publisher participation, posting to farm quotes, manufactured questions, or engagement designed to create source material.
 - **No parasite publishing:** do not rent third-party authority or use artificial discovery/link networks; apply the [Commercial Integrity anti-authority-rental boundary](commercial-integrity.md#anti-authority-rental-boundary).
-- Every page must pass the [Page Evidence publish and delivery gate](page-evidence.md#publish-and-delivery-gate), and every page with commercial elements must also pass [Commercial Integrity](commercial-integrity.md).
+- Every page must pass the [Pages publish and delivery gate](pages.md), and every page with commercial elements must also pass [Commercial Integrity](commercial-integrity.md).
 - No ranking-time, traffic, conversion, revenue, or AI-citation guarantee; no broad rollout based only on anecdote, indexation, or impressions.
 - **Anti-token-swap assertion:** reject two or more pages that share a template or substantially identical section logic while swapping the keyword, community name, threads, or quotes. Each page must have a page-specific source set, page-specific analysis, and page-specific information gain. If any of those three is interchangeable between proposed pages, every affected page fails publication.
 

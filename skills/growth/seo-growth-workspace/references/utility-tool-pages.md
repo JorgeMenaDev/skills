@@ -83,3 +83,17 @@ Before handoff, record evidence in `.seo/audit.md` or `.seo/pseo/plan.md`:
 Choose utility pages before blog posts when the SERP intent is task completion, the product can provide the task output directly, and a tool result creates a natural product-qualified lead.
 
 Choose blog/content first when the query needs education, comparison, opinion, experience, or trust proof more than an interactive result.
+
+## Plan artifact
+
+Track a batch or tools hub in `.seo/pseo/utility-tool-plan.md` (or the ticket's report):
+
+```md
+# Utility tool page plan — last updated YYYY-MM-DD
+Decision: planned / blocked / ready for small batch / publishing — reason
+## Opportunity matrix | Candidate | Query / SERP intent | Volume / trend | Difficulty | Product fit | Tool satisfies intent? | Conversion path | Priority |
+## Page specs         | URL | Job-to-be-done | Tool / data required | Unique content | CTA | Related internal links | Status |
+## Tool hub           — hub URL and grouping logic
+## Quality gates      | Gate (works without signup; unique metadata; explanatory content; CTA matched; indexability verified; hub links; analytics events; desktop/mobile QA) | Status | Evidence |
+## First batch        | URL | Status | Notes |  + expansion / rollback plan
+```

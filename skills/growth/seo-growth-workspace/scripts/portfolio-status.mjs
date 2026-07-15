@@ -8,7 +8,7 @@ function usage() {
   return `Usage:
   node portfolio-status.mjs --registry <file> [--format md|json]
 
-Reads the portfolio registry markdown table (references/portfolio-registry.md Row
+Reads the portfolio registry markdown table (references/workspace.md Row
 Shape) and, for each site, inspects that workspace's state to build a ranked
 "which site deserves the next SEO hour" table. Read-only: no network, no
 secrets, never writes.
