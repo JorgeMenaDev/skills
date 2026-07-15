@@ -12,7 +12,7 @@ Operator records who authorized and who executed, e.g. `Jorge / matias-fable5` �
 
 ## Upgrade context
 
-Drift state found — one of `stamp absent`, `stamp malformed` (preserve the bad content or parse error here), or the stamp's version — and the load-bearing semantic changes observed between the previous reconciled version (or the conservative baseline when it is `never`/`malformed`: treat all current protocols as unreconciled) and the installed version — the scope everything below is judged against:
+Drift state found — one of `stamp absent`, `stamp malformed` (preserve the bad content or parse error here), or the stamp's version — and the load-bearing semantic changes observed between the previous reconciled version (or the conservative baseline when it is `never`/`malformed`: treat all current protocols as unreconciled) and the installed version — the scope everything below is judged against. Under `never`/`malformed` there is no version pair and that is the expected shape: describe the current protocols' load-bearing demands against the observed workspace state. If a version window was reconstructed from installer/version-control history (see check 2), record the reconstruction evidence here:
 
 -
 
@@ -26,7 +26,7 @@ One row per schema-1 file read (`loops/*.json`, ledgers, certificates):
 
 ## 2. Open-row re-triage
 
-Every open backlog row, re-judged against the current gates — closed and Done rows are not re-opened. When the gate-owning contracts are unchanged across the version window, a light conformance scan suffices; this check never becomes a re-audit:
+Every open backlog row, re-judged against the current gates — closed and Done rows are not re-opened. When the gate-owning contracts are unchanged across the version window, a light conformance scan suffices; under `never`, the window may be reconstructed from the consuming repo's installer/version-control history (evidence in Upgrade context), otherwise every open row gets full re-judgment, classed by the creating-version test (`references/never-dry-loop.md` check 2; unknowable creating version → `version-driven` by convention, reason-noted). This check never becomes a re-audit:
 
 | Row | Current-gate finding | Outcome (`keep` / `amend` / `close`) | Class (`version-driven` / `incidental hygiene`) | Reason | Dated |
 | --- | --- | --- | --- | --- | --- |
@@ -34,7 +34,7 @@ Every open backlog row, re-judged against the current gates — closed and Done 
 
 ## 3. Coverage invalidation review
 
-Every rung row reviewed under the load-bearing test — invalidate only when the changed clause alters what the rung's method would observe, accept, or reject; record the reasoning either way. A stale mark = additive `staleAsOf`/`staleReason` on the ledger row **plus** a normal backlog row as the operative exit:
+Every rung row reviewed under the load-bearing test — invalidate only when the changed clause alters what the rung's method would observe, accept, or reject; under `never` the test degenerates to "does the artifact's method satisfy the current rung contract"; a pure policy-mirror change (e.g. `maxAgeDays`) is never load-bearing by itself, though ordinary expiry under the current policy value still applies through the coverage reader. Record the reasoning either way. A stale mark = additive `staleAsOf`/`staleReason` on the ledger row **plus** a normal backlog row as the operative exit:
 
 | Rung | Certified under | Load-bearing reasoning (invalidated by / kept because) | Stale annotation written | Exit backlog row |
 | --- | --- | --- | --- | --- |
@@ -54,5 +54,5 @@ Real work surfaced by the recap exits into normal backlog rows — list the rows
 
 ## Re-stamp
 
-- This workspace's own stamp re-stamped (`<workspace>/reconciliation.json` — standalone `.seo/reconciliation.json`, hub `.seo/sites/<slug>/reconciliation.json`): `reconciledSkillVersion` → <installed version>, `reconciledAt` → <date>, `report` → this file's path. Sibling workspaces are untouched.
-- Confirm: no Done row, past report, or ledger history was rewritten; no state was migrated or deleted.
+- This workspace's own stamp re-stamped (`<workspace>/reconciliation.json` — standalone `.seo/reconciliation.json`, hub `.seo/sites/<slug>/reconciliation.json`): `reconciledSkillVersion` → <installed version>, `reconciledAt` → <date>, `report` → this file's **workspace-relative** path (`reports/…`, never repo-root-relative). Sibling workspaces are untouched.
+- Confirm: no Done row, past report, or ledger history was rewritten; no state was migrated or deleted. (Coverage-row `maxAgeDays` mirror corrections and additive `staleAsOf`/`staleReason` annotations are the two permitted in-place ledger mutations and are not history rewrites — `observedAt` and `artifact` stay untouched.)
