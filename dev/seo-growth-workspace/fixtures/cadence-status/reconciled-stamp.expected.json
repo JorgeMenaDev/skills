@@ -1,7 +1,7 @@
 {
   "now": "2026-07-12",
-  "status": "fail_closed",
-  "cadenceState": "invalid",
+  "status": "ok",
+  "cadenceState": "absent",
   "obligationState": "absent",
   "coverageState": "absent",
   "due": [],
@@ -12,16 +12,11 @@
   "inFlightObligations": [],
   "loopWakes": [],
   "coverageDue": [],
-  "failures": [
-    {
-      "file": "loops/weekly.json",
-      "reason": "loop state must be a JSON object"
-    }
-  ],
+  "failures": [],
   "reconciliation": {
-    "stampState": "absent",
-    "reconciledSkillVersion": null,
-    "reconciledAt": null,
-    "report": null
+    "stampState": "present",
+    "reconciledSkillVersion": "9.9.9",
+    "reconciledAt": "2026-07-01",
+    "report": "reports/2026-07-01-upgrade-recap-9.9.9.md"
   }
 }

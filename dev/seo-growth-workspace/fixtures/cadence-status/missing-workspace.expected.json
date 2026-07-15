@@ -17,5 +17,11 @@
       "file": ".",
       "reason": "workspace root does not exist"
     }
-  ]
+  ],
+  "reconciliation": {
+    "stampState": "absent",
+    "reconciledSkillVersion": null,
+    "reconciledAt": null,
+    "report": null
+  }
 }

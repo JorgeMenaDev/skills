@@ -1521,6 +1521,8 @@ section("cadence-status fixtures", () => {
     { name: "dual-schema-conflict", format: "json", expected: "dual-schema-conflict.expected.json" },
     { name: "missing-schema", format: "json", expected: "missing-schema.expected.json" },
     { name: "invalid-superseded", format: "json", expected: "invalid-superseded.expected.json" },
+    { name: "reconciled-stamp", format: "json", expected: "reconciled-stamp.expected.json" },
+    { name: "malformed-stamp", format: "json", expected: "malformed-stamp.expected.json" },
   ];
 
   for (const fixtureCase of cases) {

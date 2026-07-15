@@ -17,5 +17,11 @@
       "file": "loops/weekly.json",
       "reason": "schema or schemaVersion field is missing"
     }
-  ]
+  ],
+  "reconciliation": {
+    "stampState": "absent",
+    "reconciledSkillVersion": null,
+    "reconciledAt": null,
+    "report": null
+  }
 }
