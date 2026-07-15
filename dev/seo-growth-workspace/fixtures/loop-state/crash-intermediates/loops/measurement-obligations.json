@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "obligations": {
+    "[\"Fixture hypothesis lost ticket\",\"sha256:crash-null-ticket\"]": {
+      "hypothesis": "Fixture hypothesis lost ticket",
+      "pageCohortFingerprint": "sha256:crash-null-ticket",
+      "baseline": {
+        "measuredAt": "2026-07-01",
+        "value": "baseline value",
+        "evidence": "reports/baseline.md"
+      },
+      "metric": "fixture metric",
+      "decision": "fixture decision",
+      "dueAt": "2026-07-10",
+      "state": "materialized",
+      "candidateFingerprint": "sha256:crash-fp-1",
+      "ticket": null,
+      "attempts": [],
+      "wakeAt": "2026-07-10",
+      "resolvedAt": null,
+      "calibrationNote": null,
+      "successor": null
+    },
+    "[\"Fixture hypothesis closed ticket\",\"sha256:crash-closed-ticket\"]": {
+      "hypothesis": "Fixture hypothesis closed ticket",
+      "pageCohortFingerprint": "sha256:crash-closed-ticket",
+      "baseline": {
+        "measuredAt": "2026-07-01",
+        "value": "baseline value",
+        "evidence": "reports/baseline.md"
+      },
+      "metric": "fixture metric",
+      "decision": "fixture decision",
+      "dueAt": "2026-07-10",
+      "state": "materialized",
+      "candidateFingerprint": "sha256:crash-fp-2",
+      "ticket": { "id": "SEO-902", "status": "closed" },
+      "attempts": [],
+      "wakeAt": "2026-07-10",
+      "resolvedAt": null,
+      "calibrationNote": null,
+      "successor": null
+    }
+  }
+}

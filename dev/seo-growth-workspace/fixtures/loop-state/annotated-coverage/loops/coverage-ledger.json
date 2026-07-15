@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "rungs": {
+    "B": {
+      "observedAt": "2026-07-10",
+      "maxAgeDays": 14,
+      "artifact": "reports/gsc-opportunities-2026-07-10.md",
+      "staleAsOf": "2026-07-11",
+      "staleReason": "rung method changed under the upgraded contract; re-observation filed as SEO-901"
+    },
+    "E": {
+      "observedAt": "2026-07-10",
+      "maxAgeDays": 30,
+      "artifact": "reports/serp-2026-07-10.md"
+    }
+  }
+}
