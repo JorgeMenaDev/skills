@@ -709,7 +709,9 @@ async function readReconciliationState(workspace) {
     const parsed = JSON.parse(text);
     const reportValid = (value) => value === null || (
       typeof value === "string" && value.length > 0
-      && !path.isAbsolute(value)
+      && !path.win32.isAbsolute(value)
+      && !path.posix.isAbsolute(value)
+      && !/^[A-Za-z]:/.test(value)
       && !value.split(/[\\/]/).includes("..")
     );
     if (

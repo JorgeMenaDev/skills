@@ -1524,6 +1524,7 @@ section("cadence-status fixtures", () => {
     { name: "reconciled-stamp", format: "json", expected: "reconciled-stamp.expected.json" },
     { name: "malformed-stamp", format: "json", expected: "malformed-stamp.expected.json" },
     { name: "traversal-stamp", format: "json", expected: "traversal-stamp.expected.json" },
+    { name: "drive-stamp", format: "json", expected: "drive-stamp.expected.json" },
   ];
 
   for (const fixtureCase of cases) {
