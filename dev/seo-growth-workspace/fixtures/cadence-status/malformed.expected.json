@@ -17,5 +17,11 @@
       "file": "loops/weekly.json",
       "reason": "schema must be 1; received 2"
     }
-  ]
+  ],
+  "reconciliation": {
+    "stampState": "absent",
+    "reconciledSkillVersion": null,
+    "reconciledAt": null,
+    "report": null
+  }
 }

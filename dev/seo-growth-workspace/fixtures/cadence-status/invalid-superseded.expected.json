@@ -17,5 +17,11 @@
       "file": "loops/measurement-obligations.json",
       "reason": "loops/measurement-obligations.json obligations[\"[\\\"Retire old cohort\\\",\\\"sha256:old-cohort\\\"]\"].successor.hypothesis must be a non-empty string"
     }
-  ]
+  ],
+  "reconciliation": {
+    "stampState": "absent",
+    "reconciledSkillVersion": null,
+    "reconciledAt": null,
+    "report": null
+  }
 }

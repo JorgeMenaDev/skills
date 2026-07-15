@@ -17,5 +17,11 @@
       "file": "loops/b.json",
       "reason": "duplicate occurrence identity [\"weekly-gsc\",\"2026-07-06/2026-07-12\"]; already defined in loops/a.json"
     }
-  ]
+  ],
+  "reconciliation": {
+    "stampState": "absent",
+    "reconciledSkillVersion": null,
+    "reconciledAt": null,
+    "report": null
+  }
 }

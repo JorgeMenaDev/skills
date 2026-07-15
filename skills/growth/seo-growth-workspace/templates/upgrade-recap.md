@@ -20,13 +20,13 @@ Drift state found — one of `stamp absent`, `stamp malformed` (preserve the bad
 
 One row per schema-1 file read (`loops/*.json`, ledgers, certificates):
 
-| File | Parses under current contracts | Finding | Disposition (conforming / repaired forward / filed) |
+| File | Parses under current contracts | Finding | Disposition (conforming / repaired forward / filed / noted — owned elsewhere) |
 | --- | --- | --- | --- |
 |  |  |  |  |
 
 ## 2. Open-row re-triage
 
-Every open backlog row, re-judged against the current gates — closed and Done rows are not re-opened. When the gate-owning contracts are unchanged across the version window, a light conformance scan suffices; under `never`, the window may be reconstructed from the consuming repo's installer/version-control history (evidence in Upgrade context), otherwise every open row gets full re-judgment, classed by the creating-version test (`references/never-dry-loop.md` check 2; unknowable creating version → `version-driven` by convention, reason-noted). This check never becomes a re-audit:
+Every open backlog row, re-judged against the current gates — closed and Done rows are not re-opened, and rows carrying a dated skip disposition are closed for this purpose. When the gate-owning contracts are unchanged across the version window, a light conformance scan suffices; under `never`, the window may be reconstructed from the consuming repo's installer/version-control history (evidence in Upgrade context), otherwise every open row gets full re-judgment, classed by the creating-version test (`references/never-dry-loop.md` check 2; unknowable creating version → `version-driven` by convention, reason-noted). This check never becomes a re-audit:
 
 | Row | Current-gate finding | Outcome (`keep` / `amend` / `close`) | Class (`version-driven` / `incidental hygiene`) | Reason | Dated |
 | --- | --- | --- | --- | --- | --- |
@@ -41,6 +41,8 @@ Every rung row reviewed under the load-bearing test — invalidate only when the
 |  |  |  |  |  |
 
 ## 4. Obligations conformance
+
+Both directions: ledger rows conform to the current contracts, and everything the current contracts would obligate has its ledger entry — ship-history companions AND dated recheck promises in Done rows or log entries lacking both a ledger entry and a recorded exemption (missing ones → normal backlog rows, never fabricated retroactively):
 
 | Obligation | Conforms to current companion contracts | Finding / action |
 | --- | --- | --- |

@@ -23,7 +23,10 @@ function usage() {
 
 Cold-reads schema-1 cadence occurrences under <workspace>/loops/ and emits due
 occurrences and measurement obligations as draft backlog rows or structured JSON.
-It also names the earliest next-due date for sleep-certificate continuity.
+It also names the earliest next-due date for sleep-certificate continuity, and
+the JSON report carries an advisory reconciliation block read from
+<workspace>/reconciliation.json (stampState present|absent|malformed plus the
+stamp fields); drift semantics stay owned by the never-dry-loop contract.
 
 Options:
   --workspace  Explicit path to the resolved .seo workspace root.
@@ -694,6 +697,43 @@ function withFailure(report, failure) {
   };
 }
 
+async function readReconciliationState(workspace) {
+  const empty = { reconciledSkillVersion: null, reconciledAt: null, report: null };
+  let text;
+  try {
+    text = await readFile(path.join(workspace, "reconciliation.json"), "utf-8");
+  } catch (error) {
+    return { stampState: error.code === "ENOENT" ? "absent" : "malformed", ...empty };
+  }
+  try {
+    const parsed = JSON.parse(text);
+    const reportValid = (value) => value === null || (
+      typeof value === "string" && value.length > 0
+      && !path.win32.isAbsolute(value)
+      && !path.posix.isAbsolute(value)
+      && !/^[A-Za-z]:/.test(value)
+      && !value.split(/[\\/]/).includes("..")
+    );
+    if (
+      parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      && parsed.schema === 1
+      && typeof parsed.reconciledSkillVersion === "string" && parsed.reconciledSkillVersion.length > 0
+      && typeof parsed.reconciledAt === "string" && DATE_PATTERN.test(parsed.reconciledAt)
+      && Object.hasOwn(parsed, "report") && reportValid(parsed.report)
+    ) {
+      return {
+        stampState: "present",
+        reconciledSkillVersion: parsed.reconciledSkillVersion,
+        reconciledAt: parsed.reconciledAt,
+        report: parsed.report,
+      };
+    }
+    return { stampState: "malformed", ...empty };
+  } catch {
+    return { stampState: "malformed", ...empty };
+  }
+}
+
 async function main() {
   if (process.argv.includes("--help") || process.argv.includes("-h")) {
     console.log(usage());
@@ -711,7 +751,8 @@ async function main() {
   const obligationState = await readObligationState(workspace);
   const coverageState = await readCoverageState(workspace);
   const analysis = analyze(state, obligationState, coverageState, now);
-  let report = { now, ...analysis };
+  const reconciliation = await readReconciliationState(workspace);
+  let report = { now, ...analysis, reconciliation };
   let startId = 1;
   const hasDraftRows = report.status === "ok" && (
     report.due.some((occurrence) => occurrence.action === "materialize")

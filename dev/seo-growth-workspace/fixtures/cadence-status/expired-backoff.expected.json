@@ -54,5 +54,11 @@
   "inFlightObligations": [],
   "loopWakes": [],
   "coverageDue": [],
-  "failures": []
+  "failures": [],
+  "reconciliation": {
+    "stampState": "absent",
+    "reconciledSkillVersion": null,
+    "reconciledAt": null,
+    "report": null
+  }
 }
