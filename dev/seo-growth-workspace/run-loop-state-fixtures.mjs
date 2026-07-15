@@ -152,6 +152,7 @@ function certify(workspace, payloadOverrides = {}, extraArgs = []) {
   check(run(["occurrence", "add", ...base, "--due-at", "2026-07-12", "--fingerprint", "sha256:occ-1", "--priority", "P4", "--area", "reporting"]).status === 0, "occurrence: add");
   check(run(["occurrence", "add", ...base, "--due-at", "2026-07-12", "--fingerprint", "sha256:occ-1"]).json?.status === "noop", "occurrence: add retry is a noop");
   check(run(["occurrence", "add", ...base, "--due-at", "2026-07-12", "--fingerprint", "sha256:other"]).status === 8, "occurrence: add with a different fingerprint is refused");
+  check(run(["occurrence", "add", ...base, "--due-at", "2026-07-11", "--fingerprint", "sha256:occ-1"]).status === 8, "occurrence: add with a different dueAt is refused, not a noop");
   check(run(["occurrence", "satisfy", ...base, "--result", "ok"]).status === 8, "occurrence: satisfy from due is refused");
   check(run(["occurrence", "materialize", ...base, "--ticket", "SEO-001"]).status === 0, "occurrence: materialize");
   check(run(["occurrence", "materialize", ...base, "--ticket", "SEO-001"]).json?.status === "noop", "occurrence: materialize retry is a noop");
@@ -161,9 +162,10 @@ function certify(workspace, payloadOverrides = {}, extraArgs = []) {
   check(certify(ws).status === 4, "occurrence: in-flight occurrence refuses sleep (exit 4)");
   check(run(["occurrence", "attempt", ...base]).status === 0, "occurrence: attempt");
   check(run(["occurrence", "block", ...base, "--next-at", "2026-07-13", "--max-at", "2026-07-16"]).status === 0, "occurrence: block");
+  check(run(["occurrence", "block", ...base, "--next-at", "2026-07-13", "--max-at", "2026-07-16"]).json?.status === "noop", "occurrence: block retry with the same backoff is a noop");
   const blocked = JSON.parse(readFileSync(path.join(ws, "loops", "frontier-sweep.json"), "utf-8"));
   const record = Object.values(blocked.occurrences)[0];
-  check(record.state === "blockedUntil" && record.attempt === 1 && record.nextAt === "2026-07-13", "occurrence: block records backoff and attempt");
+  check(record.state === "blockedUntil" && record.attempt === 1 && record.nextAt === "2026-07-13", "occurrence: block records backoff once across retries");
   check(run(["occurrence", "attempt", ...base]).status === 0, "occurrence: retry from blockedUntil reuses the ticket");
   check(run(["occurrence", "satisfy", ...base, "--result", "alerted"]).status === 0, "occurrence: satisfy after retry");
   const done = JSON.parse(readFileSync(path.join(ws, "loops", "frontier-sweep.json"), "utf-8"));
@@ -270,7 +272,11 @@ function certify(workspace, payloadOverrides = {}, extraArgs = []) {
   const afterLoop = JSON.parse(readFileSync(path.join(ws, "loops", "frontier-sweep.json"), "utf-8"));
   check(heartbeat.status === 0 && afterLoop.sleepCertificate.heartbeatAt === "2026-07-12T18:00:00.000Z" && afterLoop.sleepCertificate.heartbeatAt !== heartbeatBefore && afterLoop.sleepCertificate.dedupeKey === loop.sleepCertificate.dedupeKey, "sleep: heartbeat updates only heartbeatAt");
   check(certify(ws, { earliestNextDue: null, wakeOn: [] }).status === 1, "sleep: certificate without continuity is rejected");
+  check(certify(ws, { earliestNextDue: "2026-07-01" }).status === 1, "sleep: already-due earliestNextDue is rejected");
   check(certify(ws, { earliestNextDue: null, wakeOn: [{ predicate: "backlog Ready is empty", source: "backlog.md", owner: "operate loop", fingerprint: "fixture:wake:v1" }] }).status === 0, "sleep: wakeOn-only continuity is accepted");
+  const recert = JSON.parse(readFileSync(path.join(ws, "loops", "frontier-sweep.json"), "utf-8"));
+  check(recert.nextWakeAt === null, "sleep: wakeOn-only recertification clears the stale nextWakeAt mirror");
+  check(readdirSync(path.join(ws, "loops")).every((name) => !name.endsWith(".tmp")), "sleep: atomic writes leave no temp files behind");
 }
 {
   const ws = temp(staticFixture("annotated-coverage"));
@@ -282,6 +288,40 @@ function certify(workspace, payloadOverrides = {}, extraArgs = []) {
   check(certify(armed).status === 6, "sleep: armed ungated autopublish refuses certification (exit 6)");
   const gated = temp(staticFixture("autopublish-gated"));
   check(certify(gated).status === 0, "sleep: quality-watch covering the publish window permits certification");
+  const lateWatch = temp(staticFixture("autopublish-gated"));
+  const loopPath = path.join(lateWatch, "loops", "frontier-sweep.json");
+  const loop = JSON.parse(readFileSync(loopPath, "utf-8"));
+  const watch = Object.values(loop.occurrences)[0];
+  delete loop.occurrences[JSON.stringify([watch.cadenceId, watch.dueWindow])];
+  Object.assign(watch, { dueWindow: "2026-07-20/2026-07-21", dueAt: "2026-07-20" });
+  loop.occurrences[JSON.stringify([watch.cadenceId, watch.dueWindow])] = watch;
+  writeFileSync(loopPath, `${JSON.stringify(loop, null, 2)}\n`);
+  check(certify(lateWatch).status === 6, "sleep: a watch window entirely after the publish date does not cover it (exit 6)");
+}
+{
+  const ws = temp(staticFixture("annotated-coverage"));
+  const ledgerPath = path.join(ws, "loops", "coverage-ledger.json");
+  const ledger = JSON.parse(readFileSync(ledgerPath, "utf-8"));
+  ledger.rungs.B.staleAsOf = "2026-08-01";
+  writeFileSync(ledgerPath, `${JSON.stringify(ledger, null, 2)}\n`);
+  const future = run(["verify", "--workspace", ws, "--now", NOW]);
+  check(future.status === 0 && future.json?.notes?.annotatedRungs?.length === 0, "coverage: a future staleAsOf annotation is not yet active");
+  check(certify(ws, { coverage: "complete" }).status === 0, "sleep: a future staleAsOf annotation does not refuse coverage=complete");
+}
+{
+  const ws = temp();
+  mkdirSync(path.join(ws, "loops"), { recursive: true });
+  writeFileSync(path.join(ws, "loops", "stage.json"), JSON.stringify({ schema: 1, stageStamp: { stage: "mature", evaluated: "zzzz" } }, null, 2));
+  check(run(["verify", "--workspace", ws, "--now", NOW]).status === 2, "stage: a malformed stageStamp fails verification closed");
+  writeFileSync(path.join(ws, "loops", "stage.json"), JSON.stringify({ schema: 1 }, null, 2));
+  writeFileSync(path.join(ws, "loops", "ship-events.json"), JSON.stringify({ schema: 1, events: [], capExceptions: [{ urls: ["https://example.com/a"] }] }, null, 2));
+  check(run(["verify", "--workspace", ws, "--now", NOW]).status === 2, "cap: an undated approver-less capExceptions grant fails verification closed");
+  check(run(["stamp", "report-path", "--workspace", ws, "--installed", "../../evil", "--now", NOW]).status === 1, "stamp: a path-traversal version is rejected");
+  const badTs = run(["ship", "record", "--workspace", ws, "--event-id", "e1", "--dedupe-key", "k1", "--published-at", "2026-02-30T12:00:00Z", "--initiated-by", "fixture", "--source", "deploy", "--url", "https://example.com/a", "--qualification", "qualified", "--evidence", "log"]);
+  check(badTs.status !== 0, "ship: an impossible calendar timestamp is rejected");
+  writeFileSync(path.join(ws, "reconciliation.json"), JSON.stringify({ schema: 1, reconciledSkillVersion: VERSION, reconciledAt: "2026-02-31", report: null }, null, 2));
+  const badStamp = run(["stamp", "check", "--workspace", ws, "--installed", VERSION]);
+  check(badStamp.status === 3 && badStamp.json?.stampState === "malformed", "stamp: an impossible reconciledAt date is malformed, therefore drift");
 }
 {
   const ws = temp();

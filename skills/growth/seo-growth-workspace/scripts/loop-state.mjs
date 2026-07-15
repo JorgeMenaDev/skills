@@ -13,8 +13,8 @@
 //   5 coverage stale or annotated        6 armed ungated autopublish
 //   7 ship capacity exhausted            8 refused transition or identity conflict
 
-import { createHash } from "node:crypto";
-import { mkdirSync, readFileSync, renameSync, writeFileSync, existsSync, readdirSync, statSync } from "node:fs";
+import { randomBytes } from "node:crypto";
+import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync, existsSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -175,6 +175,9 @@ function parseTimestamp(value, field) {
   if (typeof value !== "string" || !TIMESTAMP_PATTERN.test(value)) {
     throw new Error(`${field} must be a timezone-qualified ISO timestamp`);
   }
+  // new Date() normalizes impossible dates (2026-02-30 -> March); validate the
+  // written calendar date instead of trusting the parser.
+  parseDate(value.slice(0, 10), field);
   const parsed = new Date(value);
   if (Number.isNaN(parsed.valueOf())) throw new Error(`${field} is not a valid timestamp`);
   return parsed;
@@ -198,6 +201,15 @@ function parseNow(value) {
 
 function nullableDate(value, field) {
   return value === null || value === undefined ? null : parseDate(value, field);
+}
+
+function isCalendarDate(value) {
+  try {
+    parseDate(value, "date");
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function nonEmptyString(value, field) {
@@ -350,6 +362,29 @@ function validateShipEvent(value, index, source, seen) {
   seen.eventIds.set(value.eventId, index);
 }
 
+function validateCapExceptions(value, source) {
+  if (value === undefined) return;
+  if (!Array.isArray(value)) throw new Error(`${source} capExceptions must be an array when present`);
+  value.forEach((grant, index) => {
+    const field = `${source} capExceptions[${index}]`;
+    if (!grant || typeof grant !== "object" || Array.isArray(grant)) throw new Error(`${field} must be an object`);
+    parseDate(grant.dated, `${field}.dated`);
+    nonEmptyString(grant.grantedBy, `${field}.grantedBy`);
+    nonEmptyString(grant.site, `${field}.site`);
+    nonEmptyString(grant.reason, `${field}.reason`);
+    if (!Array.isArray(grant.urls) || grant.urls.length === 0) throw new Error(`${field}.urls must be a non-empty array`);
+    grant.urls.forEach((url, i) => nonEmptyString(url, `${field}.urls[${i}]`));
+  });
+}
+
+function validateStageStamp(value, source) {
+  if (value === undefined || value === null) return;
+  const field = `${source} stageStamp`;
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error(`${field} must be an object`);
+  if (!STAGES.has(value.stage)) throw new Error(`${field}.stage must be unknown, early, growth, or mature`);
+  parseDate(value.evaluated, `${field}.evaluated`);
+}
+
 function validateCoverageRow(rung, row, source) {
   if (!/^[A-J]$/.test(rung)) throw new Error(`${source} rung key ${JSON.stringify(rung)} must be a letter A-J`);
   if (!row || typeof row !== "object" || Array.isArray(row)) throw new Error(`${source} rungs.${rung} must be an object`);
@@ -401,6 +436,9 @@ function validateSleepCertificate(cert, source) {
     throw new Error(`${field}.checkedEvidence must be a non-empty array`);
   }
   cert.checkedEvidence.forEach((entry, i) => nonEmptyString(entry, `${field}.checkedEvidence[${i}]`));
+  // gateFailures documents candidates REJECTED at eligibility gates during the
+  // sweep (required evidence for a "nothing valuable" claim) — it is not a list
+  // of unresolved blockers, so a non-empty array is legal on a valid certificate.
   if (!Array.isArray(cert.gateFailures)) throw new Error(`${field}.gateFailures must be an array`);
   cert.gateFailures.forEach((entry, i) => nonEmptyString(entry, `${field}.gateFailures[${i}]`));
   const earliestNextDue = nullableDate(cert.earliestNextDue, `${field}.earliestNextDue`);
@@ -449,9 +487,16 @@ function readJsonFile(absolute, source, failures) {
 
 function atomicWriteJson(absolute, payload) {
   mkdirSync(path.dirname(absolute), { recursive: true });
-  const tmp = `${absolute}.loop-state-tmp`;
-  writeFileSync(tmp, `${JSON.stringify(payload, null, 2)}\n`);
-  renameSync(tmp, absolute);
+  // Unique name + O_EXCL ("wx"): never follows or truncates a pre-planted
+  // symlink at a predictable temp path.
+  const tmp = `${absolute}.${randomBytes(8).toString("hex")}.tmp`;
+  writeFileSync(tmp, `${JSON.stringify(payload, null, 2)}\n`, { flag: "wx" });
+  try {
+    renameSync(tmp, absolute);
+  } catch (error) {
+    rmSync(tmp, { force: true });
+    throw error;
+  }
 }
 
 function loadWorkspace(workspace) {
@@ -479,6 +524,11 @@ function loadWorkspace(workspace) {
     const { state, payload } = readJsonFile(path.join(workspace, source), source, failures);
     if (state !== "present") continue;
     validateWakeFields(payload, source, failures);
+    try {
+      validateStageStamp(payload.stageStamp, source);
+    } catch (error) {
+      failures.push({ file: source, reason: error.message });
+    }
     if (Object.hasOwn(payload, "sleepCertificate") && payload.sleepCertificate !== null) {
       try {
         validateSleepCertificate(payload.sleepCertificate, source);
@@ -527,6 +577,7 @@ function loadWorkspace(workspace) {
       if (!Array.isArray(shipsFile.payload.events)) throw new Error("events must be an array");
       const seen = { dedupeKeys: new Map(), eventIds: new Map() };
       shipsFile.payload.events.forEach((event, index) => validateShipEvent(event, index, "loops/ship-events.json", seen));
+      validateCapExceptions(shipsFile.payload.capExceptions, "loops/ship-events.json");
     } catch (error) {
       failures.push({ file: "loops/ship-events.json", reason: error.message });
     }
@@ -566,7 +617,7 @@ function readStamp(workspace) {
       parsed && typeof parsed === "object" && !Array.isArray(parsed)
       && parsed.schema === 1
       && typeof parsed.reconciledSkillVersion === "string" && parsed.reconciledSkillVersion.length > 0
-      && typeof parsed.reconciledAt === "string" && DATE_PATTERN.test(parsed.reconciledAt)
+      && typeof parsed.reconciledAt === "string" && isCalendarDate(parsed.reconciledAt)
       && Object.hasOwn(parsed, "report") && reportValid(parsed.report)
     ) {
       return {
@@ -582,8 +633,15 @@ function readStamp(workspace) {
   }
 }
 
+function safeVersion(value, source) {
+  if (typeof value !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(value)) {
+    throw usageError(`${source} version ${JSON.stringify(value)} must match [A-Za-z0-9._-]{1,64} (it becomes a filename component)`);
+  }
+  return value;
+}
+
 function installedVersion(args) {
-  if (args.installed) return nonEmptyString(args.installed, "--installed");
+  if (args.installed) return safeVersion(args.installed, "--installed");
   const skillPath = args.skill
     ? path.resolve(args.skill)
     : path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "SKILL.md");
@@ -595,7 +653,7 @@ function installedVersion(args) {
   }
   const match = /^version:\s*(\S+)\s*$/m.exec(text);
   if (!match) throw usageError(`no version: frontmatter line in ${skillPath}`);
-  return match[1];
+  return safeVersion(match[1], skillPath);
 }
 
 function addDays(date, days) {
@@ -630,7 +688,9 @@ function analyzeWorkspace(state, now) {
     const policyAge = COVERAGE_MAX_AGE_DAYS[rung];
     const expiresAt = addDays(row.observedAt, policyAge);
     if (expiresAt <= now.date) staleRungs.push({ rung, observedAt: row.observedAt, expiresAt });
-    if (row.staleAsOf !== undefined) annotatedRungs.push({ rung, staleAsOf: row.staleAsOf, staleReason: row.staleReason ?? null });
+    if (row.staleAsOf !== undefined && row.staleAsOf <= now.date) {
+      annotatedRungs.push({ rung, staleAsOf: row.staleAsOf, staleReason: row.staleReason ?? null });
+    }
     if (row.maxAgeDays !== policyAge) mirrorDrift.push({ rung, stored: row.maxAgeDays, policy: policyAge });
   }
   const autopublish = [];
@@ -644,13 +704,13 @@ function analyzeWorkspace(state, now) {
 }
 
 function qualityWatchCovers(state, windowValue) {
-  const windowDate = typeof windowValue === "string" ? windowValue.slice(0, 10) : null;
+  const publishDate = typeof windowValue === "string" ? windowValue.slice(0, 10) : null;
   for (const file of state.loopFiles) {
     for (const value of Object.values(file.payload.occurrences ?? {})) {
       if (!/quality-watch|autopublish/i.test(value.cadenceId)) continue;
-      if (windowDate === null) return true;
-      const end = value.dueWindow.split("/")[1];
-      if (end >= windowDate) return true;
+      if (publishDate === null) return true;
+      const [start, end] = value.dueWindow.split("/");
+      if (start <= publishDate && publishDate <= end) return true;
     }
   }
   return false;
@@ -742,10 +802,15 @@ function cmdOccurrence(workspace, action, args) {
     const fingerprint = required(args, "fingerprint", "--fingerprint");
     const existing = findOccurrenceAnywhere(state, cadenceId, windowRaw);
     if (existing.record) {
-      if (existing.record.state === "due" && existing.record.candidateFingerprint === fingerprint) {
-        return { exitCode: EXIT.OK, report: { command: "occurrence add", status: "noop", reason: "identity already present with the same fingerprint", file: existing.file.source } };
+      const sameRequest = existing.record.state === "due"
+        && existing.record.candidateFingerprint === fingerprint
+        && existing.record.dueAt === dueAt
+        && (args.priority === undefined || existing.record.priority === args.priority)
+        && (args.area === undefined || existing.record.area === args.area);
+      if (sameRequest) {
+        return { exitCode: EXIT.OK, report: { command: "occurrence add", status: "noop", reason: "identity already present with the same values", file: existing.file.source } };
       }
-      throw refusal(EXIT.REFUSED, `occurrence ${existing.key} already exists in ${existing.file.source} (state ${existing.record.state}); same-window re-materialization always deduplicates`);
+      throw refusal(EXIT.REFUSED, `occurrence ${existing.key} already exists in ${existing.file.source} (state ${existing.record.state}); same-window re-materialization always deduplicates and only an identical retry is a no-op`);
     }
     const file = findLoopFile(state, workspace, loopName);
     const record = {
@@ -808,6 +873,10 @@ function cmdOccurrence(workspace, action, args) {
   if (action === "block") {
     const nextAt = parseDate(required(args, "next-at", "--next-at"), "--next-at");
     const maxAt = parseDate(required(args, "max-at", "--max-at"), "--max-at");
+    const escalation = args["needs-human"] ? "needs_human" : record.escalation;
+    if (record.state === "blockedUntil" && record.nextAt === nextAt && record.maxAt === maxAt && record.escalation === escalation) {
+      return { exitCode: EXIT.OK, report: { command: "occurrence block", status: "noop", reason: "already blocked with the same backoff", file: file.source, identity: key } };
+    }
     if (record.state !== "materialized" && record.state !== "attempted" && record.state !== "blockedUntil") {
       throw refusal(EXIT.REFUSED, `occurrence ${key} is ${record.state}; block requires materialized, attempted, or blockedUntil`);
     }
@@ -817,7 +886,7 @@ function cmdOccurrence(workspace, action, args) {
       attempt: record.attempt + 1,
       nextAt,
       maxAt,
-      escalation: args["needs-human"] ? "needs_human" : record.escalation,
+      escalation,
     });
   }
   throw usageError(`unknown occurrence action "${action}"`);
@@ -1001,7 +1070,7 @@ function resolveStage(state, args) {
   for (const file of state.loopFiles) {
     const stampValue = file.payload.stageStamp;
     if (!stampValue || typeof stampValue !== "object" || Array.isArray(stampValue)) continue;
-    if (!STAGES.has(stampValue.stage) || typeof stampValue.evaluated !== "string") continue;
+    if (!STAGES.has(stampValue.stage) || !isCalendarDate(stampValue.evaluated)) continue;
     if (!best || stampValue.evaluated > best.evaluated) best = { stage: stampValue.stage, evaluated: stampValue.evaluated, source: file.source };
   }
   if (best) return { stage: best.stage, source: `${best.source} stageStamp (${best.evaluated})` };
@@ -1055,6 +1124,9 @@ function cmdSleepCertify(workspace, args) {
   if (!cert || typeof cert !== "object" || Array.isArray(cert)) throw usageError("certificate payload must be a JSON object");
   cert = { ...cert, dated: now.date, heartbeatAt: now.instant.toISOString() };
   validateSleepCertificate(cert, `loops/${loopName}`);
+  if (cert.earliestNextDue !== null && cert.earliestNextDue !== undefined && cert.earliestNextDue <= now.date) {
+    throw usageError(`earliestNextDue ${cert.earliestNextDue} is not after ${now.date}; already-due work cannot certify sleep`);
+  }
 
   const state = requireValidWorkspace(workspace);
 
@@ -1085,7 +1157,9 @@ function cmdSleepCertify(workspace, args) {
 
   const file = findLoopFile(state, workspace, loopName);
   file.payload.sleepCertificate = cert;
-  if (cert.earliestNextDue !== null && cert.earliestNextDue !== undefined) file.payload.nextWakeAt = cert.earliestNextDue;
+  // Mirror (or clear) the wake date so a wakeOn-only recertification cannot
+  // leave a stale nextWakeAt disagreeing with its own certificate.
+  file.payload.nextWakeAt = cert.earliestNextDue ?? null;
   if (!Object.hasOwn(file.payload, "schema") && !Object.hasOwn(file.payload, "schemaVersion")) file.payload.schema = 1;
   writeLoopFile(workspace, file);
   return {
