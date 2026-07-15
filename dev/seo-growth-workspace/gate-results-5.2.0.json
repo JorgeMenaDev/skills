@@ -4,327 +4,327 @@
   "boundReportVersion": 1,
   "skill": "seo-growth-workspace",
   "skillVersion": "5.2.0",
-  "generatedAt": "2026-07-15T09:57:24.000Z",
+  "generatedAt": "2026-07-15T10:01:18.000Z",
   "operator": "matias/claude",
   "sourceCommit": null,
   "note": "Canonical gate-results artifact for v5.2.0: combined SEO release \u2014 HARO current-check (skills#124), GBP profile-proliferation guard (skills#125), AI prompt-panel construction contract (skills#126), and the post-upgrade workspace recap protocol (skills#133). Deterministic rows imported from validate-skill.mjs --report (52 all-PASS sections) and bound by sourceDigest+toolingDigest. Also clears the v5.1.3 release-gate debt (no gate artifact was produced for 5.1.3). Manual gates whose owning references the release touches are individually re-verified as additive-only; the rest are re-attested unchanged. Release evidence: dev/seo-growth-workspace/2026-07-15-v5.2-release-run.md. Regenerated after the pre-merge autoreview fixes (per-workspace stamp scoping, schema-1 carve-out, created-by-equality reconciliation for fresh workspaces).",
-  "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05",
+  "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb",
   "toolingDigest": "aaa20da4bb0bf9d6771bebbec782b83be9e68d74aaad94b127cf71efd0259715",
   "deterministic": {
-    "boundSourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05",
+    "boundSourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb",
     "boundToolingDigest": "aaa20da4bb0bf9d6771bebbec782b83be9e68d74aaad94b127cf71efd0259715",
     "rows": [
       {
         "scenario": "file inventory",
         "kind": "a",
         "result": "PASS",
-        "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+        "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
       },
       {
         "scenario": "frontier sweep rung routing",
         "kind": "a",
         "result": "PASS",
-        "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+        "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
       },
       {
         "scenario": "never-dry structural contracts",
         "kind": "a",
         "result": "PASS",
-        "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+        "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
       },
       {
         "scenario": "slice 1 shared contracts",
         "kind": "a",
         "result": "PASS",
-        "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+        "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
       },
       {
         "scenario": "slice 3 page-evidence contracts",
         "kind": "a",
         "result": "PASS",
-        "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+        "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
       },
       {
         "scenario": "slice 3 AI observation and portrayal contracts",
         "kind": "a",
         "result": "PASS",
-        "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+        "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
       },
       {
         "scenario": "slice 3 discovery-journey contract",
         "kind": "a",
         "result": "PASS",
-        "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+        "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
       },
       {
         "scenario": "slice 3 community-source page contract",
         "kind": "a",
         "result": "PASS",
-        "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+        "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
       },
       {
         "scenario": "slice 3 affiliate and promo integrity contract",
         "kind": "a",
         "result": "PASS",
-        "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+        "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
       },
       {
         "scenario": "slice 4 e-commerce decision contract",
         "kind": "a",
         "result": "PASS",
-        "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+        "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
       },
       {
         "scenario": "slice 5 rights-gated authority contracts",
         "kind": "a",
         "result": "PASS",
-        "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+        "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
       },
       {
         "scenario": "slice 2 GBP evidence contracts",
         "kind": "a",
         "result": "PASS",
-        "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+        "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
       },
       {
         "scenario": "SKILL.md routing",
         "kind": "a",
         "result": "PASS",
-        "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+        "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
       },
       {
         "scenario": "version consistency",
         "kind": "a",
         "result": "PASS",
-        "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+        "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
       },
       {
         "scenario": "bootstrap smoke test",
         "kind": "a",
         "result": "PASS",
-        "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+        "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
       },
       {
         "scenario": "hub bootstrap",
         "kind": "a",
         "result": "PASS",
-        "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+        "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
       },
       {
         "scenario": "legacy adoption guard",
         "kind": "a",
         "result": "PASS",
-        "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+        "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
       },
       {
         "scenario": "sentinel idempotence",
         "kind": "a",
         "result": "PASS",
-        "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+        "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
       },
       {
         "scenario": "doctor clean root",
         "kind": "a",
         "result": "PASS",
-        "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+        "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
       },
       {
         "scenario": "doctor decoy workspace",
         "kind": "a",
         "result": "PASS",
-        "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+        "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
       },
       {
         "scenario": "doctor dangling symlink",
         "kind": "a",
         "result": "PASS",
-        "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+        "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
       },
       {
         "scenario": "doctor unregistered hub site",
         "kind": "a",
         "result": "PASS",
-        "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+        "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
       },
       {
         "scenario": "doctor plan and bootstrap action contract",
         "kind": "a",
         "result": "PASS",
-        "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+        "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
       },
       {
         "scenario": "doctor registry discovery race",
         "kind": "a",
         "result": "PASS",
-        "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+        "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
       },
       {
         "scenario": "doctor install-mode binding",
         "kind": "a",
         "result": "PASS",
-        "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+        "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
       },
       {
         "scenario": "doctor selected canonical stale route",
         "kind": "a",
         "result": "PASS",
-        "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+        "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
       },
       {
         "scenario": "doctor schema and filesystem safety",
         "kind": "a",
         "result": "PASS",
-        "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+        "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
       },
       {
         "scenario": "site ID grammar and exact legacy grandfathering",
         "kind": "a",
         "result": "PASS",
-        "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+        "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
       },
       {
         "scenario": "hub sites boundary containment",
         "kind": "a",
         "result": "PASS",
-        "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+        "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
       },
       {
         "scenario": "doctor registry, permission, lock, and non-disclosure findings",
         "kind": "a",
         "result": "PASS",
-        "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+        "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
       },
       {
         "scenario": "doctor active-path drift",
         "kind": "a",
         "result": "PASS",
-        "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+        "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
       },
       {
         "scenario": "command inventory and foreign-CWD matrix",
         "kind": "a",
         "result": "PASS",
-        "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+        "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
       },
       {
         "scenario": "eight-row legacy / six-row hub rehearsal",
         "kind": "a",
         "result": "PASS",
-        "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+        "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
       },
       {
         "scenario": "Next App Router rendered-link exporter",
         "kind": "a",
         "result": "PASS",
-        "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+        "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
       },
       {
         "scenario": "Next App Router exporter basePath, PPR-shell, and redirect handling",
         "kind": "a",
         "result": "PASS",
-        "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+        "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
       },
       {
         "scenario": "offline link-graph analyzer",
         "kind": "a",
         "result": "PASS",
-        "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+        "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
       },
       {
         "scenario": "cadence-status fixtures",
         "kind": "a",
         "result": "PASS",
-        "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+        "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
       },
       {
         "scenario": "measurement companion lifecycle fixture",
         "kind": "a",
         "result": "PASS",
-        "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+        "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
       },
       {
         "scenario": "gsc-opportunities report",
         "kind": "a",
         "result": "PASS",
-        "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+        "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
       },
       {
         "scenario": "gsc-opportunities backlog",
         "kind": "a",
         "result": "PASS",
-        "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+        "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
       },
       {
         "scenario": "malformed JSON error",
         "kind": "a",
         "result": "PASS",
-        "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+        "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
       },
       {
         "scenario": "gsc-fetch help",
         "kind": "a",
         "result": "PASS",
-        "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+        "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
       },
       {
         "scenario": "gsc-oauth help and auth URL",
         "kind": "a",
         "result": "PASS",
-        "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+        "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
       },
       {
         "scenario": "monthly report",
         "kind": "a",
         "result": "PASS",
-        "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+        "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
       },
       {
         "scenario": "monthly report branded query",
         "kind": "a",
         "result": "PASS",
-        "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+        "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
       },
       {
         "scenario": "monthly report allow-missing-gsc",
         "kind": "a",
         "result": "PASS",
-        "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+        "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
       },
       {
         "scenario": "gsc-fetch credentials-dir",
         "kind": "a",
         "result": "PASS",
-        "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+        "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
       },
       {
         "scenario": "clean export",
         "kind": "a",
         "result": "PASS",
-        "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+        "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
       },
       {
         "scenario": "portfolio status",
         "kind": "a",
         "result": "PASS",
-        "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+        "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
       },
       {
         "scenario": "portfolio status hub layout",
         "kind": "a",
         "result": "PASS",
-        "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+        "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
       },
       {
         "scenario": "release evaluator blocking gates rehearsal",
         "kind": "a",
         "result": "PASS",
-        "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+        "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
       },
       {
         "scenario": "release evaluator gate-results artifact consumption",
         "kind": "a",
         "result": "PASS",
-        "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+        "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
       }
     ]
   },
@@ -338,7 +338,7 @@
       "live": "fixture",
       "date": "2026-07-15",
       "operator": "matias/claude",
-      "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+      "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
     },
     {
       "id": "b02-geo-grid-comparability",
@@ -349,7 +349,7 @@
       "live": "fixture",
       "date": "2026-07-15",
       "operator": "matias/claude",
-      "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+      "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
     },
     {
       "id": "b03-content-engine-native-revision-evidence",
@@ -360,7 +360,7 @@
       "live": "fixture+live-partial",
       "date": "2026-07-15",
       "operator": "matias/claude",
-      "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+      "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
     },
     {
       "id": "b04-no-engine-fallback-evidence",
@@ -371,7 +371,7 @@
       "live": "fixture",
       "date": "2026-07-15",
       "operator": "matias/claude",
-      "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+      "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
     },
     {
       "id": "b05-unsupported-citation-fails",
@@ -382,7 +382,7 @@
       "live": "fixture",
       "date": "2026-07-15",
       "operator": "matias/claude",
-      "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+      "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
     },
     {
       "id": "b06-missing-information-gain-fails",
@@ -393,7 +393,7 @@
       "live": "fixture",
       "date": "2026-07-15",
       "operator": "matias/claude",
-      "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+      "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
     },
     {
       "id": "b07-local-personalized-ai-observation",
@@ -404,7 +404,7 @@
       "live": "fixture",
       "date": "2026-07-15",
       "operator": "matias/claude",
-      "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+      "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
     },
     {
       "id": "b08-predicted-ai-lift-fails",
@@ -415,7 +415,7 @@
       "live": "fixture",
       "date": "2026-07-15",
       "operator": "matias/claude",
-      "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+      "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
     },
     {
       "id": "b09-sparse-discovery-journey",
@@ -426,7 +426,7 @@
       "live": "fixture",
       "date": "2026-07-15",
       "operator": "matias/claude",
-      "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+      "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
     },
     {
       "id": "b10-community-source-pilot",
@@ -437,7 +437,7 @@
       "live": "fixture-only",
       "date": "2026-07-15",
       "operator": "matias/claude",
-      "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+      "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
     },
     {
       "id": "b11-token-swapped-community-pages-fail",
@@ -448,7 +448,7 @@
       "live": "fixture",
       "date": "2026-07-15",
       "operator": "matias/claude",
-      "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+      "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
     },
     {
       "id": "b12-affiliate-expiry-regulated-escalation",
@@ -459,7 +459,7 @@
       "live": "fixture-only",
       "date": "2026-07-15",
       "operator": "matias/claude",
-      "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+      "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
     },
     {
       "id": "b13-unauthorized-expired-code-fails",
@@ -470,7 +470,7 @@
       "live": "fixture",
       "date": "2026-07-15",
       "operator": "matias/claude",
-      "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+      "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
     },
     {
       "id": "b14-hidden-commission-fails",
@@ -481,7 +481,7 @@
       "live": "fixture",
       "date": "2026-07-15",
       "operator": "matias/claude",
-      "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+      "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
     },
     {
       "id": "b15-commerce-truth-lifecycle",
@@ -492,7 +492,7 @@
       "live": "fixture-only",
       "date": "2026-07-15",
       "operator": "matias/claude",
-      "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+      "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
     },
     {
       "id": "b16-rights-gated-authority-walk",
@@ -503,7 +503,7 @@
       "live": "fixture-only",
       "date": "2026-07-15",
       "operator": "matias/claude",
-      "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+      "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
     },
     {
       "id": "b17-authority-rental-opaque-indexer-fails",
@@ -514,7 +514,7 @@
       "live": "fixture",
       "date": "2026-07-15",
       "operator": "matias/claude",
-      "sourceDigest": "54687602729974c0c9154fe434af283d659d7c4a2e449a13126a103b90604d05"
+      "sourceDigest": "3407c11f5d93467011e00f2aca9bc961759e51632ae3151718e852ce87bf91cb"
     }
   ]
 }

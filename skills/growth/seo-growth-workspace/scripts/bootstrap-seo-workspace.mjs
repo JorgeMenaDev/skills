@@ -291,7 +291,11 @@ async function createWorkspace(workspaceDir, allowlist = null, root = workspaceD
   for (const directory of directories) {
     if (!allowlist || allowlist.has(directory)) await mkdirContained(root, path.join(workspaceDir, directory));
   }
-  await writeMissing(workspaceDir, { ...workspaceFiles(), "taxonomy.md": await taxonomyContent(), "reconciliation.json": reconciliationContent() }, allowlist, root);
+  const files = { ...workspaceFiles(), "taxonomy.md": await taxonomyContent() };
+  // Seed the stamp only on a true create (never via repair/allowlist paths):
+  // an existing stamp-less workspace must stay drifted until an operator recap.
+  if (allowlist === null) files["reconciliation.json"] = reconciliationContent();
+  await writeMissing(workspaceDir, files, allowlist, root);
 }
 
 function loadAndVerifyPlan(options, root) {
