@@ -238,7 +238,7 @@ function runBlockingGates() {
 // runBlockingGates) AND the validator's "gate-results artifact consumption rehearsal"
 // section together — the artifact is rejected when its boundReportVersion drifts.
 const GATE_RESULTS_VERSION = 1;
-const GATE_RESULTS_FILENAME = "gate-results-5.2.0.json";
+const GATE_RESULTS_FILENAME = "gate-results-5.2.1.json";
 
 // The 17 enumerated manual (b)-gates from release-checklist.md § Enumerated v4
 // scenario gates. Every one must be present exactly once and PASS; blocked/partial
