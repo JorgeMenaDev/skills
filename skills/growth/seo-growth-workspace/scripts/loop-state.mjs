@@ -14,7 +14,7 @@
 //   7 ship capacity exhausted            8 refused transition or identity conflict
 
 import { randomBytes } from "node:crypto";
-import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync, existsSync, readdirSync, statSync } from "node:fs";
+import { mkdirSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync, existsSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -351,7 +351,7 @@ function validateShipEvent(value, index, source, seen) {
     throw new Error(`${field}.ticketId must be a non-empty string or null`);
   }
   if (!Array.isArray(value.urls) || value.urls.length === 0) throw new Error(`${field}.urls must be a non-empty array`);
-  value.urls.forEach((url, i) => nonEmptyString(url, `${field}.urls[${i}]`));
+  value.urls.forEach((url, i) => validatePublicUrl(url, `${field}.urls[${i}]`));
   if (new Set(value.urls).size !== value.urls.length) throw new Error(`${field}.urls must not contain duplicates`);
   if (!QUALIFICATIONS.has(value.qualification)) throw new Error(`${field}.qualification must be qualified or ambiguous`);
   if (!Array.isArray(value.evidence) || value.evidence.length === 0) throw new Error(`${field}.evidence must be a non-empty array`);
@@ -360,6 +360,21 @@ function validateShipEvent(value, index, source, seen) {
   seen.dedupeKeys.set(value.dedupeKey, index);
   if (seen.eventIds.has(value.eventId)) throw new Error(`${field}.eventId duplicates events[${seen.eventIds.get(value.eventId)}]`);
   seen.eventIds.set(value.eventId, index);
+}
+
+function validatePublicUrl(value, field) {
+  nonEmptyString(value, field);
+  let parsed;
+  try {
+    parsed = new URL(value);
+  } catch {
+    throw new Error(`${field} must be an absolute URL`);
+  }
+  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+    throw new Error(`${field} must be an http(s) URL`);
+  }
+  if (value.includes("#")) throw new Error(`${field} must not carry a fragment; record the canonical URL`);
+  return value;
 }
 
 function validateCapExceptions(value, source) {
@@ -373,7 +388,7 @@ function validateCapExceptions(value, source) {
     nonEmptyString(grant.site, `${field}.site`);
     nonEmptyString(grant.reason, `${field}.reason`);
     if (!Array.isArray(grant.urls) || grant.urls.length === 0) throw new Error(`${field}.urls must be a non-empty array`);
-    grant.urls.forEach((url, i) => nonEmptyString(url, `${field}.urls[${i}]`));
+    grant.urls.forEach((url, i) => validatePublicUrl(url, `${field}.urls[${i}]`));
   });
 }
 
@@ -485,14 +500,23 @@ function readJsonFile(absolute, source, failures) {
   }
 }
 
-function atomicWriteJson(absolute, payload) {
+function atomicWriteJson(workspace, absolute, payload) {
   mkdirSync(path.dirname(absolute), { recursive: true });
+  // A symlinked path component (e.g. loops/ pointing outside the workspace)
+  // would let the rename land outside the workspace: containment-check the
+  // real parent directory against the real workspace root before writing.
+  const realParent = realpathSync(path.dirname(absolute));
+  const realWorkspace = realpathSync(workspace);
+  if (realParent !== realWorkspace && !realParent.startsWith(realWorkspace + path.sep)) {
+    throw refusal(EXIT.REFUSED, `refusing to write ${absolute}: its real parent ${realParent} escapes the workspace`);
+  }
+  const target = path.join(realParent, path.basename(absolute));
   // Unique name + O_EXCL ("wx"): never follows or truncates a pre-planted
   // symlink at a predictable temp path.
-  const tmp = `${absolute}.${randomBytes(8).toString("hex")}.tmp`;
+  const tmp = `${target}.${randomBytes(8).toString("hex")}.tmp`;
   writeFileSync(tmp, `${JSON.stringify(payload, null, 2)}\n`, { flag: "wx" });
   try {
-    renameSync(tmp, absolute);
+    renameSync(tmp, target);
   } catch (error) {
     rmSync(tmp, { force: true });
     throw error;
@@ -704,11 +728,15 @@ function analyzeWorkspace(state, now) {
 }
 
 function qualityWatchCovers(state, windowValue) {
-  const publishDate = typeof windowValue === "string" ? windowValue.slice(0, 10) : null;
+  // Fail closed: an armed scheduler whose next publish window is missing or
+  // unparseable cannot be covered by anything.
+  const publishDate = typeof windowValue === "string" && isCalendarDate(windowValue.slice(0, 10))
+    ? windowValue.slice(0, 10)
+    : null;
+  if (publishDate === null) return false;
   for (const file of state.loopFiles) {
     for (const value of Object.values(file.payload.occurrences ?? {})) {
-      if (!/quality-watch|autopublish/i.test(value.cadenceId)) continue;
-      if (publishDate === null) return true;
+      if (!/quality-watch/i.test(value.cadenceId)) continue;
       const [start, end] = value.dueWindow.split("/");
       if (start <= publishDate && publishDate <= end) return true;
     }
@@ -730,7 +758,7 @@ function cmdVerify(workspace, args) {
   if (args.repair && analysis.mirrorDrift.length > 0) {
     const payload = state.coverageFile.payload;
     for (const { rung, policy } of analysis.mirrorDrift) payload.rungs[rung].maxAgeDays = policy;
-    atomicWriteJson(path.join(workspace, "loops", "coverage-ledger.json"), payload);
+    atomicWriteJson(workspace, path.join(workspace, "loops", "coverage-ledger.json"), payload);
     repaired = analysis.mirrorDrift;
     analysis.mirrorDrift = [];
   }
@@ -787,7 +815,7 @@ function findOccurrenceAnywhere(state, cadenceId, dueWindow) {
 }
 
 function writeLoopFile(workspace, file) {
-  atomicWriteJson(path.join(workspace, file.source), file.payload);
+  atomicWriteJson(workspace, path.join(workspace, file.source), file.payload);
 }
 
 function cmdOccurrence(workspace, action, args) {
@@ -898,7 +926,7 @@ function loadObligations(state, workspace) {
   }
   return {
     payload: state.obligationsFile.payload,
-    write: () => atomicWriteJson(path.join(workspace, "loops", "measurement-obligations.json"), state.obligationsFile.payload),
+    write: () => atomicWriteJson(workspace, path.join(workspace, "loops", "measurement-obligations.json"), state.obligationsFile.payload),
   };
 }
 
@@ -940,10 +968,15 @@ function cmdObligation(workspace, action, args) {
     if (args.priority !== undefined) next.priority = args.priority;
     if (args.area !== undefined) next.area = args.area;
     if (record) {
-      if (record.state === "pending" && JSON.stringify(record.baseline) === JSON.stringify(next.baseline) && record.dueAt === next.dueAt) {
-        return { exitCode: EXIT.OK, report: { command: "obligation add", status: "noop", reason: "identity already present with the same baseline", identity: key } };
+      const sameRequest = record.state === "pending"
+        && JSON.stringify(record.baseline) === JSON.stringify(next.baseline)
+        && ["metric", "decision", "dueAt", "wakeAt"].every((name) => record[name] === next[name])
+        && (args.priority === undefined || record.priority === next.priority)
+        && (args.area === undefined || record.area === next.area);
+      if (sameRequest) {
+        return { exitCode: EXIT.OK, report: { command: "obligation add", status: "noop", reason: "identity already present with the same values", identity: key } };
       }
-      throw refusal(EXIT.REFUSED, `obligation ${key} already exists (state ${record.state})`);
+      throw refusal(EXIT.REFUSED, `obligation ${key} already exists (state ${record.state}); only an identical retry is a no-op`);
     }
     return finish(next);
   }
@@ -984,9 +1017,10 @@ function cmdObligation(workspace, action, args) {
   if (action === "resolve") {
     const resolvedAt = parseDate(required(args, "resolved-at", "--resolved-at"), "--resolved-at");
     const note = required(args, "note", "--note");
-    if (record.state === "resolved" && record.resolvedAt === resolvedAt) {
-      return { exitCode: EXIT.OK, report: { command: "obligation resolve", status: "noop", reason: "already resolved", identity: key } };
+    if (record.state === "resolved" && record.resolvedAt === resolvedAt && record.calibrationNote === note) {
+      return { exitCode: EXIT.OK, report: { command: "obligation resolve", status: "noop", reason: "already resolved with the same note", identity: key } };
     }
+    if (record.state === "resolved") throw refusal(EXIT.REFUSED, `obligation ${key} is already resolved with different values`);
     if (record.state !== "materialized") throw refusal(EXIT.REFUSED, `obligation ${key} is ${record.state}; resolve requires materialized`);
     if (record.ticket === null) throw refusal(EXIT.REFUSED, `obligation ${key} has no ticket link; reconcile the crash intermediate with obligation materialize first`);
     return finish({ ...record, state: "resolved", ticket: { ...record.ticket, status: "closed" }, resolvedAt, calibrationNote: note });
@@ -998,8 +1032,16 @@ function cmdObligation(workspace, action, args) {
       evidence: required(args, "evidence-note", "--evidence-note"),
     };
     const wakeAt = parseDate(required(args, "wake-at", "--wake-at"), "--wake-at");
+    if (wakeAt <= attempt.attemptedAt) {
+      throw usageError(`--wake-at ${wakeAt} must be after --attempted-at ${attempt.attemptedAt}; an inconclusive return wakes later, never immediately`);
+    }
+    const alreadyRecorded = record.attempts.some((prior) => prior.attemptedAt === attempt.attemptedAt && prior.reason === attempt.reason);
+    if (alreadyRecorded && record.state === "pending" && record.candidateFingerprint === null && record.ticket === null && record.wakeAt === wakeAt) {
+      // The atomic replacement already happened; this is a crash retry.
+      return { exitCode: EXIT.OK, report: { command: "obligation inconclusive", status: "noop", reason: "attempt already recorded and returned to pending", identity: key } };
+    }
     if (record.state !== "materialized") throw refusal(EXIT.REFUSED, `obligation ${key} is ${record.state}; inconclusive requires materialized`);
-    if (record.attempts.some((prior) => prior.attemptedAt === attempt.attemptedAt && prior.reason === attempt.reason)) {
+    if (alreadyRecorded) {
       return { exitCode: EXIT.OK, report: { command: "obligation inconclusive", status: "noop", reason: "attempt already recorded", identity: key } };
     }
     return finish({
@@ -1018,7 +1060,10 @@ function cmdObligation(workspace, action, args) {
       evidence: required(args, "successor-evidence", "--successor-evidence"),
     };
     if (record.state === "superseded") {
-      return { exitCode: EXIT.OK, report: { command: "obligation supersede", status: "noop", reason: "already superseded", identity: key } };
+      if (JSON.stringify(record.successor) === JSON.stringify(successor)) {
+        return { exitCode: EXIT.OK, report: { command: "obligation supersede", status: "noop", reason: "already superseded by the same successor", identity: key } };
+      }
+      throw refusal(EXIT.REFUSED, `obligation ${key} is already superseded by a different successor`);
     }
     if (record.state === "resolved") throw refusal(EXIT.REFUSED, `obligation ${key} is resolved; supersession retains only unresolved lineage`);
     const ticket = record.ticket === null ? null : { ...record.ticket, status: "closed" };
@@ -1045,10 +1090,14 @@ function cmdShipRecord(workspace, args) {
   if (event.urls.length === 0) throw usageError("--url is required at least once");
   const existing = payload.events.find((candidate) => candidate.dedupeKey === event.dedupeKey);
   if (existing) {
-    if (existing.eventId === event.eventId) {
-      return { exitCode: EXIT.OK, report: { command: "ship record", status: "noop", reason: "dedupeKey already recorded", eventId: existing.eventId } };
+    const identical = ["eventId", "publishedAt", "initiatedBy", "source", "qualification"].every((name) => existing[name] === event[name])
+      && (existing.ticketId ?? null) === event.ticketId
+      && JSON.stringify(existing.urls) === JSON.stringify(event.urls)
+      && JSON.stringify(existing.evidence) === JSON.stringify(event.evidence);
+    if (identical) {
+      return { exitCode: EXIT.OK, report: { command: "ship record", status: "noop", reason: "dedupeKey already recorded with the same event", eventId: existing.eventId } };
     }
-    throw refusal(EXIT.REFUSED, `dedupeKey already recorded under eventId ${existing.eventId}; a retry must reuse the same event identity`);
+    throw refusal(EXIT.REFUSED, `dedupeKey already recorded under eventId ${existing.eventId} with different values; a retry must repeat the identical event`);
   }
   const seen = { dedupeKeys: new Map(), eventIds: new Map() };
   payload.events.forEach((prior, index) => {
@@ -1057,7 +1106,7 @@ function cmdShipRecord(workspace, args) {
   });
   validateShipEvent(event, payload.events.length, "loops/ship-events.json", seen);
   payload.events.push(event);
-  atomicWriteJson(path.join(workspace, "loops", "ship-events.json"), payload);
+  atomicWriteJson(workspace, path.join(workspace, "loops", "ship-events.json"), payload);
   return { exitCode: EXIT.OK, report: { command: "ship record", status: "written", eventId: event.eventId, countedUrls: event.urls.length } };
 }
 
@@ -1071,6 +1120,9 @@ function resolveStage(state, args) {
     const stampValue = file.payload.stageStamp;
     if (!stampValue || typeof stampValue !== "object" || Array.isArray(stampValue)) continue;
     if (!STAGES.has(stampValue.stage) || !isCalendarDate(stampValue.evaluated)) continue;
+    if (best && stampValue.evaluated === best.evaluated && stampValue.stage !== best.stage) {
+      throw refusal(EXIT.REFUSED, `conflicting stage stamps evaluated ${best.evaluated}: ${best.stage} (${best.source}) vs ${stampValue.stage} (${file.source}); reconcile them or pass --stage explicitly`);
+    }
     if (!best || stampValue.evaluated > best.evaluated) best = { stage: stampValue.stage, evaluated: stampValue.evaluated, source: file.source };
   }
   if (best) return { stage: best.stage, source: `${best.source} stageStamp (${best.evaluated})` };
@@ -1084,14 +1136,22 @@ function cmdCap(workspace, args) {
   const cap = SHIP_CAPS[stage];
   const events = state.shipsFile.payload?.events ?? [];
   const exceptions = Array.isArray(state.shipsFile.payload?.capExceptions) ? state.shipsFile.payload.capExceptions : [];
-  const exceptionUrls = new Set(exceptions.flatMap((grant) => (Array.isArray(grant?.urls) ? grant.urls : [])));
   const windowStartMs = now.instant.valueOf() - 7 * 86400000;
+  // A grant covers an event only alone (no unioning grants), only when it
+  // names every URL the event counts, and only for ships published within
+  // seven days of the grant date — a dated exception is not a permanent pass.
+  const grantCovers = (grant, event) => {
+    const publishedDate = event.publishedAt.slice(0, 10);
+    return publishedDate >= grant.dated
+      && publishedDate <= addDays(grant.dated, 7)
+      && event.urls.every((url) => grant.urls.includes(url));
+  };
   const counted = [];
   const excepted = [];
   for (const event of events) {
     const publishedMs = new Date(event.publishedAt).valueOf();
     if (publishedMs <= windowStartMs || publishedMs > now.instant.valueOf()) continue;
-    const covered = event.urls.every((url) => exceptionUrls.has(url));
+    const covered = exceptions.some((grant) => grantCovers(grant, event));
     (covered ? excepted : counted).push({ eventId: event.eventId, publishedAt: event.publishedAt, urls: event.urls, qualification: event.qualification });
   }
   const remaining = Math.max(0, cap - counted.length);
@@ -1143,11 +1203,21 @@ function cmdSleepCertify(workspace, args) {
       inFlightObligations: analysis.inFlightObligations,
     });
   }
-  if (cert.coverage === "complete" && (analysis.staleRungs.length > 0 || analysis.annotatedRungs.length > 0)) {
-    throw refusal(EXIT.COVERAGE, "coverage=complete requires every rung artifact within max-age and free of staleAsOf annotations", {
-      staleRungs: analysis.staleRungs,
-      annotatedRungs: analysis.annotatedRungs,
-    });
+  if (cert.coverage === "complete") {
+    // "complete" asserts the operator's judgment that every APPLICABLE rung is
+    // covered — applicability stays judgment, but the tool refuses the
+    // contradictions it can observe: an empty ledger (at least one rung is
+    // always applicable), an expired row, or an active staleAsOf annotation.
+    const rungCount = Object.keys(state.coverageFile.payload?.rungs ?? {}).length;
+    if (rungCount === 0) {
+      throw refusal(EXIT.COVERAGE, "coverage=complete requires a coverage ledger with at least one dated rung artifact");
+    }
+    if (analysis.staleRungs.length > 0 || analysis.annotatedRungs.length > 0) {
+      throw refusal(EXIT.COVERAGE, "coverage=complete requires every rung artifact within max-age and free of active staleAsOf annotations", {
+        staleRungs: analysis.staleRungs,
+        annotatedRungs: analysis.annotatedRungs,
+      });
+    }
   }
   for (const armed of analysis.autopublish) {
     if (!qualityWatchCovers(state, armed.nextPublishWindow)) {
@@ -1200,7 +1270,7 @@ function cmdStamp(workspace, action, args) {
         throw usageError("--report must be a workspace-relative path");
       }
     }
-    atomicWriteJson(path.join(workspace, "reconciliation.json"), {
+    atomicWriteJson(workspace, path.join(workspace, "reconciliation.json"), {
       schema: 1,
       reconciledSkillVersion: installed,
       reconciledAt: now.date,

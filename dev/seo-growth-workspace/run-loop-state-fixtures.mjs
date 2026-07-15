@@ -189,6 +189,7 @@ function certify(workspace, payloadOverrides = {}, extraArgs = []) {
   const add = ["obligation", "add", ...id, "--baseline-measured-at", "2026-07-01", "--baseline-value", "2.1% CTR", "--baseline-evidence", "reports/gsc.json", "--metric", "non-brand CTR", "--decision", "keep or revert", "--due-at", "2026-07-29"];
   check(run(add).status === 0, "obligation: add");
   check(run(add).json?.status === "noop", "obligation: add retry is a noop");
+  check(run([...add.slice(0, -2), "--due-at", "2026-08-05"]).status === 8, "obligation: add retry with a different dueAt is refused");
   check(run(["obligation", "materialize", ...id, "--ticket", "SEO-010"]).status === 8, "obligation: materialize without a claimed fingerprint is refused");
   check(run(["obligation", "claim", ...id, "--fingerprint", "sha256:attempt-1"]).status === 0, "obligation: claim persists the fingerprint");
   check(run(["obligation", "claim", ...id, "--fingerprint", "sha256:attempt-1"]).json?.status === "noop", "obligation: claim retry is a noop");
@@ -208,8 +209,11 @@ function certify(workspace, payloadOverrides = {}, extraArgs = []) {
   run(["obligation", "add", ...id, "--baseline-measured-at", "2026-07-01", "--baseline-value", "not indexed", "--baseline-evidence", "reports/inspection.md", "--metric", "index status", "--decision", "keep or refile", "--due-at", "2026-07-10"]);
   run(["obligation", "claim", ...id, "--fingerprint", "sha256:attempt-1"]);
   run(["obligation", "materialize", ...id, "--ticket", "SEO-020"]);
-  const inconclusive = run(["obligation", "inconclusive", ...id, "--attempted-at", "2026-07-10", "--reason", "GSC lag; no data for the window", "--evidence-note", "gsc-fetch output empty", "--wake-at", "2026-07-24"]);
+  check(run(["obligation", "inconclusive", ...id, "--attempted-at", "2026-07-10", "--reason", "r", "--evidence-note", "e", "--wake-at", "2026-07-10"]).status === 1, "obligation: inconclusive wake-at must be after attempted-at");
+  const inconclusiveArgs = ["obligation", "inconclusive", ...id, "--attempted-at", "2026-07-10", "--reason", "GSC lag; no data for the window", "--evidence-note", "gsc-fetch output empty", "--wake-at", "2026-07-24"];
+  const inconclusive = run(inconclusiveArgs);
   check(inconclusive.status === 0, "obligation: inconclusive returns to pending");
+  check(run(inconclusiveArgs).json?.status === "noop", "obligation: an identical inconclusive retry after success is a noop, not a state refusal");
   const ledger = JSON.parse(readFileSync(path.join(ws, "loops", "measurement-obligations.json"), "utf-8"));
   const row = Object.values(ledger.obligations)[0];
   check(row.state === "pending" && row.candidateFingerprint === null && row.ticket === null && row.attempts.length === 1 && row.wakeAt === "2026-07-24", "obligation: inconclusive return is one canonical replacement");
@@ -236,8 +240,11 @@ function certify(workspace, payloadOverrides = {}, extraArgs = []) {
   writeFileSync(path.join(ws, "loops", "stage.json"), JSON.stringify({ schema: 1, stageStamp: { stage: "early", evaluated: "2026-07-01", basis: "reports/fixture.md" } }, null, 2));
   const record = (id, key, publishedAt, url) => run(["ship", "record", "--workspace", ws, "--event-id", id, "--dedupe-key", key, "--published-at", publishedAt, "--initiated-by", "fixture-run", "--source", "deploy", "--url", url, "--qualification", "qualified", "--evidence", "deploy log", "--ticket", "SEO-030"]);
   check(record("ship-1", "sha256:ship-1", "2026-07-11T12:00:00Z", "https://example.com/a").status === 0, "ship: record");
-  check(record("ship-1", "sha256:ship-1", "2026-07-11T12:00:00Z", "https://example.com/a").json?.status === "noop", "ship: dedupeKey retry is a noop");
+  check(record("ship-1", "sha256:ship-1", "2026-07-11T12:00:00Z", "https://example.com/a").json?.status === "noop", "ship: identical dedupeKey retry is a noop");
   check(record("ship-2", "sha256:ship-1", "2026-07-11T12:00:00Z", "https://example.com/b").status === 8, "ship: same dedupeKey under a new eventId is refused");
+  check(record("ship-1", "sha256:ship-1", "2026-07-11T12:00:00Z", "https://example.com/other").status === 8, "ship: same identity with a different URL is refused, not a silent noop");
+  check(record("ship-x", "sha256:ship-x", "2026-07-11T12:00:00Z", "not-a-url").status !== 0, "ship: a non-URL is rejected");
+  check(record("ship-y", "sha256:ship-y", "2026-07-11T12:00:00Z", "https://example.com/a#frag").status !== 0, "ship: a fragment URL is rejected");
   check(record("ship-2", "sha256:ship-2", "2026-07-12T09:00:00Z", "https://example.com/b").status === 0, "ship: second event");
   const atCap = run(["cap", "--workspace", ws, "--now", "2026-07-12T12:00:00Z"]);
   check(atCap.status === 7 && atCap.json?.stage === "early" && atCap.json?.cap === 2 && atCap.json?.counted === 2 && atCap.json?.remaining === 0, "cap: early stage exhausts at two ships (exit 7)");
@@ -253,6 +260,25 @@ function certify(workspace, payloadOverrides = {}, extraArgs = []) {
   writeFileSync(path.join(ws, "loops", "ship-events.json"), `${JSON.stringify(ships, null, 2)}\n`);
   const excepted = run(["cap", "--workspace", ws, "--now", "2026-07-12T12:00:00Z"]);
   check(excepted.status === 0 && excepted.json?.counted === 1 && excepted.json?.excepted === 1 && excepted.json?.remaining === 1, "cap: exception-covered event does not consume cap");
+  ships.capExceptions = [{ dated: "2026-07-01", grantedBy: "Jorge", site: "example.com", urls: ["https://example.com/b"], reason: "stale grant" }];
+  writeFileSync(path.join(ws, "loops", "ship-events.json"), `${JSON.stringify(ships, null, 2)}\n`);
+  const stale = run(["cap", "--workspace", ws, "--now", "2026-07-12T12:00:00Z"]);
+  check(stale.status === 7 && stale.json?.excepted === 0, "cap: a grant older than seven days does not exempt a later ship");
+  ships.capExceptions = [
+    { dated: "2026-07-12", grantedBy: "Jorge", site: "example.com", urls: ["https://example.com/b"], reason: "half" },
+    { dated: "2026-07-12", grantedBy: "Jorge", site: "example.com", urls: ["https://example.com/c"], reason: "other half" },
+  ];
+  ships.events.push({ eventId: "ship-3", dedupeKey: "sha256:ship-3", publishedAt: "2026-07-12T10:00:00Z", initiatedBy: "fixture", source: "deploy", ticketId: null, urls: ["https://example.com/b", "https://example.com/c"], qualification: "qualified", evidence: ["log"] });
+  writeFileSync(path.join(ws, "loops", "ship-events.json"), `${JSON.stringify(ships, null, 2)}\n`);
+  const unioned = run(["cap", "--workspace", ws, "--now", "2026-07-12T12:00:00Z"]);
+  check(unioned.json?.exceptedEvents?.every((event) => event.eventId !== "ship-3"), "cap: two grants cannot union to cover one multi-URL event");
+}
+{
+  const ws = temp();
+  mkdirSync(path.join(ws, "loops"), { recursive: true });
+  writeFileSync(path.join(ws, "loops", "a.json"), JSON.stringify({ schema: 1, stageStamp: { stage: "early", evaluated: "2026-07-10", basis: "r" } }, null, 2));
+  writeFileSync(path.join(ws, "loops", "b.json"), JSON.stringify({ schema: 1, stageStamp: { stage: "mature", evaluated: "2026-07-10", basis: "r" } }, null, 2));
+  check(run(["cap", "--workspace", ws, "--now", "2026-07-12T12:00:00Z"]).status === 8, "cap: equally-dated conflicting stage stamps refuse instead of picking a file arbitrarily");
 }
 
 // sleep certification: drift, coverage, autopublish, happy path, heartbeat
@@ -297,6 +323,42 @@ function certify(workspace, payloadOverrides = {}, extraArgs = []) {
   loop.occurrences[JSON.stringify([watch.cadenceId, watch.dueWindow])] = watch;
   writeFileSync(loopPath, `${JSON.stringify(loop, null, 2)}\n`);
   check(certify(lateWatch).status === 6, "sleep: a watch window entirely after the publish date does not cover it (exit 6)");
+
+  const noWindow = temp(staticFixture("autopublish-armed"));
+  const noWindowPath = path.join(noWindow, "loops", "frontier-sweep.json");
+  const noWindowLoop = JSON.parse(readFileSync(noWindowPath, "utf-8"));
+  noWindowLoop.schedulerMirror.nextPublishWindow = null;
+  noWindowLoop.occurrences = {
+    '["autopublish-quality-watch","2026-07-14/2026-07-14"]': {
+      cadenceId: "autopublish-quality-watch", dueWindow: "2026-07-14/2026-07-14", dueAt: "2026-07-14",
+      state: "due", candidateFingerprint: "sha256:x", ticket: null, result: null, attempt: 0, nextAt: null, maxAt: null, escalation: "none",
+    },
+  };
+  writeFileSync(noWindowPath, `${JSON.stringify(noWindowLoop, null, 2)}\n`);
+  check(certify(noWindow).status === 6, "sleep: an armed scheduler with no observable publish window fails closed even with a watch (exit 6)");
+
+  const wrongId = temp(staticFixture("autopublish-gated"));
+  const wrongIdPath = path.join(wrongId, "loops", "frontier-sweep.json");
+  const wrongIdLoop = JSON.parse(readFileSync(wrongIdPath, "utf-8"));
+  const w = Object.values(wrongIdLoop.occurrences)[0];
+  delete wrongIdLoop.occurrences[JSON.stringify([w.cadenceId, w.dueWindow])];
+  w.cadenceId = "autopublish-report";
+  wrongIdLoop.occurrences[JSON.stringify([w.cadenceId, w.dueWindow])] = w;
+  writeFileSync(wrongIdPath, `${JSON.stringify(wrongIdLoop, null, 2)}\n`);
+  check(certify(wrongId).status === 6, "sleep: an unrelated autopublish-* occurrence is not a quality watch (exit 6)");
+}
+{
+  const ws = temp();
+  run(["stamp", "write", "--workspace", ws, "--installed", VERSION, "--now", NOW]);
+  check(certify(ws, { coverage: "complete" }).status === 5, "sleep: coverage=complete with no coverage ledger is refused (exit 5)");
+}
+{
+  const outside = temp();
+  const ws = temp();
+  mkdirSync(path.join(outside, "elsewhere"), { recursive: true });
+  spawnSync("ln", ["-s", path.join(outside, "elsewhere"), path.join(ws, "loops")]);
+  const escaped = run(["occurrence", "add", "--workspace", ws, "--loop", "a.json", "--cadence", "c", "--window", "2026-07-12/2026-07-12", "--due-at", "2026-07-12", "--fingerprint", "sha256:x"]);
+  check(escaped.status === 8 && readdirSync(path.join(outside, "elsewhere")).length === 0, "write: a symlinked loops/ directory refuses the mutation and nothing lands outside the workspace");
 }
 {
   const ws = temp(staticFixture("annotated-coverage"));
