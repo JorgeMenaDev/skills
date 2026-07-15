@@ -329,6 +329,18 @@ function stampReconciled(workspace) {
   check(certify(armed, { earliestNextDue: "2026-07-13" }).status === 6, "sleep: armed ungated autopublish refuses certification (exit 6)");
   const gated = temp(staticFixture("autopublish-gated"));
   check(certify(gated, { earliestNextDue: "2026-07-14" }).status === 0, "sleep: quality-watch covering the publish window permits certification");
+  const alertedWatch = temp(staticFixture("autopublish-gated"));
+  const alertedWatchPath = path.join(alertedWatch, "loops", "frontier-sweep.json");
+  const alertedWatchLoop = JSON.parse(readFileSync(alertedWatchPath, "utf-8"));
+  Object.assign(Object.values(alertedWatchLoop.occurrences)[0], { state: "satisfied", result: "alerted", ticket: { id: "SEO-901", status: "closed" } });
+  writeFileSync(alertedWatchPath, `${JSON.stringify(alertedWatchLoop, null, 2)}\n`);
+  check(certify(alertedWatch, { earliestNextDue: "2026-07-14" }).status === 6, "sleep: an alerted quality watch does not clear the autopublish gate (exit 6)");
+  const okWatch = temp(staticFixture("autopublish-gated"));
+  const okWatchPath = path.join(okWatch, "loops", "frontier-sweep.json");
+  const okWatchLoop = JSON.parse(readFileSync(okWatchPath, "utf-8"));
+  Object.assign(Object.values(okWatchLoop.occurrences)[0], { state: "satisfied", result: "ok", ticket: { id: "SEO-902", status: "closed" } });
+  writeFileSync(okWatchPath, `${JSON.stringify(okWatchLoop, null, 2)}\n`);
+  check(certify(okWatch, { earliestNextDue: "2026-07-14" }).status === 0, "sleep: a satisfied-ok quality watch clears the autopublish gate");
   const lateWatch = temp(staticFixture("autopublish-gated"));
   const loopPath = path.join(lateWatch, "loops", "frontier-sweep.json");
   const loop = JSON.parse(readFileSync(loopPath, "utf-8"));
@@ -441,6 +453,17 @@ function stampReconciled(workspace) {
   check(first.status === 0 && first.json?.capExceeded === false, "ship: recording reports cap headroom");
   const over = record("two");
   check(over.status === 0 && over.json?.capExceeded === true, "ship: an over-cap recording succeeds as audit truth but is loudly flagged");
+
+  const shipPath = path.join(ws, "loops", "ship-events.json");
+  const ships = JSON.parse(readFileSync(shipPath, "utf-8"));
+  ships.events = [
+    { ...ships.events[1], eventId: "revision-one", dedupeKey: "k-revision-one", publishedAt: "2026-07-11T09:00:00Z", urls: ["https://example.com/landing"] },
+    { ...ships.events[1], eventId: "revision-two", dedupeKey: "k-revision-two", publishedAt: "2026-07-12T09:00:00Z", urls: ["https://example.com/landing"] },
+  ];
+  ships.capExceptions = [{ dated: "2026-07-10", grantedBy: "Jorge", site: "example.com", urls: ["https://example.com/landing"], reason: "one additional URL" }];
+  writeFileSync(shipPath, `${JSON.stringify(ships, null, 2)}\n`);
+  const allocated = run(["cap", "--workspace", ws, "--now", "2026-07-12T12:00:00Z"]);
+  check(allocated.status === 0 && allocated.json?.excepted === 1 && allocated.json?.counted === 1, "cap: one granted URL exempts at most one matching ship event");
 }
 {
   const outside = temp();

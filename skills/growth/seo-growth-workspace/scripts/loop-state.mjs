@@ -807,7 +807,8 @@ function qualityWatchCovers(state, windowValue) {
       // The watch must still be able to observe the publish: active states
       // qualify; a satisfied watch already observed its window; a blocked
       // watch counts only when its retry arrives by the publish date.
-      if (value.state === "due" || value.state === "materialized" || value.state === "attempted" || value.state === "satisfied") return true;
+      if (value.state === "due" || value.state === "materialized" || value.state === "attempted") return true;
+      if (value.state === "satisfied" && value.result === "ok") return true;
       if (value.state === "blockedUntil" && value.escalation === "none" && value.attempt < 3 && value.nextAt <= publishDate) return true;
     }
   }
@@ -1256,12 +1257,21 @@ function capUsage(state, now, { stage, source }) {
       && publishedDate <= addDays(grant.dated, 7)
       && event.urls.every((url) => grant.urls.includes(url));
   };
+  const remainingGrantUrls = exceptions.map((grant) => new Set(grant.urls));
   const counted = [];
   const excepted = [];
-  for (const event of events) {
+  const orderedEvents = events
+    .map((event, index) => ({ event, index }))
+    .sort((a, b) => a.event.publishedAt.localeCompare(b.event.publishedAt) || a.index - b.index);
+  for (const { event } of orderedEvents) {
     const publishedMs = new Date(event.publishedAt).valueOf();
     if (publishedMs <= windowStartMs || publishedMs > now.instant.valueOf()) continue;
-    const covered = exceptions.some((grant) => grantCovers(grant, event));
+    const grantIndex = exceptions.findIndex((grant, index) => grantCovers(grant, event)
+      && event.urls.every((url) => remainingGrantUrls[index].has(url)));
+    const covered = grantIndex !== -1;
+    if (covered) {
+      for (const url of event.urls) remainingGrantUrls[grantIndex].delete(url);
+    }
     (covered ? excepted : counted).push({ eventId: event.eventId, publishedAt: event.publishedAt, urls: event.urls, qualification: event.qualification });
   }
   return { stage, stageSource: source, cap, counted: counted.length, excepted: excepted.length, remaining: Math.max(0, cap - counted.length), countedEvents: counted, exceptedEvents: excepted };

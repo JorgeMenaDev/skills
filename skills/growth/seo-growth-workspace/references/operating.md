@@ -146,8 +146,9 @@ On observed drift, an unattended run reports (`needs_human`: upgrade pass pendin
 `loop-state.mjs stamp check` reports drift (absent stamp = drifted; drift blocks sleep certificates only — everything else continues; workspace creation stamps itself at birth). When drifted, the operator — never an unattended run — runs one pass per workspace:
 
 1. `loop-state.mjs verify` — machine state validated; repair forward with `--repair` or filed rows.
-2. Re-judge every open backlog row against current gates — each gets a dated keep/amend/close with reason; closes move to Done with a note.
-3. Check ship history and dated promises have their obligations — file gaps as normal rows.
+2. Revalidate each coverage artifact against load-bearing rung-method changes in the installed version. If a change alters what the method observes, accepts, or rejects, annotate the row `staleAsOf`/`staleReason` and file re-observation work; a max-age mirror-only change uses `verify --repair`. Record a dated keep/stale reason for every existing rung.
+3. Re-judge every open backlog row against current gates — each gets a dated keep/amend/close with reason; closes move to Done with a note.
+4. Check ship history and dated promises have their obligations — file gaps as normal rows.
 
 Write a short dated report to the path `stamp report-path` names, then `stamp write --report <path>`. Real work exits into normal rows; the pass is bookkeeping, never a re-audit. History is never rewritten: Done rows, past reports, and ledger history stay as recorded. In a shared working tree, passes over different workspaces serialize as entire runs; concurrent passes need their own clone or worktree, each committing only its own workspace's paths with pull-rebase before commit and push.
 
