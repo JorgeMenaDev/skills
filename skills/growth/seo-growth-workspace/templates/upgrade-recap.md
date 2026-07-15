@@ -34,7 +34,7 @@ Every open backlog row, re-judged against the current gates — closed and Done 
 
 ## 3. Coverage invalidation review
 
-Every rung row reviewed under the load-bearing test — invalidate only when the changed clause alters what the rung's method would observe, accept, or reject; under `never` the test degenerates to "does the artifact's method satisfy the current rung contract"; a pure policy-mirror change (e.g. `maxAgeDays`) is never load-bearing by itself. Record the reasoning either way. A stale mark = additive `staleAsOf`/`staleReason` on the ledger row **plus** a normal backlog row as the operative exit:
+Every rung row reviewed under the load-bearing test — invalidate only when the changed clause alters what the rung's method would observe, accept, or reject; under `never` the test degenerates to "does the artifact's method satisfy the current rung contract"; a pure policy-mirror change (e.g. `maxAgeDays`) is never load-bearing by itself, though ordinary expiry under the current policy value still applies through the coverage reader. Record the reasoning either way. A stale mark = additive `staleAsOf`/`staleReason` on the ledger row **plus** a normal backlog row as the operative exit:
 
 | Rung | Certified under | Load-bearing reasoning (invalidated by / kept because) | Stale annotation written | Exit backlog row |
 | --- | --- | --- | --- | --- |
@@ -55,4 +55,4 @@ Real work surfaced by the recap exits into normal backlog rows — list the rows
 ## Re-stamp
 
 - This workspace's own stamp re-stamped (`<workspace>/reconciliation.json` — standalone `.seo/reconciliation.json`, hub `.seo/sites/<slug>/reconciliation.json`): `reconciledSkillVersion` → <installed version>, `reconciledAt` → <date>, `report` → this file's **workspace-relative** path (`reports/…`, never repo-root-relative). Sibling workspaces are untouched.
-- Confirm: no Done row, past report, or ledger history was rewritten; no state was migrated or deleted.
+- Confirm: no Done row, past report, or ledger history was rewritten; no state was migrated or deleted. (Coverage-row `maxAgeDays` mirror corrections and additive `staleAsOf`/`staleReason` annotations are the two permitted in-place ledger mutations and are not history rewrites — `observedAt` and `artifact` stay untouched.)
