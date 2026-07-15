@@ -145,6 +145,13 @@ function certify(workspace, payloadOverrides = {}, extraArgs = []) {
   return run(["sleep", "certify", "--workspace", workspace, "--loop", "frontier-sweep.json", "--payload", payloadPath, "--now", NOW, "--installed", VERSION, ...extraArgs]);
 }
 
+function stampReconciled(workspace) {
+  mkdirSync(path.join(workspace, "reports"), { recursive: true });
+  const report = `reports/${NOW}-upgrade-pass-${VERSION}.md`;
+  writeFileSync(path.join(workspace, report), "# upgrade pass (fixture)\n");
+  return run(["stamp", "write", "--workspace", workspace, "--installed", VERSION, "--now", NOW, "--report", report]);
+}
+
 // occurrence lifecycle + idempotent retries
 {
   const ws = temp();
@@ -158,7 +165,7 @@ function certify(workspace, payloadOverrides = {}, extraArgs = []) {
   check(run(["occurrence", "materialize", ...base, "--ticket", "SEO-001"]).json?.status === "noop", "occurrence: materialize retry is a noop");
   const inFlight = run(["verify", "--workspace", ws, "--now", NOW]);
   check(inFlight.json?.notes?.inFlightOccurrences?.length === 1, "occurrence: materialized+open ticket is in-flight");
-  run(["stamp", "write", "--workspace", ws, "--installed", VERSION, "--now", NOW]);
+  stampReconciled(ws);
   check(certify(ws).status === 4, "occurrence: in-flight occurrence refuses sleep (exit 4)");
   check(run(["occurrence", "attempt", ...base]).status === 0, "occurrence: attempt");
   check(run(["occurrence", "block", ...base, "--next-at", "2026-07-13", "--max-at", "2026-07-16"]).status === 0, "occurrence: block");
@@ -286,7 +293,9 @@ function certify(workspace, payloadOverrides = {}, extraArgs = []) {
   const ws = temp();
   check(certify(ws).status === 3, "sleep: absent stamp is drift (exit 3)");
   check(run(["stamp", "check", "--workspace", ws, "--installed", VERSION]).status === 3, "stamp: check reports drift on absent stamp");
-  check(run(["stamp", "write", "--workspace", ws, "--installed", VERSION, "--now", NOW, "--report", `reports/${NOW}-upgrade-pass-${VERSION}.md`]).status === 0, "stamp: write");
+  check(run(["stamp", "write", "--workspace", ws, "--installed", VERSION, "--now", NOW]).status === 1, "stamp: write without --report is refused (drift cannot clear without an upgrade report)");
+  check(run(["stamp", "write", "--workspace", ws, "--installed", VERSION, "--now", NOW, "--report", "reports/missing.md"]).status === 1, "stamp: write refuses a report path that does not exist");
+  check(stampReconciled(ws).status === 0, "stamp: write");
   check(run(["stamp", "check", "--workspace", ws, "--installed", VERSION]).status === 0, "stamp: check is clean after write");
   check(run(["stamp", "check", "--workspace", ws, "--installed", "10.0.0"]).status === 3, "stamp: version mismatch is drift");
   const ok = certify(ws);
@@ -349,8 +358,42 @@ function certify(workspace, payloadOverrides = {}, extraArgs = []) {
 }
 {
   const ws = temp();
-  run(["stamp", "write", "--workspace", ws, "--installed", VERSION, "--now", NOW]);
+  stampReconciled(ws);
   check(certify(ws, { coverage: "complete" }).status === 5, "sleep: coverage=complete with no coverage ledger is refused (exit 5)");
+}
+{
+  const ws = temp();
+  stampReconciled(ws);
+  const base = ["--workspace", ws, "--loop", "frontier-sweep.json", "--cadence", "weekly-gsc", "--window", "2026-07-06/2026-07-12"];
+  run(["occurrence", "add", ...base, "--due-at", "2026-07-11", "--fingerprint", "sha256:due-now"]);
+  const refused = certify(ws);
+  check(refused.status === 4 && JSON.stringify(refused.json).includes("dueWork"), "sleep: an already-due occurrence refuses certification (exit 4)");
+  run(["occurrence", "materialize", ...base, "--ticket", "SEO-001"]);
+  run(["occurrence", "attempt", ...base]);
+  run(["occurrence", "satisfy", ...base, "--result", "ok"]);
+  check(certify(ws).status === 0, "sleep: certification succeeds once the due work is done");
+  const dueObligation = ["--workspace", ws, "--hypothesis", "H", "--cohort", "sha256:c"];
+  run(["obligation", "add", ...dueObligation, "--baseline-measured-at", "2026-07-01", "--baseline-value", "v", "--baseline-evidence", "e", "--metric", "m", "--decision", "d", "--due-at", "2026-07-12"]);
+  check(certify(ws).status === 4, "sleep: an already-due obligation refuses certification (exit 4)");
+}
+{
+  const ws = temp();
+  stampReconciled(ws);
+  mkdirSync(path.join(ws, "loops"), { recursive: true });
+  writeFileSync(path.join(ws, "loops", "engine.json"), JSON.stringify({ schema: 1, schedulerMirror: { autoPublish: "true", enabled: true } }, null, 2));
+  check(run(["verify", "--workspace", ws, "--now", NOW]).status === 2, "autopublish: a malformed scheduler mirror fails closed instead of reading as disarmed");
+}
+{
+  const ws = temp();
+  mkdirSync(path.join(ws, "loops"), { recursive: true });
+  writeFileSync(path.join(ws, "loops", "stage.json"), JSON.stringify({ schema: 1, stageStamp: { stage: "early", evaluated: "2026-07-01", basis: "r" } }, null, 2));
+  const record = (id, extra = []) => run(["ship", "record", "--workspace", ws, "--event-id", id, "--dedupe-key", `k-${id}`, "--published-at", "2026-07-12T09:00:00Z", "--initiated-by", "f", "--source", "deploy", "--url", `https://example.com/${id}`, "--qualification", "qualified", "--evidence", "log", ...extra]);
+  check(run(["ship", "record", "--workspace", ws, "--event-id", "multi", "--dedupe-key", "k-multi", "--published-at", "2026-07-12T09:00:00Z", "--initiated-by", "f", "--source", "deploy", "--url", "https://example.com/a", "--url", "https://example.com/b", "--qualification", "qualified", "--evidence", "log"]).status === 1, "ship: a multi-URL event without --shared-release is refused (a batch is one event per URL)");
+  check(run(["ship", "record", "--workspace", ws, "--event-id", "multi", "--dedupe-key", "k-multi", "--published-at", "2026-07-12T09:00:00Z", "--initiated-by", "f", "--source", "deploy", "--url", "https://example.com/a", "--url", "https://example.com/b", "--shared-release", "--qualification", "qualified", "--evidence", "log"]).status === 0, "ship: --shared-release admits a qualifying multi-URL release");
+  const first = record("one");
+  check(first.status === 0 && first.json?.capExceeded === false, "ship: recording reports cap headroom");
+  const over = record("two");
+  check(over.status === 0 && over.json?.capExceeded === true, "ship: an over-cap recording succeeds as audit truth but is loudly flagged");
 }
 {
   const outside = temp();

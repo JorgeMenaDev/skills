@@ -69,10 +69,14 @@ Commands (every command prints one JSON object; exit codes are stable and docume
       inconclusive appends the attempt and returns the same lineage to pending in
       one atomic replacement. Identity is {hypothesis, pageCohortFingerprint}.
 
-  ship record --event-id <id> --dedupe-key <k> --published-at <timestamp> --initiated-by <actor> --source deploy|webhook|pseo-batch|other --url <u> [--url <u>...] --qualification qualified|ambiguous --evidence <e> [--evidence <e>...] [--ticket <id>]
-      Appends one normalized ship event. An existing event with the same dedupeKey
-      and eventId is an idempotent no-op; the same dedupeKey with a different
-      eventId exits 8. URLs are stored as a sorted unique set.
+  ship record --event-id <id> --dedupe-key <k> --published-at <timestamp> --initiated-by <actor> --source deploy|webhook|pseo-batch|other --url <u> [--url <u>...] [--shared-release] --qualification qualified|ambiguous --evidence <e> [--evidence <e>...] [--ticket <id>]
+      Appends one normalized ship event. An identical retry (same dedupeKey and
+      values) is an idempotent no-op; the same dedupeKey with different values
+      exits 8. URLs are stored as a sorted unique set of fragment-free http(s)
+      URLs. A content batch records one event per counted canonical URL;
+      --shared-release asserts a qualifying shared release for a multi-URL event.
+      Recording is post-publication audit truth and always succeeds — run cap
+      BEFORE publishing; the report carries capExceeded for over-cap recordings.
 
   cap [--now <date|timestamp>] [--stage unknown|early|growth|mature]
       Rolling seven-day ship usage vs the stage cap (unknown/early 2, growth 4,
@@ -87,10 +91,10 @@ Commands (every command prints one JSON object; exit codes are stable and docume
       gateFailures, earliestNextDue and/or wakeOn, coverage complete|partial), stamp
       dated and heartbeatAt, and write it as sleepCertificate in --loop, mirroring
       earliestNextDue into the loop's nextWakeAt. Refusals: malformed state (2),
-      drift (3), unreconciled in-flight occurrence or obligation (4), expired or
-      staleAsOf-annotated coverage rung under coverage=complete (5), armed
-      autopublish without a quality-watch occurrence covering the next publish
-      window (6).
+      drift (3), unreconciled in-flight rows or already-due loop work (4),
+      empty ledger / expired or actively-annotated coverage rung under
+      coverage=complete (5), armed autopublish without a quality-watch
+      occurrence whose window contains the next publish date (6).
   sleep heartbeat --loop <file> [--now <timestamp>]
       Update sleepCertificate.heartbeatAt in place; no other bytes change.
 
@@ -98,8 +102,10 @@ Commands (every command prints one JSON object; exit codes are stable and docume
       Compare reconciliation.json to the installed skill version (read from SKILL.md
       frontmatter next to this script unless overridden). Absent or malformed stamps
       are drift. Exit 3 on drift.
-  stamp write [--installed <version>|--skill <path>] [--report <workspace-relative path>] [--now <date>]
-      Write the reconciliation stamp. --report records the upgrade-pass report path.
+  stamp write [--installed <version>|--skill <path>] --report <workspace-relative path> [--now <date>]
+      Write the reconciliation stamp. --report must name the upgrade pass's
+      already-written dated report inside the workspace (creation-time stamping
+      with a null report belongs to bootstrap-seo-workspace.mjs).
   stamp report-path [--installed <version>|--skill <path>] [--now <date>]
       Print a collision-free reports/YYYY-MM-DD-upgrade-pass-<version>.md path.
 
@@ -117,7 +123,7 @@ function parseArgs(argv) {
       args._.push(flag);
       continue;
     }
-    if (flag === "--repair" || flag === "--needs-human") {
+    if (flag === "--repair" || flag === "--needs-human" || flag === "--shared-release") {
       args[flag.slice(2)] = true;
       continue;
     }
@@ -392,6 +398,19 @@ function validateCapExceptions(value, source) {
   });
 }
 
+function validateSchedulerMirror(value, source) {
+  if (value === undefined || value === null) return;
+  const field = `${source} schedulerMirror`;
+  // The mirror guards armed autopublishing: a present but malformed mirror
+  // must fail closed, never read as disarmed.
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error(`${field} must be an object or null`);
+  for (const name of ["autoPublish", "enabled"]) {
+    if (value[name] !== undefined && value[name] !== null && typeof value[name] !== "boolean") {
+      throw new Error(`${field}.${name} must be true, false, or null`);
+    }
+  }
+}
+
 function validateStageStamp(value, source) {
   if (value === undefined || value === null) return;
   const field = `${source} stageStamp`;
@@ -550,6 +569,7 @@ function loadWorkspace(workspace) {
     validateWakeFields(payload, source, failures);
     try {
       validateStageStamp(payload.stageStamp, source);
+      validateSchedulerMirror(payload.schedulerMirror, source);
     } catch (error) {
       failures.push({ file: source, reason: error.message });
     }
@@ -720,11 +740,28 @@ function analyzeWorkspace(state, now) {
   const autopublish = [];
   for (const file of state.loopFiles) {
     const mirror = file.payload.schedulerMirror;
-    if (mirror && typeof mirror === "object" && !Array.isArray(mirror) && mirror.autoPublish === true && mirror.enabled !== false) {
+    if (mirror === undefined || mirror === null) continue;
+    if (mirror.autoPublish === true && mirror.enabled !== false) {
       autopublish.push({ file: file.source, nextPublishWindow: mirror.nextPublishWindow ?? null });
     }
   }
-  return { inFlightOccurrences, inFlightObligations, staleRungs, annotatedRungs, mirrorDrift, autopublish };
+  const dueWork = [];
+  for (const file of state.loopFiles) {
+    for (const [key, value] of Object.entries(file.payload.occurrences ?? {})) {
+      if (value.state === "due" && value.dueAt <= now.date) dueWork.push({ file: file.source, identity: key, reason: `due since ${value.dueAt}` });
+      if (value.state === "blockedUntil" && (value.escalation === "needs_human" || value.attempt >= 3 || now.date > value.maxAt)) {
+        dueWork.push({ file: file.source, identity: key, reason: "needs_human escalation outstanding" });
+      } else if (value.state === "blockedUntil" && value.nextAt <= now.date) {
+        dueWork.push({ file: file.source, identity: key, reason: `retry due since ${value.nextAt}` });
+      }
+    }
+  }
+  for (const [key, value] of Object.entries(state.obligationsFile.payload?.obligations ?? {})) {
+    if (value.state !== "pending" && value.state !== "due") continue;
+    const effectiveDueAt = value.state === "pending" ? (value.wakeAt ?? value.dueAt) : value.dueAt;
+    if (effectiveDueAt <= now.date) dueWork.push({ file: "loops/measurement-obligations.json", identity: key, reason: `due since ${effectiveDueAt}` });
+  }
+  return { inFlightOccurrences, inFlightObligations, staleRungs, annotatedRungs, mirrorDrift, autopublish, dueWork };
 }
 
 function qualityWatchCovers(state, windowValue) {
@@ -1088,6 +1125,9 @@ function cmdShipRecord(workspace, args) {
     evidence: args.evidence,
   };
   if (event.urls.length === 0) throw usageError("--url is required at least once");
+  if (event.urls.length > 1 && !args["shared-release"]) {
+    throw usageError("a content batch records one event per counted canonical URL; a multi-URL event asserts a qualifying shared release — pass --shared-release to claim it");
+  }
   const existing = payload.events.find((candidate) => candidate.dedupeKey === event.dedupeKey);
   if (existing) {
     const identical = ["eventId", "publishedAt", "initiatedBy", "source", "qualification"].every((name) => existing[name] === event[name])
@@ -1106,8 +1146,27 @@ function cmdShipRecord(workspace, args) {
   });
   validateShipEvent(event, payload.events.length, "loops/ship-events.json", seen);
   payload.events.push(event);
+  state.shipsFile = { state: "present", payload };
   atomicWriteJson(workspace, path.join(workspace, "loops", "ship-events.json"), payload);
-  return { exitCode: EXIT.OK, report: { command: "ship record", status: "written", eventId: event.eventId, countedUrls: event.urls.length } };
+  // Recording is audit truth and always succeeds — the pre-publication gate is
+  // running `cap` BEFORE publishing — but an over-cap recording must be loud.
+  let capAfter = null;
+  try {
+    capAfter = capUsage(state, parseNow(event.publishedAt), resolveStage(state, args));
+  } catch {
+    // Ambiguous stage never blocks the audit record; `cap` reports it.
+  }
+  return {
+    exitCode: EXIT.OK,
+    report: {
+      command: "ship record",
+      status: "written",
+      eventId: event.eventId,
+      countedUrls: event.urls.length,
+      capExceeded: capAfter ? capAfter.counted > capAfter.cap : null,
+      cap: capAfter && { stage: capAfter.stage, cap: capAfter.cap, counted: capAfter.counted, remaining: capAfter.remaining },
+    },
+  };
 }
 
 function resolveStage(state, args) {
@@ -1129,10 +1188,7 @@ function resolveStage(state, args) {
   return { stage: "unknown", source: "default (no stageStamp found)" };
 }
 
-function cmdCap(workspace, args) {
-  const now = parseNow(args.now);
-  const state = requireValidWorkspace(workspace);
-  const { stage, source } = resolveStage(state, args);
+function capUsage(state, now, { stage, source }) {
   const cap = SHIP_CAPS[stage];
   const events = state.shipsFile.payload?.events ?? [];
   const exceptions = Array.isArray(state.shipsFile.payload?.capExceptions) ? state.shipsFile.payload.capExceptions : [];
@@ -1154,20 +1210,15 @@ function cmdCap(workspace, args) {
     const covered = exceptions.some((grant) => grantCovers(grant, event));
     (covered ? excepted : counted).push({ eventId: event.eventId, publishedAt: event.publishedAt, urls: event.urls, qualification: event.qualification });
   }
-  const remaining = Math.max(0, cap - counted.length);
-  const report = {
-    command: "cap",
-    now: now.instant.toISOString(),
-    stage,
-    stageSource: source,
-    cap,
-    counted: counted.length,
-    excepted: excepted.length,
-    remaining,
-    countedEvents: counted,
-    exceptedEvents: excepted,
-  };
-  return { exitCode: remaining > 0 ? EXIT.OK : EXIT.CAP, report };
+  return { stage, stageSource: source, cap, counted: counted.length, excepted: excepted.length, remaining: Math.max(0, cap - counted.length), countedEvents: counted, exceptedEvents: excepted };
+}
+
+function cmdCap(workspace, args) {
+  const now = parseNow(args.now);
+  const state = requireValidWorkspace(workspace);
+  const usage = capUsage(state, now, resolveStage(state, args));
+  const report = { command: "cap", now: now.instant.toISOString(), ...usage };
+  return { exitCode: usage.remaining > 0 ? EXIT.OK : EXIT.CAP, report };
 }
 
 function cmdSleepCertify(workspace, args) {
@@ -1202,6 +1253,9 @@ function cmdSleepCertify(workspace, args) {
       inFlightOccurrences: analysis.inFlightOccurrences,
       inFlightObligations: analysis.inFlightObligations,
     });
+  }
+  if (analysis.dueWork.length > 0) {
+    throw refusal(EXIT.IN_FLIGHT, "already-due loop work exists; do the work or record honest blocked — a certificate cannot suppress it", { dueWork: analysis.dueWork });
   }
   if (cert.coverage === "complete") {
     // "complete" asserts the operator's judgment that every APPLICABLE rung is
@@ -1263,12 +1317,15 @@ function cmdStamp(workspace, action, args) {
   }
   if (action === "write") {
     const now = parseNow(args.now);
-    let report = null;
-    if (args.report !== undefined) {
-      report = nonEmptyString(args.report, "--report");
-      if (path.posix.isAbsolute(report) || path.win32.isAbsolute(report) || /^[A-Za-z]:/.test(report) || report.split(/[\\/]/).includes("..")) {
-        throw usageError("--report must be a workspace-relative path");
-      }
+    // Clearing drift asserts a completed upgrade pass; the pass's dated report
+    // must already exist inside the workspace. (Creation-time stamping with a
+    // null report belongs to bootstrap-seo-workspace.mjs, not this command.)
+    const report = nonEmptyString(args.report, "--report");
+    if (path.posix.isAbsolute(report) || path.win32.isAbsolute(report) || /^[A-Za-z]:/.test(report) || report.split(/[\\/]/).includes("..")) {
+      throw usageError("--report must be a workspace-relative path");
+    }
+    if (!existsSync(path.join(workspace, report))) {
+      throw usageError(`--report ${report} does not exist in the workspace; write the upgrade-pass report before re-stamping`);
     }
     atomicWriteJson(workspace, path.join(workspace, "reconciliation.json"), {
       schema: 1,
