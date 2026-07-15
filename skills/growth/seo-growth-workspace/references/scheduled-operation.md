@@ -100,3 +100,5 @@ The payload is the contract with the scheduler; keep keys stable and values one 
 ## Exit Criteria
 
 A scheduled run exits cleanly when state was read cold, one bounded step or checkpoint completed, the result is executed work, scoped dated sleep, or honest blocked under `references/never-dry-loop.md`, nothing above the mutation ceiling was attempted, loop state and `.seo/log.md` were updated as allowed by hot-loop coalescing, and the summary payload was emitted with silent-mode discipline applied. A configured stop, cancellation, or explicit exhaust request remains a valid schedule terminal.
+
+On observed upgrade drift (`references/never-dry-loop.md` § Upgrade recap and reconciled-version stamp), a scheduled run reports without acting: it surfaces or refreshes the operator-only upgrade-recap item in `needs_human`, completes whatever other work its remit makes eligible, and ends without a sleep certificate — an honest "recap pending", never a false all-clear. It never executes the recap, re-stamps the reconciled version, or migrates state.

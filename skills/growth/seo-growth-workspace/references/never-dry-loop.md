@@ -55,11 +55,42 @@ A certificate is an optional schema-1 field in the owning loop state, not a seco
 }
 ```
 
-`authorizationClass` is versioned because a certificate from one approval or mutation regime must not silently authorize another. A certificate suppresses work only for an exact or conservatively equivalent invocation fingerprint. Missing or incomparable fields fail closed to finding work. Certificates are dated, deduplicated, and fingerprinted against the checked target and evidence; they are not permission to skip a newly observed signal.
+`authorizationClass` is versioned because a certificate from one approval or mutation regime must not silently authorize another. A certificate suppresses work only for an exact or conservatively equivalent invocation fingerprint. Missing or incomparable fields fail closed to finding work. Certificates are dated, deduplicated, and fingerprinted against the checked target and evidence; they are not permission to skip a newly observed signal. A certificate additionally requires no outstanding upgrade drift: a workspace cannot certify "nothing to do" under protocols it has never reconciled with (see § Upgrade recap and reconciled-version stamp).
 
 Re-running inside the wake window without a new signal is a hot-loop heartbeat: update `heartbeatAt` in place at the configured bounded interval, with zero new report, log-line, or ticket spam. Append a log entry only when evidence, wake state, or terminal outcome changes.
 
 A schedule’s `done` marker after a configured stop, cancellation, or explicit exhaust request is lifecycle metadata, not a fourth dry-run terminal; the current iteration still records executed work, scoped sleep, or honest blocked.
+
+## Upgrade recap and reconciled-version stamp
+
+Workspace state — backlog rows, loop ledgers, coverage certifications, obligations — is produced under the protocols of the skill version that ran at the time. After the installed skill is upgraded, that state has not been reconciled with the new protocols until someone deliberately reconciles it. The reconciled-version stamp makes that condition observable; the upgrade recap is the deliberate pass that clears it.
+
+The stamp is optional additive schema-1 state at `.seo/reconciliation.json` — a sibling of `config.json`, deliberately outside `loops/` because the cadence reader treats unknown `loops/*.json` files as loop state:
+
+```json
+{
+  "schema": 1,
+  "reconciledSkillVersion": "5.2.0",
+  "reconciledAt": "YYYY-MM-DD",
+  "report": "report path"
+}
+```
+
+- The created-by `skillVersion` in `.seo/config.json` keeps its exact current semantics (`references/hub-mode.md`): first-stamp provenance, never rewritten, never tracking upgrades. Only `reconciledSkillVersion` tracks reconciliation, and only the recap re-stamps it.
+- **Drift** exists when the invoking skill's current version differs from `reconciledSkillVersion`, or the stamp is absent or malformed. Absence fails closed as never reconciled — it is drift, not an error, and existing workspaces created before this contract are simply drifted until their first recap.
+- **Drift blocks sleep certificates only.** No certificate may be minted while drift is outstanding. Every other eligible action — executed work, honest blocked, due cadences, obligations — continues normally; drift never freezes a workspace.
+- On observing drift, surface a due **upgrade recap** item through the normal ticket flow, routed operator-only. The recap itself is operator-invoked, always: no run — interactive, scheduled, or otherwise — executes it, migrates state, or rewrites anything because drift was observed.
+
+### The recap pass
+
+Deliberate, dated, operator-invoked, one workspace per run; report shape in `templates/upgrade-recap.md`. Four checks, all forward-looking:
+
+1. **Loops-state revalidation** — re-read every schema-1 loop file, ledger, and certificate under the current contracts; malformed or newly non-conforming state is repaired forward or filed, never silently rewritten.
+2. **Open-row re-triage** — every open backlog row is re-judged against the current gates; each row gets a dated `keep`, `amend`, or `close` with reason.
+3. **Coverage invalidation review** — coverage-ledger rows certified against rungs or policies that changed (or rungs newly added) are marked stale; the affected rung becomes ordinary due work.
+4. **Obligations conformance** — measurement obligations are checked against the current companion contracts.
+
+Then write the dated recap report and re-stamp `reconciledSkillVersion`. History is never rewritten: Done rows, past reports, and ledger history stay exactly as recorded. Real work the recap discovers exits into normal new backlog rows — the recap is a bounded bookkeeping pass, never a site re-audit and never a second work queue.
 
 ## Optional schema-1 state
 

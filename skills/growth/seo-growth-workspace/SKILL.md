@@ -1,7 +1,7 @@
 ---
 name: seo-growth-workspace
 description: "Use when starting, auditing, or operating SEO or organic growth for a product or local-business website — technical SEO, Search Console, keyword/content ops, schema, pSEO, local SEO/GBP, backlinks, AI-search visibility, conversion, and monthly reporting. Triggers: \"set up SEO\", \"audit my site\", \"my traffic dropped\", \"why am I not ranking\", \"Search Console opportunities\", \"monthly SEO report\", \"how do we show up in ChatGPT/AI search\". Creates a durable .seo workspace, captures business context, audits live/code/admin evidence, prioritizes a backlog, implements one high-leverage action, verifies reality, and logs handoff notes. Installs in a single site repo (standalone) or in an orchestrator/agent-profile repo managing many sites (hub). For standalone copywriting, paid channels, or email, use a dedicated skill."
-version: 5.1.3
+version: 5.2.0
 license: MIT
 mutating: true
 writes_to: [".seo/", "operator-declared bootstrap plan path"]
@@ -92,7 +92,7 @@ Load only the file needed for the mode or ticket:
 - First-run phase architecture and site-type classifier: `references/phase-architecture.md`
 - Operating loop and handoff: `references/operating-loop.md`
 - Fixed stage, cadence, frontier, gate, ship-cap, measurement, and concurrency policy: `references/operating-policy.md`
-- Three-terminal loop contract, wake state, certificates, cadence occurrences, measurement obligations, and coverage: `references/never-dry-loop.md`
+- Three-terminal loop contract, wake state, certificates, cadence occurrences, measurement obligations, coverage, and the post-upgrade recap (reconciled-version stamp): `references/never-dry-loop.md`
 - Business context intake: `references/business-context.md`
 - Admin/auth evidence: `references/admin-preflight.md`
 - Local adapters and repo-specific bridges: `references/adapters.md`

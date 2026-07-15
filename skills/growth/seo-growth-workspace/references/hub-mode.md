@@ -81,6 +81,10 @@ Hub extension of the Target Boundary in `references/operating-loop.md`: when a p
 
 Bundled scripts run from SKILL_DIR and take explicit paths — pass the resolved SITE_WORKSPACE: `<hub>/.seo/sites/<slug>/backlog.md`, `<hub>/.seo/sites/<slug>/reports/`, and so on. Credentials stay per-site via the registry Credentials column (for example `GSC_CREDENTIALS_DIR`); never a hub-root `.env` shared across sites.
 
+## Post-Upgrade Recap Across Registered Workspaces
+
+After the installed skill is refreshed (for example through the consumer's `npx skills` update flow), every registered workspace is drifted until deliberately reconciled: its state was produced under the previous version's protocols (`references/never-dry-loop.md` § Upgrade recap and reconciled-version stamp). The recap then runs as one deliberate, operator-invoked single-site run per registered workspace — never as one bulk pass — preserving one-target-per-run and the hub boundary above. Sequencing across workspaces is the operator's choice; until a workspace's recap re-stamps it, that workspace simply cannot certify sleep, while all its other eligible work continues.
+
 ## Exit Criteria
 
 A hub run exits cleanly when `config.json` was read (or correctly inferred standalone), exactly one target site was resolved through the registry before any site state was read, all reads/writes landed in that site's workspace, and sibling site folders were untouched.

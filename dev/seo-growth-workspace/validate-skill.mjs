@@ -102,6 +102,7 @@ const requiredFiles = [
   "templates/monthly-report.md",
   "templates/admin-setup.md",
   "templates/portfolio-index.md",
+  "templates/upgrade-recap.md",
   "scripts/workspace-state.mjs",
   "scripts/seo-doctor.mjs",
   "scripts/bootstrap-seo-workspace.mjs",

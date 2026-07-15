@@ -16,6 +16,16 @@ Do not scrape assistant products or add a provider integration. Manual observati
 
 ## 2. Observation contract
 
+### Panel construction, freeze, and versioning
+
+Build the initial prompt panel from named, dated demand evidence before the first baseline — never from operator memory or convenience. Acceptable sources: first-party Search Console queries, the site's maintained keyword/query plan, sales-call/support/customer language, live SERP observations for money queries, or explicitly recorded business-context assumptions when first-party evidence does not exist yet. For every prompt preserve, alongside its stable prompt ID, version, and verbatim query: the source and its observation date, the selection rationale, buyer stage, branded/non-branded state, locale/market, intended surface or mode, and the known evidence limitation.
+
+Freeze the declared panel before running the baseline. Any addition, removal, or wording change afterwards creates a new prompt/panel version; prior observations remain unchanged, and the report records why the panel changed and which comparisons are no longer like-for-like. Never add or remove prompts because observed results were favourable or unfavourable — post-hoc selection invalidates the baseline it appears to improve.
+
+Sample size is declared and capacity-bound: fit the panel to the site's demand evidence and the operator's real capacity. No fixed prompt count, engine set, or cadence is a universal requirement. When the panel is intentionally partial, record the omitted demand classes and their limitation. This contract routes into the existing dated report and observation fields below; it creates no second ledger, score, provider integration, or prompt library.
+
+### Observation rows
+
 Maintain a prompt set in the dated report. Give every prompt a stable prompt ID and version; retain the verbatim query and declared intent. Change the version when wording changes. Use a stable prompt panel and repeated runs for local or personalized observations.
 
 Record one row per answer run, not one row per query summary. Every row carries its own context so it remains intelligible after sorting or extraction:
