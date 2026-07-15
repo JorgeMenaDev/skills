@@ -48,7 +48,7 @@ Sequencing — submit only where the product genuinely fits; vary descriptions p
 ## Digital PR And Linkable Assets
 
 - Proprietary data assets (benchmarks, surveys, product-derived stats) earn links generic content cannot.
-- Expert commentary: HARO is defunct; use successors such as Qwoted or Source of Sources (SOS).
+- Expert commentary: platforms are volatile — verify current official availability at use time, never from a frozen list. HARO relaunched under Featured ([helpareporter.com](https://www.helpareporter.com/), observed live 2026-07-15); Qwoted and Source of Sources (SOS) are alternatives, not guarantees or preferred paid dependencies. Availability checks must tolerate bot protection: a challenge response (for example an HTTP 429 checkpoint to a plain fetch) means `unknown`, never `defunct` — verify with a real browser or an official announcement. Treat every platform's scale and outcome claims as first-party marketing; qualify each request and publication manually.
 - Reclaim unlinked brand mentions: find them, request the link — the warmest outreach available.
 
 ## Link Policy

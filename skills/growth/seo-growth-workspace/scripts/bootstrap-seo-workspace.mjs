@@ -24,7 +24,7 @@ import {
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const taxonomyTemplatePath = path.resolve(scriptDir, "../templates/taxonomy.md");
-const SKILL_VERSION = "5.1.3";
+const SKILL_VERSION = "5.2.0";
 const WORKSPACE_SCHEMA_VERSION = 1;
 const ACTIONS = new Set(["create", "adopt", "verify", "repair", "create-optional"]);
 
@@ -279,12 +279,23 @@ async function writeMissing(baseDir, files, allowlist = null, root = baseDir) {
   }
 }
 
+function reconciliationContent() {
+  // Creation-time stamp: a workspace created under the current version is
+  // reconciled by construction (references/never-dry-loop.md § Upgrade recap).
+  // `report: null` marks initial provenance, not a recap product.
+  return `${JSON.stringify({ schema: 1, reconciledSkillVersion: SKILL_VERSION, reconciledAt: new Date().toISOString().slice(0, 10), report: null }, null, 2)}\n`;
+}
+
 async function createWorkspace(workspaceDir, allowlist = null, root = workspaceDir) {
   const directories = ["reports", "scripts", "pseo"];
   for (const directory of directories) {
     if (!allowlist || allowlist.has(directory)) await mkdirContained(root, path.join(workspaceDir, directory));
   }
-  await writeMissing(workspaceDir, { ...workspaceFiles(), "taxonomy.md": await taxonomyContent() }, allowlist, root);
+  const files = { ...workspaceFiles(), "taxonomy.md": await taxonomyContent() };
+  // Seed the stamp only on a true create (never via repair/allowlist paths):
+  // an existing stamp-less workspace must stay drifted until an operator recap.
+  if (allowlist === null) files["reconciliation.json"] = reconciliationContent();
+  await writeMissing(workspaceDir, files, allowlist, root);
 }
 
 function loadAndVerifyPlan(options, root) {

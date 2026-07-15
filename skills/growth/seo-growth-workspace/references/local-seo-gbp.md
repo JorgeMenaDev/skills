@@ -14,6 +14,15 @@ Use the shared evidence states, outcome ladder, and provenance rules in [Evidenc
 4. Output a matrix, then prioritized hypotheses and actions with an owner and recheck window.
 5. Write descriptions, review responses, post calendars, or citation fixes only when requested and send every public or authenticated mutation through the approval gate.
 
+## Profile Count And Eligibility
+
+Never treat profile count as a local-ranking or growth lever. Default to one Business Profile per business, per [Google's guidelines for representing your business](https://support.google.com/business/answer/3038177) (observed 2026-07-15). Propose an additional profile only when current official Google guidance and owned operational evidence establish a separately eligible real location, department, or practitioner — never merely to cover additional service areas.
+
+- A service-area business with separate locations qualifies for an extra profile only with separate service areas **and** separate staff at each; a practitioner never holds multiple Business Profiles to cover specializations.
+- Service-area businesses remain eligible without a storefront display; do not imply a public address is universally required.
+- Verify current official guidance at use time rather than relying on this dated capture; provider rules change.
+- No ranking, Map Pack, review, call, lead, customer, or revenue outcome follows from profile count; any proposed additional profile goes through the normal factual-confirmation, eligibility, and approval gates below.
+
 ## Modules
 
 | Module | Evidence | Output |
