@@ -42,7 +42,7 @@ Every rung row reviewed under the load-bearing test — invalidate only when the
 
 ## 4. Obligations conformance
 
-Both directions: ledger rows conform to the current contracts, and ship history the current contracts would obligate has its companions (missing companions → normal backlog rows, never fabricated retroactively):
+Both directions: ledger rows conform to the current contracts, and everything the current contracts would obligate has its ledger entry — ship-history companions AND dated recheck promises in Done rows or log entries lacking both a ledger entry and a recorded exemption (missing ones → normal backlog rows, never fabricated retroactively):
 
 | Obligation | Conforms to current companion contracts | Finding / action |
 | --- | --- | --- |

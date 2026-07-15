@@ -707,17 +707,23 @@ async function readReconciliationState(workspace) {
   }
   try {
     const parsed = JSON.parse(text);
+    const reportValid = (value) => value === null || (
+      typeof value === "string" && value.length > 0
+      && !path.isAbsolute(value)
+      && !value.split(/[\\/]/).includes("..")
+    );
     if (
       parsed && typeof parsed === "object" && !Array.isArray(parsed)
       && parsed.schema === 1
       && typeof parsed.reconciledSkillVersion === "string" && parsed.reconciledSkillVersion.length > 0
       && typeof parsed.reconciledAt === "string" && DATE_PATTERN.test(parsed.reconciledAt)
+      && Object.hasOwn(parsed, "report") && reportValid(parsed.report)
     ) {
       return {
         stampState: "present",
         reconciledSkillVersion: parsed.reconciledSkillVersion,
         reconciledAt: parsed.reconciledAt,
-        report: typeof parsed.report === "string" ? parsed.report : null,
+        report: parsed.report,
       };
     }
     return { stampState: "malformed", ...empty };
