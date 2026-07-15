@@ -6,7 +6,7 @@
   "coverageState": "present",
   "due": [],
   "deduplicated": [],
-  "earliestNextDue": "2026-07-18",
+  "earliestNextDue": "2026-07-15",
   "obligations": [],
   "inFlightOccurrences": [],
   "inFlightObligations": [],
@@ -18,13 +18,19 @@
   ],
   "coverageDue": [
     {
-      "rung": "A",
-      "expiresAt": "2026-07-20"
+      "rung": "B",
+      "expiresAt": "2026-07-15"
     },
     {
-      "rung": "B",
-      "expiresAt": "2026-07-31"
+      "rung": "A",
+      "expiresAt": "2026-07-20"
     }
   ],
-  "failures": []
+  "failures": [],
+  "reconciliation": {
+    "stampState": "absent",
+    "reconciledSkillVersion": null,
+    "reconciledAt": null,
+    "report": null
+  }
 }
