@@ -83,7 +83,7 @@ Bundled scripts run from SKILL_DIR and take explicit paths — pass the resolved
 
 ## Post-Upgrade Recap Across Registered Workspaces
 
-After the installed skill is refreshed (for example through the consumer's `npx skills` update flow), every registered workspace is drifted until deliberately reconciled: its state was produced under the previous version's protocols (`references/never-dry-loop.md` § Upgrade recap and reconciled-version stamp). The recap then runs as one deliberate, operator-invoked single-site run per registered workspace — never as one bulk pass — preserving one-target-per-run and the hub boundary above. Sequencing across workspaces is the operator's choice; until a workspace's recap re-stamps it, that workspace simply cannot certify sleep, while all its other eligible work continues.
+After the installed skill is refreshed (for example through the consumer's `npx skills` update flow), every registered workspace is drifted until deliberately reconciled: its state was produced under the previous version's protocols (`references/never-dry-loop.md` § Upgrade recap and reconciled-version stamp). Each workspace carries its own stamp at `.seo/sites/<slug>/reconciliation.json` — recapping one site never changes a sibling's drift state. The recap then runs as one deliberate, operator-invoked single-site run per registered workspace — never as one bulk pass — preserving one-target-per-run and the hub boundary above. Sequencing across workspaces is the operator's choice; until a workspace's recap re-stamps it, that workspace simply cannot certify sleep, while all its other eligible work continues.
 
 ## Exit Criteria
 

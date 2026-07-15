@@ -46,5 +46,5 @@ Real work surfaced by the recap exits into normal backlog rows — list the rows
 
 ## Re-stamp
 
-- `.seo/reconciliation.json` re-stamped: `reconciledSkillVersion` → <installed version>, `reconciledAt` → <date>, `report` → this file's path.
+- This workspace's own stamp re-stamped (`<workspace>/reconciliation.json` — standalone `.seo/reconciliation.json`, hub `.seo/sites/<slug>/reconciliation.json`): `reconciledSkillVersion` → <installed version>, `reconciledAt` → <date>, `report` → this file's path. Sibling workspaces are untouched.
 - Confirm: no Done row, past report, or ledger history was rewritten; no state was migrated or deleted.

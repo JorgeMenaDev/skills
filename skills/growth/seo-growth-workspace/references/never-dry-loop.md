@@ -65,7 +65,7 @@ A schedule’s `done` marker after a configured stop, cancellation, or explicit 
 
 Workspace state — backlog rows, loop ledgers, coverage certifications, obligations — is produced under the protocols of the skill version that ran at the time. After the installed skill is upgraded, that state has not been reconciled with the new protocols until someone deliberately reconciles it. The reconciled-version stamp makes that condition observable; the upgrade recap is the deliberate pass that clears it.
 
-The stamp is optional additive schema-1 state at `.seo/reconciliation.json` — a sibling of `config.json`, deliberately outside `loops/` because the cadence reader treats unknown `loops/*.json` files as loop state:
+The stamp is optional additive schema-1 state at the **resolved site workspace root**: `<workspace>/reconciliation.json` — `.seo/reconciliation.json` in standalone mode, `.seo/sites/<slug>/reconciliation.json` for each hub-managed workspace. Every workspace carries its own stamp; reconciling one workspace never changes a sibling's drift state. It sits beside that workspace's `loops/` directory, deliberately outside it, because the cadence reader treats unknown `loops/*.json` files as loop state:
 
 ```json
 {
@@ -77,7 +77,7 @@ The stamp is optional additive schema-1 state at `.seo/reconciliation.json` — 
 ```
 
 - The created-by `skillVersion` in `.seo/config.json` keeps its exact current semantics (`references/hub-mode.md`): first-stamp provenance, never rewritten, never tracking upgrades. Only `reconciledSkillVersion` tracks reconciliation, and only the recap re-stamps it.
-- **Drift** exists when the invoking skill's current version differs from `reconciledSkillVersion`, or the stamp is absent or malformed. Absence fails closed as never reconciled — it is drift, not an error, and existing workspaces created before this contract are simply drifted until their first recap.
+- **Drift** exists when the invoking skill's current version differs from `reconciledSkillVersion`, or the stamp is absent or malformed. Absence fails closed as never reconciled — it is drift, not an error, and existing workspaces created before this contract are simply drifted until their first recap. One exception: a stamp-less workspace whose created-by `skillVersion` in `config.json` equals the currently installed version is reconciled by construction — none of its state has ever existed under any other protocol, so its first recap obligation arises with its first upgrade. Equality of the created-by stamp is the only substitute; an older created-by version never is.
 - **Drift blocks sleep certificates only.** No certificate may be minted while drift is outstanding. Every other eligible action — executed work, honest blocked, due cadences, obligations — continues normally; drift never freezes a workspace.
 - On observing drift, surface a due **upgrade recap** item through the normal ticket flow, routed operator-only. The recap itself is operator-invoked, always: no run — interactive, scheduled, or otherwise — executes it, migrates state, or rewrites anything because drift was observed.
 
@@ -94,7 +94,7 @@ Then write the dated recap report and re-stamp `reconciledSkillVersion`. History
 
 ## Optional schema-1 state
 
-All new machine state is optional, additive schema 1 under the resolved workspace’s `.seo/loops/` directory. Safe defaults are read-only and cannot certify sleep. Absence is not drift and is not an error, but an uninitialized or malformed state cannot issue a sleep certificate; parsing fails closed to finding work or reporting a blocker. Human-readable Scheduled rows, cadence summaries, reports, and logs are derived or materialized views; loop JSON is the sole machine source of truth. No workspace schema version, `seo-doctor` signature, or bootstrap behavior changes.
+All new machine state is optional, additive schema 1 under the resolved workspace’s `.seo/loops/` directory — with one deliberate exception: the reconciliation stamp lives at the workspace root and is owned entirely by § Upgrade recap and reconciled-version stamp, including its own absence semantics. Safe defaults are read-only and cannot certify sleep. For loop state, absence is not drift and is not an error, but an uninitialized or malformed state cannot issue a sleep certificate; parsing fails closed to finding work or reporting a blocker. Human-readable Scheduled rows, cadence summaries, reports, and logs are derived or materialized views; loop JSON is the sole machine source of truth. No workspace schema version, `seo-doctor` signature, or bootstrap behavior changes.
 
 The optional state surfaces are:
 
