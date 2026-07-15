@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "occurrences": {
+    "[\"autopublish-quality-watch\",\"2026-07-14/2026-07-14\"]": {
+      "cadenceId": "autopublish-quality-watch",
+      "dueWindow": "2026-07-14/2026-07-14",
+      "dueAt": "2026-07-14",
+      "state": "due",
+      "candidateFingerprint": "sha256:fixture-quality-watch",
+      "ticket": null,
+      "result": null,
+      "attempt": 0,
+      "nextAt": null,
+      "maxAt": null,
+      "escalation": "none"
+    }
+  },
+  "schedulerMirror": {
+    "checkedAt": "2026-07-12T09:00:00Z",
+    "evidence": "engine scheduler get --project fixture",
+    "projectState": "active",
+    "autoPublish": true,
+    "enabled": true,
+    "daysOfWeek": ["tue"],
+    "hourLocal": 9,
+    "timezone": "UTC",
+    "gateState": "none",
+    "nextPublishWindow": "2026-07-14T09:00:00Z"
+  }
+}

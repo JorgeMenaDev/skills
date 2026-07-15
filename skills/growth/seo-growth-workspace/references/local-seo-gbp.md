@@ -4,7 +4,7 @@ Use only when the business has local intent, service areas, a storefront, GBP, m
 
 If those signals are absent, exit the phase as `not applicable` and record the evidence. Do not create a local SEO action for SaaS, publisher, or product sites without local intent.
 
-Use the shared evidence states, outcome ladder, and provenance rules in [Evidence Conventions](evidence-conventions.md). The local visibility states and measurement classes below are narrower GBP contracts; do not substitute one vocabulary for the other. Local-AI observation is outside this workflow and belongs to the AI measurement workflow.
+Use the shared evidence states, outcome ladder, and provenance rules in [Evidence Conventions](operating.md). The local visibility states and measurement classes below are narrower GBP contracts; do not substitute one vocabulary for the other. Local-AI observation is outside this workflow and belongs to the AI measurement workflow.
 
 ## Operating Pattern
 

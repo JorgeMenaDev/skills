@@ -52,7 +52,7 @@ Profiling is input, not output. Route findings into the existing matrices:
 
 | Finding | Destination |
 | --- | --- |
-| Domains linking to competitors, not the target | Backlink gap — `templates/backlink-gap.md` via `references/backlinks-entity.md` |
+| Domains linking to competitors, not the target | Backlink gap report — `references/backlinks-entity.md` |
 | Demand the target does not capture | Competitor Demand Gaps matrix — `references/content-ops.md` |
 | Map-pack categories, reviews, posts | Local competitor matrix — `references/local-seo-gbp.md` |
 | Page types worth replicating | pSEO plan shape — `references/pseo-gates.md` |

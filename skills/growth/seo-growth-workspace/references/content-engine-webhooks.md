@@ -34,10 +34,10 @@ A webhook delivery is not "published" until:
 - The live route returns 200 with rendered title, meta description, and body.
 - The post is in `sitemap.xml` and linked from the blog hub, so a crawl path exists.
 - Rendered metadata/schema match the payload without invented facts.
-- At webhook delivery, run the [Page Evidence](page-evidence.md) publish-and-delivery gate: verify every intended public inline citation from the authoritative article revision in preview/staging before public publication (or immediately upon delivery when no preview exists), and record the result in the native revision evidence. Page Evidence owns the recorded citation fields and the failed-citation handling; this section only triggers that gate for the webhook path.
+- At webhook delivery, run the [Page Evidence](pages.md) publish-and-delivery gate: verify every intended public inline citation from the authoritative article revision in preview/staging before public publication (or immediately upon delivery when no preview exists), and record the result in the native revision evidence. Page Evidence owns the recorded citation fields and the failed-citation handling; this section only triggers that gate for the webhook path.
 - The `.seo/backlog.md` content ticket and the engine's dashboard state agree. Backend/UI disagreement is a blocker, not a success.
 
-Citation reachability alone is not proof of claim support: claim support is decided by the authoritative revision evidence under [Page Evidence](page-evidence.md), not by a citation returning 200.
+Citation reachability alone is not proof of claim support: claim support is decided by the authoritative revision evidence under [Page Evidence](pages.md), not by a citation returning 200.
 
 One worked example follows; your engine will differ — record its contract in `.seo/adapters/<engine>.md`.
 
@@ -64,7 +64,7 @@ Auth setup (one human step, then headless):
 1. A human signs into superaseo.app → Settings → API keys → "Crear API key" and copies the `sk_live_…` secret (shown once).
 2. Install with `npm i -g @jorgemenadev/superaseo`. Primary auth path: load `SUPERASEO_API_KEY` from the approved credential store into the process environment — the key never appears in argv, shell history, output, or the repo. Legacy fallback (>= 0.2.0): the CLI's file-backed login, a one-time `superaseo login` call that takes the copied key as its single argument and stores it in `~/.config/superaseo/config.json` (chmod 600) — that call exposes the key in shell history and the process list, so use it only where the env-var path is unavailable. Env var wins over the config file.
 3. `superaseo whoami` is the universal access probe — run it before concluding "no CLI access"; a machine can be authenticated via the config file with no env var set anywhere.
-4. Everything after is headless and scoped to the key's workspace: **one key = one workspace = possibly many projects**; select with `--project <slug>`. All commands emit JSON. Record the proven access state (auth location, workspace → project mapping, probe) in the site's adapter note per `references/adapters.md` — never re-discover it.
+4. Everything after is headless and scoped to the key's workspace: **one key = one workspace = possibly many projects**; select with `--project <slug>`. All commands emit JSON. Record the proven access state (auth location, workspace → project mapping, probe) in the site's adapter note per `references/workspace.md` — never re-discover it.
 
 Verify an existing webhook from the CLI:
 

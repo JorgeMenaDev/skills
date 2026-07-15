@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "events": [
+    {
+      "eventId": "fixture-event-1",
+      "dedupeKey": "sha256:duplicate-key",
+      "publishedAt": "2026-07-10T12:00:00Z",
+      "initiatedBy": "fixture",
+      "source": "deploy",
+      "ticketId": "SEO-001",
+      "urls": ["https://example.com/a"],
+      "qualification": "qualified",
+      "evidence": ["deploy log"]
+    },
+    {
+      "eventId": "fixture-event-2",
+      "dedupeKey": "sha256:duplicate-key",
+      "publishedAt": "2026-07-11T12:00:00Z",
+      "initiatedBy": "fixture",
+      "source": "deploy",
+      "ticketId": "SEO-002",
+      "urls": ["https://example.com/b"],
+      "qualification": "qualified",
+      "evidence": ["deploy log"]
+    }
+  ]
+}

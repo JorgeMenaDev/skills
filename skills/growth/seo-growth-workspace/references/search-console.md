@@ -32,7 +32,17 @@ Primary operating loop (Node >= 18; auth setup below):
 2. `node "$SKILL_DIR/scripts/gsc-fetch.mjs" --site https://example.com/ --start 2026-01-01 --end 2026-03-31 --output "$SITE_WORKSPACE/reports/gsc-2026-03-31.json"` — exports `query,page` rows, paginating past the 25k-row API cap. Use `--dimensions page` for page-dimensional metrics; this avoids summing query rows that omit anonymized queries, but Search Console still exposes top rows rather than a guaranteed-complete dataset.
 3. `node "$SKILL_DIR/scripts/gsc-opportunities.mjs" --input "$SITE_WORKSPACE/reports/gsc-2026-03-31.json" --brand "acme, acme app" --format report` — drafts the page-2 goldmine, CTR-vs-expected-band, and cannibalization tables. Always pass `--brand` with known branded terms. Use `--format backlog` to emit draft `.seo/backlog.md` rows instead. On early-stage sites, lower `--min-impressions` (default 100) to fit the data; when nothing ranks inside positions 1-20, both formats fall back to impression-clusters-by-page (where demand already sees the site) instead of returning empty tables.
 
-Review every generated row before merging; opportunity output is not a full prioritization model. Save opportunity results using `templates/gsc-opportunity.md`.
+Review every generated row before merging; opportunity output is not a full prioritization model. Save opportunity results to a dated report shaped as:
+
+```md
+# GSC opportunity report - YYYY-MM-DD
+Scope: property, date range, data source, branded terms excluded (`--brand`)
+## Page 2 goldmine       | Query | Page | Clicks | Impressions | CTR | Avg position | Intent | Current fit | Action | Impact | Time-to-result |
+## CTR fixes             | Page | Main query | Impressions | CTR | Expected CTR (band) | Avg position | Title/meta issue | New title | New meta | Impact |
+## Money page mapping    | Query | Buyer stage | Current page | Ideal page | Existing/new | Risk | Next action |
+## Cannibalization       | Query | Competing URLs | Impression split | Strongest URL | Weak URL action | Internal-link fix |
+## 30-day sprint         | Week | Work | Exact changes | Verify |
+```
 
 ## Analysis Rules
 
@@ -132,7 +142,7 @@ For read-only runs:
 - Use existing `.seo` GSC reports, public sitemap/robots/status checks, and repo evidence.
 - Do not configure OAuth, request exports, inspect private GSC pages, click URL Inspection, or request indexing.
 - Mark query/page opportunity work as `partial` when no current GSC rows are already available.
-- Apply the single public-surface Done-transition rule in `references/ticket-architecture.md` for measurement follow-up; record other missing evidence with its safe owner without creating a second follow-up canon.
+- Apply the single public-surface Done-transition rule in `references/operating.md` for measurement follow-up; record other missing evidence with its safe owner without creating a second follow-up canon.
 
 ## Repeatable API Auth Setup
 

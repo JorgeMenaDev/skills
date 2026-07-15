@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "rungs": {
+    "B": {
+      "observedAt": "2026-07-10",
+      "maxAgeDays": 30,
+      "artifact": "reports/gsc-opportunities-2026-07-10.md"
+    }
+  }
+}

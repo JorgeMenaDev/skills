@@ -1,6 +1,6 @@
 # Backlinks, Citations, And Entity Authority
 
-Use the evidence states, provenance fields, and non-causal outcome ladder in `references/evidence-conventions.md`. Comparisons and commercial relationships consume `references/commercial-integrity.md` rather than redefining disclosure rules here.
+Use the evidence states, provenance fields, and non-causal outcome ladder in `references/operating.md`. Comparisons and commercial relationships consume `references/commercial-integrity.md` rather than redefining disclosure rules here.
 
 Use for backlink audits, authority planning, local citations, and brand/entity optimization.
 
@@ -14,7 +14,16 @@ Columns:
 
 Prioritize: domains linking to all top competitors but not the target, then two competitors, then relevant one-offs, then legitimate directories/associations/partner/resource pages.
 
-Save gap analysis using `templates/backlink-gap.md`.
+Save gap analysis to a dated report shaped as:
+
+```md
+# Backlink and entity gap report - YYYY-MM-DD
+Scope: target, competitors, data source
+## Competitor backlink overlap | Domain | URL | Competitors linked | Site type | Link type | Authority | Chance | Effort | Outreach strategy | Next action |
+## Citation/NAP issues         | Platform | Exists | Name | Address | Phone | Website | Duplicate | Issue | Fix priority |
+## Entity authority            | Signal (schema, brand SERP, profiles, associations, sameAs) | Status | Evidence | Next action |
+## 90-day plan                 | Month | Targets | Outreach/citation work | Expected outcome |
+```
 
 ## Listicle inclusion outreach
 
@@ -24,9 +33,9 @@ Qualify the page before contact. Prefer page relevance, editorial legitimacy, pu
 
 Before outreach begins, declare a prospect cap and a review threshold (for example, review after the first 10 individually researched contacts). Stop at that threshold until a human reviews qualification quality, reply dispositions, complaints, paid requests, and message specificity and explicitly approves the next bounded batch. Never silently turn manual-first outreach into bulk or generic volume outreach.
 
-Record each prospect in `.seo/backlinks/work-log.md` under **Authority funnel (v4)**. Preserve the legacy six-column table untouched; whole-file migration is an explicit operator opt-in only. Use the lifecycle `discovered → qualified → contacted → replied → won → live/verified → lost/expired` and fill query, market/geo, source URL, qualification, limitations, and date plus reply disposition, paid request and amount, link-live and indexable as separate facts, 30/90-day check dates, referral, qualified conversion, cost, evidence, and next step. A won link does not skip live verification; a live link does not prove indexability. Label observations and outcomes using `references/evidence-conventions.md`.
+Record each prospect in `.seo/backlinks/work-log.md` under **Authority funnel (v4)**. Preserve the legacy six-column table untouched; whole-file migration is an explicit operator opt-in only. Use the lifecycle `discovered → qualified → contacted → replied → won → live/verified → lost/expired` and fill query, market/geo, source URL, qualification, limitations, and date plus reply disposition, paid request and amount, link-live and indexable as separate facts, 30/90-day check dates, referral, qualified conversion, cost, evidence, and next step. A won link does not skip live verification; a live link does not prove indexability. Label observations and outcomes using `references/operating.md`.
 
-Paid-placement requests do not become undisclosed editorial wins: apply the disclosure contract in `references/commercial-integrity.md` and the sponsored-link mechanics below. Reject reciprocal schemes, link farms, mass outreach, authority rental, and opaque indexers; consume the anti-authority-rental boundary in `references/commercial-integrity.md` rather than recreating it here. Image distribution or rights-based reclamation additionally passes `references/image-rights.md` before it can enter this same funnel.
+Paid-placement requests do not become undisclosed editorial wins: apply the disclosure contract in `references/commercial-integrity.md` and the sponsored-link mechanics below. Reject reciprocal schemes, link farms, mass outreach, authority rental, and opaque indexers; consume the anti-authority-rental boundary in `references/commercial-integrity.md` rather than recreating it here. Image distribution or rights-based reclamation additionally passes `references/backlinks-entity.md` before it can enter this same funnel.
 
 ## Directory Submissions
 
@@ -72,3 +81,29 @@ Check: Organization/LocalBusiness schema on the homepage; `sameAs`/profile links
 - Record link-live and indexable separately; neither fact implies the other.
 - Do not invent legal entity details, customers, addresses, awards, certifications, or partnerships.
 - Outreach should be specific to the site and reason the link belongs there.
+
+## Image Rights
+
+Use for original-image distribution, reuse discovery, and attribution-reclamation decisions. Substantiation: `references/pages.md`; provider selection: `references/data-tools.md`; disclosure and paid-placement integrity: `references/commercial-integrity.md`; conversion events: `references/conversion.md`.
+
+### Asset-rights master and structural gate
+
+`SITE_WORKSPACE/backlinks/asset-rights.md` is the current-state master. For every asset it records the asset ID and original file, creator/rightsholder, creation or acquisition date, ownership/license evidence, platform and upload URL when applicable, license + version, attribution requirement, permitted credit destination, model/property/trademark releases, material edits, privacy/metadata review, checked date, and owner. Existing workspaces create the optional ledger through the reviewed `create-optional` action on first use; its absence is not workspace drift.
+
+No image distribution and no rights-based outreach/contact may start unless the asset row is **green: sufficient, current ownership/license evidence**. Missing, uncertain, stale, or contradictory evidence stops the run. A green row permits assessment; it does not by itself establish an attribution gap or authorize a particular request.
+
+Classify the assessed use as one of: `voluntary credit`, `license-required attribution`, `missing required attribution`, `unauthorized use`, `permitted use without attribution`, or `uncertain ownership/license`. Permitted unattributed use generates no demand. Voluntary credit is optional and may point only to a destination the current terms permit.
+
+Per-platform license terms are volatile. When an asset's rights derive from a platform or third-party license (stock, CC, platform-hosted, licensed commission), check the current official terms source for each asset/run at use time. **Current-check stop gate:** record that check and its source in the asset evidence before distribution, classification, or contact; without it, stop. For a wholly original, directly owned asset with no platform or third-party license, no platform-terms source exists — record the basis as ownership evidence plus `not applicable (directly owned, no platform license)`, which satisfies the gate. This reference deliberately contains no frozen platform-license table because release-time reverification was unavailable offline.
+
+### Rights-safe distribution and reclamation
+
+**Fixture-validated only — not yet exercised against a live operation.** This caveat applies only to the live image-distribution/outreach play in this section, not to the structural asset master or gate above.
+
+Declare a small owned-asset set, review window, contact cap, stop threshold, and owner before a pilot. Distribution never exists primarily as a stock-profile backlink tactic. Reverse-image matches are **discovery leads only**: a match never proves ownership, copying, publication order, infringement, attribution duty, or permission to contact. Hold the lead at `discovered` until the asset row is green and a human assesses the specific use, current license/version, use context, available publication-date evidence, attribution duty, permitted credit destination, and platform communication rules.
+
+Contact may proceed only for a documented legitimate attribution gap or business reason. A human individually reviews the message before sending; it accurately identifies the asset and recorded rights basis, requests only what the current license permits, follows communication preferences, and discloses any commercial relationship. False ownership, fabricated attribution duties, automated credit/legal demands, bulk attribution outreach, third-party-image republication, manufactured engagement, and opaque indexers are prohibited.
+
+A surviving contact enters the same **Authority funnel (v4)** in `.seo/backlinks/work-log.md`; do not create a separate image funnel. Link the asset row, current terms/use assessment, match evidence, and human approval in its evidence field. Measure `reuse discovered → license classified → valid attribution gap → human-reviewed contact → link won → live/verified → 30/90-day survival → referral → qualified conversion → cost`, including maintenance or legal cost. Do not infer ranking or revenue causality from a link.
+
+Legal enforcement escalates out. Record the evidence pointer, decision, date, owner, and escalation to the operator/counsel; this skill never sends DMCA notices, takedown demands, or legal threats and never conducts enforcement.
