@@ -309,7 +309,7 @@ function stampReconciled(workspace) {
   const loop = JSON.parse(readFileSync(path.join(ws, "loops", "frontier-sweep.json"), "utf-8"));
   check(loop.sleepCertificate?.dated === NOW && loop.nextWakeAt === "2026-07-25", "sleep: certificate written and earliestNextDue mirrored to nextWakeAt");
   const heartbeatBefore = loop.sleepCertificate.heartbeatAt;
-  const heartbeat = run(["sleep", "heartbeat", "--workspace", ws, "--loop", "frontier-sweep.json", "--now", "2026-07-12T18:00:00Z"]);
+  const heartbeat = run(["sleep", "heartbeat", "--workspace", ws, "--loop", "frontier-sweep.json", "--now", "2026-07-12T18:00:00Z", "--installed", VERSION]);
   const afterLoop = JSON.parse(readFileSync(path.join(ws, "loops", "frontier-sweep.json"), "utf-8"));
   check(heartbeat.status === 0 && afterLoop.sleepCertificate.heartbeatAt === "2026-07-12T18:00:00.000Z" && afterLoop.sleepCertificate.heartbeatAt !== heartbeatBefore && afterLoop.sleepCertificate.dedupeKey === loop.sleepCertificate.dedupeKey, "sleep: heartbeat updates only heartbeatAt");
   check(certify(ws, { earliestNextDue: null, wakeOn: [] }).status === 1, "sleep: certificate without continuity is rejected");
@@ -318,6 +318,37 @@ function stampReconciled(workspace) {
   const recert = JSON.parse(readFileSync(path.join(ws, "loops", "frontier-sweep.json"), "utf-8"));
   check(recert.nextWakeAt === null, "sleep: wakeOn-only recertification clears the stale nextWakeAt mirror");
   check(readdirSync(path.join(ws, "loops")).every((name) => !name.endsWith(".tmp")), "sleep: atomic writes leave no temp files behind");
+}
+{
+  const ws = temp();
+  stampReconciled(ws);
+  certify(ws);
+  const loopPath = path.join(ws, "loops", "frontier-sweep.json");
+  const before = readFileSync(loopPath, "utf-8");
+  const expired = run(["sleep", "heartbeat", "--workspace", ws, "--loop", "frontier-sweep.json", "--now", "2026-07-26T12:00:00Z", "--installed", VERSION]);
+  check(expired.status === 4, "sleep: heartbeat refuses after the certificate's nextWakeAt (exit 4)");
+  check(readFileSync(loopPath, "utf-8") === before, "sleep: a refused expired heartbeat is byte-neutral");
+}
+{
+  const ws = temp();
+  stampReconciled(ws);
+  certify(ws);
+  const loopPath = path.join(ws, "loops", "frontier-sweep.json");
+  run(["occurrence", "add", "--workspace", ws, "--loop", "frontier-sweep.json", "--cadence", "new-due-work", "--window", "2026-07-12/2026-07-12", "--due-at", "2026-07-12", "--fingerprint", "sha256:heartbeat-red"]);
+  const before = readFileSync(loopPath, "utf-8");
+  const due = run(["sleep", "heartbeat", "--workspace", ws, "--loop", "frontier-sweep.json", "--now", "2026-07-12T18:00:00Z", "--installed", VERSION]);
+  check(due.status === 4 && JSON.stringify(due.json).includes("dueWork"), "sleep: heartbeat refuses when due work turns a certification guard red");
+  check(readFileSync(loopPath, "utf-8") === before, "sleep: a guard-refused heartbeat is byte-neutral");
+}
+{
+  const ws = temp();
+  stampReconciled(ws);
+  certify(ws);
+  const loopPath = path.join(ws, "loops", "frontier-sweep.json");
+  const before = readFileSync(loopPath, "utf-8");
+  const drift = run(["sleep", "heartbeat", "--workspace", ws, "--loop", "frontier-sweep.json", "--now", "2026-07-12T18:00:00Z", "--installed", "10.0.0"]);
+  check(drift.status === 3, "sleep: heartbeat rechecks upgrade drift (exit 3)");
+  check(readFileSync(loopPath, "utf-8") === before, "sleep: a drift-refused heartbeat is byte-neutral");
 }
 {
   const ws = temp(staticFixture("annotated-coverage"));
@@ -464,6 +495,42 @@ function stampReconciled(workspace) {
   writeFileSync(shipPath, `${JSON.stringify(ships, null, 2)}\n`);
   const allocated = run(["cap", "--workspace", ws, "--now", "2026-07-12T12:00:00Z"]);
   check(allocated.status === 0 && allocated.json?.excepted === 1 && allocated.json?.counted === 1, "cap: one granted URL exempts at most one matching ship event");
+}
+{
+  const ws = temp();
+  mkdirSync(path.join(ws, "loops"), { recursive: true });
+  writeFileSync(path.join(ws, "loops", "stage.json"), JSON.stringify({ schema: 1, stageStamp: { stage: "early", evaluated: "2026-07-01", basis: "reports/fixture.md" } }, null, 2));
+  const grant = ["cap", "exception", "--workspace", ws, "--dated", "2026-07-12", "--granted-by", "Jorge", "--site", "example.com", "--reason", "fixture launch exception", "--url", "https://example.com/a", "--url", "https://example.com/b"];
+  check(run(grant).json?.status === "written", "cap: exception writer records a dated URL-specific grant");
+  check(run(grant).json?.status === "noop", "cap: an identical exception-writer retry is a noop");
+  const conflict = [...grant];
+  conflict[conflict.indexOf("fixture launch exception")] = "different reason";
+  check(run(conflict).status === 8, "cap: the same exception identity with a different reason is refused");
+  const ledger = JSON.parse(readFileSync(path.join(ws, "loops", "ship-events.json"), "utf-8"));
+  check(ledger.capExceptions.length === 1, "cap: exception writer idempotency leaves one grant");
+
+  const separate = run(["cap", "--workspace", ws, "--now", "2026-07-12T12:00:00Z", "--planned", "2", "--url", "https://example.com/a", "--url", "https://example.com/b"]);
+  check(separate.status === 0 && separate.json?.plannedExcepted === 2 && separate.json?.plannedCounted === 0, "cap: named planned URLs preflight against unused grant tokens");
+  const shared = run(["cap", "--workspace", ws, "--now", "2026-07-12T12:00:00Z", "--planned", "1", "--url", "https://example.com/a", "--url", "https://example.com/b", "--shared-release"]);
+  check(shared.status === 0 && shared.json?.plannedExcepted === 1 && shared.json?.plannedCounted === 0 && shared.json?.sharedRelease === true, "cap: a named shared release preflights as one grant-covered event");
+  check(run(["cap", "--workspace", ws, "--now", "2026-07-12T12:00:00Z", "--planned", "2", "--url", "https://example.com/a", "--url", "https://example.com/b", "--shared-release"]).status === 1, "cap: --planned must agree with the events described by named URLs");
+
+  check(run(["ship", "record", "--workspace", ws, "--event-id", "granted-launch", "--dedupe-key", "sha256:granted-launch", "--published-at", "2026-07-12T13:00:00Z", "--initiated-by", "fixture", "--source", "deploy", "--url", "https://example.com/a", "--url", "https://example.com/b", "--shared-release", "--qualification", "qualified", "--evidence", "deploy log"]).status === 0, "cap: granted shared release records normally");
+  const consumed = run(["cap", "--workspace", ws, "--now", "2026-07-12T14:00:00Z", "--planned", "1", "--url", "https://example.com/a", "--url", "https://example.com/b", "--shared-release"]);
+  check(consumed.status === 0 && consumed.json?.plannedExcepted === 0 && consumed.json?.plannedCounted === 1, "cap: a recorded event consumes each granted URL token once");
+  const boundary = run(["cap", "--workspace", ws, "--now", "2026-07-19T14:00:00Z", "--planned", "1", "--url", "https://example.com/a", "--url", "https://example.com/b", "--shared-release"]);
+  check(boundary.json?.plannedExcepted === 0, "cap: a rolled-off event still prevents grant-token reuse at the grant boundary");
+}
+{
+  const ws = temp();
+  mkdirSync(path.join(ws, "loops"), { recursive: true });
+  const broad = ["cap", "exception", "--workspace", ws, "--dated", "2026-07-12", "--granted-by", "Jorge", "--site", "example.com", "--reason", "broad", "--url", "https://example.com/a", "--url", "https://example.com/b"];
+  const narrow = ["cap", "exception", "--workspace", ws, "--dated", "2026-07-12", "--granted-by", "Jorge", "--site", "example.com", "--reason", "narrow", "--url", "https://example.com/a"];
+  run(broad);
+  run(narrow);
+  run(["ship", "record", "--workspace", ws, "--event-id", "prior-a", "--dedupe-key", "sha256:prior-a", "--published-at", "2026-07-12T10:00:00Z", "--initiated-by", "fixture", "--source", "deploy", "--url", "https://example.com/a", "--qualification", "qualified", "--evidence", "deploy log"]);
+  const feasible = run(["cap", "--workspace", ws, "--now", "2026-07-12T12:00:00Z", "--planned", "1", "--url", "https://example.com/a", "--url", "https://example.com/b", "--shared-release"]);
+  check(feasible.status === 0 && feasible.json?.excepted === 1 && feasible.json?.plannedExcepted === 1, "cap: overlapping broad and narrow grants choose a feasible non-greedy allocation");
 }
 {
   const outside = temp();
