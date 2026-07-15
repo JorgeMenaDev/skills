@@ -1,18 +1,18 @@
 # Upgrade recap — <site> (YYYY-MM-DD)
 
-Deliberate, operator-invoked reconciliation of existing workspace state with the currently installed skill version. `references/never-dry-loop.md` § Upgrade recap and reconciled-version stamp owns the semantics; this template does not redefine them. One workspace per run. History is never rewritten. This report lives in the workspace's `reports/` directory as `reports/YYYY-MM-DD-upgrade-recap-<installed version>.md` — the version suffix keeps same-day recaps across consecutive upgrades collision-free.
+Deliberate, operator-invoked reconciliation of existing workspace state with the currently installed skill version. `references/never-dry-loop.md` § Upgrade recap and reconciled-version stamp owns the semantics; this template does not redefine them. One workspace per run. History is never rewritten. This report lives in the workspace's `reports/` directory as `reports/YYYY-MM-DD-upgrade-recap-<installed version>.md` — the version suffix keeps same-day recaps across consecutive upgrades collision-free; if the path already exists (a same-version rerun), append the first free numeric suffix (`…-2.md`) rather than ever overwriting, and record the path actually written in the stamp.
 
 ## Header
 
 Operator records who authorized and who executed, e.g. `Jorge / matias-fable5` — an agent executing under a human's invocation names both.
 
-| Workspace | Installed skill version | Previous reconciled version (`never` if absent) | Operator (authorized-by / executed-by) | Date |
+| Workspace | Installed skill version | Previous reconciled version (`never` if absent; `malformed` if the stamp existed but could not be trusted — quote the unparsable content in Upgrade context) | Operator (authorized-by / executed-by) | Date |
 | --- | --- | --- | --- | --- |
 |  |  |  |  |  |
 
 ## Upgrade context
 
-Drift state found (stamp absent / stamp version) and the load-bearing semantic changes observed between the previous reconciled version and the installed version — the scope everything below is judged against:
+Drift state found — one of `stamp absent`, `stamp malformed` (preserve the bad content or parse error here), or the stamp's version — and the load-bearing semantic changes observed between the previous reconciled version (or the conservative baseline when it is `never`/`malformed`: treat all current protocols as unreconciled) and the installed version — the scope everything below is judged against:
 
 -
 
