@@ -26,7 +26,7 @@ One row per schema-1 file read (`loops/*.json`, ledgers, certificates):
 
 ## 2. Open-row re-triage
 
-Every open backlog row, re-judged against the current gates — closed and Done rows are not re-opened. When the gate-owning contracts are unchanged across the version window, a light conformance scan suffices; under `never`, the window may be reconstructed from the consuming repo's installer/version-control history (evidence in Upgrade context), otherwise every open row gets full re-judgment, classed by the creating-version test (`references/never-dry-loop.md` check 2). This check never becomes a re-audit:
+Every open backlog row, re-judged against the current gates — closed and Done rows are not re-opened. When the gate-owning contracts are unchanged across the version window, a light conformance scan suffices; under `never`, the window may be reconstructed from the consuming repo's installer/version-control history (evidence in Upgrade context), otherwise every open row gets full re-judgment, classed by the creating-version test (`references/never-dry-loop.md` check 2; unknowable creating version → `version-driven` by convention, reason-noted). This check never becomes a re-audit:
 
 | Row | Current-gate finding | Outcome (`keep` / `amend` / `close`) | Class (`version-driven` / `incidental hygiene`) | Reason | Dated |
 | --- | --- | --- | --- | --- | --- |
