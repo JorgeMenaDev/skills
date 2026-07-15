@@ -1,6 +1,6 @@
 # Upgrade recap — <site> (YYYY-MM-DD)
 
-Deliberate, operator-invoked reconciliation of existing workspace state with the currently installed skill version. `references/never-dry-loop.md` § Upgrade recap and reconciled-version stamp owns the semantics; this template does not redefine them. One workspace per run. History is never rewritten. This report lives in the workspace's `reports/` directory as `reports/YYYY-MM-DD-upgrade-recap.md`.
+Deliberate, operator-invoked reconciliation of existing workspace state with the currently installed skill version. `references/never-dry-loop.md` § Upgrade recap and reconciled-version stamp owns the semantics; this template does not redefine them. One workspace per run. History is never rewritten. This report lives in the workspace's `reports/` directory as `reports/YYYY-MM-DD-upgrade-recap-<installed version>.md` — the version suffix keeps same-day recaps across consecutive upgrades collision-free.
 
 ## Header
 
