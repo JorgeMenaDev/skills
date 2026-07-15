@@ -1,5 +1,9 @@
 # Changelog
 
+## 6.0.1
+
+`loop-state.mjs` now records dated URL-specific cap exceptions through an idempotent writer and preflights named planned URLs, including qualifying shared releases, against unused grant tokens. `sleep heartbeat` now re-runs the certificate's drift, due/in-flight work, coverage, and autopublish guards before refreshing the heartbeat, and refuses once its wake date is due. The workspace schema is unchanged; transitions remain code-and-fixture owned ([skills#146](https://github.com/JorgeMenaDev/skills/issues/146)).
+
 ## 6.0.0
 
 The radical simplification ([skills#145](https://github.com/JorgeMenaDev/skills/issues/145); ratified proposal: matias `vault/AGENT-DESK/reports/2026-07-15-seo-skill-radical-simplification.md`). **Zero on-disk workspace format changes** — every existing workspace keeps working; on first v6 contact a workspace is drifted and clears it with the new upgrade pass (`references/operating.md`).

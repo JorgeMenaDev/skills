@@ -78,15 +78,20 @@ Commands (every command prints one JSON object; exit codes are stable and docume
       Recording is post-publication audit truth and always succeeds — run cap
       BEFORE publishing; the report carries capExceeded for over-cap recordings.
 
-  cap [--now <date|timestamp>] [--stage unknown|early|growth|mature] [--planned <n>]
+  cap [--now <date|timestamp>] [--stage unknown|early|growth|mature] [--planned <n>] [--url <u>...] [--shared-release]
       Rolling seven-day ship usage vs the stage cap (unknown/early 2, growth 4,
       mature 7). Stage comes from the newest stageStamp in loops/*.json, else
       unknown; --stage may only hold capacity at or below the persisted stage —
       raising the cap requires a dated stageStamp. Run BEFORE any qualifying
-      publication with --planned <n> for an n-Ship batch (a batch counts once
-      per URL). An event is exception-covered only when one capExceptions grant
-      names every URL it counts and the ship happened within seven days of the
-      grant's dated field. Exit 7 when the planned ships exceed remaining capacity.
+      publication. Named --url inputs preflight unused exception grants; multiple
+      URLs are separate ships unless --shared-release asserts one qualifying
+      event. An event is exception-covered only when one capExceptions grant names
+      every URL it counts and the ship happens within seven days of the grant.
+      Exit 7 when the counted planned ships exceed remaining capacity.
+
+  cap exception --dated <D> --granted-by <actor> --site <site> --reason <r> --url <u> [--url <u>...]
+      Append one dated URL-specific cap grant to ship-events.json. Identical
+      retries are no-ops; the same grant identity with a different reason exits 8.
 
   sleep certify --loop <file> --payload <json-file|-> [--now <date|timestamp>] [--installed <version>|--skill <SKILL.md path>]
       Validate the certificate payload (dedupeKey, fingerprint with target/mode/
@@ -98,8 +103,9 @@ Commands (every command prints one JSON object; exit codes are stable and docume
       empty ledger / expired or actively-annotated coverage rung under
       coverage=complete (5), armed autopublish without a quality-watch
       occurrence whose window contains the next publish date (6).
-  sleep heartbeat --loop <file> [--now <timestamp>]
-      Update sleepCertificate.heartbeatAt in place; no other bytes change.
+  sleep heartbeat --loop <file> [--now <timestamp>] [--installed <version>|--skill <SKILL.md path>]
+      Re-run the certification guards, then update sleepCertificate.heartbeatAt
+      in place. Refuses once the wake date is due or any guard has turned red.
 
   stamp check [--installed <version>|--skill <SKILL.md path>]
       Compare reconciliation.json to the installed skill version (read from SKILL.md
@@ -1192,7 +1198,7 @@ function cmdShipRecord(workspace, args) {
   // running `cap` BEFORE publishing — but an over-cap recording must be loud.
   let capAfter = null;
   try {
-    capAfter = capUsage(state, parseNow(event.publishedAt), resolveStage(state, args));
+    capAfter = capUsage(state, parseNow(event.publishedAt), resolveStage(state, args)).usage;
   } catch {
     // Ambiguous stage never blocks the audit record; `cap` reports it.
   }
@@ -1243,7 +1249,56 @@ function resolvePersistedStage(state) {
   return { stage: winners[0].stage, source: `${winners[0].source} stageStamp (${newest})` };
 }
 
-function capUsage(state, now, { stage, source }) {
+function allocateCapGrants(recordedEvents, plannedEvents, exceptions, grantCovers) {
+  const entries = [
+    ...recordedEvents.map((event) => ({ kind: "recorded", event })),
+    ...plannedEvents.map((event) => ({ kind: "planned", event })),
+  ];
+  const initial = exceptions.map((grant) => new Set(grant.urls));
+  const memo = new Map();
+  const better = (candidate, current) => {
+    if (current === null) return true;
+    for (let i = 0; i < candidate.recorded.length; i += 1) {
+      if (candidate.recorded[i] !== current.recorded[i]) return candidate.recorded[i] > current.recorded[i];
+    }
+    if (candidate.plannedCovered !== current.plannedCovered) return candidate.plannedCovered > current.plannedCovered;
+    for (let i = 0; i < candidate.planned.length; i += 1) {
+      if (candidate.planned[i] !== current.planned[i]) return candidate.planned[i] > current.planned[i];
+    }
+    return candidate.assignments.join(",") < current.assignments.join(",");
+  };
+  const solve = (entryIndex, remaining) => {
+    if (entryIndex === entries.length) return { assignments: [], recorded: [], planned: [], plannedCovered: 0 };
+    const signature = `${entryIndex}:${remaining.map((urls) => [...urls].sort().join("\u0001")).join("\u0002")}`;
+    if (memo.has(signature)) return memo.get(signature);
+    const entry = entries[entryIndex];
+    const candidates = exceptions.flatMap((grant, grantIndex) => (
+      grantCovers(grant, entry.event) && entry.event.urls.every((url) => remaining[grantIndex].has(url)) ? [grantIndex] : []
+    ));
+    const options = entry.kind === "planned" || candidates.length === 0 ? [...candidates, -1] : candidates;
+    let best = null;
+    for (const grantIndex of options) {
+      const nextRemaining = remaining.map((urls) => new Set(urls));
+      if (grantIndex !== -1) {
+        for (const url of entry.event.urls) nextRemaining[grantIndex].delete(url);
+      }
+      const tail = solve(entryIndex + 1, nextRemaining);
+      const covered = grantIndex !== -1 ? 1 : 0;
+      const candidate = {
+        assignments: [grantIndex, ...tail.assignments],
+        recorded: entry.kind === "recorded" ? [covered, ...tail.recorded] : tail.recorded,
+        planned: entry.kind === "planned" ? [covered, ...tail.planned] : tail.planned,
+        plannedCovered: tail.plannedCovered + (entry.kind === "planned" ? covered : 0),
+      };
+      if (better(candidate, best)) best = candidate;
+    }
+    memo.set(signature, best);
+    return best;
+  };
+  return solve(0, initial);
+}
+
+function capUsage(state, now, { stage, source }, plannedEvents = []) {
   const cap = SHIP_CAPS[stage];
   const events = state.shipsFile.payload?.events ?? [];
   const exceptions = Array.isArray(state.shipsFile.payload?.capExceptions) ? state.shipsFile.payload.capExceptions : [];
@@ -1257,65 +1312,121 @@ function capUsage(state, now, { stage, source }) {
       && publishedDate <= addDays(grant.dated, 7)
       && event.urls.every((url) => grant.urls.includes(url));
   };
-  const remainingGrantUrls = exceptions.map((grant) => new Set(grant.urls));
-  const counted = [];
-  const excepted = [];
   const orderedEvents = events
     .map((event, index) => ({ event, index }))
-    .sort((a, b) => a.event.publishedAt.localeCompare(b.event.publishedAt) || a.index - b.index);
-  for (const { event } of orderedEvents) {
+    .filter(({ event }) => new Date(event.publishedAt).valueOf() <= now.instant.valueOf())
+    .sort((a, b) => a.event.publishedAt.localeCompare(b.event.publishedAt) || a.index - b.index)
+    .map(({ event }) => event);
+  const allocation = allocateCapGrants(orderedEvents, plannedEvents, exceptions, grantCovers);
+  const counted = [];
+  const excepted = [];
+  for (let index = 0; index < orderedEvents.length; index += 1) {
+    const event = orderedEvents[index];
     const publishedMs = new Date(event.publishedAt).valueOf();
-    if (publishedMs <= windowStartMs || publishedMs > now.instant.valueOf()) continue;
-    const grantIndex = exceptions.findIndex((grant, index) => grantCovers(grant, event)
-      && event.urls.every((url) => remainingGrantUrls[index].has(url)));
-    const covered = grantIndex !== -1;
-    if (covered) {
-      for (const url of event.urls) remainingGrantUrls[grantIndex].delete(url);
-    }
-    (covered ? excepted : counted).push({ eventId: event.eventId, publishedAt: event.publishedAt, urls: event.urls, qualification: event.qualification });
+    // Even an event that has rolled out of the cap window permanently consumes
+    // its granted URL tokens. This prevents a grant from being reused at the
+    // seven-day boundary while it is still date-valid.
+    if (publishedMs <= windowStartMs) continue;
+    (allocation.recorded[index] ? excepted : counted).push({ eventId: event.eventId, publishedAt: event.publishedAt, urls: event.urls, qualification: event.qualification });
   }
-  return { stage, stageSource: source, cap, counted: counted.length, excepted: excepted.length, remaining: Math.max(0, cap - counted.length), countedEvents: counted, exceptedEvents: excepted };
+  return {
+    usage: {
+      stage,
+      stageSource: source,
+      cap,
+      counted: counted.length,
+      excepted: excepted.length,
+      remaining: Math.max(0, cap - counted.length),
+      countedEvents: counted,
+      exceptedEvents: excepted,
+    },
+    plannedExcepted: allocation.plannedCovered,
+  };
 }
 
 function cmdCap(workspace, args) {
   const now = parseNow(args.now);
   const state = requireValidWorkspace(workspace);
-  const usage = capUsage(state, now, resolveStage(state, args));
-  // --planned <n>: preflight for an intended publication of n SEO Ships (a
-  // batch counts once per URL), so an atomic batch cannot pass on one slot.
+  const urls = [...new Set(args.urls)].sort();
+  urls.forEach((url, index) => validatePublicUrl(url, `--url[${index}]`));
+  if (args["shared-release"] && urls.length < 2) {
+    throw usageError("--shared-release requires at least two --url inputs");
+  }
+  const plannedEvents = urls.length === 0
+    ? []
+    : args["shared-release"]
+      ? [{ publishedAt: now.instant.toISOString(), urls }]
+      : urls.map((url) => ({ publishedAt: now.instant.toISOString(), urls: [url] }));
   let planned = 1;
   if (args.planned !== undefined) {
     planned = Number(args.planned);
     if (!Number.isInteger(planned) || planned < 1) throw usageError("--planned must be a positive integer of intended SEO Ships");
   }
-  const report = { command: "cap", now: now.instant.toISOString(), planned, ...usage };
-  return { exitCode: usage.remaining >= planned ? EXIT.OK : EXIT.CAP, report };
+  if (plannedEvents.length > 0) {
+    if (args.planned !== undefined && planned !== plannedEvents.length) {
+      throw usageError(`--planned ${planned} disagrees with the ${plannedEvents.length} event(s) described by --url${args["shared-release"] ? " and --shared-release" : ""}`);
+    }
+    planned = plannedEvents.length;
+  } else if (args["shared-release"]) {
+    throw usageError("--shared-release requires named --url inputs");
+  }
+  const { usage, plannedExcepted } = capUsage(state, now, resolveStage(state, args), plannedEvents);
+  const plannedCounted = planned - plannedExcepted;
+  const report = {
+    command: "cap",
+    now: now.instant.toISOString(),
+    planned,
+    plannedCounted,
+    plannedExcepted,
+    plannedUrls: urls,
+    sharedRelease: Boolean(args["shared-release"]),
+    ...usage,
+  };
+  return { exitCode: usage.remaining >= plannedCounted ? EXIT.OK : EXIT.CAP, report };
 }
 
-function cmdSleepCertify(workspace, args) {
-  const now = parseNow(args.now);
-  const loopName = required(args, "loop", "--loop");
-  const payloadPath = required(args, "payload", "--payload");
-  const raw = payloadPath === "-" ? readFileSync(0, "utf-8") : readFileSync(path.resolve(payloadPath), "utf-8");
-  let cert;
-  try {
-    cert = JSON.parse(raw);
-  } catch (error) {
-    throw usageError(`certificate payload is not valid JSON: ${error.message}`);
-  }
-  if (!cert || typeof cert !== "object" || Array.isArray(cert)) throw usageError("certificate payload must be a JSON object");
-  cert = { ...cert, dated: now.date, heartbeatAt: now.instant.toISOString() };
-  validateSleepCertificate(cert, `loops/${loopName}`);
-  if (cert.earliestNextDue !== null && cert.earliestNextDue !== undefined && cert.earliestNextDue <= now.date) {
-    throw usageError(`earliestNextDue ${cert.earliestNextDue} is not after ${now.date}; already-due work cannot certify sleep`);
-  }
-
+function cmdCapException(workspace, args) {
   const state = requireValidWorkspace(workspace);
+  const urls = [...new Set(args.urls)].sort();
+  if (urls.length === 0) throw usageError("--url is required at least once");
+  const grant = {
+    dated: required(args, "dated", "--dated"),
+    grantedBy: required(args, "granted-by", "--granted-by"),
+    site: required(args, "site", "--site"),
+    urls,
+    reason: required(args, "reason", "--reason"),
+  };
+  validateCapExceptions([grant], "cap exception");
+  const payload = state.shipsFile.state === "absent"
+    ? { schema: 1, events: [], capExceptions: [] }
+    : state.shipsFile.payload;
+  if (!Array.isArray(payload.capExceptions)) payload.capExceptions = [];
+  const sameIdentity = (candidate) => candidate.dated === grant.dated
+    && candidate.grantedBy === grant.grantedBy
+    && candidate.site === grant.site
+    && JSON.stringify([...candidate.urls].sort()) === JSON.stringify(grant.urls);
+  const existing = payload.capExceptions.find(sameIdentity);
+  if (existing) {
+    if (existing.reason === grant.reason) {
+      return { exitCode: EXIT.OK, report: { command: "cap exception", status: "noop", reason: "grant already recorded", grant } };
+    }
+    throw refusal(EXIT.REFUSED, "the same dated grant identity already exists with a different reason; retry with the original values");
+  }
+  payload.capExceptions.push(grant);
+  atomicWriteJson(workspace, path.join(workspace, "loops", "ship-events.json"), payload);
+  return { exitCode: EXIT.OK, report: { command: "cap exception", status: "written", grant } };
+}
 
+function assertSleepGuards(workspace, state, now, loopName, cert, args, heartbeat = false) {
+  if (cert.earliestNextDue !== null && cert.earliestNextDue !== undefined && cert.earliestNextDue <= now.date) {
+    const message = `earliestNextDue ${cert.earliestNextDue} is not after ${now.date}; already-due work cannot certify sleep`;
+    if (heartbeat) throw refusal(EXIT.IN_FLIGHT, message);
+    throw usageError(message);
+  }
   const installed = installedVersion(args);
   const stamp = readStamp(workspace);
   if (stamp.stampState !== "present" || stamp.reconciledSkillVersion !== installed) {
-    throw refusal(EXIT.DRIFT, `upgrade drift outstanding (installed ${installed}, stamp ${stamp.stampState === "present" ? stamp.reconciledSkillVersion : stamp.stampState}); no certificate may be minted under drift`, { stamp, installed });
+    throw refusal(EXIT.DRIFT, `upgrade drift outstanding (installed ${installed}, stamp ${stamp.stampState === "present" ? stamp.reconciledSkillVersion : stamp.stampState}); sleep certification is invalid under drift`, { stamp, installed });
   }
 
   const analysis = analyzeWorkspace(state, now, { replacingWakeOf: path.join("loops", loopName) });
@@ -1353,6 +1464,24 @@ function cmdSleepCertify(workspace, args) {
       throw refusal(EXIT.AUTOPUBLISH, `armed autopublish in ${armed.file} has no quality-watch occurrence covering its next publish window; disarm it or materialize the watch`, { armed });
     }
   }
+}
+
+function cmdSleepCertify(workspace, args) {
+  const now = parseNow(args.now);
+  const loopName = required(args, "loop", "--loop");
+  const payloadPath = required(args, "payload", "--payload");
+  const raw = payloadPath === "-" ? readFileSync(0, "utf-8") : readFileSync(path.resolve(payloadPath), "utf-8");
+  let cert;
+  try {
+    cert = JSON.parse(raw);
+  } catch (error) {
+    throw usageError(`certificate payload is not valid JSON: ${error.message}`);
+  }
+  if (!cert || typeof cert !== "object" || Array.isArray(cert)) throw usageError("certificate payload must be a JSON object");
+  cert = { ...cert, dated: now.date, heartbeatAt: now.instant.toISOString() };
+  validateSleepCertificate(cert, `loops/${loopName}`);
+  const state = requireValidWorkspace(workspace);
+  assertSleepGuards(workspace, state, now, loopName, cert, args);
 
   const file = findLoopFile(state, workspace, loopName);
   file.payload.sleepCertificate = cert;
@@ -1375,6 +1504,10 @@ function cmdSleepHeartbeat(workspace, args) {
   if (!file || !file.payload.sleepCertificate) {
     throw refusal(EXIT.REFUSED, `loops/${loopName} carries no sleep certificate to heartbeat`);
   }
+  if (typeof file.payload.nextWakeAt === "string" && file.payload.nextWakeAt <= now.date) {
+    throw refusal(EXIT.IN_FLIGHT, `loops/${loopName} reached nextWakeAt ${file.payload.nextWakeAt}; wake work must run before another heartbeat`);
+  }
+  assertSleepGuards(workspace, state, now, loopName, file.payload.sleepCertificate, args, true);
   file.payload.sleepCertificate.heartbeatAt = now.instant.toISOString();
   writeLoopFile(workspace, file);
   return { exitCode: EXIT.OK, report: { command: "sleep heartbeat", status: "written", file: file.source, heartbeatAt: file.payload.sleepCertificate.heartbeatAt } };
@@ -1466,7 +1599,11 @@ function main() {
       if (maybeAction !== "record") throw usageError(`unknown ship action "${maybeAction}"`);
       return cmdShipRecord(workspace, args);
     },
-    cap: () => cmdCap(workspace, args),
+    cap: () => {
+      if (maybeAction === undefined) return cmdCap(workspace, args);
+      if (maybeAction === "exception") return cmdCapException(workspace, args);
+      throw usageError(`unknown cap action "${maybeAction}"`);
+    },
     sleep: () => {
       if (maybeAction === "certify") return cmdSleepCertify(workspace, args);
       if (maybeAction === "heartbeat") return cmdSleepHeartbeat(workspace, args);
