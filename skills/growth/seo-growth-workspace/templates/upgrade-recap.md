@@ -1,6 +1,6 @@
 # Upgrade recap — <site> (YYYY-MM-DD)
 
-Deliberate, operator-invoked reconciliation of existing workspace state with the currently installed skill version. `references/never-dry-loop.md` § Upgrade recap and reconciled-version stamp owns the semantics; this template does not redefine them. One workspace per run. History is never rewritten. This report lives in the workspace's `reports/` directory as `reports/YYYY-MM-DD-upgrade-recap-<installed version>.md` — the version suffix keeps same-day recaps across consecutive upgrades collision-free; if the path already exists (a same-version rerun), append the first free numeric suffix (`…-2.md`) rather than ever overwriting, and record the path actually written in the stamp.
+Deliberate, operator-invoked reconciliation of existing workspace state with the currently installed skill version. `references/never-dry-loop.md` § Upgrade recap and reconciled-version stamp owns the semantics; this template does not redefine them. One workspace per run. History is never rewritten. A recap whose four checks all produce zero findings may use the short form the contract licenses (header, install-commit window evidence, per-check zero counts with one-line reasons, re-stamp) instead of this full template. An absent ledger collapses its section to one line — `ledger absent — nothing to review` (absence is not drift). This report lives in the workspace's `reports/` directory as `reports/YYYY-MM-DD-upgrade-recap-<installed version>.md` — the version suffix keeps same-day recaps across consecutive upgrades collision-free; if the path already exists (a same-version rerun), append the first free numeric suffix (`…-2.md`) rather than ever overwriting, and record the path actually written in the stamp.
 
 ## Header
 
@@ -42,7 +42,7 @@ Every rung row reviewed under the load-bearing test — invalidate only when the
 
 ## 4. Obligations conformance
 
-Both directions: ledger rows conform to the current contracts, and everything the current contracts would obligate has its ledger entry — ship-history companions AND dated recheck promises in Done rows or log entries lacking both a ledger entry and a recorded exemption (missing ones → normal backlog rows, never fabricated retroactively):
+Both directions: ledger rows conform to the current contracts, and everything the current contracts would obligate has its ledger entry — ship-history companions AND dated recheck promises in Done rows or log entries lacking both a ledger entry and a recorded exemption. Outcomes: `conforms` / `filed <row>` / `carried by <row or ledger key>` / `exempt <dated reason>` — missing ones filed as normal backlog rows, never fabricated retroactively:
 
 | Obligation | Conforms to current companion contracts | Finding / action |
 | --- | --- | --- |
