@@ -221,6 +221,9 @@ function stampReconciled(workspace) {
   const inconclusive = run(inconclusiveArgs);
   check(inconclusive.status === 0, "obligation: inconclusive returns to pending");
   check(run(inconclusiveArgs).json?.status === "noop", "obligation: an identical inconclusive retry after success is a noop, not a state refusal");
+  const conflictingEvidence = [...inconclusiveArgs];
+  conflictingEvidence[conflictingEvidence.indexOf("gsc-fetch output empty")] = "different evidence";
+  check(run(conflictingEvidence).status === 8, "obligation: an inconclusive retry with different evidence is refused, never silently dropped");
   const ledger = JSON.parse(readFileSync(path.join(ws, "loops", "measurement-obligations.json"), "utf-8"));
   const row = Object.values(ledger.obligations)[0];
   check(row.state === "pending" && row.candidateFingerprint === null && row.ticket === null && row.attempts.length === 1 && row.wakeAt === "2026-07-24", "obligation: inconclusive return is one canonical replacement");
@@ -315,14 +318,14 @@ function stampReconciled(workspace) {
 }
 {
   const ws = temp(staticFixture("annotated-coverage"));
-  check(certify(ws, { coverage: "complete" }).status === 5, "sleep: annotated rung refuses coverage=complete (exit 5)");
-  check(certify(ws, { coverage: "partial" }).status === 0, "sleep: partial certificate is allowed beside an annotated rung");
+  check(certify(ws, { coverage: "complete", earliestNextDue: "2026-07-20" }).status === 5, "sleep: annotated rung refuses coverage=complete (exit 5)");
+  check(certify(ws, { coverage: "partial", earliestNextDue: "2026-07-20" }).status === 0, "sleep: partial certificate is allowed beside an annotated rung");
 }
 {
   const armed = temp(staticFixture("autopublish-armed"));
-  check(certify(armed).status === 6, "sleep: armed ungated autopublish refuses certification (exit 6)");
+  check(certify(armed, { earliestNextDue: "2026-07-13" }).status === 6, "sleep: armed ungated autopublish refuses certification (exit 6)");
   const gated = temp(staticFixture("autopublish-gated"));
-  check(certify(gated).status === 0, "sleep: quality-watch covering the publish window permits certification");
+  check(certify(gated, { earliestNextDue: "2026-07-14" }).status === 0, "sleep: quality-watch covering the publish window permits certification");
   const lateWatch = temp(staticFixture("autopublish-gated"));
   const loopPath = path.join(lateWatch, "loops", "frontier-sweep.json");
   const loop = JSON.parse(readFileSync(loopPath, "utf-8"));
@@ -331,7 +334,7 @@ function stampReconciled(workspace) {
   Object.assign(watch, { dueWindow: "2026-07-20/2026-07-21", dueAt: "2026-07-20" });
   loop.occurrences[JSON.stringify([watch.cadenceId, watch.dueWindow])] = watch;
   writeFileSync(loopPath, `${JSON.stringify(loop, null, 2)}\n`);
-  check(certify(lateWatch).status === 6, "sleep: a watch window entirely after the publish date does not cover it (exit 6)");
+  check(certify(lateWatch, { earliestNextDue: "2026-07-14" }).status === 6, "sleep: a watch window entirely after the publish date does not cover it (exit 6)");
 
   const noWindow = temp(staticFixture("autopublish-armed"));
   const noWindowPath = path.join(noWindow, "loops", "frontier-sweep.json");
@@ -344,7 +347,7 @@ function stampReconciled(workspace) {
     },
   };
   writeFileSync(noWindowPath, `${JSON.stringify(noWindowLoop, null, 2)}\n`);
-  check(certify(noWindow).status === 6, "sleep: an armed scheduler with no observable publish window fails closed even with a watch (exit 6)");
+  check(certify(noWindow, { earliestNextDue: "2026-07-14" }).status === 6, "sleep: an armed scheduler with no observable publish window fails closed even with a watch (exit 6)");
 
   const wrongId = temp(staticFixture("autopublish-gated"));
   const wrongIdPath = path.join(wrongId, "loops", "frontier-sweep.json");
@@ -354,7 +357,7 @@ function stampReconciled(workspace) {
   w.cadenceId = "autopublish-report";
   wrongIdLoop.occurrences[JSON.stringify([w.cadenceId, w.dueWindow])] = w;
   writeFileSync(wrongIdPath, `${JSON.stringify(wrongIdLoop, null, 2)}\n`);
-  check(certify(wrongId).status === 6, "sleep: an unrelated autopublish-* occurrence is not a quality watch (exit 6)");
+  check(certify(wrongId, { earliestNextDue: "2026-07-14" }).status === 6, "sleep: an unrelated autopublish-* occurrence is not a quality watch (exit 6)");
 }
 {
   const ws = temp();
@@ -375,6 +378,35 @@ function stampReconciled(workspace) {
   const dueObligation = ["--workspace", ws, "--hypothesis", "H", "--cohort", "sha256:c"];
   run(["obligation", "add", ...dueObligation, "--baseline-measured-at", "2026-07-01", "--baseline-value", "v", "--baseline-evidence", "e", "--metric", "m", "--decision", "d", "--due-at", "2026-07-12"]);
   check(certify(ws).status === 4, "sleep: an already-due obligation refuses certification (exit 4)");
+}
+{
+  const ws = temp();
+  stampReconciled(ws);
+  const base = ["--workspace", ws, "--loop", "frontier-sweep.json", "--cadence", "weekly-gsc", "--window", "2026-07-14/2026-07-20"];
+  run(["occurrence", "add", ...base, "--due-at", "2026-07-14", "--fingerprint", "sha256:future"]);
+  check(certify(ws, { earliestNextDue: "2026-07-25" }).status === 1, "sleep: a certificate cannot sleep past known future loop work");
+  check(certify(ws, { earliestNextDue: null, wakeOn: [{ predicate: "p", source: "s", owner: "o", fingerprint: "f" }] }).status === 1, "sleep: wakeOn-only continuity cannot erase a known future dated wake");
+  check(certify(ws, { earliestNextDue: "2026-07-14" }).status === 0, "sleep: continuity at the machine's earliest future due is accepted");
+}
+{
+  const ws = temp(staticFixture("crash-intermediates"));
+  const lost = ["--workspace", ws, "--hypothesis", "Fixture hypothesis lost ticket", "--cohort", "sha256:crash-null-ticket"];
+  check(run(["obligation", "inconclusive", ...lost, "--attempted-at", "2026-07-12", "--reason", "r", "--evidence-note", "e", "--wake-at", "2026-07-26"]).status === 8, "obligation: inconclusive from a lost-ticket intermediate is refused (reconcile first)");
+}
+{
+  const ws = temp();
+  mkdirSync(path.join(ws, "loops"), { recursive: true });
+  writeFileSync(path.join(ws, "loops", "old.json"), JSON.stringify({ schema: 1, stageStamp: { stage: "early", evaluated: "2026-06-01", basis: "r" } }, null, 2));
+  writeFileSync(path.join(ws, "loops", "old2.json"), JSON.stringify({ schema: 1, stageStamp: { stage: "mature", evaluated: "2026-06-01", basis: "r" } }, null, 2));
+  writeFileSync(path.join(ws, "loops", "new.json"), JSON.stringify({ schema: 1, stageStamp: { stage: "growth", evaluated: "2026-07-10", basis: "r" } }, null, 2));
+  const superseded = run(["cap", "--workspace", ws, "--now", "2026-07-12T12:00:00Z"]);
+  check(superseded.status === 0 && superseded.json?.stage === "growth", "cap: conflicting historical stamps are superseded by a newer authoritative stamp");
+}
+{
+  const ws = temp();
+  mkdirSync(path.join(ws, "reports"), { recursive: true });
+  check(run(["stamp", "write", "--workspace", ws, "--installed", VERSION, "--now", NOW, "--report", "backlog.md"]).status === 1, "stamp: an arbitrary existing file cannot serve as the upgrade report");
+  check(run(["stamp", "write", "--workspace", ws, "--installed", VERSION, "--now", NOW, "--report", "reports"]).status === 1, "stamp: a directory cannot serve as the upgrade report");
 }
 {
   const ws = temp();
@@ -411,7 +443,7 @@ function stampReconciled(workspace) {
   writeFileSync(ledgerPath, `${JSON.stringify(ledger, null, 2)}\n`);
   const future = run(["verify", "--workspace", ws, "--now", NOW]);
   check(future.status === 0 && future.json?.notes?.annotatedRungs?.length === 0, "coverage: a future staleAsOf annotation is not yet active");
-  check(certify(ws, { coverage: "complete" }).status === 0, "sleep: a future staleAsOf annotation does not refuse coverage=complete");
+  check(certify(ws, { coverage: "complete", earliestNextDue: "2026-07-20" }).status === 0, "sleep: a future staleAsOf annotation does not refuse coverage=complete");
 }
 {
   const ws = temp();

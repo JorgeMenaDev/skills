@@ -707,7 +707,7 @@ function addDays(date, days) {
 
 // ---------- analysis shared by verify / sleep certify ----------
 
-function analyzeWorkspace(state, now) {
+function analyzeWorkspace(state, now, options = {}) {
   const inFlightOccurrences = [];
   for (const file of state.loopFiles) {
     for (const [key, value] of Object.entries(file.payload.occurrences ?? {})) {
@@ -761,7 +761,30 @@ function analyzeWorkspace(state, now) {
     const effectiveDueAt = value.state === "pending" ? (value.wakeAt ?? value.dueAt) : value.dueAt;
     if (effectiveDueAt <= now.date) dueWork.push({ file: "loops/measurement-obligations.json", identity: key, reason: `due since ${effectiveDueAt}` });
   }
-  return { inFlightOccurrences, inFlightObligations, staleRungs, annotatedRungs, mirrorDrift, autopublish, dueWork };
+  // The earliest FUTURE continuation the machine state already knows about —
+  // a certificate may never sleep past it.
+  const futureDates = [];
+  for (const file of state.loopFiles) {
+    // A certificate replaces its own loop's wake state, so that loop's prior
+    // nextWakeAt never constrains its recertification.
+    if (file.source !== options.replacingWakeOf
+      && typeof file.payload.nextWakeAt === "string" && file.payload.nextWakeAt > now.date) futureDates.push(file.payload.nextWakeAt);
+    for (const value of Object.values(file.payload.occurrences ?? {})) {
+      if (value.state === "due" && value.dueAt > now.date) futureDates.push(value.dueAt);
+      if (value.state === "blockedUntil" && value.nextAt > now.date && value.escalation === "none" && value.attempt < 3) futureDates.push(value.nextAt);
+    }
+  }
+  for (const value of Object.values(state.obligationsFile.payload?.obligations ?? {})) {
+    if (value.state !== "pending" && value.state !== "due") continue;
+    const effectiveDueAt = value.state === "pending" ? (value.wakeAt ?? value.dueAt) : value.dueAt;
+    if (effectiveDueAt > now.date) futureDates.push(effectiveDueAt);
+  }
+  for (const [rung, row] of Object.entries(state.coverageFile.payload?.rungs ?? {})) {
+    const expiresAt = addDays(row.observedAt, COVERAGE_MAX_AGE_DAYS[rung]);
+    if (expiresAt > now.date) futureDates.push(expiresAt);
+  }
+  const earliestFutureDue = futureDates.sort()[0] ?? null;
+  return { inFlightOccurrences, inFlightObligations, staleRungs, annotatedRungs, mirrorDrift, autopublish, dueWork, earliestFutureDue };
 }
 
 function qualityWatchCovers(state, windowValue) {
@@ -1072,13 +1095,19 @@ function cmdObligation(workspace, action, args) {
     if (wakeAt <= attempt.attemptedAt) {
       throw usageError(`--wake-at ${wakeAt} must be after --attempted-at ${attempt.attemptedAt}; an inconclusive return wakes later, never immediately`);
     }
-    const alreadyRecorded = record.attempts.some((prior) => prior.attemptedAt === attempt.attemptedAt && prior.reason === attempt.reason);
-    if (alreadyRecorded && record.state === "pending" && record.candidateFingerprint === null && record.ticket === null && record.wakeAt === wakeAt) {
+    const priorAttempt = record.attempts.find((prior) => prior.attemptedAt === attempt.attemptedAt && prior.reason === attempt.reason);
+    if (priorAttempt && priorAttempt.evidence !== attempt.evidence) {
+      throw refusal(EXIT.REFUSED, `obligation ${key} already records that attempt with different evidence; only an identical retry is a no-op`);
+    }
+    if (priorAttempt && record.state === "pending" && record.candidateFingerprint === null && record.ticket === null && record.wakeAt === wakeAt) {
       // The atomic replacement already happened; this is a crash retry.
       return { exitCode: EXIT.OK, report: { command: "obligation inconclusive", status: "noop", reason: "attempt already recorded and returned to pending", identity: key } };
     }
     if (record.state !== "materialized") throw refusal(EXIT.REFUSED, `obligation ${key} is ${record.state}; inconclusive requires materialized`);
-    if (alreadyRecorded) {
+    if (record.ticket === null) {
+      throw refusal(EXIT.REFUSED, `obligation ${key} has no ticket link (lost-ticket crash intermediate); reconcile with obligation materialize before an inconclusive return`);
+    }
+    if (priorAttempt) {
       return { exitCode: EXIT.OK, report: { command: "obligation inconclusive", status: "noop", reason: "attempt already recorded", identity: key } };
     }
     return finish({
@@ -1174,18 +1203,22 @@ function resolveStage(state, args) {
     if (!STAGES.has(args.stage)) throw usageError("--stage must be unknown, early, growth, or mature");
     return { stage: args.stage, source: "--stage" };
   }
-  let best = null;
+  const stamps = [];
   for (const file of state.loopFiles) {
     const stampValue = file.payload.stageStamp;
     if (!stampValue || typeof stampValue !== "object" || Array.isArray(stampValue)) continue;
     if (!STAGES.has(stampValue.stage) || !isCalendarDate(stampValue.evaluated)) continue;
-    if (best && stampValue.evaluated === best.evaluated && stampValue.stage !== best.stage) {
-      throw refusal(EXIT.REFUSED, `conflicting stage stamps evaluated ${best.evaluated}: ${best.stage} (${best.source}) vs ${stampValue.stage} (${file.source}); reconcile them or pass --stage explicitly`);
-    }
-    if (!best || stampValue.evaluated > best.evaluated) best = { stage: stampValue.stage, evaluated: stampValue.evaluated, source: file.source };
+    stamps.push({ stage: stampValue.stage, evaluated: stampValue.evaluated, source: file.source });
   }
-  if (best) return { stage: best.stage, source: `${best.source} stageStamp (${best.evaluated})` };
-  return { stage: "unknown", source: "default (no stageStamp found)" };
+  if (stamps.length === 0) return { stage: "unknown", source: "default (no stageStamp found)" };
+  const newest = stamps.map((stamp) => stamp.evaluated).sort().at(-1);
+  // Older superseded stamps may disagree freely; only the newest date decides.
+  const winners = stamps.filter((stamp) => stamp.evaluated === newest);
+  const conflicting = winners.find((stamp) => stamp.stage !== winners[0].stage);
+  if (conflicting) {
+    throw refusal(EXIT.REFUSED, `conflicting stage stamps evaluated ${newest}: ${winners[0].stage} (${winners[0].source}) vs ${conflicting.stage} (${conflicting.source}); reconcile them or pass --stage explicitly`);
+  }
+  return { stage: winners[0].stage, source: `${winners[0].source} stageStamp (${newest})` };
 }
 
 function capUsage(state, now, { stage, source }) {
@@ -1247,7 +1280,7 @@ function cmdSleepCertify(workspace, args) {
     throw refusal(EXIT.DRIFT, `upgrade drift outstanding (installed ${installed}, stamp ${stamp.stampState === "present" ? stamp.reconciledSkillVersion : stamp.stampState}); no certificate may be minted under drift`, { stamp, installed });
   }
 
-  const analysis = analyzeWorkspace(state, now);
+  const analysis = analyzeWorkspace(state, now, { replacingWakeOf: path.join("loops", loopName) });
   if (analysis.inFlightOccurrences.length > 0 || analysis.inFlightObligations.length > 0) {
     throw refusal(EXIT.IN_FLIGHT, "unreconciled in-flight occurrence or obligation; re-read the canonical backlog and complete the interrupted transition before sleep", {
       inFlightOccurrences: analysis.inFlightOccurrences,
@@ -1256,6 +1289,10 @@ function cmdSleepCertify(workspace, args) {
   }
   if (analysis.dueWork.length > 0) {
     throw refusal(EXIT.IN_FLIGHT, "already-due loop work exists; do the work or record honest blocked — a certificate cannot suppress it", { dueWork: analysis.dueWork });
+  }
+  if (analysis.earliestFutureDue !== null
+    && (cert.earliestNextDue === null || cert.earliestNextDue === undefined || cert.earliestNextDue > analysis.earliestFutureDue)) {
+    throw usageError(`machine state already wakes at ${analysis.earliestFutureDue}; the certificate's earliestNextDue must be on or before it (got ${cert.earliestNextDue ?? "null"})`);
   }
   if (cert.coverage === "complete") {
     // "complete" asserts the operator's judgment that every APPLICABLE rung is
@@ -1324,8 +1361,20 @@ function cmdStamp(workspace, action, args) {
     if (path.posix.isAbsolute(report) || path.win32.isAbsolute(report) || /^[A-Za-z]:/.test(report) || report.split(/[\\/]/).includes("..")) {
       throw usageError("--report must be a workspace-relative path");
     }
-    if (!existsSync(path.join(workspace, report))) {
+    if (!/^reports\/\d{4}-\d{2}-\d{2}-upgrade-pass-[A-Za-z0-9._-]+\.md$/.test(report)) {
+      throw usageError(`--report ${report} must be the dated upgrade-pass report path that stamp report-path names`);
+    }
+    const reportAbsolute = path.join(workspace, report);
+    let reportStat;
+    try {
+      reportStat = statSync(reportAbsolute);
+    } catch {
       throw usageError(`--report ${report} does not exist in the workspace; write the upgrade-pass report before re-stamping`);
+    }
+    const realReport = realpathSync(reportAbsolute);
+    const realWorkspace = realpathSync(workspace);
+    if (!reportStat.isFile() || !realReport.startsWith(realWorkspace + path.sep)) {
+      throw usageError(`--report ${report} must be a regular file inside the workspace`);
     }
     atomicWriteJson(workspace, path.join(workspace, "reconciliation.json"), {
       schema: 1,
