@@ -26,6 +26,8 @@ Write one file per slice to disk before spawn:
 ## Acceptance criteria
 <one per line: criterion → the exact command/flow that proves it → expected result. If a criterion can't be proved in this slice, say where it will be — never overclaim.>
 
+For runtime-change acceptance proof, use this verification contract: The verifier runs the **delta** (scenarios the diff adds or touches) against the live app through the golden path — login via `/api/qa/login` (local) or `qa:login-url` (preview/prod), fixtures via `qa:seed` — using computer-use when in-session on the mini and agent-browser in AFK/cloud/sandbox lanes, and attaches per-scenario verdicts + screenshots + an `executor:` line to the PR recap. The verification rule is: scenarios come from the spec, never authored at verify time.
+
 ## Owned paths
 - May edit: <paths>
 - Generated/formatter allowlist: <paths>

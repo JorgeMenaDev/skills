@@ -1,7 +1,7 @@
 ---
 name: afk-pipeline
 description: Operate the AFK pipeline for a registry-confirmed repository. Use when the user explicitly asks for AFK work, Pipeline Flags, an Agent Brief, pipeline dispatch, or pipeline installation, or when the active workspace contract routes substantial eligible development through AFK.
-version: 2.13.8
+version: 2.13.9
 mutating: true
 writes_to: [".agents/afk-pipeline/", "selected Grok auth source and encrypted canonical copy", "GROK_AUTH_B64 repo secret"]
 ---

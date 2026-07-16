@@ -54,6 +54,9 @@ codes. If recording is `off`, do not run any `agent-browser record` command.
 
 # E2E VERIFICATION with agent-browser
 
+The verifier runs the **delta** (scenarios the diff adds or touches) against the live app through the golden path — login via `/api/qa/login` (local) or `qa:login-url` (preview/prod), fixtures via `qa:seed` — using computer-use when in-session on the mini and agent-browser in AFK/cloud/sandbox lanes, and attaches per-scenario verdicts + screenshots + an `executor:` line to the PR recap.
+The verification rule is: scenarios come from the spec, never authored at verify time.
+
 Evidence directory{{EVIDENCE_DIR_NOTE}}:
 
 `mkdir -p {{EVIDENCE_DIR}}/issue-{{ISSUE_NUMBER}}`

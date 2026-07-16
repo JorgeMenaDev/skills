@@ -1,7 +1,7 @@
 ---
 name: orchestrate
 description: Orchestrate multi-slice work as the conductor — plan slices with blocking edges, dispatch isolated executors from the frontier, review hand-backs, integrate, and verify to completion. Use when a task spans parallel agents, worktrees, AFK runs, shared resources, cross-runtime delegation, or an issue chain that must be driven to verified completion.
-version: 3.0.0
+version: 3.0.1
 license: MIT
 mutating: true
 writes_to: [session-scratchpad/orchestrate/, worktrees, branches, pull-requests, issue-trackers]
