@@ -117,7 +117,7 @@ All skills below are **model-invoked** — the agent can reach for them when the
 ### Agent Operations
 
 - **[operator-handoff](./skills/agent-operations/operator-handoff/SKILL.md)** — Job-file handoff between a requesting agent and a human-supervised computer-use Operator: jobs, reports, evidence trails, and a per-repo `HOST.md` host profile.
-- **[orchestrate](./skills/agent-operations/orchestrate/SKILL.md)** — Conduct dependency-aware multi-agent work through typed waves, isolated executors, durable run state, review gates, and verified integration.
+- **[orchestrate](./skills/agent-operations/orchestrate/SKILL.md)** — Conduct multi-agent work from a human-readable plan: slices with blocking edges, frontier dispatch to isolated executors, review gates, and verified integration.
 - **[source-to-system](./skills/agent-operations/source-to-system/SKILL.md)** — Turn external material into one evidence-backed, owned system improvement or an explicit no-change decision.
 - **[grok-deep-research](./skills/agent-operations/grok-deep-research/SKILL.md)** — Run isolated, bounded Grok research with native or Firecrawl search and produce a stable cited report plus an iteration ledger.
 
