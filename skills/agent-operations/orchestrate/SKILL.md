@@ -1,78 +1,78 @@
 ---
 name: orchestrate
-description: Orchestrate multi-slice work through dependency-aware waves, isolated executors, review gates, integration, and recovery. Use when a task spans parallel agents, worktrees, AFK runs, shared resources, cross-runtime delegation, or an issue chain that must be driven to verified completion.
-version: 2.3.0
+description: Orchestrate multi-slice work as the conductor — plan slices with blocking edges, dispatch isolated executors from the frontier, review hand-backs, integrate, and verify to completion. Use when a task spans parallel agents, worktrees, AFK runs, shared resources, cross-runtime delegation, or an issue chain that must be driven to verified completion.
+version: 3.0.0
 license: MIT
 mutating: true
 writes_to: [session-scratchpad/orchestrate/, worktrees, branches, pull-requests, issue-trackers]
 triggers: [orchestrate, orchestration, parallel-agents, issue-chain, autopilot]
 ---
 
-> **Contribute within authority.** The active workspace contract and current task scope decide whether a run may modify this skill, open an upstream pull request, or record portable friction. When authorized, fix the canonical source and use its normal release flow. Otherwise leave the skill untouched; record the observation only in an existing in-scope handoff or `knownLessons` artifact. Invoking orchestrate never implies product-development scope.
+> **Contribute within authority.** The active workspace contract decides whether a run may modify this skill or open an upstream PR. When authorized, fix the canonical source through its normal release flow; otherwise record the friction in an in-scope handoff or `knownLessons` artifact. Invoking orchestrate never implies product-development scope.
 
 # Orchestrate
 
-You are the **conductor**: plan, dispatch, inspect, steer, integrate, and verify. Executors perform product work. A literal one-line change may be done directly and named as the one-liner exception.
+You are the **conductor**: plan, dispatch, inspect, integrate, verify. Executors do the product work; you own every piece of ceremony around it — branches, worktrees, pushes, PRs, merges, issue state, secrets. An executor never touches those.
 
-## Contract
+## Pick the path
 
-- Every slice has checkable criteria, one lane, one executor, typed edges, and a terminal proof.
-- Lane describes operational lifecycle; executor describes the runtime/vendor. Native spawning stays runtime-owned. Non-native agents use installed adapters.
-- `run.json` is the sole authority for orchestrated runs; `RUN.md` is generated. Workers write handoffs, never ledger state.
-- On the orchestrated path, mutating dispatch is fail-closed behind ledger authority: an initialized run, fresh clean reconciliation, and an emitted write frontier. `REQUIRES_INIT` means run `start` — or `adopt` for work already in flight — before any external act.
-- Default mode presents and records routing and each frontier; it pauses only when the active workspace contract exposes an unresolved judgment, permanent-loss, or human-only gate. `autopilot` records the same decisions and advances independently under that contract. Irreducible ambiguity still fails closed.
-- The write frontier is rolling: a slice may dispatch the moment its start edges clear; waves are the reporting view, not batch barriers. Read-only preparation may cross a future wave; writes may begin only from the emitted write frontier.
-- Long runs checkpoint at wave boundaries; a fresh conductor resumes from `RESUME.md` plus `takeover`, never from prose memory.
-- Orchestration friction compounds into `knownLessons` and, when portable, a canonical skill improvement.
+- A literal one-line change: do it directly and name the one-liner exception.
+- One contained slice: brief + one executor + review. No plan file.
+- Two or more slices, dependencies, or a shared resource: orchestrate — create the plan first.
 
-## Select the path
+## The plan is a file, not a database
 
-Run:
+State lives in one place the human can read and edit:
 
-```bash
-node <skill>/scripts/orchestrate-run.mjs preflight --repo <repo>
-node <skill>/scripts/orchestrate-run.mjs classify \
-  --slices <count> --dependencies <yes|no> --integration-branch <yes|no> \
-  --shared-resource <yes|no>
+- **Work that came from tracker issues** → the tracker *is* the plan: native blocking edges are the edges, the assignee is the claim, labels/state are the state. Don't mirror it into a file; keep only Decisions / Deferred / Standing lessons in `PLAN.md`.
+- **Anything else** → one `PLAN.md` in `<scratchpad>/orchestrate/<run-name>/`:
+
+```markdown
+# PLAN — <run-name>
+Repo: <path>   Target: <branch>   Base: <sha>   Mode: default|autopilot
+
+| # | Slice | Blocked by | Lane / executor | Branch | State | Proof |
+|---|-------|------------|-----------------|--------|-------|-------|
+| 1 | schema migration | — | subagent / claude | s1-schema | merged | PR #211 |
+| 2 | API endpoint | 1 (needs schema) | subagent / codex | s2-api | in-review | PR #212 |
+
+States: planned → dispatched → handed-off → in-review → merged/done, or blocked: <why>.
+
+## Decisions
+1. <numbered, append-only — routing picks, scope rulings, escalations>
+
+## Deferred / needs the operator
+- <anything that can't be discharged now, each with what would discharge it>
+
+## Standing lessons
+- <generalizable review findings; embedded verbatim in every later brief>
 ```
 
-- `PATH: one-liner` only for a literal one-line change.
-- `PATH: simple` for one contained slice; use a brief and handoff, plus any required global resource probe.
-- `PATH: orchestrated` for 2+ slices, dependencies, an integration branch, or a resource shared between slices. `classify` prints `REQUIRES_INIT`: initialize with one command — `start --dir <scratchpad>/orchestrate/<run-id> --spec <spec.json>` — or `adopt` when orchestration is discovered mid-run; both per `references/run-ledger.md`.
+Rules: the conductor is the only writer; update a row the moment its fact changes; keep Decisions append-only. A fresh session resumes by reading `PLAN.md`, then **reconciling against reality** — `git log`, `gh pr list`, live processes — never by trusting the file over the world. Git, the tracker, and the filesystem are the real ledger; `PLAN.md` is the index.
 
 ## The loop
 
-1. **Intake.** Read repo instructions and source issues/specs. For issue chains prefer native tracker edges, then `## Blocked by` sections. Extract every slice, criterion, hidden semantic dependency, collision surface, external effect, and human gate. A single task needs a repo, goal, and checkable done criteria. Done when no brief requires invention.
-2. **Plan.** Read `references/planning-and-routing.md`. Discover real executor capabilities, classify constraints as required/preferred, assign lanes/executors, type all edges, and compute start waves separately from integration order. Budget depletable capacity — engine/review quota, agent slots, disk, QA actors — with a pre-declared failover ladder per resource, and stage the next wave's external inputs one wave ahead. Done when every slice and criterion has an owner and proof.
-3. **Authorize.** Present the complete routing table and recommend the picks, then record the decisions and reasons in the ledger. The active workspace contract decides whether a pick crosses a judgment gate and needs confirmation; otherwise proceed. Done when authorization is explicit and durable.
-4. **Dispatch.** Reconcile first. Acquire resources and commit write-ahead effect intent before each external act. For mutating dev slices read `references/dev-lane.md`; for other lanes follow their installed skill. Done when every dispatch has an observed runtime identity or is `UNKNOWN`/`BLOCKED`.
-5. **Supervise and verify.** Inspect real diffs, reports, evidence, and runtime state, tiering review depth by slice risk. Allow one grounding checkpoint; interrupt only for scope, safety, or concrete defects. After handoff, classify findings as contract-violating or advisory and follow the convergence and correction ladder in `references/dev-lane.md`; escalation triggers are defect recurrence or executor degradation, never round count. Done when each slice is accepted or carries an exact blocker.
-6. **Integrate and advance.** Follow integration edges, conductor-owned publication, CI/preview gates, refreshed-target verification, and `assert-complete`. Workspace-contract gates that cannot be discharged now enter the ledger's deferred-gate register and block completion until discharged or separately authorized. Present and record the next frontier, pausing only when that contract requires it. Done when every slice and parent criterion is terminal with proof.
+1. **Intake.** Read repo instructions and the source issues/spec. Extract every slice, its checkable criteria, dependencies, collision surfaces (schema, generated code, shared helpers, migrations, route registries), external effects, and human gates. Done when no brief would require invention.
+2. **Plan.** Give each slice criteria, blocked-by edges (one-line reason each), a lane and executor, base branch/SHA, and owned paths. Write `PLAN.md` (or confirm tracker edges). Mirror the waves in the runtime's native task list when it has one — a view, never state. Present the routing table with your recommendation; pause only at a judgment, permanent-loss, or human-only gate. `autopilot` records the same decisions and proceeds under the workspace contract.
+3. **Dispatch from the frontier.** The frontier is every slice whose blockers are all merged/done. Before each dispatch: refresh the base and capture its SHA, create the branch/worktree yourself (Git's atomic ref creation is the lock), allocate ports/QA actors/browser sessions, and write the brief to disk from `references/brief-template.md` — executors get no follow-up questions. Serialize any shared resource through yourself: one writer per repo, branch, or desktop at a time. A slice dispatches the moment its edges clear; waves are a reporting view, not batch barriers.
+4. **Review the hand-back.** The report locates proof; it is never proof. Inspect the real diff against the criteria, tiering depth by risk — full read for kernel and load-bearing slices, spot-checks for late-chain mechanical ones. Contract-violating findings always go back as one consolidated correction note to the same session; escalate to a fresh or higher-capability attempt only when the same defect recurs after correction or the session is dead/incoherent — never on round count alone. Append each generalizable finding once to Standing lessons.
+5. **Integrate.** You own push, PR, and merge. Follow the blocked-by order, rebase dependents after each merge and rerun their affected checks. Read `references/integration-traps.md` before any multi-branch integration — every entry there is a scar.
+6. **Complete.** Every slice terminal with proof in its row, every parent criterion accounted for, every deferred item listed with what would discharge it. Then report.
 
-## Operator visibility
+## Lanes and executors
 
-After planning computes the waves, use a native user-visible task/todo list when the runtime provides one. Create one `Wave N — <label> (<n> tickets)` task per wave plus `Integration`; create no per-slice tasks and add no executor detail. A runtime without this tool continues without a mirror; prose is not a substitute.
-
-The task list is a view, never state: `run.json` remains sole authority, control flow reads only the ledger, and the list carries no unique sequencing or ownership. Missing or stale tasks never alter work, and resume/adopt does not recreate them. Touch each task exactly twice: set a wave `in_progress` after its first dispatch is recorded in `run.json` and `completed` after its last slice is accepted; set `Integration` `in_progress` after the first conductor-owned integration act is recorded in `run.json` and `completed` only when `assert-complete` succeeds. Once started, `Integration` remains `in_progress` while the run is blocked or a deferred gate is unresolved.
-
-## Read when needed
-
-| When | Read fully |
-|---|---|
-| Planning waves, lanes, executors, cross-runtime work | `references/planning-and-routing.md` |
-| Creating, updating, resuming, or completing a run | `references/run-ledger.md` |
-| Looking up ledger field shapes | `references/ledger-schema.md` |
-| Any mutating subagent/worktree/PR slice | `references/dev-lane.md` |
-| Writing a brief, executor report, or standing lessons | `references/brief-template.md` |
-| Shared resources, external effects, UI, or evidence | `references/resources-and-evidence.md` |
+- Lanes: **subagent** (default; contained code change, conductor review), **afk** (substantial registered-repo work through the `afk-pipeline` contract — AFK ships changes, not answers; investigations are read-only), **read-only** (research, audit, review), **computer-use** (browser/desktop through its skill), **human** (an exact ask only the operator can perform). Installed lane skills own their mechanics; orchestrate owns selection and gates.
+- Prefer the runtime's native agents when equally capable; otherwise the cheapest installed adapter that clears the bar (`codex-cli-runtime`, `grok-cli-runtime`, `cursor-subagent`). Record the pick and its fallback in Decisions.
+- When a vendor/model/effort is *required*, verify it from launcher or runtime metadata — a model's self-report is never attestation. A missing required executor fails closed.
+- Before each new dispatch, check `.agents/engine-override.json`: absent = off; malformed = off plus a warning; active = translate into executor constraints while preserving the workspace contract's carve-outs.
 
 ## STOP gates
 
-- STOP before dispatch on `REQUIRES_INIT` without an initialized ledger, invalid/unknown state, an uncleared start edge, mismatched bases, or conflicting ownership. **Dispatching from prose or stale state is the failure mode.**
-- STOP before ready/acceptance/merge without the lane handoff, self-verification, evidence manifest, conductor review, and required independent review. **Trusting the hand-back is the failure mode.**
-- STOP before dependent writes when blocker code is absent from the base. **Wave-jumping is the failure mode.**
-- STOP before completion until every slice and parent criterion is terminal and merged state is reverified where applicable. **Premature completion is the failure mode.**
+- STOP dispatching from memory or prose: a slice dispatches only off a current `PLAN.md`/tracker row whose blockers you just verified against real state. **Stale state is the failure mode.**
+- STOP before acceptance without reading the actual diff and evidence. **Trusting the hand-back is the failure mode.**
+- STOP before dependent writes when the blocker's code is not in the dependent's base. **Wave-jumping is the failure mode.**
+- STOP before declaring done while any criterion, deferred item, or merged-state verification is open. **Premature completion is the failure mode.**
 
 ## Output
 
-Report `DONE | DONE_WITH_CONCERNS | BLOCKED`, absolute `run.json` path when used, wave/slice outcomes, merged or accepted identities, verification evidence, unresolved gates, and the next write/preparation frontiers. End with numbered user actions and name the execution lane for each.
+Report `DONE | DONE_WITH_CONCERNS | BLOCKED`, the absolute `PLAN.md` path, per-slice outcomes with merged/accepted identities, verification evidence, open deferred items, and the next frontier. End with numbered user actions, naming the lane for each.
