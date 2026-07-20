@@ -72,6 +72,7 @@ Before changing authenticated production surfaces, capture evidence into `report
 | --- | --- | --- |
 | Hosting/platform | Team/project, production domain, root dir, framework, latest deploy, deploy source | Wrong team/project, monorepo root mismatch, old production alias |
 | Search Console | Property type, verified access, sitemap status, URL inspection, rich result/CWV reports | Unverified property, fresh `Couldn't fetch`, wrong property form |
+| Ahrefs | Project/access and declared crawl scope per `references/ahrefs.md` | Missing project/session/capability/credits, temporary browser-lane loss, insufficient useful coverage |
 | Analytics | Provider, property, install path, live traffic proof, events configured | Installed but undeployed, wrong property, missing events |
 | DNS/domain | Registrar/zone, required records, verification records, canonical host | Wrong zone, stale DNS, www/apex mismatch |
 | Scheduler/CMS | Project exists, locale, calendar rows, publish destination, UI/CLI agreement | Backend project invisible in UI, wrong locale, blocked publish auth |

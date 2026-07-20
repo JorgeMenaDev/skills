@@ -1,5 +1,9 @@
 # Changelog
 
+## 6.1.0
+
+Ahrefs External Crawl is now a mandatory monthly checkpoint at every SEO stage. A completed crawl qualifies only with at least 90% coverage of a dated declared site-wide or named partial scope, a normalized report, and independent verification of promoted findings; provider work stays in supervised UI use. Existing cadence occurrences and the reconciliation stamp carry the additive rollout, and workspace schema 1 is unchanged ([skills#162](https://github.com/JorgeMenaDev/skills/issues/162)).
+
 ## 6.0.1
 
 `loop-state.mjs` now records dated URL-specific cap exceptions through an idempotent writer and preflights named planned URLs, including qualifying shared releases, against unused grant tokens. `sleep heartbeat` now re-runs the certificate's drift, due/in-flight work, coverage, and autopublish guards before refreshing the heartbeat, and refuses once its wake date is due. The workspace schema is unchanged; transitions remain code-and-fixture owned ([skills#146](https://github.com/JorgeMenaDev/skills/issues/146)).

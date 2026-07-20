@@ -1,7 +1,7 @@
 ---
 name: seo-growth-workspace
 description: "Use when starting, auditing, or operating SEO or organic growth for a product or local-business website — technical SEO, Search Console, keyword/content ops, schema, pSEO, local SEO/GBP, backlinks, AI-search visibility, conversion, and monthly reporting. Triggers: \"set up SEO\", \"audit my site\", \"my traffic dropped\", \"why am I not ranking\", \"Search Console opportunities\", \"monthly SEO report\", \"how do we show up in ChatGPT/AI search\". Creates a durable .seo workspace, captures business context, audits live/code/admin evidence, prioritizes a backlog, implements one high-leverage action, verifies reality, and logs handoff notes. Installs in a single site repo (standalone) or in an orchestrator/agent-profile repo managing many sites (hub). For standalone copywriting, paid channels, or email, use a dedicated skill."
-version: 6.0.1
+version: 6.1.0
 license: MIT
 mutating: true
 writes_to: [".seo/", "operator-declared bootstrap plan path"]
@@ -54,7 +54,7 @@ Pick the narrowest mode; default to `operate`. A full first run loads `reference
 
 Protocol: `operating.md` (the loop: selection, tickets, terminals, wake/sleep, cadences, obligations, ships, frontier, unattended runs, upgrade pass) · `policy.md` (fixed stages, cadences, caps, gate families, measurement timing) · `workspace.md` (install lifecycle, hub, registry, migration, adapters, admin preflight) · `first-run.md` (site classifier, phase ladder, business context).
 
-Domain, loaded per ticket: `technical-seo.md` · `international-seo.md` · `search-console.md` · `content-ops.md` (incl. community-source pages) · `content-refresh.md` · `utility-tool-pages.md` · `internal-linking.md` · `schema-rich-results.md` · `pseo-gates.md` · `local-seo-gbp.md` · `backlinks-entity.md` (incl. image rights) · `commercial-integrity.md` (incl. affiliate/promo) · `ecommerce-seo.md` · `competitor-profiling.md` · `data-tools.md` · `ai-search-visibility.md` · `conversion.md` (CTA audits + PostHog outcome bridge) · `monthly-reporting.md` · `content-engine-webhooks.md` · `pages.md` (page evidence + launch gates).
+Domain, loaded per ticket: `technical-seo.md` · `international-seo.md` · `search-console.md` · `content-ops.md` (incl. community-source pages) · `content-refresh.md` · `utility-tool-pages.md` · `internal-linking.md` · `schema-rich-results.md` · `pseo-gates.md` · `local-seo-gbp.md` · `backlinks-entity.md` (incl. image rights) · `commercial-integrity.md` (incl. affiliate/promo) · `ecommerce-seo.md` · `competitor-profiling.md` · `data-tools.md` · `ahrefs.md` (bootstrap/adoption preflight, monthly External Crawl, provider access, and Ahrefs evidence) · `ai-search-visibility.md` · `conversion.md` (CTA audits + PostHog outcome bridge) · `monthly-reporting.md` · `content-engine-webhooks.md` · `pages.md` (page evidence + launch gates).
 
 Templates (`templates/`): monthly-report, local-seo-gbp, pseo-plan, content-plan, taxonomy. Other report shapes are inlined in their owning references.
 

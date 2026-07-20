@@ -21,12 +21,15 @@ A qualified outcome is site-specific and named in `.seo/context.md`, such as a l
 | --- | --- | --- |
 | Search Console | Monthly | Weekly |
 | Crawl and indexability | Monthly | Monthly |
+| Ahrefs External Crawl | Monthly | Monthly |
 | Core Web Vitals | Monthly | Monthly |
 | Conversion path / CRO | Monthly | Monthly |
 | Content refresh review | Quarterly | Quarterly |
 | Strategy review | Quarterly | Quarterly |
 
 Deploy-specific checks are one-off obligations, not recurring cadence rows. A failed cadence execution retries the next day, then three days after that retry; another failure becomes `needs_human`. Missing or lagging measurement data is inconclusive, not an execution failure.
+
+Ahrefs External Crawl is a distinct occurrence from deterministic Crawl and indexability even when their due windows align. A material change to the canonical origin, declared public scope, sitemap, robots behavior, crawl configuration, project ownership, plan, provider capability, or configured credit allocation/page ceiling that affects achievable coverage invalidates the current checkpoint and makes a new preflight and run due. Credits consumed by the qualifying run and routine provider resets are not invalidations. `references/ahrefs.md` defines the append-only occurrence representation.
 
 Cadence rows default to `P4` / `reporting`; measurement obligations default to `P3` / `measurement`. Becoming due never raises priority. Only an observed impact routed through the Emergency Selector can promote work.
 
