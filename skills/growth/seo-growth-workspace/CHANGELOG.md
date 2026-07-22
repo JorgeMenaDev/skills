@@ -1,5 +1,9 @@
 # Changelog
 
+## 6.1.2
+
+`bootstrap-seo-workspace.mjs` now reads the installed `SKILL.md` version when creating a reconciliation stamp. New workspaces therefore start reconciled to the release that created them instead of the stale hard-coded `5.2.3` value.
+
 ## 6.1.1
 
 `seo-doctor.mjs` now accepts byte-identical real copies installed for multiple runtimes while continuing to fail closed when their skill contents differ. This keeps lifecycle plans compatible with dual-target, no-symlink installations without weakening install-drift detection.

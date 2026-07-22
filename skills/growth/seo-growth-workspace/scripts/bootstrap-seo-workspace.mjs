@@ -24,9 +24,12 @@ import {
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const taxonomyTemplatePath = path.resolve(scriptDir, "../templates/taxonomy.md");
-const SKILL_VERSION = "5.2.3";
+const skillPath = path.resolve(scriptDir, "../SKILL.md");
+const SKILL_VERSION = /^version:\s*(\S+)\s*$/m.exec(readFileSync(skillPath, "utf-8"))?.[1];
 const WORKSPACE_SCHEMA_VERSION = 1;
 const ACTIONS = new Set(["create", "adopt", "verify", "repair", "create-optional"]);
+
+if (!SKILL_VERSION) throw new Error(`Cannot read the installed skill version from ${skillPath}`);
 
 function usage() {
   return `Usage:
@@ -281,8 +284,8 @@ async function writeMissing(baseDir, files, allowlist = null, root = baseDir) {
 
 function reconciliationContent() {
   // Creation-time stamp: a workspace created under the current version is
-  // reconciled by construction (references/operating.md § Upgrade recap).
-  // `report: null` marks initial provenance, not a recap product.
+  // reconciled by construction (references/operating.md § Upgrade pass).
+  // `report: null` marks initial provenance, not an upgrade-pass product.
   return `${JSON.stringify({ schema: 1, reconciledSkillVersion: SKILL_VERSION, reconciledAt: new Date().toISOString().slice(0, 10), report: null }, null, 2)}\n`;
 }
 
