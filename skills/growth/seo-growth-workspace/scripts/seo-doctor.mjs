@@ -439,7 +439,9 @@ function diagnose(options) {
     if (install.symlink && !install.targetExists) addFinding(findings, "dangling_install", `${install.path} -> ${install.target ?? "?"} is dangling.`);
   }
   const healthyInstallRoots = new Set(installs.filter((item) => item.targetExists).map((item) => item.realpath));
-  if (healthyInstallRoots.size > 1) addFinding(findings, "duplicate_install", `${healthyInstallRoots.size} distinct skill installs exist under ${root}.`);
+  const installedHashes = [...healthyInstallRoots].map((installRoot) => skillFolderHash(installRoot));
+  const distinctInstalledHashes = new Set(installedHashes);
+  if (distinctInstalledHashes.size > 1) addFinding(findings, "duplicate_install", `${distinctInstalledHashes.size} distinct skill install contents exist under ${root}.`);
 
   const lockPath = path.join(root, "skills-lock.json");
   if (existsSync(lockPath)) {
@@ -450,7 +452,6 @@ function diagnose(options) {
       if (entry && installs.length === 0) addFinding(findings, "skills_lock_drift", `${lockPath} records seo-growth-workspace but no install surface exists.`);
       if (entry && (!entry.computedHash || !entry.skillPath)) addFinding(findings, "skills_lock_drift", `${lockPath} has an incomplete seo-growth-workspace entry.`);
       if (entry?.computedHash && healthyInstallRoots.size > 0) {
-        const installedHashes = [...healthyInstallRoots].map((installRoot) => skillFolderHash(installRoot));
         if (!installedHashes.includes(entry.computedHash)) addFinding(findings, "skills_lock_drift", `${lockPath} computedHash does not match any installed seo-growth-workspace directory.`);
       }
     } catch (error) {

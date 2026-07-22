@@ -1,5 +1,9 @@
 # Changelog
 
+## 6.1.1
+
+`seo-doctor.mjs` now accepts byte-identical real copies installed for multiple runtimes while continuing to fail closed when their skill contents differ. This keeps lifecycle plans compatible with dual-target, no-symlink installations without weakening install-drift detection.
+
 ## 6.1.0
 
 Ahrefs External Crawl is now a mandatory monthly checkpoint at every SEO stage. A completed crawl qualifies only with at least 90% coverage of a dated declared site-wide or named partial scope, a normalized report, and independent verification of promoted findings; provider work stays in supervised UI use. Existing cadence occurrences and the reconciliation stamp carry the additive rollout, and workspace schema 1 is unchanged ([skills#162](https://github.com/JorgeMenaDev/skills/issues/162)).
