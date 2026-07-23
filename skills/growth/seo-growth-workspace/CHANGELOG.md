@@ -1,5 +1,9 @@
 # Changelog
 
+## 7.0.0
+
+SEO Ships no longer have a numerical rolling limit. The `cap` and `cap exception` commands, their exception allocation machinery, and cap fields in `ship record` output are removed; exit code 7 remains reserved so the refusal code does not move. Ship events, evidence and integrity gates, exact-revision approval, live verification, and 28-day measurement obligations remain mandatory. Historical `capExceptions` data is tolerated as inert legacy state and is never rewritten.
+
 ## 6.1.2
 
 `bootstrap-seo-workspace.mjs` now reads the installed `SKILL.md` version when creating a reconciliation stamp. New workspaces therefore start reconciled to the release that created them instead of the stale hard-coded `5.2.3` value.

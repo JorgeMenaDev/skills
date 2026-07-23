@@ -9,7 +9,7 @@
 //   2. Static loop-state fixtures: crash intermediates, staleAsOf annotations,
 //      armed autopublish, mirror drift, corrupt ship ledgers.
 //   3. Write-path scenarios in temp workspaces: lifecycles, idempotent crash
-//      retries, refusal exit codes, cap boundaries, sleep certification.
+//      retries, refusal exit codes, ship records, sleep certification.
 //
 // Field-discovered edge cases land HERE as fixtures or scenarios, never as new
 // prose clauses (design rule 4).
@@ -243,7 +243,7 @@ function stampReconciled(workspace) {
   check(superseded.state === "superseded" && superseded.successor.hypothesis === "Successor hypothesis", "obligation: superseded record carries its successor");
 }
 
-// ship record + dedupe + cap
+// ship record + dedupe, without numerical capacity
 {
   const ws = temp();
   mkdirSync(path.join(ws, "loops"), { recursive: true });
@@ -256,42 +256,13 @@ function stampReconciled(workspace) {
   check(record("ship-x", "sha256:ship-x", "2026-07-11T12:00:00Z", "not-a-url").status !== 0, "ship: a non-URL is rejected");
   check(record("ship-y", "sha256:ship-y", "2026-07-11T12:00:00Z", "https://example.com/a#frag").status !== 0, "ship: a fragment URL is rejected");
   check(record("ship-2", "sha256:ship-2", "2026-07-12T09:00:00Z", "https://example.com/b").status === 0, "ship: second event");
-  const atCap = run(["cap", "--workspace", ws, "--now", "2026-07-12T12:00:00Z"]);
-  check(atCap.status === 7 && atCap.json?.stage === "early" && atCap.json?.cap === 2 && atCap.json?.counted === 2 && atCap.json?.remaining === 0, "cap: early stage exhausts at two ships (exit 7)");
-  check(atCap.json?.stageSource?.includes("stage.json"), "cap: stage resolved from the stageStamp");
-  const boundary = run(["cap", "--workspace", ws, "--now", "2026-07-18T11:59:59Z"]);
-  check(boundary.status === 7 && boundary.json?.counted === 2, "cap: event just under seven days old still counts");
-  const rolledOff = run(["cap", "--workspace", ws, "--now", "2026-07-18T12:00:00Z"]);
-  check(rolledOff.status === 0 && rolledOff.json?.counted === 1 && rolledOff.json?.remaining === 1, "cap: an event exactly seven days old has rolled out (window is half-open)");
-  check(run(["cap", "--workspace", ws, "--now", "2026-07-12T12:00:00Z", "--stage", "growth"]).status === 8, "cap: --stage cannot raise the cap above the persisted stage");
-  const lowered = run(["cap", "--workspace", ws, "--now", "2026-07-12T12:00:00Z", "--stage", "unknown"]);
-  check(lowered.status === 7 && lowered.json?.cap === 2, "cap: --stage may hold capacity at or below the persisted stage");
-  const preflight = run(["cap", "--workspace", ws, "--now", "2026-07-18T12:00:00Z", "--planned", "2"]);
-  check(preflight.status === 7 && preflight.json?.remaining === 1, "cap: preflight refuses a batch larger than remaining capacity");
+  const third = record("ship-3", "sha256:ship-3", "2026-07-12T10:00:00Z", "https://example.com/c");
+  check(third.status === 0 && !("capExceeded" in third.json) && !("cap" in third.json), "ship: additional events record without capacity fields");
   const ships = JSON.parse(readFileSync(path.join(ws, "loops", "ship-events.json"), "utf-8"));
-  ships.capExceptions = [{ dated: "2026-07-12", grantedBy: "Jorge", site: "example.com", urls: ["https://example.com/b"], reason: "fixture exception" }];
+  ships.capExceptions = [{ legacy: "inert" }];
   writeFileSync(path.join(ws, "loops", "ship-events.json"), `${JSON.stringify(ships, null, 2)}\n`);
-  const excepted = run(["cap", "--workspace", ws, "--now", "2026-07-12T12:00:00Z"]);
-  check(excepted.status === 0 && excepted.json?.counted === 1 && excepted.json?.excepted === 1 && excepted.json?.remaining === 1, "cap: exception-covered event does not consume cap");
-  ships.capExceptions = [{ dated: "2026-07-01", grantedBy: "Jorge", site: "example.com", urls: ["https://example.com/b"], reason: "stale grant" }];
-  writeFileSync(path.join(ws, "loops", "ship-events.json"), `${JSON.stringify(ships, null, 2)}\n`);
-  const stale = run(["cap", "--workspace", ws, "--now", "2026-07-12T12:00:00Z"]);
-  check(stale.status === 7 && stale.json?.excepted === 0, "cap: a grant older than seven days does not exempt a later ship");
-  ships.capExceptions = [
-    { dated: "2026-07-12", grantedBy: "Jorge", site: "example.com", urls: ["https://example.com/b"], reason: "half" },
-    { dated: "2026-07-12", grantedBy: "Jorge", site: "example.com", urls: ["https://example.com/c"], reason: "other half" },
-  ];
-  ships.events.push({ eventId: "ship-3", dedupeKey: "sha256:ship-3", publishedAt: "2026-07-12T10:00:00Z", initiatedBy: "fixture", source: "deploy", ticketId: null, urls: ["https://example.com/b", "https://example.com/c"], qualification: "qualified", evidence: ["log"] });
-  writeFileSync(path.join(ws, "loops", "ship-events.json"), `${JSON.stringify(ships, null, 2)}\n`);
-  const unioned = run(["cap", "--workspace", ws, "--now", "2026-07-12T12:00:00Z"]);
-  check(unioned.json?.exceptedEvents?.every((event) => event.eventId !== "ship-3"), "cap: two grants cannot union to cover one multi-URL event");
-}
-{
-  const ws = temp();
-  mkdirSync(path.join(ws, "loops"), { recursive: true });
-  writeFileSync(path.join(ws, "loops", "a.json"), JSON.stringify({ schema: 1, stageStamp: { stage: "early", evaluated: "2026-07-10", basis: "r" } }, null, 2));
-  writeFileSync(path.join(ws, "loops", "b.json"), JSON.stringify({ schema: 1, stageStamp: { stage: "mature", evaluated: "2026-07-10", basis: "r" } }, null, 2));
-  check(run(["cap", "--workspace", ws, "--now", "2026-07-12T12:00:00Z"]).status === 8, "cap: equally-dated conflicting stage stamps refuse instead of picking a file arbitrarily");
+  check(run(["verify", "--workspace", ws, "--now", NOW]).status === 0, "ship: historical capExceptions are tolerated as inert legacy state");
+  check(run(["cap", "--workspace", ws]).status === 1, "ship: the retired cap command is unavailable");
 }
 
 // sleep certification: drift, coverage, autopublish, happy path, heartbeat
@@ -449,15 +420,6 @@ function stampReconciled(workspace) {
 }
 {
   const ws = temp();
-  mkdirSync(path.join(ws, "loops"), { recursive: true });
-  writeFileSync(path.join(ws, "loops", "old.json"), JSON.stringify({ schema: 1, stageStamp: { stage: "early", evaluated: "2026-06-01", basis: "r" } }, null, 2));
-  writeFileSync(path.join(ws, "loops", "old2.json"), JSON.stringify({ schema: 1, stageStamp: { stage: "mature", evaluated: "2026-06-01", basis: "r" } }, null, 2));
-  writeFileSync(path.join(ws, "loops", "new.json"), JSON.stringify({ schema: 1, stageStamp: { stage: "growth", evaluated: "2026-07-10", basis: "r" } }, null, 2));
-  const superseded = run(["cap", "--workspace", ws, "--now", "2026-07-12T12:00:00Z"]);
-  check(superseded.status === 0 && superseded.json?.stage === "growth", "cap: conflicting historical stamps are superseded by a newer authoritative stamp");
-}
-{
-  const ws = temp();
   mkdirSync(path.join(ws, "reports"), { recursive: true });
   check(run(["stamp", "write", "--workspace", ws, "--installed", VERSION, "--now", NOW, "--report", "backlog.md"]).status === 1, "stamp: an arbitrary existing file cannot serve as the upgrade report");
   check(run(["stamp", "write", "--workspace", ws, "--installed", VERSION, "--now", NOW, "--report", "reports"]).status === 1, "stamp: a directory cannot serve as the upgrade report");
@@ -476,61 +438,11 @@ function stampReconciled(workspace) {
 {
   const ws = temp();
   mkdirSync(path.join(ws, "loops"), { recursive: true });
-  writeFileSync(path.join(ws, "loops", "stage.json"), JSON.stringify({ schema: 1, stageStamp: { stage: "early", evaluated: "2026-07-01", basis: "r" } }, null, 2));
   const record = (id, extra = []) => run(["ship", "record", "--workspace", ws, "--event-id", id, "--dedupe-key", `k-${id}`, "--published-at", "2026-07-12T09:00:00Z", "--initiated-by", "f", "--source", "deploy", "--url", `https://example.com/${id}`, "--qualification", "qualified", "--evidence", "log", ...extra]);
   check(run(["ship", "record", "--workspace", ws, "--event-id", "multi", "--dedupe-key", "k-multi", "--published-at", "2026-07-12T09:00:00Z", "--initiated-by", "f", "--source", "deploy", "--url", "https://example.com/a", "--url", "https://example.com/b", "--qualification", "qualified", "--evidence", "log"]).status === 1, "ship: a multi-URL event without --shared-release is refused (a batch is one event per URL)");
   check(run(["ship", "record", "--workspace", ws, "--event-id", "multi", "--dedupe-key", "k-multi", "--published-at", "2026-07-12T09:00:00Z", "--initiated-by", "f", "--source", "deploy", "--url", "https://example.com/a", "--url", "https://example.com/b", "--shared-release", "--qualification", "qualified", "--evidence", "log"]).status === 0, "ship: --shared-release admits a qualifying multi-URL release");
-  const first = record("one");
-  check(first.status === 0 && first.json?.capExceeded === false, "ship: recording reports cap headroom");
-  const over = record("two");
-  check(over.status === 0 && over.json?.capExceeded === true, "ship: an over-cap recording succeeds as audit truth but is loudly flagged");
-
-  const shipPath = path.join(ws, "loops", "ship-events.json");
-  const ships = JSON.parse(readFileSync(shipPath, "utf-8"));
-  ships.events = [
-    { ...ships.events[1], eventId: "revision-one", dedupeKey: "k-revision-one", publishedAt: "2026-07-11T09:00:00Z", urls: ["https://example.com/landing"] },
-    { ...ships.events[1], eventId: "revision-two", dedupeKey: "k-revision-two", publishedAt: "2026-07-12T09:00:00Z", urls: ["https://example.com/landing"] },
-  ];
-  ships.capExceptions = [{ dated: "2026-07-10", grantedBy: "Jorge", site: "example.com", urls: ["https://example.com/landing"], reason: "one additional URL" }];
-  writeFileSync(shipPath, `${JSON.stringify(ships, null, 2)}\n`);
-  const allocated = run(["cap", "--workspace", ws, "--now", "2026-07-12T12:00:00Z"]);
-  check(allocated.status === 0 && allocated.json?.excepted === 1 && allocated.json?.counted === 1, "cap: one granted URL exempts at most one matching ship event");
-}
-{
-  const ws = temp();
-  mkdirSync(path.join(ws, "loops"), { recursive: true });
-  writeFileSync(path.join(ws, "loops", "stage.json"), JSON.stringify({ schema: 1, stageStamp: { stage: "early", evaluated: "2026-07-01", basis: "reports/fixture.md" } }, null, 2));
-  const grant = ["cap", "exception", "--workspace", ws, "--dated", "2026-07-12", "--granted-by", "Jorge", "--site", "example.com", "--reason", "fixture launch exception", "--url", "https://example.com/a", "--url", "https://example.com/b"];
-  check(run(grant).json?.status === "written", "cap: exception writer records a dated URL-specific grant");
-  check(run(grant).json?.status === "noop", "cap: an identical exception-writer retry is a noop");
-  const conflict = [...grant];
-  conflict[conflict.indexOf("fixture launch exception")] = "different reason";
-  check(run(conflict).status === 8, "cap: the same exception identity with a different reason is refused");
-  const ledger = JSON.parse(readFileSync(path.join(ws, "loops", "ship-events.json"), "utf-8"));
-  check(ledger.capExceptions.length === 1, "cap: exception writer idempotency leaves one grant");
-
-  const separate = run(["cap", "--workspace", ws, "--now", "2026-07-12T12:00:00Z", "--planned", "2", "--url", "https://example.com/a", "--url", "https://example.com/b"]);
-  check(separate.status === 0 && separate.json?.plannedExcepted === 2 && separate.json?.plannedCounted === 0, "cap: named planned URLs preflight against unused grant tokens");
-  const shared = run(["cap", "--workspace", ws, "--now", "2026-07-12T12:00:00Z", "--planned", "1", "--url", "https://example.com/a", "--url", "https://example.com/b", "--shared-release"]);
-  check(shared.status === 0 && shared.json?.plannedExcepted === 1 && shared.json?.plannedCounted === 0 && shared.json?.sharedRelease === true, "cap: a named shared release preflights as one grant-covered event");
-  check(run(["cap", "--workspace", ws, "--now", "2026-07-12T12:00:00Z", "--planned", "2", "--url", "https://example.com/a", "--url", "https://example.com/b", "--shared-release"]).status === 1, "cap: --planned must agree with the events described by named URLs");
-
-  check(run(["ship", "record", "--workspace", ws, "--event-id", "granted-launch", "--dedupe-key", "sha256:granted-launch", "--published-at", "2026-07-12T13:00:00Z", "--initiated-by", "fixture", "--source", "deploy", "--url", "https://example.com/a", "--url", "https://example.com/b", "--shared-release", "--qualification", "qualified", "--evidence", "deploy log"]).status === 0, "cap: granted shared release records normally");
-  const consumed = run(["cap", "--workspace", ws, "--now", "2026-07-12T14:00:00Z", "--planned", "1", "--url", "https://example.com/a", "--url", "https://example.com/b", "--shared-release"]);
-  check(consumed.status === 0 && consumed.json?.plannedExcepted === 0 && consumed.json?.plannedCounted === 1, "cap: a recorded event consumes each granted URL token once");
-  const boundary = run(["cap", "--workspace", ws, "--now", "2026-07-19T14:00:00Z", "--planned", "1", "--url", "https://example.com/a", "--url", "https://example.com/b", "--shared-release"]);
-  check(boundary.json?.plannedExcepted === 0, "cap: a rolled-off event still prevents grant-token reuse at the grant boundary");
-}
-{
-  const ws = temp();
-  mkdirSync(path.join(ws, "loops"), { recursive: true });
-  const broad = ["cap", "exception", "--workspace", ws, "--dated", "2026-07-12", "--granted-by", "Jorge", "--site", "example.com", "--reason", "broad", "--url", "https://example.com/a", "--url", "https://example.com/b"];
-  const narrow = ["cap", "exception", "--workspace", ws, "--dated", "2026-07-12", "--granted-by", "Jorge", "--site", "example.com", "--reason", "narrow", "--url", "https://example.com/a"];
-  run(broad);
-  run(narrow);
-  run(["ship", "record", "--workspace", ws, "--event-id", "prior-a", "--dedupe-key", "sha256:prior-a", "--published-at", "2026-07-12T10:00:00Z", "--initiated-by", "fixture", "--source", "deploy", "--url", "https://example.com/a", "--qualification", "qualified", "--evidence", "deploy log"]);
-  const feasible = run(["cap", "--workspace", ws, "--now", "2026-07-12T12:00:00Z", "--planned", "1", "--url", "https://example.com/a", "--url", "https://example.com/b", "--shared-release"]);
-  check(feasible.status === 0 && feasible.json?.excepted === 1 && feasible.json?.plannedExcepted === 1, "cap: overlapping broad and narrow grants choose a feasible non-greedy allocation");
+  check(record("one").status === 0, "ship: recording remains audit truth");
+  check(record("two").status === 0, "ship: repeated qualifying releases remain recordable");
 }
 {
   const outside = temp();
@@ -557,7 +469,7 @@ function stampReconciled(workspace) {
   check(run(["verify", "--workspace", ws, "--now", NOW]).status === 2, "stage: a malformed stageStamp fails verification closed");
   writeFileSync(path.join(ws, "loops", "stage.json"), JSON.stringify({ schema: 1 }, null, 2));
   writeFileSync(path.join(ws, "loops", "ship-events.json"), JSON.stringify({ schema: 1, events: [], capExceptions: [{ urls: ["https://example.com/a"] }] }, null, 2));
-  check(run(["verify", "--workspace", ws, "--now", NOW]).status === 2, "cap: an undated approver-less capExceptions grant fails verification closed");
+  check(run(["verify", "--workspace", ws, "--now", NOW]).status === 0, "ship: malformed historical capExceptions data is inert and tolerated");
   check(run(["stamp", "report-path", "--workspace", ws, "--installed", "../../evil", "--now", NOW]).status === 1, "stamp: a path-traversal version is rejected");
   const badTs = run(["ship", "record", "--workspace", ws, "--event-id", "e1", "--dedupe-key", "k1", "--published-at", "2026-02-30T12:00:00Z", "--initiated-by", "fixture", "--source", "deploy", "--url", "https://example.com/a", "--qualification", "qualified", "--evidence", "log"]);
   check(badTs.status !== 0, "ship: an impossible calendar timestamp is rejected");

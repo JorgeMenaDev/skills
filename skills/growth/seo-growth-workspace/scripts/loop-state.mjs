@@ -11,14 +11,14 @@
 //   0 ok        1 usage/internal error   2 malformed state (fail closed)
 //   3 drift     4 in-flight reconciliation demand
 //   5 coverage stale or annotated        6 armed ungated autopublish
-//   7 ship capacity exhausted            8 refused transition or identity conflict
+//   7 reserved                            8 refused transition or identity conflict
 
 import { randomBytes } from "node:crypto";
 import { mkdirSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync, existsSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const EXIT = { OK: 0, USAGE: 1, MALFORMED: 2, DRIFT: 3, IN_FLIGHT: 4, COVERAGE: 5, AUTOPUBLISH: 6, CAP: 7, REFUSED: 8 };
+const EXIT = { OK: 0, USAGE: 1, MALFORMED: 2, DRIFT: 3, IN_FLIGHT: 4, COVERAGE: 5, AUTOPUBLISH: 6, REFUSED: 8 };
 
 const RESERVED_LOOP_FILES = new Set(["coverage-ledger.json", "measurement-obligations.json", "ship-events.json"]);
 const OCCURRENCE_STATES = new Set(["due", "materialized", "attempted", "satisfied", "blockedUntil"]);
@@ -28,8 +28,7 @@ const ESCALATIONS = new Set(["none", "needs_human"]);
 const SHIP_SOURCES = new Set(["deploy", "webhook", "pseo-batch", "other"]);
 const QUALIFICATIONS = new Set(["qualified", "ambiguous"]);
 const COVERAGE_MAX_AGE_DAYS = { A: 30, B: 14, C: 30, D: 60, E: 30, F: 30, G: 90, H: 90, I: 90, J: 30 };
-const SHIP_CAPS = { unknown: 2, early: 2, growth: 4, mature: 7 };
-const STAGES = new Set(Object.keys(SHIP_CAPS));
+const STAGES = new Set(["unknown", "early", "growth", "mature"]);
 const DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 const WINDOW_PATTERN = /^(\d{4}-\d{2}-\d{2})\/(\d{4}-\d{2}-\d{2})$/;
 const TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,9})?)?(?:Z|[+-]\d{2}:\d{2})$/;
@@ -75,23 +74,7 @@ Commands (every command prints one JSON object; exit codes are stable and docume
       exits 8. URLs are stored as a sorted unique set of fragment-free http(s)
       URLs. A content batch records one event per counted canonical URL;
       --shared-release asserts a qualifying shared release for a multi-URL event.
-      Recording is post-publication audit truth and always succeeds — run cap
-      BEFORE publishing; the report carries capExceeded for over-cap recordings.
-
-  cap [--now <date|timestamp>] [--stage unknown|early|growth|mature] [--planned <n>] [--url <u>...] [--shared-release]
-      Rolling seven-day ship usage vs the stage cap (unknown/early 2, growth 4,
-      mature 7). Stage comes from the newest stageStamp in loops/*.json, else
-      unknown; --stage may only hold capacity at or below the persisted stage —
-      raising the cap requires a dated stageStamp. Run BEFORE any qualifying
-      publication. Named --url inputs preflight unused exception grants; multiple
-      URLs are separate ships unless --shared-release asserts one qualifying
-      event. An event is exception-covered only when one capExceptions grant names
-      every URL it counts and the ship happens within seven days of the grant.
-      Exit 7 when the counted planned ships exceed remaining capacity.
-
-  cap exception --dated <D> --granted-by <actor> --site <site> --reason <r> --url <u> [--url <u>...]
-      Append one dated URL-specific cap grant to ship-events.json. Identical
-      retries are no-ops; the same grant identity with a different reason exits 8.
+      Recording is post-publication audit truth and always succeeds.
 
   sleep certify --loop <file> --payload <json-file|-> [--now <date|timestamp>] [--installed <version>|--skill <SKILL.md path>]
       Validate the certificate payload (dedupeKey, fingerprint with target/mode/
@@ -392,21 +375,6 @@ function validatePublicUrl(value, field) {
   return value;
 }
 
-function validateCapExceptions(value, source) {
-  if (value === undefined) return;
-  if (!Array.isArray(value)) throw new Error(`${source} capExceptions must be an array when present`);
-  value.forEach((grant, index) => {
-    const field = `${source} capExceptions[${index}]`;
-    if (!grant || typeof grant !== "object" || Array.isArray(grant)) throw new Error(`${field} must be an object`);
-    parseDate(grant.dated, `${field}.dated`);
-    nonEmptyString(grant.grantedBy, `${field}.grantedBy`);
-    nonEmptyString(grant.site, `${field}.site`);
-    nonEmptyString(grant.reason, `${field}.reason`);
-    if (!Array.isArray(grant.urls) || grant.urls.length === 0) throw new Error(`${field}.urls must be a non-empty array`);
-    grant.urls.forEach((url, i) => validatePublicUrl(url, `${field}.urls[${i}]`));
-  });
-}
-
 function validateSchedulerMirror(value, source) {
   if (value === undefined || value === null) return;
   const field = `${source} schedulerMirror`;
@@ -630,7 +598,6 @@ function loadWorkspace(workspace) {
       if (!Array.isArray(shipsFile.payload.events)) throw new Error("events must be an array");
       const seen = { dedupeKeys: new Map(), eventIds: new Map() };
       shipsFile.payload.events.forEach((event, index) => validateShipEvent(event, index, "loops/ship-events.json", seen));
-      validateCapExceptions(shipsFile.payload.capExceptions, "loops/ship-events.json");
     } catch (error) {
       failures.push({ file: "loops/ship-events.json", reason: error.message });
     }
@@ -1194,14 +1161,6 @@ function cmdShipRecord(workspace, args) {
   payload.events.push(event);
   state.shipsFile = { state: "present", payload };
   atomicWriteJson(workspace, path.join(workspace, "loops", "ship-events.json"), payload);
-  // Recording is audit truth and always succeeds — the pre-publication gate is
-  // running `cap` BEFORE publishing — but an over-cap recording must be loud.
-  let capAfter = null;
-  try {
-    capAfter = capUsage(state, parseNow(event.publishedAt), resolveStage(state, args)).usage;
-  } catch {
-    // Ambiguous stage never blocks the audit record; `cap` reports it.
-  }
   return {
     exitCode: EXIT.OK,
     report: {
@@ -1209,212 +1168,8 @@ function cmdShipRecord(workspace, args) {
       status: "written",
       eventId: event.eventId,
       countedUrls: event.urls.length,
-      capExceeded: capAfter ? capAfter.counted > capAfter.cap : null,
-      cap: capAfter && { stage: capAfter.stage, cap: capAfter.cap, counted: capAfter.counted, remaining: capAfter.remaining },
     },
   };
-}
-
-function resolveStage(state, args) {
-  const persisted = resolvePersistedStage(state);
-  if (args.stage) {
-    if (!STAGES.has(args.stage)) throw usageError("--stage must be unknown, early, growth, or mature");
-    // The override may only hold capacity at or below the persisted policy:
-    // raising the cap requires a dated stageStamp (or a Jorge capException),
-    // never a command-line flag.
-    if (SHIP_CAPS[args.stage] > SHIP_CAPS[persisted.stage]) {
-      throw refusal(EXIT.REFUSED, `--stage ${args.stage} would raise the cap above the persisted stage ${persisted.stage} (${persisted.source}); record a dated stageStamp instead`);
-    }
-    return { stage: args.stage, source: `--stage (persisted: ${persisted.stage})` };
-  }
-  return persisted;
-}
-
-function resolvePersistedStage(state) {
-  const stamps = [];
-  for (const file of state.loopFiles) {
-    const stampValue = file.payload.stageStamp;
-    if (!stampValue || typeof stampValue !== "object" || Array.isArray(stampValue)) continue;
-    if (!STAGES.has(stampValue.stage) || !isCalendarDate(stampValue.evaluated)) continue;
-    stamps.push({ stage: stampValue.stage, evaluated: stampValue.evaluated, source: file.source });
-  }
-  if (stamps.length === 0) return { stage: "unknown", source: "default (no stageStamp found)" };
-  const newest = stamps.map((stamp) => stamp.evaluated).sort().at(-1);
-  // Older superseded stamps may disagree freely; only the newest date decides.
-  const winners = stamps.filter((stamp) => stamp.evaluated === newest);
-  const conflicting = winners.find((stamp) => stamp.stage !== winners[0].stage);
-  if (conflicting) {
-    throw refusal(EXIT.REFUSED, `conflicting stage stamps evaluated ${newest}: ${winners[0].stage} (${winners[0].source}) vs ${conflicting.stage} (${conflicting.source}); reconcile them or pass --stage explicitly`);
-  }
-  return { stage: winners[0].stage, source: `${winners[0].source} stageStamp (${newest})` };
-}
-
-function allocateCapGrants(recordedEvents, plannedEvents, exceptions, grantCovers) {
-  const entries = [
-    ...recordedEvents.map((event) => ({ kind: "recorded", event })),
-    ...plannedEvents.map((event) => ({ kind: "planned", event })),
-  ];
-  const initial = exceptions.map((grant) => new Set(grant.urls));
-  const memo = new Map();
-  const better = (candidate, current) => {
-    if (current === null) return true;
-    for (let i = 0; i < candidate.recorded.length; i += 1) {
-      if (candidate.recorded[i] !== current.recorded[i]) return candidate.recorded[i] > current.recorded[i];
-    }
-    if (candidate.plannedCovered !== current.plannedCovered) return candidate.plannedCovered > current.plannedCovered;
-    for (let i = 0; i < candidate.planned.length; i += 1) {
-      if (candidate.planned[i] !== current.planned[i]) return candidate.planned[i] > current.planned[i];
-    }
-    return candidate.assignments.join(",") < current.assignments.join(",");
-  };
-  const solve = (entryIndex, remaining) => {
-    if (entryIndex === entries.length) return { assignments: [], recorded: [], planned: [], plannedCovered: 0 };
-    const signature = `${entryIndex}:${remaining.map((urls) => [...urls].sort().join("\u0001")).join("\u0002")}`;
-    if (memo.has(signature)) return memo.get(signature);
-    const entry = entries[entryIndex];
-    const candidates = exceptions.flatMap((grant, grantIndex) => (
-      grantCovers(grant, entry.event) && entry.event.urls.every((url) => remaining[grantIndex].has(url)) ? [grantIndex] : []
-    ));
-    const options = entry.kind === "planned" || candidates.length === 0 ? [...candidates, -1] : candidates;
-    let best = null;
-    for (const grantIndex of options) {
-      const nextRemaining = remaining.map((urls) => new Set(urls));
-      if (grantIndex !== -1) {
-        for (const url of entry.event.urls) nextRemaining[grantIndex].delete(url);
-      }
-      const tail = solve(entryIndex + 1, nextRemaining);
-      const covered = grantIndex !== -1 ? 1 : 0;
-      const candidate = {
-        assignments: [grantIndex, ...tail.assignments],
-        recorded: entry.kind === "recorded" ? [covered, ...tail.recorded] : tail.recorded,
-        planned: entry.kind === "planned" ? [covered, ...tail.planned] : tail.planned,
-        plannedCovered: tail.plannedCovered + (entry.kind === "planned" ? covered : 0),
-      };
-      if (better(candidate, best)) best = candidate;
-    }
-    memo.set(signature, best);
-    return best;
-  };
-  return solve(0, initial);
-}
-
-function capUsage(state, now, { stage, source }, plannedEvents = []) {
-  const cap = SHIP_CAPS[stage];
-  const events = state.shipsFile.payload?.events ?? [];
-  const exceptions = Array.isArray(state.shipsFile.payload?.capExceptions) ? state.shipsFile.payload.capExceptions : [];
-  const windowStartMs = now.instant.valueOf() - 7 * 86400000;
-  // A grant covers an event only alone (no unioning grants), only when it
-  // names every URL the event counts, and only for ships published within
-  // seven days of the grant date — a dated exception is not a permanent pass.
-  const grantCovers = (grant, event) => {
-    const publishedDate = event.publishedAt.slice(0, 10);
-    return publishedDate >= grant.dated
-      && publishedDate <= addDays(grant.dated, 7)
-      && event.urls.every((url) => grant.urls.includes(url));
-  };
-  const orderedEvents = events
-    .map((event, index) => ({ event, index }))
-    .filter(({ event }) => new Date(event.publishedAt).valueOf() <= now.instant.valueOf())
-    .sort((a, b) => a.event.publishedAt.localeCompare(b.event.publishedAt) || a.index - b.index)
-    .map(({ event }) => event);
-  const allocation = allocateCapGrants(orderedEvents, plannedEvents, exceptions, grantCovers);
-  const counted = [];
-  const excepted = [];
-  for (let index = 0; index < orderedEvents.length; index += 1) {
-    const event = orderedEvents[index];
-    const publishedMs = new Date(event.publishedAt).valueOf();
-    // Even an event that has rolled out of the cap window permanently consumes
-    // its granted URL tokens. This prevents a grant from being reused at the
-    // seven-day boundary while it is still date-valid.
-    if (publishedMs <= windowStartMs) continue;
-    (allocation.recorded[index] ? excepted : counted).push({ eventId: event.eventId, publishedAt: event.publishedAt, urls: event.urls, qualification: event.qualification });
-  }
-  return {
-    usage: {
-      stage,
-      stageSource: source,
-      cap,
-      counted: counted.length,
-      excepted: excepted.length,
-      remaining: Math.max(0, cap - counted.length),
-      countedEvents: counted,
-      exceptedEvents: excepted,
-    },
-    plannedExcepted: allocation.plannedCovered,
-  };
-}
-
-function cmdCap(workspace, args) {
-  const now = parseNow(args.now);
-  const state = requireValidWorkspace(workspace);
-  const urls = [...new Set(args.urls)].sort();
-  urls.forEach((url, index) => validatePublicUrl(url, `--url[${index}]`));
-  if (args["shared-release"] && urls.length < 2) {
-    throw usageError("--shared-release requires at least two --url inputs");
-  }
-  const plannedEvents = urls.length === 0
-    ? []
-    : args["shared-release"]
-      ? [{ publishedAt: now.instant.toISOString(), urls }]
-      : urls.map((url) => ({ publishedAt: now.instant.toISOString(), urls: [url] }));
-  let planned = 1;
-  if (args.planned !== undefined) {
-    planned = Number(args.planned);
-    if (!Number.isInteger(planned) || planned < 1) throw usageError("--planned must be a positive integer of intended SEO Ships");
-  }
-  if (plannedEvents.length > 0) {
-    if (args.planned !== undefined && planned !== plannedEvents.length) {
-      throw usageError(`--planned ${planned} disagrees with the ${plannedEvents.length} event(s) described by --url${args["shared-release"] ? " and --shared-release" : ""}`);
-    }
-    planned = plannedEvents.length;
-  } else if (args["shared-release"]) {
-    throw usageError("--shared-release requires named --url inputs");
-  }
-  const { usage, plannedExcepted } = capUsage(state, now, resolveStage(state, args), plannedEvents);
-  const plannedCounted = planned - plannedExcepted;
-  const report = {
-    command: "cap",
-    now: now.instant.toISOString(),
-    planned,
-    plannedCounted,
-    plannedExcepted,
-    plannedUrls: urls,
-    sharedRelease: Boolean(args["shared-release"]),
-    ...usage,
-  };
-  return { exitCode: usage.remaining >= plannedCounted ? EXIT.OK : EXIT.CAP, report };
-}
-
-function cmdCapException(workspace, args) {
-  const state = requireValidWorkspace(workspace);
-  const urls = [...new Set(args.urls)].sort();
-  if (urls.length === 0) throw usageError("--url is required at least once");
-  const grant = {
-    dated: required(args, "dated", "--dated"),
-    grantedBy: required(args, "granted-by", "--granted-by"),
-    site: required(args, "site", "--site"),
-    urls,
-    reason: required(args, "reason", "--reason"),
-  };
-  validateCapExceptions([grant], "cap exception");
-  const payload = state.shipsFile.state === "absent"
-    ? { schema: 1, events: [], capExceptions: [] }
-    : state.shipsFile.payload;
-  if (!Array.isArray(payload.capExceptions)) payload.capExceptions = [];
-  const sameIdentity = (candidate) => candidate.dated === grant.dated
-    && candidate.grantedBy === grant.grantedBy
-    && candidate.site === grant.site
-    && JSON.stringify([...candidate.urls].sort()) === JSON.stringify(grant.urls);
-  const existing = payload.capExceptions.find(sameIdentity);
-  if (existing) {
-    if (existing.reason === grant.reason) {
-      return { exitCode: EXIT.OK, report: { command: "cap exception", status: "noop", reason: "grant already recorded", grant } };
-    }
-    throw refusal(EXIT.REFUSED, "the same dated grant identity already exists with a different reason; retry with the original values");
-  }
-  payload.capExceptions.push(grant);
-  atomicWriteJson(workspace, path.join(workspace, "loops", "ship-events.json"), payload);
-  return { exitCode: EXIT.OK, report: { command: "cap exception", status: "written", grant } };
 }
 
 function assertSleepGuards(workspace, state, now, loopName, cert, args, heartbeat = false) {
@@ -1598,11 +1353,6 @@ function main() {
     ship: () => {
       if (maybeAction !== "record") throw usageError(`unknown ship action "${maybeAction}"`);
       return cmdShipRecord(workspace, args);
-    },
-    cap: () => {
-      if (maybeAction === undefined) return cmdCap(workspace, args);
-      if (maybeAction === "exception") return cmdCapException(workspace, args);
-      throw usageError(`unknown cap action "${maybeAction}"`);
     },
     sleep: () => {
       if (maybeAction === "certify") return cmdSleepCertify(workspace, args);

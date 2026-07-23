@@ -1,6 +1,6 @@
 # Releasing seo-growth-workspace
 
-The v6 release flow (skills#145). No criterion matrix, no attestations, no gate-results artifacts — deterministic behavior is guarded by fixtures; prose is guarded editorially.
+The release flow introduced in v6 (skills#145). No criterion matrix, no attestations, no gate-results artifacts — deterministic behavior is guarded by fixtures; prose is guarded editorially.
 
 ## Every release
 
@@ -11,7 +11,7 @@ The v6 release flow (skills#145). No criterion matrix, no attestations, no gate-
 
 ## Adversarial review — only when it pays
 
-Mandatory for changes to script behavior (especially `scripts/loop-state.mjs` — it is serialization law) or to any of the five outcome-protecting invariants (no silent dry exits; no certificate under drift or stale coverage; no ship over cap; no Done without evidence; no publish past integrity gates). Verify every finding against the real contract before fixing; reject findings that re-legislate judgment. Doc-only releases do not require it.
+Mandatory for changes to script behavior (especially `scripts/loop-state.mjs` — it is serialization law) or to any of the four outcome-protecting invariants (no silent dry exits; no certificate under drift or stale coverage; no Done without evidence; no publish past integrity gates). Verify every finding against the real contract before fixing; reject findings that re-legislate judgment. Doc-only releases do not require it.
 
 ## Field friction
 
