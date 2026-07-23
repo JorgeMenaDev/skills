@@ -1,6 +1,6 @@
 # SEO Operating Policy
 
-Use this reference for the fixed operating values shared by lifecycle classification, cadence, frontier discovery, gates, publishing capacity, and measurement (loop semantics: references/operating.md; machine enforcement: scripts/loop-state.mjs). These values change defaults and capacity only; they never grant publishing authority or bypass an existing review, evidence, safety, or human-approval gate.
+Use this reference for the fixed operating values shared by lifecycle classification, cadence, frontier discovery, gates, and measurement (loop semantics: references/operating.md; machine enforcement: scripts/loop-state.mjs). These values never grant publishing authority or bypass an existing review, evidence, safety, or human-approval gate.
 
 ## SEO Stage
 
@@ -64,21 +64,11 @@ Every failed gate uses exactly one of these families:
 
 Evidence may explain a gate but cannot introduce a fifth family.
 
-## SEO Ship and rolling capacity
+## SEO Ships
 
 One **SEO Ship** is one canonical public URL newly published or materially revised in search intent or substantive content. A batch counts once per URL. A shared template, schema, or sitewide release counts once only when no page-specific intent or substantive content changes. Redirect-only work, previews, drafts, `noindex` surfaces, and verification do not count.
 
-The rolling seven-day cap is:
-
-| Stage | SEO Ships |
-| --- | --- |
-| `unknown` / `early` | 2 |
-| `growth` | 4 |
-| `mature` | 7 |
-
-Agents cannot exceed the cap. Jorge may grant a dated, site-specific exception that names the additional URLs and reason. The exception changes capacity only; it never changes publishing authority or review gates.
-
-Record one normalized ship event per counted canonical URL. A shared release that qualifies as one ship records one event containing its affected URL set. Ambiguous qualification fails closed and counts against capacity.
+Record one normalized ship event per counted canonical URL. A shared release that qualifies as one ship records one event containing its affected URL set. Ambiguous qualification is recorded honestly. SEO Ships have no numerical publishing limit; the evidence, integrity, approval, and verification gates decide whether a release may publish.
 
 ## Measurement timing
 

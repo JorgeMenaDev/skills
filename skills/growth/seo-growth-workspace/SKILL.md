@@ -1,7 +1,7 @@
 ---
 name: seo-growth-workspace
 description: "Use when starting, auditing, or operating SEO or organic growth for a product or local-business website — technical SEO, Search Console, keyword/content ops, schema, pSEO, local SEO/GBP, backlinks, AI-search visibility, conversion, and monthly reporting. Triggers: \"set up SEO\", \"audit my site\", \"my traffic dropped\", \"why am I not ranking\", \"Search Console opportunities\", \"monthly SEO report\", \"how do we show up in ChatGPT/AI search\". Creates a durable .seo workspace, captures business context, audits live/code/admin evidence, prioritizes a backlog, implements one high-leverage action, verifies reality, and logs handoff notes. Installs in a single site repo (standalone) or in an orchestrator/agent-profile repo managing many sites (hub). For standalone copywriting, paid channels, or email, use a dedicated skill."
-version: 6.1.2
+version: 7.0.0
 license: MIT
 mutating: true
 writes_to: [".seo/", "operator-declared bootstrap plan path"]
@@ -13,7 +13,7 @@ writes_to: [".seo/", "operator-declared bootstrap plan path"]
 
 Run a durable SEO operating workspace for a product or local-business website. The goal is not generic advice; it is evidence, prioritization, implementation, verification, and continuity. Use this skill as a mode router: load only the reference the selected mode or ticket needs.
 
-**Design rules (the constitution):** (1) Prose states intent, invariants, and completion criteria — `scripts/loop-state.mjs` owns state formats, legal transitions, and crash intermediates. (2) One file per loadable concern; no ownership disclaimers. (3) Fail-closed is reserved for the five outcome-protecting invariants: no silent dry exits; no certificate under drift or stale coverage; no ship over cap; no Done without evidence; no publish past integrity gates — everything else degrades gracefully. (4) Field-discovered ambiguity is resolved by judgment and logged (or becomes a fixture), not legislated; a new normative clause requires judgment failing twice on the same point with bad SEO consequences.
+**Design rules (the constitution):** (1) Prose states intent, invariants, and completion criteria — `scripts/loop-state.mjs` owns state formats, legal transitions, and crash intermediates. (2) One file per loadable concern; no ownership disclaimers. (3) Fail-closed is reserved for the four outcome-protecting invariants: no silent dry exits; no certificate under drift or stale coverage; no Done without evidence; no publish past integrity gates — everything else degrades gracefully. (4) Field-discovered ambiguity is resolved by judgment and logged (or becomes a fixture), not legislated; a new normative clause requires judgment failing twice on the same point with bad SEO consequences.
 
 ## Ground Rules
 
@@ -52,7 +52,7 @@ Pick the narrowest mode; default to `operate`. A full first run loads `reference
 
 ## References
 
-Protocol: `operating.md` (the loop: selection, tickets, terminals, wake/sleep, cadences, obligations, ships, frontier, unattended runs, upgrade pass) · `policy.md` (fixed stages, cadences, caps, gate families, measurement timing) · `workspace.md` (install lifecycle, hub, registry, migration, adapters, admin preflight) · `first-run.md` (site classifier, phase ladder, business context).
+Protocol: `operating.md` (the loop: selection, tickets, terminals, wake/sleep, cadences, obligations, ships, frontier, unattended runs, upgrade pass) · `policy.md` (fixed stages, cadences, gate families, measurement timing) · `workspace.md` (install lifecycle, hub, registry, migration, adapters, admin preflight) · `first-run.md` (site classifier, phase ladder, business context).
 
 Domain, loaded per ticket: `technical-seo.md` · `international-seo.md` · `search-console.md` · `content-ops.md` (incl. community-source pages) · `content-refresh.md` · `utility-tool-pages.md` · `internal-linking.md` · `schema-rich-results.md` · `pseo-gates.md` · `local-seo-gbp.md` · `backlinks-entity.md` (incl. image rights) · `commercial-integrity.md` (incl. affiliate/promo) · `ecommerce-seo.md` · `competitor-profiling.md` · `data-tools.md` · `ahrefs.md` (bootstrap/adoption preflight, monthly External Crawl, provider access, and Ahrefs evidence) · `ai-search-visibility.md` · `conversion.md` (CTA audits + PostHog outcome bridge) · `monthly-reporting.md` · `content-engine-webhooks.md` · `pages.md` (page evidence + launch gates).
 
@@ -62,7 +62,7 @@ Templates (`templates/`): monthly-report, local-seo-gbp, pseo-plan, content-plan
 
 All dependency-free; run from SKILL_DIR with explicit SITE_WORKSPACE paths; `--help` on each documents its contract.
 
-- `loop-state.mjs` — **the loop-state protocol, compiled**: single writer/validator for `loops/` state and the reconciliation stamp. `verify` (read-only; `--repair` fixes policy mirrors), `occurrence`/`obligation` lifecycles with idempotent crash retries, `ship record` + `cap`, `sleep certify|heartbeat` (fail-closed exit codes for drift, in-flight state, stale coverage, armed autopublish), `stamp check|write|report-path`.
+- `loop-state.mjs` — **the loop-state protocol, compiled**: single writer/validator for `loops/` state and the reconciliation stamp. `verify` (read-only; `--repair` fixes policy mirrors), `occurrence`/`obligation` lifecycles with idempotent crash retries, `ship record`, `sleep certify|heartbeat` (fail-closed exit codes for drift, in-flight state, stale coverage, armed autopublish), `stamp check|write|report-path`.
 - `cadence-status.mjs` — cold reader: due occurrences/obligations, in-flight rows, earliest next-due, advisory stamp block.
 - `seo-doctor.mjs` — read-only workspace diagnosis; emits the reviewed plan bootstrap consumes.
 - `bootstrap-seo-workspace.mjs` — consumes a reviewed plan: create/adopt/verify/repair; stamps new workspaces reconciled at birth.
