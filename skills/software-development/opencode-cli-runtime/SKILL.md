@@ -1,14 +1,14 @@
 ---
 name: opencode-cli-runtime
 description: Runtime contract for delegating work to OpenCode CLI as a headless sidecar. Use when a non-OpenCode runtime delegates one task, review, question, or one-vendor second opinion to OpenCode. OpenCode's own subagents are native delegation; this is the cross-runtime contract.
-version: 1.0.0
+version: 1.0.1
 mutating: true
 writes_to: ["target workspace only when the active workspace contract authorizes write-capable execution"]
 ---
 
 # OpenCode Runtime
 
-Call OpenCode headlessly from a non-OpenCode runtime with one canonical command shape.
+Call OpenCode headlessly from a non-OpenCode runtime with one canonical command shape. Default model **`deepseek-v4-flash`** (`opencode-go/deepseek-v4-flash`).
 
 ## Contract
 
@@ -67,7 +67,7 @@ Use the explicit session id. `--continue` selects the most recent session and ra
 
 ## Model and agent
 
-- Leave `--model` unset to use runtime configuration. Override only when the task or routing contract names a model (e.g. `-m opencode-go/deepseek-v4-flash`).
+- Default model is `opencode-go/deepseek-v4-flash`; leave `--model` unset to use it. Override only when the task or routing contract names a different model (`-m <provider/model>`).
 - `--agent <name>` selects the agent (e.g. `build`, `plan`). The `general` and `explore` agents are OpenCode's native subagents — a delegated run stays on the primary agent unless the contract says otherwise.
 - `--dir <path>` runs in a specific directory; pass it when the caller's cwd differs from the target repo.
 
