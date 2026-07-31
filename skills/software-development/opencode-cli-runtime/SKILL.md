@@ -1,7 +1,7 @@
 ---
 name: opencode-cli-runtime
 description: Runtime contract for delegating work to OpenCode CLI as a headless sidecar. Use when a non-OpenCode runtime delegates one task, review, question, or one-vendor second opinion to OpenCode. OpenCode's own subagents are native delegation; this is the cross-runtime contract.
-version: 1.0.1
+version: 1.0.2
 mutating: true
 writes_to: ["target workspace only when the active workspace contract authorizes write-capable execution"]
 ---
@@ -29,9 +29,11 @@ $OC --version >/dev/null 2>&1 || echo "OPENCODE: missing"
 ## Canonical invocation
 
 ```bash
-cd <target-repo> && $OC run "<prompt>" --format json
+cd <target-repo> && $OC run "<prompt>" --auto --format json 2>/tmp/oc-err.log > /tmp/oc-run.jsonl
 ```
 
+- `--auto` is the default posture for delegated runs (Jorge ruling 2026-07-31): headless mode cannot answer permission prompts, so a run without it auto-rejects reads/writes to any path outside the allowlist (observed: `~/.btca/...` reads denied) and the task stalls. The prompt, not the flag, still encodes scope — a read-only prompt stays read-only.
+- **Never merge stderr into the NDJSON stream.** OpenCode prints warnings to stderr (e.g. subagent fallback), which corrupts the `--format json` parse; the caller's pipe then fails mid-run and kills the task via SIGPIPE (observed 2026-07-31: run died after 2 steps). Redirect stderr to a separate file and parse stdout alone.
 - The message is positional; there is no `--prompt` or `--message` flag.
 - `--format json` prints newline-delimited JSON events (NDJSON), not a single result object.
 - For a long prompt, build one quoted argument with a single-quoted heredoc.
@@ -42,7 +44,7 @@ cd <target-repo> && $OC run "<prompt>" --format json
 `--format json` emits one JSON object per line. A run is complete when a `step_finish` event with `.part.reason == "stop"` appears; a `step_finish` with reason `"tool-calls"` is intermediate, not the answer. Concatenate `.part.text` from `text` events for the reply.
 
 ```bash
-cd <target-repo> && $OC run "<prompt>" --format json \
+cd <target-repo> && $OC run "<prompt>" --auto --format json 2>/tmp/oc-err.log \
   | jq -r 'select(.type=="text") | .part.text'
 ```
 
@@ -60,10 +62,10 @@ Use the explicit session id. `--continue` selects the most recent session and ra
 
 | Intent | Flags |
 |---|---|
-| Review, research, question, second opinion | read-only prompt, no `--auto` |
-| Authorized repository edits | `--auto` in an isolated branch/worktree/scratch only |
+| All delegated runs (default) | `--auto` (full permissions; scope comes from the prompt) |
+| Write-capable work | `--auto` in an isolated branch/worktree/scratch — never a dirty shared checkout |
 
-`--auto` auto-approves permissions that are not explicitly denied (dangerous!). In print mode nobody can answer a permission prompt, so choose flags from the active workspace contract before launch. Use `--auto` only when the contract authorizes edits, and run write-capable work in a clean isolated workspace — never a dirty shared checkout. The parent reviews the diff before integration.
+`--auto` auto-approves permissions that are not explicitly denied (dangerous!). It is the **default for delegated runs** (Jorge ruling 2026-07-31): in print mode nobody can answer a permission prompt, so omitting it auto-rejects external paths and stalls the task. The authority contract still governs via the prompt — read-only prompts stay read-only, and the parent reviews the diff before integration. Use `--auto` in a clean isolated workspace for write-capable work, never a dirty shared checkout.
 
 ## Model and agent
 
@@ -76,4 +78,7 @@ Use the explicit session id. `--continue` selects the most recent session and ra
 - Plain `opencode` opens the TUI and hangs a headless caller; always use `opencode run ... --format json`.
 - `--format json` is an event stream, not a single JSON object — do not `jq` the whole output as one document.
 - A `step_finish` with reason `"tool-calls"` means the run is mid-turn; only reason `"stop"` completes it.
+- **Never `2>&1` the run into a JSON parser** — stderr warnings (e.g. subagent fallback) corrupt the NDJSON and kill the run via SIGPIPE. Redirect stderr to a file, parse stdout only.
+- **`--agent general`/`explore` are subagents, not primary agents.** A headless `run --agent <subagent>` prints a fallback warning and uses the default primary agent; pass a primary agent (`build`, `plan`) or omit `--agent`.
+- `--auto` is the default for delegated runs; omitting it stalls the task on any read/write outside the allowlist (observed: `~/.btca/...` reads auto-rejected).
 - For long background work, prefer a prompt that writes a report file so completion is observable.
