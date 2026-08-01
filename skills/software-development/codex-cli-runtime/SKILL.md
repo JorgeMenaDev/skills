@@ -1,7 +1,7 @@
 ---
 name: codex-cli-runtime
 description: Claude-side contract for calling an installed Codex companion runtime. Use when Claude Code delegates a task, review, question, or implementation to Codex/OpenAI.
-version: 1.0.0
+version: 1.0.1
 user-invocable: false
 mutating: true
 writes_to: ["target workspace only when the active workspace contract authorizes write-capable execution"]
@@ -49,10 +49,23 @@ No `--write` means read-only. Add it only when the active workspace contract aut
 
 - `--resume-last` selects the latest resumable thread for the companion session, falling back to the target workspace only when no session id exists. Run it from the intended slice workspace.
 - `--fresh` starts a new thread and requires the full prompt.
+- Any task authorized to reach a browser or external/provider state runs with `--background`; capture its job id and Codex thread id before the task can mutate. Foreground execution is for bounded local or read-only work only.
 - Background workers outlive the launching shell. Make the task write a report or committed handoff, and observe that deliverable plus worker liveness.
 - A later shell process may not share the launcher's in-memory job registry. A "No job found" status response is not proof that the worker failed.
 - Recover prose from the matching Codex rollout only after binding it to the recorded thread id. Never print stored request bodies because they may contain sensitive prompt content.
 - If a worker is dead and exact thread binding is unavailable or ambiguous, start a fresh task from the intended workspace with full context.
+
+## Quiescence gate
+
+Launcher exit is not worker exit. An interrupt, rate limit, empty event stream, nonzero exit, or missing report never proves that companion browser/tool sessions stopped or that external state is unchanged.
+
+Before fallback, retry, or a zero-side-effect claim:
+
+1. Cancel the exact background job and verify its worker is terminal; terminate any identified descendant tool worker that survived cancellation.
+2. Release or finalize every browser tab/session owned by the recorded Codex thread. If ownership cannot be released, treat completion as ambiguous and stop.
+3. Re-read the authoritative repository/provider state against the pre-dispatch baseline whenever the task had mutation authority. Logs and missing reports are not proof.
+
+Done means all three checks pass. A user `stop` request runs this gate before any new task work.
 
 ## Forwarding rules
 
