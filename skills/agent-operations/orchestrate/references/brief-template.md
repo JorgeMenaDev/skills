@@ -17,6 +17,16 @@ Write one file per slice to disk before spawn:
 - Worktree: <exact path the worker owns>
 - Execution context: <deployment, ports, QA actor, browser session, env>
 
+## GitHub autopilot routing (include only in GitHub autopilot)
+- Required capabilities: `{ vision: <true|false>, computerUse: <true|false> }`
+- Selected route: `<harness> / <model> [variant]`; route capabilities: `{ vision: <true|false>, computerUse: <true|false> }`
+- Ticket PR base: <integration branch>
+- Allowed GitHub actions: commit and push the assigned branch; open or update its ticket PR
+- Conductor-reserved actions: review; merge; tracker mutation; integration/final PR handling; final gates
+- Ticket verification: relevant existing checks + predefined ticket-scoped Gherkin; browser/visual flows only with required capabilities
+- Reserved verification: no `autoreview`, full Gherkin suite, or accumulated integration UI checks
+- Hand-back identity: ticket PR URL/number + exact PR head SHA
+
 ## Decisions already made
 <numbered; the worker follows them without relitigating>
 
@@ -48,7 +58,9 @@ For runtime-change acceptance proof, use this verification contract: The verifie
 The report is written last and locates proof — it is never proof itself:
 
 - files changed, each with one line of why;
+- ticket PR URL/number and exact head SHA (GitHub autopilot only);
 - exact commands run with unpiped exit codes;
+- GitHub autopilot verification attestation: ticket-scoped checks/Gherkin only; no `autoreview`, full suite, or accumulated integration UI checks;
 - per-criterion disposition: `passed | failed | unprovable-here`, with artifact locations;
 - decisions taken that the brief left unsettled, each flagged for conductor review;
 - risks, known gaps, and an unrelated-change statement;
