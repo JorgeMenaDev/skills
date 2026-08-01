@@ -133,6 +133,7 @@ All skills below are **model-invoked** — the agent can reach for them when the
 ### Productivity
 
 - **[product-feedback-report](./skills/productivity/product-feedback-report/SKILL.md)** — Create resumable founder-led feedback reports for web and mobile products, with conversational capture, screenshot/video evidence, automatic prioritization, and an always-current PDF.
+- **[visual-plan](./skills/productivity/visual-plan/SKILL.md)** — Turn ordinary text plans into rich interactive visual plans with diagrams, file maps, annotated code, open questions, and UI/prototype review when useful. Agent-Native visual planning, portable across hosted, self-hosted, and local-files modes.
 
 ### DevOps
 
