@@ -1,9 +1,9 @@
 ---
 name: storage-audit
 description: Reclaim disk on Jorge's Mac mini by retiring regenerable data — snapshots, worktrees, local databases, agent churn, caches. Use for low space, recurring cleanup, or storage-automation diagnosis.
-version: 3.1.0
+version: 3.1.1
 mutating: true
-writes_to: ["local Time Machine snapshots", "registered git worktrees", "regenerable caches and local databases", "~/.hermes/state/storage-hygiene/"]
+writes_to: ["local Time Machine snapshots", "registered git worktrees", "regenerable caches and local databases", "idle Xcode and simulator artifacts", "~/.hermes/state/storage-hygiene/"]
 ---
 
 # Reclaim disk
