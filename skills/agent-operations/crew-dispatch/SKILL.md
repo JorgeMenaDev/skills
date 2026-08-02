@@ -1,7 +1,7 @@
 ---
 name: crew-dispatch
 description: Crew-first dispatch for Matias — run a deliverable task through a crewmate with a durable crew record (intake → brief → lane → record → spawn → supervise → verify → integrate → close). Use when starting any multi-file change, investigation report, or product edit, or when reconciling crew/ records at session start, or when a dispatched crew must report completion after its launching turn ends. Inline-lane work (true one-liner, same-pass vault/tracker/home write, read-and-think answer) skips this skill.
-version: 1.3.0
+version: 1.4.0
 mutating: true
 writes_to: ["crew/<task-id>/ (machine-local, gitignored)", "the target repo through the selected lane"]
 ---
@@ -26,7 +26,12 @@ The tripwire binds *dispatch*, not depth. A crewmate may fan out helpers inside 
 scripts/crew-status.sh   # from the profile root; lists every record + latest status
 ```
 
-Any in-flight record from a **native-subagent lane** predates this session → it is dead (native subagents never survive their session). Mark it `failed: session-lost` or re-dispatch; never leave it `working`.
+**Ask which lane, then ask whether it is alive — never assume either way.** Assume-dead re-dispatches live crewmates and duplicates their work; assume-alive leaves dead records lying `working` forever.
+
+- **Session-bound lanes** (native subagents, any worker spawned as a child process of the firstmate's session) die with the session. An in-flight record from one that predates this session is dead: mark it `failed: session-lost` or re-dispatch; never leave it `working`.
+- **Durable lanes** (host-native server-side threads, AFK, detached CLI) outlive the session and keep working across a restart. Probe real liveness before judging one. A live worker is left alone. An idle or missing worker finished without writing terminal status, or died — read it, then close or re-dispatch. **An unreadable probe is not evidence of death** and never justifies closing a record.
+
+Where the host exposes durable sessions, the status helper should compute liveness rather than infer it from age.
 
 ## Boundary — the named inline lane
 
