@@ -20,6 +20,7 @@ A qualified outcome is site-specific and named in `.seo/context.md`, such as a l
 | Check | `unknown` / `early` | `growth` / `mature` |
 | --- | --- | --- |
 | Search Console | Monthly | Weekly |
+| Search Console Manual Actions | Monthly | Weekly |
 | Crawl and indexability | Monthly | Monthly |
 | Ahrefs External Crawl | Monthly | Monthly |
 | Core Web Vitals | Monthly | Monthly |
@@ -28,6 +29,8 @@ A qualified outcome is site-specific and named in `.seo/context.md`, such as a l
 | Strategy review | Quarterly | Quarterly |
 
 Deploy-specific checks are one-off obligations, not recurring cadence rows. A failed cadence execution retries the next day, then three days after that retry; another failure becomes `needs_human`. Missing or lagging measurement data is inconclusive, not an execution failure.
+
+Search Console Manual Actions is the first-party detector for site-level spam-policy exposure (scaled content abuse, doorway abuse); engine-owned publish paths treat it as the primary detector for that exposure (`references/content-engine-webhooks.md`).
 
 Ahrefs External Crawl is a distinct occurrence from deterministic Crawl and indexability even when their due windows align. A material change to the canonical origin, declared public scope, sitemap, robots behavior, crawl configuration, project ownership, plan, provider capability, or configured credit allocation/page ceiling that affects achievable coverage invalidates the current checkpoint and makes a new preflight and run due. Credits consumed by the qualifying run and routine provider resets are not invalidations. `references/ahrefs.md` defines the append-only occurrence representation.
 
