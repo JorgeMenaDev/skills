@@ -94,6 +94,14 @@ Queries where multiple URLs split impressions. Columns:
 
 `query`, `competing URLs`, `impression split`, `strongest URL`, `weak URL action`, `internal-link fix`, `canonical/noindex decision if any`.
 
+### Duplication Evidence
+
+String-level similarity between keywords or titles is an `[H]` flag that justifies investigation — never an `[E]` finding and never on its own a consolidation decision. The `[E]` evidence for a competing-pages problem is measured GSC query-overlap: two or more URLs each capturing a material share of one query's impressions, as the cannibalization table above reports.
+
+Near-duplication is not by itself a policy violation — Google: "Some duplicate content on a site is normal and it's not a violation of Google's spam policies." The determinant is why the pages exist, not how similar they are; incidental duplication canonicals away, while deliberately generated query-variant pages are a doorway/scaled-content-abuse exposure judged at site level on the articles (`references/content-ops.md`).
+
+No usable third-party similarity threshold exists — Ahrefs does not use SERP overlap, Semrush documents the mechanism but no number, and the widely-cited "3 of top 10" figure has no primary source. Any threshold adopted locally is a local `[H]`, never an industry standard.
+
 ### Money Page Mapping
 
 Map important queries to the page that should rank. Columns:
