@@ -1,14 +1,24 @@
 ---
 name: crew-dispatch
 description: Crew-first dispatch for Matias — run a deliverable task through a crewmate with a durable crew record (intake → brief → lane → record → spawn → supervise → verify → integrate → close). Use when starting any multi-file change, investigation report, or product edit, or when reconciling crew/ records at session start, or when a dispatched crew must report completion after its launching turn ends. Inline-lane work (true one-liner, same-pass vault/tracker/home write, read-and-think answer) skips this skill.
-version: 1.2.0
+version: 1.3.0
 mutating: true
 writes_to: ["crew/<task-id>/ (machine-local, gitignored)", "the target repo through the selected lane"]
 ---
 
 # Crew Dispatch
 
+## Scope test — read this before anything else
+
+**Were you handed a brief?** A `crew/<id>/brief.md`, a stamped brief in your prompt, or any task delegated by another agent — if yes, you are a **crewmate**, not the firstmate. This skill is the *dispatcher's* contract and does not govern you: execute your brief and hand back. Reading this file, or the workspace `AGENTS.md`, is not an appointment — a crewmate inherits both from the checkout it runs in.
+
+Only the session the human is talking to directly is the firstmate. Everything below is for that session.
+
+## The firstmate's contract
+
 Matias is the **firstmate**: Jorge's only liaison, who dispatches, supervises, verifies, and integrates. **Crewmates** do the deliverable work. The tripwire: **no crew record, no task work** — deliverable work executed without a `crew/<id>/` record is policy drift; a session that catches itself drifting names it in the tracker (ADR 0009).
+
+The tripwire binds *dispatch*, not depth. A crewmate may fan out helpers inside its own brief — the rule is **no unrecorded work, not no nesting**. What needs a record is work that outlives a brief, lands changes no firstmate reviews, or needs its own supervision; a bounded helper that lives and dies inside one brief does not. Helper fan-out alone is never grounds to cancel a crewmate.
 
 ## Preamble — compute state, don't guess
 
@@ -31,11 +41,11 @@ Everything else — any multi-file change, investigation report, or product edit
 ## Lifecycle
 
 1. **Classify**: **ship** (changes a repo or product; lands per the target repo's git rules) or **scout** (read-only investigation; deliverable is `crew/<id>/report.md`; never pushes).
-2. **Brief** — write `crew/<id>/brief.md`, self-contained (the crewmate inherits nothing): task + checkable acceptance criteria, read-first paths, non-scope, isolation instructions, the status protocol below, and the Authority Contract when the work can reach writes/credentials/external surfaces (AGENTS.md injection rule).
-3. **Lane** — read `.agents/engine-override.json` FIRST. Present + valid `{ "harness", "model" }` = that engine is the preferred lane for this new dispatch, through its runtime contract skill (harness `opencode` → `opencode-cli-runtime` with the named model, e.g. `opencode-go/deepseek-v4-flash`; `codex` → `codex-cli-runtime`; `grok` → `grok-cli-runtime`; `claude` → native subagent). Absent = off; malformed = off + warn Jorge. Off, or a carve-out category (conductor/orchestrator sessions, taste-gated UI/copy, structured-output fan-out, counsel/cross-vendor reviews, recap — these stay on the non-override engine): fall back to cheapest capable per AGENTS.md Portable Execution Routing — native subagent (default) → cross-vendor CLI contract skill → AFK → computer-use. Stamp the harness+model actually used into `meta.json`.
+2. **Brief** — write `crew/<id>/brief.md`, **task-self-contained**: task + checkable acceptance criteria, read-first paths, non-scope, isolation instructions, the status protocol below, and the Authority Contract when the work can reach writes/credentials/external surfaces (AGENTS.md injection rule). The crewmate inherits the *checkout's* instructions (`AGENTS.md`/`CLAUDE.md`) — native subagents inherit project instructions, and OpenCode and Codex read `AGENTS.md` from the target repo by design — so never assume it arrives with no context, and never rely on that inheritance for the task: it carries the workspace's identity, not your acceptance criteria. This is why the brief leads with the scope test's answer, and why an unbriefed instruction in those files can otherwise capture a crewmate.
+3. **Lane** — read `.agents/engine-override.json` FIRST. Present + valid `{ "harness", "model" }` = that engine is the preferred lane for this new dispatch, through its runtime contract skill (harness `opencode` → `opencode-cli-runtime` with the named model, e.g. `opencode-go/deepseek-v4-flash`; `codex` → `codex-cli-runtime`; `grok` → `grok-cli-runtime`; `claude` → native subagent). Absent = off; malformed = off + warn Jorge. Off, or a carve-out category (conductor/orchestrator sessions, taste-gated UI/copy, structured-output fan-out, counsel/cross-vendor reviews, recap — these stay on the non-override engine): fall back to cheapest capable per AGENTS.md Portable Execution Routing — native subagent (default) → cross-vendor CLI contract skill → AFK → computer-use. Stamp the harness+model actually used into `meta.json`. **Prefer a lane whose worker outlives the launching session and can wake the firstmate itself.** A worker spawned as a child process of the firstmate's session dies with it, so a session restart destroys the run and leaves the record lying `working`. Where the host provides durable server-side sessions — on a T3 Code host, a native thread created through the workspace's thread helper — that lane is preferred over any child-process lane, and it needs no read-back point because it signals for itself.
 4. **Isolation** — product repos: `using-git-worktrees` per the subagent worktree gate. **Matias repo: a single crewmate edits in place on `main`** (the no-worktree ruling); a sibling full clone (`~/dev/code/matias-crew/<id>/`, git-crypt key unlocks it) **only when crew runs concurrently on this repo** — delete it at close.
 5. **Record, then spawn** — write `crew/<id>/meta.json` (`{task, lane, harness, model, status, created, target}`), append `working: dispatched` to `crew/<id>/status`, **then** spawn. Record-before-spawn so a crash never leaves work the fleet can't see (the firstmate 2026-07-22 incident class).
-6. **Supervise** — status verbs: `working | needs-decision | blocked | paused | done | failed`, appended sparsely (events, not FYI progress). Crewmate rule: same obstacle twice → `blocked:` and stop. `paused:` only for a known external wait expected to clear on its own.
+6. **Supervise — waiting is silent.** Status verbs: `working | needs-decision | blocked | paused | done | failed`, appended sparsely (events, not FYI progress). Crewmate rule: same obstacle twice → `blocked:` and stop. `paused:` only for a known external wait expected to clear on its own. The firstmate does **not** poll status, re-read crew records, relay progress, or schedule check-ins between dispatch and a real signal; elapsed time and no-change reads are not progress. Exactly four triggers reopen a quiet record: a lane signal, a question from the human, a read-back point the brief declared, or session-start reconciliation. A lane that cannot signal at all is dispatched **only** with a declared read-back point — otherwise its silent death is indistinguishable from work in progress. A machine-generated wake is stamped and is a pointer, never an authorization: it can never satisfy a human-ordered gate.
 7. **Verify** — read the real diff or report against the acceptance criteria. The hand-back locates proof; it is never proof. On a miss, send one consolidated correction.
 8. **Integrate** — Matias lands the result per the target repo's git rules (matias repo: rebase-pull → commit → direct-push; product repos: their PR golden path). Crewmates never own merge authority.
 9. **Close** — append `done:`/`failed:`, remove any sibling clone, re-run `scripts/crew-status.sh` and confirm the record is closed.
@@ -54,7 +64,7 @@ T3/Codex mechanics — endpoint, token, idempotency contract, snapshot shape, an
 
 ## Standing rules
 
-- **Staleness/orphan rule**: a `working` record from a native-subagent lane in a prior session is dead — close or re-dispatch at reconciliation. Any record `working` >24h without a live process is stale: investigate, then close or re-dispatch.
+- **Staleness/orphan rule**: a `working` record from a native-subagent lane in a prior session is dead — close or re-dispatch at reconciliation. Any record `working` >24h without a live process is stale — investigate at **session-start reconciliation**, then close or re-dispatch. Elapsed time never reopens a record mid-session; that is the waiting-is-silent rule in step 6, and this staleness sweep is reconciliation, not a clock to watch.
 - **`crew/` never holds the only copy of a Jorge-action.** Anything Jorge must do lives as exactly one `### Needs from Jorge` item on a `JorgeMenaDev/matias` issue (single inbox). Crew records are agent-facing operational state only.
 - Jorge-facing reporting stays outcomes-not-mechanics: never relay crewmate status lines or reports verbatim.
 
