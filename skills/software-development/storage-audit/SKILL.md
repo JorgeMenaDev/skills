@@ -1,9 +1,9 @@
 ---
 name: storage-audit
 description: Reclaim disk on Jorge's Mac mini by retiring regenerable data — snapshots, worktrees, local databases, agent churn, caches. Use for low space, recurring cleanup, or storage-automation diagnosis.
-version: 3.1.1
+version: 3.2.0
 mutating: true
-writes_to: ["local Time Machine snapshots", "registered git worktrees", "regenerable caches and local databases", "idle Xcode and simulator artifacts", "~/.hermes/state/storage-hygiene/"]
+writes_to: ["local Time Machine snapshots", "clean backed registered git worktrees", "idle .next and .turbo build caches", "stale per-user temp/cache artifacts", "regenerable caches and local databases", "idle Xcode and simulator artifacts", "~/.hermes/state/storage-hygiene/"]
 ---
 
 # Reclaim disk
@@ -21,7 +21,8 @@ cd /Users/jorge/.hermes/profiles/matias
 ```
 
 Target is **60 GiB free**. Exit 0 = at or above target, exit 3 = ran clean but still under.
-`--aggressive` additionally retires worktrees touched in the last 24h (still only if pushed).
+`--aggressive` additionally retires worktrees touched in the last 24h; clean, remote-backup, and
+no-process gates still apply.
 Hermes cron `storage-hygiene-every-3-hours` runs at `30 */3 * * *` via
 `storage-hygiene-scheduled.sh`; healthy runs stay silent, while below-target runs reach Telegram.
 
@@ -30,7 +31,10 @@ Hermes cron `storage-hygiene-every-3-hours` runs at `30 */3 * * *` via
 | Class | Rule |
 |---|---|
 | Local TM snapshots | keep newest 2, thin the rest, every run |
-| Git worktrees | every registered worktree, once idle (Jorge ruling: not on GitHub = not needed) |
+| Git worktrees | registered linked worktrees only when clean, backed by their origin branch or live `origin/main`, process-free, and idle; `--aggressive` drops only the age gate |
+| Next build output | `.next` inside registered worktrees when the checkout is clean/backed, no process references it, and output is idle for 3h; retire only `.next`, never the worktree |
+| Turbo build cache | repository `.turbo` entries idle for 3h when no Turbo process is running |
+| Per-user temp/cache | named Codex/sandbox artifacts in `$TMPDIR`, Chrome's code-sign clone, and clang cache after 3h with open-file and owning-process guards |
 | Local databases | `.convex/local`, `.t3/userdata/state.sqlite`, `.codex/*.sqlite` when idle |
 | Agent churn | `.codex/sessions`, t3/hermes logs, `session-scratchpad` older than 3 days |
 | Caches | `Library/Caches/{Google,Codex,t3code-updater,node-gyp,bun}`, bun install cache |
@@ -39,13 +43,10 @@ Hermes cron `storage-hygiene-every-3-hours` runs at `30 */3 * * *` via
 | Simulator devices | devices `xcrun simctl` reports unavailable, once idle and no simulator is live |
 | Simulator runtimes | iOS runtime images superseded by the newest runtime exposed by the selected Xcode, once idle and no simulator is live |
 
-Nothing vetoes a worktree except being in-flight or an unreachable remote. This is safe on commits:
-`git worktree remove` deletes the checkout, never the branch, so committed work survives in the main
-repo's object store whether or not it was pushed. Only uncommitted working-tree state is discarded,
-and the run logs `ahead=N uncommitted=N` for each one so the loss is on the record.
-
-The protection that matters is upstream of this skill: `AGENTS.md` requires work to be committed and
-pushed the moment a slice is done. This skill assumes that rule is being followed.
+A worktree with modified or untracked files is protected. Its HEAD must exactly match its live
+origin branch or be an ancestor of live `origin/main`; otherwise it is protected as unbacked. Any
+process referencing the path also protects it. These hard vetoes apply under `--aggressive`, and
+worktree decisions keep logging `ahead=N uncommitted=N`.
 
 ## Why snapshots come first
 
