@@ -1,7 +1,7 @@
 ---
 name: crew-dispatch
 description: Crew-first dispatch for Matias — run a deliverable task through a crewmate with a durable crew record (intake → brief → lane → record → spawn → supervise → verify → integrate → close). Use when starting any multi-file change, investigation report, or product edit, or when reconciling crew/ records at session start, or when a dispatched crew must report completion after its launching turn ends. Inline-lane work (true one-liner, same-pass vault/tracker/home write, read-and-think answer) skips this skill.
-version: 1.5.0
+version: 1.5.1
 mutating: true
 writes_to: ["crew/<task-id>/ (machine-local, gitignored)", "the target repo through the selected lane"]
 ---
@@ -53,7 +53,7 @@ Everything else — any multi-file change, investigation report, or product edit
 6. **Supervise — waiting is silent.** Status verbs: `working | needs-decision | blocked | paused | done | failed`, appended sparsely (events, not FYI progress). Crewmate rule: same obstacle twice → `blocked:` and stop. `paused:` only for a known external wait expected to clear on its own. The firstmate does **not** poll status, re-read crew records, relay progress, or schedule check-ins between dispatch and a real signal; elapsed time and no-change reads are not progress. Exactly four triggers reopen a quiet record: a lane signal, a question from the human, a read-back point the brief declared, or session-start reconciliation. A lane that cannot signal at all is dispatched **only** with a declared read-back point — otherwise its silent death is indistinguishable from work in progress. A machine-generated wake is stamped and is a pointer, never an authorization: it can never satisfy a human-ordered gate.
 7. **Verify** — read the real diff or report against the acceptance criteria. The hand-back locates proof; it is never proof. On a miss, send one consolidated correction.
 8. **Integrate** — Matias lands the result per the target repo's git rules (matias repo: rebase-pull → commit → direct-push; product repos: their PR golden path). Crewmates never own merge authority.
-9. **Close** — append `done:`/`failed:`, remove any sibling clone, re-run `scripts/crew-status.sh` and confirm the record is closed.
+9. **Close** — append `done:`/`failed:` and remove any sibling clone. After verification and integration, run `scripts/crew-thread.sh settle crew/<id>` for a `done:` T3-thread record; the helper refuses other outcomes or a live thread, so failed and attention-required crew stay visible. Re-run `scripts/crew-status.sh` and confirm the record is closed.
 
 ## Completion supervision — the crew survives its launching turn
 
