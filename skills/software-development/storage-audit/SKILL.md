@@ -1,7 +1,7 @@
 ---
 name: storage-audit
 description: Reclaim disk on Jorge's Mac mini by retiring regenerable data — snapshots, worktrees, local databases, agent churn, caches. Use for low space, recurring cleanup, or storage-automation diagnosis.
-version: 3.0.1
+version: 3.1.0
 mutating: true
 writes_to: ["local Time Machine snapshots", "registered git worktrees", "regenerable caches and local databases", "~/.hermes/state/storage-hygiene/"]
 ---
@@ -22,7 +22,8 @@ cd /Users/jorge/.hermes/profiles/matias
 
 Target is **60 GiB free**. Exit 0 = at or above target, exit 3 = ran clean but still under.
 `--aggressive` additionally retires worktrees touched in the last 24h (still only if pushed).
-Hermes cron `daily-storage-hygiene` owns the 04:30 run via `storage-hygiene-daily.sh`.
+Hermes cron `storage-hygiene-every-3-hours` runs at `30 */3 * * *` via
+`storage-hygiene-scheduled.sh`; healthy runs stay silent, while below-target runs reach Telegram.
 
 ## What gets retired
 
@@ -34,6 +35,9 @@ Hermes cron `daily-storage-hygiene` owns the 04:30 run via `storage-hygiene-dail
 | Agent churn | `.codex/sessions`, t3/hermes logs, `session-scratchpad` older than 3 days |
 | Caches | `Library/Caches/{Google,Codex,t3code-updater,node-gyp,bun}`, bun install cache |
 | Runner state | `actions-runner-*/_work` when no listener is running |
+| Xcode build data | `DerivedData` and `iOS DeviceSupport` once idle and Xcode is not running |
+| Simulator devices | devices `xcrun simctl` reports unavailable, once idle and no simulator is live |
+| Simulator runtimes | iOS runtime images superseded by the newest runtime exposed by the selected Xcode, once idle and no simulator is live |
 
 Nothing vetoes a worktree except being in-flight or an unreachable remote. This is safe on commits:
 `git worktree remove` deletes the checkout, never the branch, so committed work survives in the main
@@ -56,9 +60,9 @@ with `sudo -n` and logs `AUTOBACKUP_BLOCKED` if that fails, leaving a one-time `
 for a human. Once AutoBackup is off nothing regenerates, and thinning becomes a formality.
 Marker: `~/.hermes/state/storage-hygiene/autobackup-disabled`.
 
-**Consequence, stated plainly:** this machine has no local point-in-time recovery. Git remotes and
-cloud sync are the only backup. That is why `AGENTS.md` requires work to be committed and pushed
-the moment a slice is done, and why anything that cannot live in git needs an explicit durable home.
+**Consequence, stated plainly:** hourly snapshots exist, but there is no Time Machine destination,
+so they are not dependable recovery and actively pin retired bytes. Git remotes and cloud sync are
+the durable backup. That is why `AGENTS.md` requires work to be committed and pushed immediately.
 
 ## Out of scope
 
@@ -67,14 +71,14 @@ Not retired by automation, and not silently: `Library/Application Support/{Codex
 `~/Documents`, `credentials/`, the vault. If these are the only way to reach target, say so and let
 Jorge decide; never fold them into a run.
 
-`/Applications/Xcode.app`, `/Library/Developer/CoreSimulator`, and `~/Library/Developer/CoreSimulator`
-are protected iOS development foundations: routine cleanup never retires them. Removal requires
-Jorge explicitly retiring or replacing local iOS development and proof that the replacement works.
-Runtime and device size is measured and reported, not declared reclaimable because it is large.
-Historical baseline (2026-08-02): Xcode ~3.5 GiB, system CoreSimulator ~19 GiB, first-boot iPhone 17 Pro
-data ~2.0 GiB, and other default device records ~17 MiB each; free space moved 50.2 → 19.9 GiB after
-installation/first boot, then to 27.9 GiB after guarded cleanup. Always remeasure current state with
-`df` and `du`; these dated figures are not size guarantees.
+The currently selected Xcode (`xcode-select -p`), its newest available iOS runtime, and that runtime's
+`/Library/Developer/CoreSimulator/Volumes` mount are the protected iOS development floor. Routine
+cleanup never retires them; the guard follows the selected toolchain rather than a version string.
+Measured 2026-08-02: Xcode 3.5 GiB, runtime volume 16 GiB, simulator data 2.1 GiB, and the installed
+runtime image 7.9 GB; installation/first boot consumed about 30 GiB. The pre-install post-cleanup high
+was 93.3 GiB free, making today's estimated reachable ceiling about 63 GiB. The 60 GiB target stands:
+it is still reachable but leaves only about 3 GiB headroom, so every run must remeasure `df` and report
+the physical delta rather than infer recovery from `du` or selected bytes.
 
 ## Anti-patterns
 
