@@ -1,7 +1,7 @@
 ---
 name: storage-audit
 description: Reclaim disk on Jorge's Mac mini by retiring regenerable data — snapshots, worktrees, local databases, agent churn, caches. Use for low space, recurring cleanup, or storage-automation diagnosis.
-version: 3.6.0
+version: 3.7.0
 mutating: true
 writes_to: ["local Time Machine snapshots", "clean backed registered git worktrees", "idle .next and .turbo build caches", "stale per-user temp/cache artifacts", "regenerable caches and local databases", "idle Xcode and simulator artifacts", "package-manager and tool caches", "Chrome OptGuideOnDeviceModel component cache", "superseded self-updater tool versions", "GitHub runner _work, orphaned version trees and stale _diag", "idle BTCA sandbox clones", "~/.hermes/state/storage-hygiene/"]
 ---
@@ -41,10 +41,12 @@ Hermes cron `storage-hygiene-every-3-hours` runs at `30 */3 * * *` via
 | Next build cache | `.next/cache` and `.next/dev` inside any registered checkout, idle 3h and process-free — retired **even when the whole `.next` is protected** as uncommitted or unbacked. Build cache is orthogonal to git cleanliness. Measured 2026-08-04: a 4.3 GiB `.next` was 2.0 cache + 1.7 dev and only 193 MiB of real output |
 | Local databases | `.convex/local`, `.codex/*.sqlite` when idle **and not held open by `lsof`** |
 | Agent churn | `.codex/sessions`, t3/hermes logs, `session-scratchpad` older than 3 days |
-| Caches | `Library/Caches/{Google,Codex,t3code-updater,node-gyp,bun,CocoaPods,ms-playwright,dotslash}`, bun install cache, `~/.cache/{uv,codex-runtimes,convex,huggingface}`, `~/.npm/{_npx,_cacache}` |
+| Caches | `Library/Caches/{Google,Codex,t3code-updater,node-gyp,bun,CocoaPods,ms-playwright,dotslash}`, bun install cache, `~/.cache/{uv,codex-runtimes,convex,huggingface}`, `~/.npm/{_npx,_cacache}`, `Library/Caches/Homebrew` |
 | Chrome component cache | `Application Support/Google/Chrome/OptGuideOnDeviceModel` (~4 GiB on-device AI model, redownloaded on demand) — only with Chrome closed, and never any sibling profile directory |
-| BTCA sandbox clones | everything under `~/.btca/agent/sandbox` — the `btca-local` skill clones third-party repos there purely to search and re-clones on next use. **Jorge ruling 2026-08-04: pure scratch, no age gate** — the cost of being wrong is one re-clone, so it is retired once idle 3h. Non-git directories go too. Two vetoes remain, and only because a re-clone cannot rebuild what they catch: a live process holding the path, and locally-authored git state (dirty, unpushed on any branch, or stashed), which logs `JORGE-ACTION` |
-| Stale tool versions | superseded version directories under `~/.agent-browser/browsers` and `~/.local/share/cursor-agent/versions` — keep newest only |
+| Scratch clones | agent-made throwaway checkouts of other people's repos — `~/.btca/agent/sandbox` (the `btca-local` skill), `~/dev/.temp`, `~/dev/code2`. **Pure scratch, no age gate** (Jorge ruling 2026-08-04): retired once idle 3h, non-git dirs included, because the cost of being wrong is one re-clone. Two vetoes only, for what a re-clone cannot rebuild: a live process holding the path, and locally-authored git state (dirty, unpushed on any branch, or stashed) which logs `JORGE-ACTION`. **That veto is load-bearing** — two investigation lanes reported `~/dev/code2/acredix-app` as a safe duplicate clone when it held 29 dirty files, an unpushed commit and a stash |
+| Agent session churn | `~/.grok/sessions` and `~/.local/share/opencode/log` older than 3 days, alongside the Codex sessions |
+| Convex backups | `~/.convex/convex-backend-state-backups` when idle. The live `convex-backend-state` beside it is **not** a class |
+| Stale tool versions | superseded version directories under `~/.agent-browser/browsers`, `~/.local/share/cursor-agent/versions` and `~/.local/share/claude/versions` — keep newest only. Never `ClaudeCode.app` or the auth/state files beside `versions/` |
 | Runner state | `actions-runner-*/_work` idle 3h when no **`Runner.Worker`** is live; plus `bin.*`/`externals.*` trees the current symlink no longer points at, and `_diag` files older than 7d |
 | Xcode build data | `DerivedData` and `iOS DeviceSupport` once idle and Xcode is not running |
 | Simulator devices | devices `xcrun simctl` reports unavailable, once idle and no simulator is live |
