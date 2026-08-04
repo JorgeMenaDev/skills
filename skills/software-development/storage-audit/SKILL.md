@@ -1,7 +1,7 @@
 ---
 name: storage-audit
 description: Reclaim disk on Jorge's Mac mini by retiring regenerable data — snapshots, worktrees, local databases, agent churn, caches. Use for low space, recurring cleanup, or storage-automation diagnosis.
-version: 3.4.0
+version: 3.5.0
 mutating: true
 writes_to: ["local Time Machine snapshots", "clean backed registered git worktrees", "idle .next and .turbo build caches", "stale per-user temp/cache artifacts", "regenerable caches and local databases", "idle Xcode and simulator artifacts", "package-manager and tool caches", "Chrome OptGuideOnDeviceModel component cache", "superseded self-updater tool versions", "GitHub runner _work, orphaned version trees and stale _diag", "~/.hermes/state/storage-hygiene/"]
 ---
@@ -43,6 +43,7 @@ Hermes cron `storage-hygiene-every-3-hours` runs at `30 */3 * * *` via
 | Agent churn | `.codex/sessions`, t3/hermes logs, `session-scratchpad` older than 3 days |
 | Caches | `Library/Caches/{Google,Codex,t3code-updater,node-gyp,bun,CocoaPods,ms-playwright,dotslash}`, bun install cache, `~/.cache/{uv,codex-runtimes,convex,huggingface}`, `~/.npm/{_npx,_cacache}` |
 | Chrome component cache | `Application Support/Google/Chrome/OptGuideOnDeviceModel` (~4 GiB on-device AI model, redownloaded on demand) — only with Chrome closed, and never any sibling profile directory |
+| BTCA sandbox clones | third-party repos the `btca-local` skill clones into `~/.btca/agent/sandbox` purely to search — it re-clones or pulls on next use. Retired after **14 days idle**, and only with the full worktree-grade proof: has an `origin` remote, clean status, no branch commit absent from a remote, no stashes, no process referencing it. A directory that is not a git repo has unknown provenance and is **reported, never retired** |
 | Stale tool versions | superseded version directories under `~/.agent-browser/browsers` and `~/.local/share/cursor-agent/versions` — keep newest only |
 | Runner state | `actions-runner-*/_work` idle 3h when no **`Runner.Worker`** is live; plus `bin.*`/`externals.*` trees the current symlink no longer points at, and `_diag` files older than 7d |
 | Xcode build data | `DerivedData` and `iOS DeviceSupport` once idle and Xcode is not running |
