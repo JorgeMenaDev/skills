@@ -1,7 +1,7 @@
 ---
 name: storage-audit
 description: Reclaim disk on Jorge's Mac mini by retiring regenerable data — snapshots, worktrees, local databases, agent churn, caches. Use for low space, recurring cleanup, or storage-automation diagnosis.
-version: 3.3.0
+version: 3.4.0
 mutating: true
 writes_to: ["local Time Machine snapshots", "clean backed registered git worktrees", "idle .next and .turbo build caches", "stale per-user temp/cache artifacts", "regenerable caches and local databases", "idle Xcode and simulator artifacts", "package-manager and tool caches", "Chrome OptGuideOnDeviceModel component cache", "superseded self-updater tool versions", "GitHub runner _work, orphaned version trees and stale _diag", "~/.hermes/state/storage-hygiene/"]
 ---
@@ -20,7 +20,10 @@ cd /Users/jorge/.hermes/profiles/matias
 ./scripts/storage-hygiene.sh              # retire
 ```
 
-Target is **60 GiB free** (a pre-flight peak, not a resting state — see "Touch 60, hold 40" below). Exit 0 = at or above target, exit 3 = ran clean but still under.
+Target is **40 GiB free** — the number this machine can hold. Exit 0 = at or above it (`ok`, or
+`ok-peak` at 60+), exit 3 = ran clean but still under. **60 GiB is the pre-flight gate** before a
+large install, reached deliberately with `--aggressive`, not the daily bar. Override with
+`STORAGE_HYGIENE_TARGET_GIB` / `STORAGE_HYGIENE_PEAK_GIB`.
 `--aggressive` additionally retires worktrees touched in the last 24h; clean, remote-backup, and
 no-process gates still apply.
 Hermes cron `storage-hygiene-every-3-hours` runs at `30 */3 * * *` via
@@ -93,12 +96,12 @@ simulator devices 4.0 GiB — a floor of **~12 GiB on Data**, not the ~22 GiB im
 mounted volume as well (see the anti-pattern above; the earlier "63 GiB ceiling" estimate reached
 roughly the right answer by way of that double-count).
 
-**Touch 60, hold 40.** A full APFS reconciliation on 2026-08-04 closed to 0 KiB and confirmed 60 GiB
-is reachable — 39.4 free plus a 25.2 GiB bounded retirement set projects 64.5. But measured churn is
+**Touch 60, hold 40 — ratified by Jorge 2026-08-04.** A full APFS reconciliation closed to 0 KiB and
+confirmed 60 GiB is reachable; it was reached the same day (17.6 → 59.7 GiB). But measured churn is
 **~27 GiB/day gross** (worktree builds, CI checkouts, agent state, Xcode) against a cron reclaiming
-1–7 GiB per run, so 60 is a post-run peak, never a resting state. Treat 60 as a pre-flight gate before
-a large install and hold ~40 day to day. A target met once in the machine's history trains everyone to
-ignore the alarm, which is the one state worse than a full disk. Purgeable space is not the obstacle:
+1–7 GiB per run, so 60 is a post-run peak, never a resting state. `TARGET_GIB` is therefore **40** —
+what a healthy run reports OK against — and a run reaching 60+ records `ok-peak`. A target that fails
+every healthy day trains everyone to ignore the alarm, which is the one state worse than a full disk. Purgeable space is not the obstacle:
 the Foundation important-usage uplift measured 6.4 GiB, so releasing all of it still lands ~14 short.
 
 ## What is not the answer
