@@ -81,6 +81,10 @@ deleting it amputates crew history) and `/Library/Developer/CoreSimulator/Caches
 so an unattended run cannot remove it — and a sudoers rule for `rm -rf` under `/Library` is a far
 worse trade than the 3 GiB). Both log a `JORGE-ACTION` line instead of failing every run.
 
+The dyld suggestion is gated on **14 days idle**: the cache rebuilds on the next simulator boot, so
+proposing it during active iOS work is churn that returns within one launch. A recurring action line
+for bytes you are about to regenerate is noise, and noise is how a real alert gets ignored.
+
 The currently selected Xcode (`xcode-select -p`), its newest available iOS runtime, and that runtime's
 `/Library/Developer/CoreSimulator/Volumes` mount are the protected iOS development floor. Routine
 cleanup never retires them; the guard follows the selected toolchain rather than a version string.
