@@ -4,7 +4,7 @@ Read repository instructions first. This contract begins only after `storage-pre
 
 ## 1. Copy local environment
 
-Resolve helpers against this skill directory. Use `<skill-dir>/scripts/copy-env-local.sh <primary-checkout> <worktree>` on first creation or when files are missing. It copies files named exactly `.env.local` only when both checkouts ignore the path, excludes provider/database/build state, and strips every plain single-line assignment whose variable name contains `CONVEX`. Quoted, backtick, or continued Convex assignments block the copy. Never overwrite a warm `local-main` target merely to refresh it or print values.
+Resolve helpers against this skill directory. Use `<skill-dir>/scripts/copy-env-local.sh <primary-checkout> <worktree>` on first creation or when files are missing. It copies files named exactly `.env.local` only when both checkouts ignore the path, excludes provider/database/build state, and strips only true Convex keys: every plain single-line assignment whose variable name is `CONVEX_`-prefixed, plus the exact Convex deploy/URL-style keys `NEXT_PUBLIC_CONVEX_URL`, `NEXT_PUBLIC_CONVEX_SITE_URL`, and `QA_CONVEX_ADMIN_KEY`. Clerk/auth vars are kept even when the name contains `CONVEX`, e.g. `CLERK_CONVEX_JWT_TEMPLATE`. Quoted, backtick, or continued Convex assignments block the copy. Never overwrite a warm `local-main` target merely to refresh it or print values.
 
 Prefer a runtime-neutral repository `setup:worktree` command when present and verify the same result.
 
