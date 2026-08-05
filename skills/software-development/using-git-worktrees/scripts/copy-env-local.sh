@@ -97,7 +97,7 @@ while IFS= read -r source_file; do
   active_temp="$temp_file"
   pending_target="$target_file"
   if ! awk '
-    /^[[:space:]]*(export[[:space:]]+)?([A-Za-z_][A-Za-z0-9_]*CONVEX[A-Za-z0-9_]*|CONVEX[A-Za-z0-9_]*)[[:space:]]*=/ {
+    /^[[:space:]]*(export[[:space:]]+)?(CONVEX_[A-Za-z0-9_]*|NEXT_PUBLIC_CONVEX_URL|NEXT_PUBLIC_CONVEX_SITE_URL|QA_CONVEX_ADMIN_KEY)[[:space:]]*=/ {
       value = $0
       sub(/^[^=]*=/, "", value)
       if (index(value, "\"") || index(value, sprintf("%c", 39)) || index(value, "`") || index(value, "\\") || index(value, "$(") || index(value, "<(") || index(value, "<<")) exit 7
