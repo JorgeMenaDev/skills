@@ -1,7 +1,7 @@
 ---
 name: using-git-worktrees
 description: Use when creating an isolated Git workspace, running the default branch locally, or closing development work that used a worktree.
-version: 2.0.2
+version: 2.1.0
 mutating: true
 writes_to: ["<repo-name>-worktrees/", "**/.env.local", "**/.convex/state-kind", "regenerable worktree artifacts"]
 ---
@@ -13,6 +13,24 @@ writes_to: ["<repo-name>-worktrees/", "**/.env.local", "**/.convex/state-kind", 
 Research and review share an existing checkout and install nothing. Tracked implementation gets one source-only branch at sibling `<repo-name>-worktrees/<branch-slug>`. A no-edit local run reuses detached `<repo-name>-worktrees/local-main`. Hydration requires a 2–4 GiB storage budget and a resolved workspace storage policy: the desired target is informational, a warning or freeze may block non-incident hydration, and the hard hydration floor is the absolute stop. Every runtime owns its ports and local state, then stops and dehydrates when the task finishes. Only explicitly synthetic Convex state is disposable.
 
 Announce: “I’m using the using-git-worktrees skill to prepare the task workspace and lifecycle.”
+
+## Fast path: repos with the local-runtime contract
+
+When the repository exposes `setup:worktree` in its root `package.json` (the Andes repository
+contract), do not walk sections 1–5 by hand. Run one command and stop:
+
+```bash
+<skill-dir>/scripts/worktree-dev.sh up <slug> [--surface <s>]... [--mode human|smoke]
+```
+
+It performs the whole contract — sibling worktree off `origin/main`, storage preflight (defaults:
+floor 10 GiB, freeze no; override with `WORKTREE_FREE_FLOOR_GIB` / `WORKTREE_HYDRATION_FREEZE`),
+ignored-env copy, `bun install --frozen-lockfile`, `setup:worktree`, then a detached `qa:local`
+(fallback: `dev:<surface>` / `dev`) — and prints the `QA_LOCAL_READY` / URL lines. Ports are derived
+deterministically from the worktree path, so parallel worktrees never collide. Close with
+`worktree-dev.sh down <slug> [--remove]`: it reaps every process whose cwd is the worktree, refuses
+removal over uncommitted or unpushed work, and dehydrates before retiring. Manual sections 1–5
+remain for repos without the contract and for non-standard bases or blocked states.
 
 ## 1. Inspect
 
