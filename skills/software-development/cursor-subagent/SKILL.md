@@ -26,7 +26,7 @@ Set `SKILL_DIR` to this skill directory, then run:
 ```bash
 MODE="${MODE:-ask}"
 WORKSPACE="${WORKSPACE:-$PWD}"
-MODEL="${MODEL:-grok-4.5-xhigh}"
+MODEL="${MODEL:-cursor-grok-4.5-high}"
 WRAPPER="$SKILL_DIR/scripts/run-cursor-subagent.sh"
 [ -x "$WRAPPER" ] && echo "WRAPPER: ok" || echo "WRAPPER: missing"
 command -v cursor-agent >/dev/null 2>&1 && echo "CURSOR_AGENT: ok" || echo "CURSOR_AGENT: missing"
@@ -87,5 +87,5 @@ VALIDATION: <commands/evidence or not run>
 
 - Treating Cursor's report as verified truth: verify critical claims locally.
 - Running `agent` mode on the user's dirty checkout: use an isolated workspace.
-- Hardcoding UI labels as model ids: use `grok-4.5-xhigh` by default and let the wrapper confirm it with `cursor-agent models`.
+- Hardcoding UI labels as model ids: use `cursor-grok-4.5-high` by default and let the wrapper confirm it with `cursor-agent models`.
 - Resuming by habit: resume only when the follow-up depends on Cursor's prior context.

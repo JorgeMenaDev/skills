@@ -8,7 +8,7 @@ Usage:
 
 Options:
   --workspace <path>      Workspace for Cursor Agent (default: current directory)
-  --model <id>            Cursor model id (default: grok-4.5-xhigh)
+  --model <id>            Cursor model id (default: cursor-grok-4.5-high)
   --mode <ask|plan|agent> ask/plan are read-only; agent is write-capable (default: ask)
   --output <path>         JSON output path (default: /tmp/cursor-subagent-<timestamp>.json)
   --resume <chatId>       Resume a Cursor chat id
@@ -23,7 +23,7 @@ USAGE
 }
 
 workspace=$PWD
-model=${CURSOR_SUBAGENT_MODEL:-grok-4.5-xhigh}
+model=${CURSOR_SUBAGENT_MODEL:-cursor-grok-4.5-high}
 mode=ask
 output=""
 resume_id=""
