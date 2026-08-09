@@ -129,6 +129,7 @@ All skills below are **model-invoked** — the agent can reach for them when the
 - **[cursor-subagent](./skills/software-development/cursor-subagent/SKILL.md)** — Cursor sidecar delegation for explicit Cursor/Grok exploration, review, or isolated implementation.
 - **[using-git-worktrees](./skills/software-development/using-git-worktrees/SKILL.md)** — Storage-aware development lifecycle: source-only task workspaces, bounded hydration, reusable local-main runtimes, isolated local state, automatic dehydrate, and reviewed retirement.
 - **[work-tracking](./skills/software-development/work-tracking/SKILL.md)** — Decide where multi-step work should live: repo markdown, GitHub Issues, Linear, memory, or a mix. When to promote tasks to issues and how future agents find current state.
+- **[sync-github-fork](./skills/software-development/sync-github-fork/SKILL.md)** — Confirm a GitHub fork's parent, measure divergence, and integrate upstream changes into its published default branch without rewriting fork history.
 
 ### Productivity
 
