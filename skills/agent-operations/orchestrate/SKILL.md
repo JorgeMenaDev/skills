@@ -1,7 +1,7 @@
 ---
 name: orchestrate
 description: Orchestrate multi-slice work as the conductor — plan slices with blocking edges, dispatch isolated executors from the frontier, review hand-backs, integrate, and verify to completion. Use when a task spans parallel agents, worktrees, AFK runs, shared resources, cross-runtime delegation, or an issue chain that must be driven to verified completion.
-version: 3.1.0
+version: 3.1.1
 license: MIT
 mutating: true
 writes_to: [session-scratchpad/orchestrate/, worktrees, branches, pull-requests, issue-trackers]
@@ -63,7 +63,7 @@ Rules: the conductor is the only writer; update a row the moment its fact change
 ## Lanes and executors
 
 - Lanes: **subagent** (default; contained code change, conductor review), **afk** (substantial registered-repo work through the `afk-pipeline` contract — AFK ships changes, not answers; investigations are read-only), **read-only** (research, audit, review), **computer-use** (browser/desktop through its skill), **human** (an exact ask only the operator can perform). Installed lane skills own their mechanics; orchestrate owns selection and gates.
-- Prefer the runtime's native agents when equally capable; otherwise the cheapest installed adapter that clears the bar (`codex-cli-runtime`, `grok-cli-runtime`, `cursor-subagent`). Record the pick and its fallback in Decisions.
+- Prefer the runtime's native agents when equally capable; otherwise the cheapest executor that clears the bar, reached through the host's own dispatch lane — a harness that spawns vendor CLIs for you (T3 Code provider instances) exposes them as rows to pick, not as CLIs to invoke. Record the pick and its fallback in Decisions.
 - When a vendor/model/effort is *required*, verify it from launcher or runtime metadata — a model's self-report is never attestation. A missing required executor fails closed.
 - Before each new dispatch, check `.agents/engine-override.json`: absent = off; malformed = off plus a warning; active = translate into executor constraints while preserving the workspace contract's carve-outs.
 
