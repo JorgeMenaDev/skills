@@ -1,7 +1,7 @@
 ---
 name: grok-deep-research
 description: Use when the user wants iterative web research, asks Grok to investigate a topic deeply, or requests a bounded research loop. Runs Grok Build CLI in an isolated runtime, defaults to native web search, optionally enables only Firecrawl MCP, and produces a stable cited report plus an iteration ledger.
-version: 2.0.0
+version: 2.1.0
 mutating: true
 writes_to: ["requested output directory or ./AGENT-DESK/research/<run-id>/"]
 ---

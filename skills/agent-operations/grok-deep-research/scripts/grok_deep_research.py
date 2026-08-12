@@ -105,7 +105,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output-dir", help="Directory for report and evidence")
     parser.add_argument("--max-iterations", type=int, default=6)
     parser.add_argument("--max-turns", type=int, default=20)
-    parser.add_argument("--model", default="grok-4.5")
+    parser.add_argument("--model", default="grok-4.6")
     parser.add_argument("--effort", choices=("low", "medium", "high"), default="high")
     parser.add_argument("--search-provider", choices=("native", "firecrawl"), default="native")
     parser.add_argument("--exhaustive", action="store_true", help="Allow a report body longer than 2,500 words")

@@ -403,7 +403,7 @@ jobs:
         # proves the seed can implement.
         if: steps.preflight.outputs.refused != 'true' && steps.flags.outputs.engine == 'grok'
         env:
-          GROK_MODEL: ${{ vars.GROK_MODEL || 'grok-4.5' }}
+          GROK_MODEL: ${{ vars.GROK_MODEL || 'grok-4.6' }}
         run: |
           set -euo pipefail
           fail() {
@@ -419,9 +419,9 @@ jobs:
               --user "$(id -u):$(id -g)" \
               -v "${RUNNER_TEMP}/grok-home:/home/agent/.grok" \
               {{IMAGE_NAME}} \
-              -c "timeout 180 grok -p 'Reply only OK' --model ${GROK_MODEL:-grok-4.5} --effort low --output-format json" \
+              -c "timeout 180 grok -p 'Reply only OK' --model ${GROK_MODEL:-grok-4.6} --effort low --output-format json" \
               > "${RUNNER_TEMP}/grok-smoke.json" 2> "${RUNNER_TEMP}/grok-smoke.err" \
-              && jq -e '(.stopReason == "EndTurn") and ((.text // "") | gsub("^[[:space:]]+|[[:space:]]+$"; "") == "OK")' \
+              && jq -e '((.stopReason == "end_turn") or (.stopReason == "EndTurn")) and ((.text // "") | gsub("^[[:space:]]+|[[:space:]]+$"; "") == "OK")' \
                 "${RUNNER_TEMP}/grok-smoke.json" >/dev/null; then
               smoke_ok=true
               break
@@ -452,7 +452,7 @@ jobs:
           CODEX_AUTH_B64: ${{ github.event.label.name != 'agent:implement-local' && secrets.CODEX_AUTH_B64 || '' }}
           CURSOR_API_KEY: ${{ steps.flags.outputs.engine == 'cursor' && secrets.CURSOR_API_KEY || '' }}
           CURSOR_MODEL: ${{ vars.CURSOR_MODEL || 'grok-4.5-xhigh' }}
-          GROK_MODEL: ${{ vars.GROK_MODEL || 'grok-4.5' }}
+          GROK_MODEL: ${{ vars.GROK_MODEL || 'grok-4.6' }}
           GROK_EFFORT: ${{ vars.GROK_EFFORT || 'high' }}
           ENGINE: ${{ steps.flags.outputs.engine }}
           REVIEW_ENGINE: ${{ steps.flags.outputs.review_engine }}

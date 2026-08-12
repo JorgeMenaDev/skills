@@ -1,7 +1,7 @@
 ---
 name: grok-cli-runtime
 description: xAI Grok auth and quota doctrine for any harness that runs the `grok` binary — T3 Code's `grok` provider instance, a headless `grok -p` sidecar, or a cloud runner seeded from GROK_AUTH_B64. Use when a Grok run fails with 401, 402, or 403, when Grok output is empty or DOA, or before any `grok login`.
-version: 2.0.0
+version: 2.1.0
 mutating: true
 writes_to: ["~/.grok/auth.json during explicit auth recovery", "configured encrypted credential store during explicit deposition", "GROK_AUTH_B64 during explicit cloud seeding"]
 ---
@@ -24,13 +24,13 @@ Auth precedence in the CLI: per-model `api_key` → per-model `env_key` → acti
 
 A failed run still exits the JSON contract. It prints `{"type":"error","message":"…"}` with exit 1 and carries **no** `.text` and **no** `.stopReason`. A caller that reads only `.text` gets `null` and reports "no assistant output" — indistinguishable from a model that said nothing. Observed 2026-08-04: a quota exhaustion presented as a mystery DOA for hours.
 
-**Check `.type` before `.text`. The reason is always in `.message`.** Exit code cuts both ways: a refusal or tool loop exits **0** with real `.text`, so exit 0 is not proof of a finished reply either — check `.stopReason == "EndTurn"`.
+**Check `.type` before `.text`. The reason is always in `.message`.** Exit code cuts both ways: a refusal or tool loop exits **0** with real `.text`, so exit 0 is not proof of a finished reply either — check `.stopReason` is `end_turn` (or the older `EndTurn`).
 
 ## Auth safety gate
 
 1. Pin the effective home: `GROK_HOME=${GROK_HOME:-$HOME/.grok}`. Inspect config for per-model `api_key` / `env_key`; do not infer precedence from the shell environment alone.
 2. Identify the failing lane. T3 Code's `grok` instance, a local `grok -p` sidecar, a repo-secret-backed cloud runner, a container with a different home, and Cursor's Grok models are separate lanes. Probe the failing lane with a real chat; a models listing is not proof.
-3. Run the probe below with the exact home, model, and CLI version that lane uses. Validate `.stopReason == "EndTurn"` and `.text`, not only exit 0. If it returns `{"type":"error"}`, classify `.message` first — a `402` **leaves this gate immediately**.
+3. Run the probe below with the exact home, model, and CLI version that lane uses. Validate `.stopReason` is `end_turn` (or `EndTurn`) and `.text`, not only exit 0. If it returns `{"type":"error"}`, classify `.message` first — a `402` **leaves this gate immediately**.
 4. On `403`, retry the same preserved credential before rotating it, and check xAI service status. A credential that later succeeds without changing bytes proves transient authorization, not stale auth. On cloud-only failure, compare the seeded file fingerprint with the probed local file without printing either.
 5. **STOP before `grok login`.** Preserve the complete current auth file in the configured encrypted credential store first. Login is recovery after the same credential stays red — never the first response to a 403.
 6. After login, repeat the probe and deposit the complete resulting auth file. Replace `GROK_AUTH_B64` only from a credential whose probe passed; a failed probe preserves the last known-good repo secret.
@@ -40,12 +40,12 @@ Minimal real chat probe:
 ```bash
 command -v grok >/dev/null 2>&1 && GROK=grok || GROK="$HOME/.grok/bin/grok"
 env -u XAI_API_KEY GROK_HOME="${GROK_HOME:-$HOME/.grok}" \
-  "$GROK" -p "Reply only OK" -m grok-4.5 --effort low --output-format json
+  "$GROK" -p "Reply only OK" -m grok-4.6 --effort low --output-format json
 ```
 
 ## Gotchas
 
-- Effort menu is model-specific: `grok-4.5` accepts `low|medium|high` and defaults `high`. `xhigh` is **not** valid here — that id belongs to Cursor's `grok-4.5-xhigh`, a different harness with different auth.
+- Effort menu is model-specific. `grok-4.6` accepts `low|medium|high|xhigh` and defaults `high`. `grok-4.5` accepts `low|medium|high` and defaults `high`. Cursor's `grok-4.5-xhigh` is a different harness with different auth — do not pass Cursor ids to this binary.
 - `GROK_AUTH_B64` is an AFK harness convention, not a native xAI CLI setting.
 - Active-session precedence requires Grok CLI 0.2.66 or newer.
 - Do not confuse lanes: Cursor also runs Grok models, through Cursor's CLI and Cursor's auth. A red Cursor lane says nothing about this one.

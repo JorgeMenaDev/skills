@@ -57,7 +57,7 @@ if (!repo) {
     for (let attempt = 1; attempt <= 3; attempt += 1) {
       const probe = run(
         grok,
-        ["-p", "Reply only OK", "-m", "grok-4.5", "--effort", "low", "--output-format", "json"],
+        ["-p", "Reply only OK", "-m", "grok-4.6", "--effort", "low", "--output-format", "json"],
         {
           env: { ...probeEnvironment, GROK_HOME: temporaryHome },
           stdio: ["ignore", "pipe", "pipe"],
@@ -68,7 +68,8 @@ if (!repo) {
       } catch {
         response = undefined;
       }
-      if (probe.status === 0 && response?.stopReason === "EndTurn" && response.text?.trim() === "OK") break;
+      const finished = response?.stopReason === "end_turn" || response?.stopReason === "EndTurn";
+      if (probe.status === 0 && finished && response.text?.trim() === "OK") break;
       const permissionDenied = `${probe.stdout}\n${probe.stderr}`.includes("403");
       response = undefined;
       if (!permissionDenied || attempt === 3) {

@@ -38,7 +38,7 @@ const CURSOR_LANE_ERROR =
 // Grok Build CLI (native xAI, v2.12.0). Auth is the GROK_AUTH_B64 seed the
 // workflow materializes to $RUNNER_TEMP/grok-home/auth.json; runtime mounts it
 // at /home/agent/.grok inside the per-phase container (codex-home pattern).
-const GROK_MODEL = process.env.GROK_MODEL || "grok-4.5";
+const GROK_MODEL = process.env.GROK_MODEL || "grok-4.6";
 const GROK_EFFORT = (["low", "medium", "high"] as const).find((e) => e === process.env.GROK_EFFORT) ?? "high";
 const GROK_CLOUD_HOME = `${process.env.RUNNER_TEMP ?? "/tmp"}/grok-home`;
 const GROK_SANDBOX_HOME = "/home/agent/.grok";
