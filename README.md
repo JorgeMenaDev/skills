@@ -18,7 +18,7 @@ npx skills@latest add JorgeMenaDev/skills
 
 3. Open a session in a target repo and invoke the skill that matches the work — for example, start SEO work with `seo-growth-workspace`.
 
-Most people begin with **`seo-growth-workspace`**. For unattended multi-phase shipping, add **`shiploop`**. When the question is where a plan should live, use **`work-tracking`**.
+Most people begin with **`seo-growth-workspace`**. For unattended multi-phase shipping, add **`shiploop`**. When the question is where a plan should live, use **`work-tracking`**. To publish through Andy MCP, add **`andy-post`**.
 
 ### `operator-handoff`
 
@@ -44,6 +44,14 @@ A system-first review loop for external articles, videos, repositories, prompts,
 
 ```bash
 npx skills@latest add JorgeMenaDev/skills --skill source-to-system
+```
+
+### `andy-post`
+
+Draft and publish social posts through [Andy MCP](https://docs.andypartner.com). The operator gives a raw idea. The agent returns 2-3 drafts. After a pick, it publishes or schedules. Andy MCP is an active build: file skill or MCP friction on this repo.
+
+```bash
+npx skills@latest add JorgeMenaDev/skills --skill andy-post
 ```
 
 ### `grok-deep-research`
@@ -112,6 +120,7 @@ All skills below are **model-invoked** — the agent can reach for them when the
 ### Growth
 
 - **[seo-growth-workspace](./skills/growth/seo-growth-workspace/SKILL.md)** — Durable SEO operating workspace: bootstrap `.seo/`, capture business context, audit evidence, prioritize backlog, implement one action, verify live, log handoff. Technical SEO, Search Console, schema, local SEO, content ops, internal links, backlinks, pSEO, conversion paths, monthly reporting.
+- **[andy-post](./skills/growth/andy-post/SKILL.md)** — Draft and publish X, LinkedIn, and Instagram posts through Andy MCP: raw idea → 2-3 drafts → operator picks → publish or schedule.
 - **[posthog-growth-workspace](./skills/growth/posthog-growth-workspace/SKILL.md)** — Durable product-data growth workspace on live PostHog data: bootstrap `.growth/`, funnels/activation/retention, experiment and campaign registries, session-replay mining, HogQL cookbook + query runner, monthly growth reviews. Sibling of `seo-growth-workspace` — SEO stays there; install doctrine stays with your stack.
 
 ### Agent Operations
