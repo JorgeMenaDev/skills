@@ -28,6 +28,10 @@ large install, reached deliberately with `--aggressive`, not the daily bar. Over
 no-process gates still apply.
 Hermes cron `storage-hygiene-every-3-hours` runs at `30 */3 * * *` via
 `storage-hygiene-scheduled.sh`; healthy runs stay silent, while below-target runs reach Telegram.
+A below-target run escalates itself: the wrapper immediately reruns with `--aggressive` in the same
+slot (Jorge ruling 2026-08-18), so parked-but-pushed worktrees do not survive three-hour cycles while
+the disk is under target. The hard vetoes — dirty, unbacked, process-held — apply on every pass, so
+in-flight work is never retired by the cron.
 
 ## Before you report (every audit)
 
