@@ -50,9 +50,13 @@ Do these even on a dry-run. Skipping any of them is how a "only ~0.4 GiB safe" r
 4. **Challenge `PROTECT xcode running`** — verify with `pgrep -x Xcode` (exact). `pgrep -f Xcode`
    / `running '[X]code'` matches **Simulator.app** because its path lives under `Xcode.app/…`.
    Simulator live ≠ Xcode running. CocoaPods already uses `pgrep -qx Xcode`; DerivedData must too.
-5. **Challenge `PROTECT active` on caches** — `idle()` that does not filter `-type f` treats a
-   touched *directory* as activity. Check newest **file** mtime (e.g. `codex-runtimes` was idle
-   61h while the root dir mtime looked fresh).
+5. **Challenge `PROTECT active` on caches — against that class's own window.** `idle()` that does
+   not filter `-type f` treats a touched *directory* as activity, so check newest **file** mtime
+   (e.g. `codex-runtimes` was idle 61h while the root dir mtime looked fresh). But read the hours
+   argument at the call site before calling a guard broken: the windows differ per class
+   (`IDLE_HOURS=24` for uv/codex-runtimes/`_npx`, 72h for cacache/convex/playwright/Homebrew, 336h
+   for huggingface). Measuring all of them against 3h manufactures a 7 GiB "guard bug" that is not
+   there (2026-08-19: every one was genuinely inside its window).
 6. **Read protection reasons literally** — `PROTECT in-flight worktree (ahead=0 uncommitted=0)`
    with no process is the **24h age gate only**, not a hard veto. Hard vetoes are dirty, unbacked,
    or process-held. `--aggressive` drops only the age gate; say so when listing reclaim.
@@ -82,6 +86,7 @@ Do these even on a dry-run. Skipping any of them is how a "only ~0.4 GiB safe" r
 | Runner state | `actions-runner-*/_work` idle 3h when no **`Runner.Worker`** is live; plus `bin.*`/`externals.*` trees the current symlink no longer points at, and `_diag` files older than 7d |
 | Xcode build data | `DerivedData` and `iOS DeviceSupport` once idle and **`pgrep -x Xcode` is empty** — never gate on `pgrep -f Xcode` / path substring (that matches Simulator forever). Simulator live does not protect DerivedData |
 | Simulator devices | devices `xcrun simctl` reports unavailable, once idle and no simulator is live |
+| Simulator device data | **available** devices too: `simctl erase` a Shutdown device idle 24h holding more than 200 MiB. Erase keeps the device configured — never `delete` an available one. Measured 2026-08-19: three never-booted iPhone 17 sims held **11 GiB** of installed builds, invisible to the unavailable-only sweep, and erasing took the tree to 192 MiB |
 | Simulator runtimes | iOS runtime images superseded by the newest runtime exposed by the selected Xcode, once idle and no simulator is live |
 
 A worktree with modified or untracked files is protected. Its HEAD must exactly match its live
@@ -151,6 +156,8 @@ Measured and refuted on 2026-08-04 — do not re-investigate these without new e
   and per-worktree dependency duplication produce the gigabytes. Deleting code is not the lever;
   not letting a worktree outlive its PR (~7 GiB each) is.
 - **Snapshots**: cured since 2026-08-01 and verified zero each run. Verify, don't fear.
+- **`pnpm store prune`** (added 2026-08-19): the 5.4 GiB store at `~/Library/pnpm/store` is fully
+  referenced by live checkouts — a prune removed **0 packages**. Stop proposing it as a lever.
 
 The real recurring levers, in order: fix any guard that cannot fail open; cap `.next` cache; keep one
 installed worktree per monorepo, not several; and accept that a 228 GiB volume hosting five monorepos,
