@@ -1,9 +1,9 @@
 ---
 name: storage-audit
 description: Reclaim disk on Jorge's Mac mini by retiring regenerable data — snapshots, worktrees, local databases, agent churn, caches. Use for low space, recurring cleanup, or storage-automation diagnosis.
-version: 3.10.0
+version: 3.11.0
 mutating: true
-writes_to: ["local Time Machine snapshots", "clean backed registered git worktrees", "idle .next and .turbo build caches", "stale per-user temp/cache artifacts", "regenerable caches and local databases", "idle Xcode and simulator artifacts", "package-manager and tool caches", "Chrome OptGuideOnDeviceModel component cache", "superseded self-updater tool versions", "GitHub runner _work, orphaned version trees and stale _diag", "idle BTCA sandbox clones", "~/.hermes/state/storage-hygiene/"]
+writes_to: ["local Time Machine snapshots", "clean backed registered git worktrees", "idle lockfile-backed node_modules", "idle .next and .turbo build caches", "stale per-user and private temp artifacts", "regenerable caches and local databases", "idle Xcode and simulator artifacts", "package-manager, Expo, React Native, and tool caches", "Chrome OptGuideOnDeviceModel component cache", "superseded self-updater tool versions", "GitHub runner _work, orphaned version trees and stale _diag", "idle BTCA sandbox clones", "~/.hermes/state/storage-hygiene/"]
 ---
 
 # Reclaim disk
@@ -20,14 +20,16 @@ cd /Users/jorge/.hermes/profiles/matias
 ./scripts/storage-hygiene.sh              # retire
 ```
 
-Target is **40 GiB free** — the number this machine can hold. Exit 0 = at or above it (`ok`, or
-`ok-peak` at 60+), exit 3 = ran clean but still under. **60 GiB is the pre-flight gate** before a
-large install, reached deliberately with `--aggressive`, not the daily bar. Override with
-`STORAGE_HYGIENE_TARGET_GIB` / `STORAGE_HYGIENE_PEAK_GIB`.
+Target is **60 GiB free**. Exit 0 means the measured post-run median reached it; exit 3 means the
+run finished with an explicit physical shortfall. Override with `STORAGE_HYGIENE_TARGET_GIB`.
+The scheduled wrapper stays quiet unless free space falls below its separate alert floor, so a
+60 GiB target does not create routine Telegram noise.
 `--aggressive` additionally retires worktrees touched in the last 24h; clean, remote-backup, and
-no-process gates still apply.
+no-process gates still apply. It also shortens the age gate on lockfile-backed `node_modules` from
+24h to 3h while preserving checkout process ownership.
 Hermes cron `storage-hygiene-every-3-hours` runs at `30 */3 * * *` via
-`storage-hygiene-scheduled.sh`; healthy runs stay silent, while below-target runs reach Telegram.
+`storage-hygiene-scheduled.sh`; scheduled runs stay silent unless free space crosses the separate
+10 GiB alert floor.
 A below-target run escalates itself: the wrapper immediately reruns with `--aggressive` in the same
 slot (Jorge ruling 2026-08-18), so parked-but-pushed worktrees do not survive three-hour cycles while
 the disk is under target. The hard vetoes — dirty, unbacked, process-held — apply on every pass, so
@@ -39,28 +41,35 @@ Do these even on a dry-run. Skipping any of them is how a "only ~0.4 GiB safe" r
 18 GiB short of the truth (measured 2026-08-05, crew `storage-60to22-second-opinion-opus-20260805`).
 
 1. **Median of three `df` samples** on `/System/Volumes/Data` — not one sample, not `/` alone.
-2. **Swap / VM volume** — `sysctl vm.swapusage` and the APFS VM volume size. Multi-day uptime
+2. **APFS container pressure** — inspect Preboot, VM, and pending macOS updates, not Data alone.
+   APFS free space is container-wide. A staged update can hold 18 GiB in Preboot while Data looks
+   fully classified. The supported lever is installing the update and rebooting, never deleting
+   Preboot or OS-update snapshots by hand.
+3. **Swap / VM volume** — `sysctl vm.swapusage` and the APFS VM volume size. Multi-day uptime
    routinely holds **~10 GiB** of swap. There is no retire class for it; the lever is a reboot after
    stopping live Next/Simulator/in-flight crew. **Every below-target report must include a swap
    line** and whether reboot is the next lever. Vault precedents: 2026-07-11, 07-17, 07-23.
-3. **`history.log` before framing timing** — `~/.hermes/state/storage-hygiene/history.log`. A
-   remembered "~60 GiB yesterday" is almost always a post-cleanup `ok-peak` that lasts hours, not
+4. **`history.log` before framing timing** — `~/.hermes/state/storage-hygiene/history.log`. Treat
+   historical `freed` values before v3.11 as attribution evidence only: the old script sampled
+   `freed` and final `free` at different moments, so concurrent APFS movement could be credited to
+   cleanup. A remembered "~60 GiB yesterday" may be an update or reboot release rather than a
+   cleanup result, so
    overnight. Attribute drops to the ledger window (e.g. 2026-08-04 11:41→14:32Z −33.8 GiB in
    2h51m), never to "overnight" without checking.
-4. **Challenge `PROTECT xcode running`** — verify with `pgrep -x Xcode` (exact). `pgrep -f Xcode`
+5. **Challenge `PROTECT xcode running`** — verify with `pgrep -x Xcode` (exact). `pgrep -f Xcode`
    / `running '[X]code'` matches **Simulator.app** because its path lives under `Xcode.app/…`.
    Simulator live ≠ Xcode running. CocoaPods already uses `pgrep -qx Xcode`; DerivedData must too.
-5. **Challenge `PROTECT active` on caches — against that class's own window.** `idle()` that does
+6. **Challenge `PROTECT active` on caches — against that class's own window.** `idle()` that does
    not filter `-type f` treats a touched *directory* as activity, so check newest **file** mtime
    (e.g. `codex-runtimes` was idle 61h while the root dir mtime looked fresh). But read the hours
    argument at the call site before calling a guard broken: the windows differ per class
    (`IDLE_HOURS=24` for uv/codex-runtimes/`_npx`, 72h for cacache/convex/playwright/Homebrew, 336h
    for huggingface). Measuring all of them against 3h manufactures a 7 GiB "guard bug" that is not
    there (2026-08-19: every one was genuinely inside its window).
-6. **Read protection reasons literally** — `PROTECT in-flight worktree (ahead=0 uncommitted=0)`
+7. **Read protection reasons literally** — `PROTECT in-flight worktree (ahead=0 uncommitted=0)`
    with no process is the **24h age gate only**, not a hard veto. Hard vetoes are dirty, unbacked,
    or process-held. `--aggressive` drops only the age gate; say so when listing reclaim.
-7. **`.next` process-active still yields cache** — skill rule: retire `.next/cache` and `.next/dev`
+8. **`.next` process-active still yields cache** — skill rule: retire `.next/cache` and `.next/dev`
    even when the whole `.next` is protected. If the script logs `PROTECT process-active next-output`
    and does not attempt `next-cache`, that is a branch bug — surface it, do not treat the whole
    tree as unreclaimable.
@@ -69,15 +78,16 @@ Do these even on a dry-run. Skipping any of them is how a "only ~0.4 GiB safe" r
 
 | Class | Rule |
 |---|---|
-| Local TM snapshots | keep newest 2, thin the rest, every run |
+| Local TM snapshots | keep none while the retired destination remains disabled; any survivor pins bytes retired in the same run |
 | Git worktrees | registered linked worktrees only when clean, backed by their origin branch or live `origin/main`, process-free, and idle; `--aggressive` drops only the age gate |
+| Dependency caches | lockfile-backed `node_modules` under `~/dev`, when the owning checkout has no process and the dependency tree is idle 24h; aggressive uses 3h. Git dirt does not protect regenerated dependencies |
 | Next build output | `.next` inside registered worktrees when the checkout is clean/backed, no process references it, and output is idle for 3h; retire only `.next`, never the worktree |
-| Turbo build cache | repository `.turbo` entries idle for 3h when no Turbo process is running |
-| Per-user temp/cache | named Codex/sandbox artifacts in `$TMPDIR`, Chrome's code-sign clone, and clang cache after 3h with open-file and owning-process guards |
+| Turbo build cache | each `.turbo` path independently, idle 3h and not held open. Never let one global `turbo` or `turbopack` name match protect every repo |
+| Per-user and private temp/cache | named Codex/sandbox artifacts in `$TMPDIR`, Chrome's code-sign clone, clang cache, `/private/tmp/node-compile-cache`, and `/private/tmp/bunx-*` after 3h with open-file and owning-process guards |
 | Next build cache | `.next/cache` and `.next/dev` inside any registered checkout, idle 3h and process-free — retired **even when the whole `.next` is protected** as uncommitted or unbacked. Build cache is orthogonal to git cleanliness. Measured 2026-08-04: a 4.3 GiB `.next` was 2.0 cache + 1.7 dev and only 193 MiB of real output |
 | Local databases | `.convex/local`, `.codex/*.sqlite` when idle **and not held open by `lsof`** |
 | Agent churn | `.codex/sessions`, t3/hermes logs, `session-scratchpad` older than 3 days |
-| Caches | `Library/Caches/{Google,Codex,t3code-updater,node-gyp,bun,CocoaPods,ms-playwright,dotslash}`, bun install cache, `~/.cache/{uv,codex-runtimes,convex,huggingface}`, `~/.npm/{_npx,_cacache}`, `Library/Caches/Homebrew` |
+| Caches | `Library/Caches/{Google,Codex,t3code-updater,node-gyp,bun,CocoaPods,ms-playwright,dotslash,pnpm,cursor-compile-cache,ReactNative}`, bun install cache, Expo simulator cache, `~/.cache/{uv,codex-runtimes,convex,huggingface}`, `~/.npm/{_npx,_cacache}`, `Library/Caches/Homebrew` |
 | Chrome component cache | `Application Support/Google/Chrome/OptGuideOnDeviceModel` (~4 GiB on-device AI model) — only with Chrome closed, never any sibling profile directory. **Half-life ~30 min when Chrome is open** (measured 2026-08-04: retired ~11:41, `weights.bin` back at 12:13). Do not book it as durable reclaim against the cron; prefer the policy switch `GenAILocalFoundationalModelSettings=1` over delete-and-hope |
 | Scratch clones | agent-made throwaway checkouts of other people's repos — `~/.btca/agent/sandbox` (the `btca-local` skill), `~/dev/.temp`, `~/dev/code2`. **Pure scratch, no age gate** (Jorge ruling 2026-08-04): retired once idle 3h, non-git dirs included, because the cost of being wrong is one re-clone. Two vetoes only, for what a re-clone cannot rebuild: a live process holding the path, and locally-authored git state (dirty, unpushed on any branch, or stashed) which logs `JORGE-ACTION`. **That veto is load-bearing** — two investigation lanes reported `~/dev/code2/acredix-app` as a safe duplicate clone when it held 29 dirty files, an unpushed commit and a stash |
 | Agent session churn | `~/.grok/sessions` and `~/.local/share/opencode/log` older than 3 days, alongside the Codex sessions |
@@ -91,7 +101,8 @@ Do these even on a dry-run. Skipping any of them is how a "only ~0.4 GiB safe" r
 
 A worktree with modified or untracked files is protected. Its HEAD must exactly match its live
 origin branch or be an ancestor of live `origin/main`; otherwise it is protected as unbacked. Any
-process referencing the path also protects it. These hard vetoes apply under `--aggressive`, and
+process whose argv or cwd references the path also protects it. Never use an absolute-path
+`pgrep -f` as the sole veto; relative-path launches do not expose the checkout in argv. These hard vetoes apply under `--aggressive`, and
 worktree decisions keep logging `ahead=N uncommitted=N`.
 
 ## Why snapshots come first
@@ -118,9 +129,13 @@ Not retired by automation, and not silently: `Library/Application Support/{Codex
 `~/Documents`, `credentials/`, the vault. If these are the only way to reach target, say so and let
 Jorge decide; never fold them into a run.
 
-Two classes are **reported, never retired**, because the right outcome is a human decision:
-`~/.t3/userdata/state.sqlite` (the firstmate's live state DB — crew threads route through it;
-deleting it amputates crew history) and `/Library/Developer/CoreSimulator/Caches/dyld` (root-owned,
+Large agent databases are **reported, never retired**, because the right outcome is supported
+retention in the owning application. `~/.t3/userdata/state.sqlite`, OpenCode's event database,
+Hermes state, and live Codex logs held about 14.7 GiB on 2026-08-22. VACUUM is not a fix when
+`freelist_count` is near zero; deleting them amputates history.
+
+One other class is **reported, never retired**, because the right outcome is a human decision:
+`/Library/Developer/CoreSimulator/Caches/dyld` (root-owned,
 so an unattended run cannot remove it — and a sudoers rule for `rm -rf` under `/Library` is a far
 worse trade than the 3 GiB). Both log a `JORGE-ACTION` line instead of failing every run.
 
@@ -136,13 +151,12 @@ simulator devices 4.0 GiB — a floor of **~12 GiB on Data**, not the ~22 GiB im
 mounted volume as well (see the anti-pattern above; the earlier "63 GiB ceiling" estimate reached
 roughly the right answer by way of that double-count).
 
-**Touch 60, hold 40 — ratified by Jorge 2026-08-04.** A full APFS reconciliation closed to 0 KiB and
-confirmed 60 GiB is reachable; it was reached the same day (17.6 → 59.7 GiB). But measured churn is
-**~27 GiB/day gross** (worktree builds, CI checkouts, agent state, Xcode) against a cron reclaiming
-1–7 GiB per run, so 60 is a post-run peak, never a resting state. `TARGET_GIB` is therefore **40** —
-what a healthy run reports OK against — and a run reaching 60+ records `ok-peak`. A target that fails
-every healthy day trains everyone to ignore the alarm, which is the one state worse than a full disk. Purgeable space is not the obstacle:
-the Foundation important-usage uplift measured 6.4 GiB, so releasing all of it still lands ~14 short.
+**Aim for 60, account for the shortfall.** The 2026-08-22 audit found that earlier 60+ readings
+clustered around macOS update installation and reboot. The old ledger sampled `freed` and `free`
+separately, so it could not prove the cleaner caused those peaks. Version 3.11 makes 60 the default
+target, uses one authoritative post-run sample set, and reports `target`, `shortfall`, and deletion
+failures. A run below 60 is not complete merely because it crossed 40; it must name the remaining
+container, live-work, durable-state, and human-action blockers.
 
 ## What is not the answer
 
@@ -153,8 +167,9 @@ Measured and refuted on 2026-08-04 — do not re-investigate these without new e
 - **Duplicates**: ~1.2 GiB. Toolchains are clean — one Xcode, one runtime, one rustup, no nvm/volta.
 - **Unused applications**: ~2 GiB; only OBS is genuinely dead.
 - **Source code volume**: ~500k LOC across the monorepos produces megabytes. Build-cache retention
-  and per-worktree dependency duplication produce the gigabytes. Deleting code is not the lever;
-  not letting a worktree outlive its PR (~7 GiB each) is.
+  and dependency duplication produce the gigabytes. Dehydrate cold lockfile-backed dependencies
+  before proposing deletion of a whole source checkout. `~/dev/open-source` measured 8.9 GiB on
+  2026-08-22, but the root itself is not automatically disposable.
 - **Snapshots**: cured since 2026-08-01 and verified zero each run. Verify, don't fear.
 - **`pnpm store prune`** (added 2026-08-19): the 5.4 GiB store at `~/Library/pnpm/store` is fully
   referenced by live checkouts — a prune removed **0 packages**. Stop proposing it as a lever.
@@ -167,6 +182,10 @@ an iOS toolchain, a resident CI runner and six agent stacks is undersized — ex
 ## Anti-patterns
 
 - BAD: delete `*-wt-*` by name. GOOD: enumerate `git worktree list`, prove pushed, remove via git.
+- BAD: protect a worktree only when its absolute path appears in process argv. GOOD: check process
+  cwd plus literal argv ownership; relative-path dev launches are still live work.
+- BAD: protect every `.turbo` because any process contains `turbo`. GOOD: check each cache path;
+  generated Turbopack filenames otherwise create false global protection.
 - BAD: report 3 GiB selected as 3 GiB recovered. GOOD: report the `df` before/after delta.
 - BAD: `rm` a live sqlite file. GOOD: `lsof` the specific file, then retire when idle.
 - BAD: rebuild a classification state machine here. GOOD: if a class is wrong, edit the table above.
@@ -202,10 +221,10 @@ an iOS toolchain, a resident CI runner and six agent stacks is undersized — ex
 ## Output
 
 ```text
-FREE: <gib> (target 40)   FREED: <gib> this run   SWAP: <gib used> (uptime …)
+FREE: <gib> (target 60)   FREED: <gib> this run   SHORTFALL: <gib>   SWAP: <gib used> (uptime …)
 RETIRED: <counts by class>
 PROTECTED: <paths and the reason git or a live process gave — age-gate vs hard veto named>
-BLOCKED: <snapshot/sudo gaps, or none>
+BLOCKED: <pending update / Preboot / durable databases / failures / sudo gaps, or none>
 NEXT: <reboot / --aggressive trees / Jorge decision / none>
 ```
 
