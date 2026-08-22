@@ -133,7 +133,7 @@ All skills below are **model-invoked** — the agent can reach for them when the
 
 ### Software Development
 
-- **[mobile-monorepo-ios](./skills/software-development/mobile-monorepo-ios/SKILL.md)** — Build, debug, and ship Expo/React Native, native Swift/SwiftUI, or bounded hybrid iOS work through an explicit architecture/change classifier and semantic, device, and distribution proof contracts.
+- **[mobile-monorepo-ios](./skills/software-development/mobile-monorepo-ios/SKILL.md)** — Build, debug, and release Expo/React Native, native iOS, native Android, or bounded hybrid mobile work through explicit architecture, release-system, device, and distribution proof contracts.
 - **[design-system-keeper](./skills/software-development/design-system-keeper/SKILL.md)** — Extract, encode, and enforce a repo's real design system as an agent-readable canon (v0 Design Systems 2.0 shape): sourced rules, a primitive index, verify-against-source builds, and a drift backlog instead of memory-built lookalikes.
 - **[cursor-subagent](./skills/software-development/cursor-subagent/SKILL.md)** — Cursor sidecar delegation for explicit Cursor/Grok exploration, review, or isolated implementation.
 - **[using-git-worktrees](./skills/software-development/using-git-worktrees/SKILL.md)** — Storage-aware development lifecycle: source-only task workspaces, bounded hydration, reusable local-main runtimes, isolated local state, automatic dehydrate, and reviewed retirement.

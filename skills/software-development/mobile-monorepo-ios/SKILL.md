@@ -1,13 +1,13 @@
 ---
 name: mobile-monorepo-ios
-description: Build, debug, and ship iOS apps across Expo/React Native, native Swift/SwiftUI, or bounded hybrid architectures. Use when work involves an Expo development build, React Native in a monorepo, iOS Simulator or physical-device proof, native-runtime changes, EAS/App Store Connect/TestFlight distribution, or when another stack skill needs the mobile execution and proof loop.
-version: 1.0.0
+description: Build, debug, and release mobile apps across Expo/React Native, native iOS, native Android, or bounded hybrid architectures. Use for development builds, device proof, native-runtime changes, release workflows, EAS, TestFlight, App Store Connect, Google Play, or cross-platform mobile delivery.
+version: 1.1.0
 license: MIT
 mutating: true
 writes_to: ["target repository paths authorized by the active task"]
 ---
 
-# Mobile Monorepo iOS
+# Mobile monorepo release
 
 ## Proof Contract
 
@@ -23,6 +23,8 @@ if rg -q '"expo"[[:space:]]*:' -g package.json .; then echo "EXPO: yes"; else ec
 if find . -path '*/node_modules' -prune -o -type d \( -name '*.xcodeproj' -o -name '*.xcworkspace' -o -name ios \) -print -quit | rg -q .; then echo "NATIVE_PROJECT: yes"; else echo "NATIVE_PROJECT: no"; fi
 if command -v xcodebuild >/dev/null && xcodebuild -version >/dev/null 2>&1; then echo "XCODE: ready"; else echo "XCODE: unavailable"; fi
 if xcrun --find simctl >/dev/null 2>&1; then echo "SIMCTL: ready"; else echo "SIMCTL: unavailable"; fi
+if command -v adb >/dev/null 2>&1; then echo "ADB: ready"; else echo "ADB: unavailable"; fi
+if [ -n "${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}" ]; then echo "ANDROID_SDK: configured"; else echo "ANDROID_SDK: unavailable"; fi
 ```
 
 ## Classify
@@ -33,6 +35,7 @@ Choose one architecture and one change class before selecting commands:
 | --- | --- | --- |
 | Architecture | `expo-rn` | Shared TypeScript/product surface; use repo package manager + Expo loop |
 | Architecture | `native-ios` | Apple-only/deep platform surface or native performance; use Xcode/Swift loop |
+| Architecture | `native-android` | Android-only/deep platform surface or native performance; use Gradle/Android loop |
 | Architecture | `hybrid` | Bounded native module/extension inside Expo/RN; prove both sides and bridge |
 | Change | `js-only` | JS/TS, styles, navigation, or data flow; reuse compatible binary + Metro |
 | Change | `native-runtime` | Native dependency/code, plugin, scheme, entitlement, capability, SDK, icon, or splash; establish ownership and rebuild |
@@ -47,8 +50,9 @@ Read [references/architecture-choice.md](references/architecture-choice.md) when
 2. Use the detected package manager and repo scripts. If companions already exist, route volatile detail to official Expo skills, Clerk Expo for auth, Callstack for measured React Native performance, or a SwiftUI/native skill for native seams. Companion absence is an unverified gap, not permission to install one.
 3. Make the smallest authorized change. In Expo, determine CNG/native-directory ownership before prebuild; let supported Expo versions configure Metro until a reproduced resolution failure proves otherwise.
 4. Read [references/local-runtime.md](references/local-runtime.md) for implementation, debugging, Simulator, development-build, or physical-device work. Completion: the acceptance scenario passes again from its defined start state with semantic, visual, and timestamp-correlated log evidence.
-5. Read [references/distribution-proof.md](references/distribution-proof.md) only when the request includes archive/cloud build, upload, TestFlight, device installation, or release. Completion: report only independently proven artifact states.
-6. Read [references/tooling.md](references/tooling.md) before enabling or using an agent/MCP/device automation surface. Completion: version, permissions, data path, telemetry, mutation scope, and semantic-target support are known.
+5. Read [references/release-system.md](references/release-system.md) when designing or changing variants, previews, versioning, native-fingerprint policy, CI builds, submission, retries, OTA, or public release. Completion: each release transition has one owner, trigger, idempotency rule, authority boundary, and proof method.
+6. Read [references/distribution-proof.md](references/distribution-proof.md) when the request includes archive/cloud build, upload, TestFlight, Play testing tracks, device installation, review, or release. Completion: report only independently proven artifact states.
+7. Read [references/tooling.md](references/tooling.md) before enabling or using an agent/MCP/device automation surface. Completion: version, permissions, data path, telemetry, mutation scope, and semantic-target support are known.
 
 ## STOP Gates
 
