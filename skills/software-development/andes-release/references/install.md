@@ -67,6 +67,15 @@ git tag mobile-v1.0 <sha of the approved 1.0 build> && git push origin mobile-v1
 
 Tag only what really shipped: App Store versions and the current TestFlight build. Old TestFlight builds nobody can install are history, not releases.
 
+A backfill tag never triggers `release.yml`: GitHub runs the workflow file that exists **at the tagged commit**, and those commits predate it. Create each backfill release directly, oldest first, with the same flags the workflow would use:
+
+```bash
+gh release create mobile-v1.0 --title "<Product> 1.0" --generate-notes
+gh release create mobile-v1.0.1-build.24 --title "<Product> 1.0.1 (24) · TestFlight" --prerelease --generate-notes --notes-start-tag mobile-v1.0
+```
+
+The first tag at or after the commit that added the workflow is the one that proves it end to end.
+
 ## 4. Document
 
 `docs/releases.md` in the repo: three sentences on the two lines and a pointer to this skill. Register the convention in the fleet `STACK.md` row for the product.
