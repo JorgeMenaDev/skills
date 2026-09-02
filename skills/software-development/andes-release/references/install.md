@@ -4,7 +4,7 @@ Done once per repo, as one PR. Completion: a pushed test tag produces a GitHub R
 
 ## 1. The release workflow
 
-Add `.github/workflows/release.yml`. It runs on tag push, refuses shas that are not on `main`, runs the repo's checks, and publishes the release with generated notes from the previous tag of the same line.
+Add `.github/workflows/release.yml`. It runs on tag push, refuses shas that are not on `main`, and publishes the release with generated notes from the previous tag of the same line. It runs no checks of its own: a sha on `main` already passed the repo's PR CI, and a release job that re-runs a wider gate than PR CI fails on tags for reasons unrelated to the release.
 
 ```yaml
 name: Release
@@ -21,10 +21,6 @@ jobs:
         with: { fetch-depth: 0 }
       - name: Refuse tags off main
         run: git merge-base --is-ancestor "$GITHUB_SHA" origin/main
-      - uses: oven-sh/setup-bun@v2
-        with: { bun-version-file: package.json }
-      - run: bun install --frozen-lockfile
-      - run: bun run check
       - name: Publish
         env: { GH_TOKEN: "${{ github.token }}" }
         run: |
@@ -42,7 +38,7 @@ jobs:
           gh release create "$tag" --title "$tag" "${args[@]}"
 ```
 
-Adjust `bun run check` to the repo's real check script and the bun version pin to what the repo's other workflows use. The title can be prettified per repo (`Andy Partner 1.0.1 (24) · TestFlight`); the tag stays the contract.
+The title can be prettified per repo (`Andy Partner 1.0.1 (24) · TestFlight`); the tag stays the contract.
 
 ## 2. Tagging from the EAS workflow
 

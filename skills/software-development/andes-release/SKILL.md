@@ -1,7 +1,7 @@
 ---
 name: andes-release
 description: Tag and publish GitHub Releases for Andes products so the repo's release history matches the stores and production. Two independent version lines per repo, mobile and web. Use when a TestFlight build finishes, Apple approves a version, a batch of web PRs is worth naming, a repo has no release workflow yet, or someone asks which version is live.
-version: 1.0.1
+version: 1.0.2
 license: MIT
 mutating: true
 writes_to: ["git tags", "GitHub Releases", ".github/workflows/release.yml in the target repo", "docs/releases.md in the target repo"]
