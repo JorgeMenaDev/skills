@@ -1,233 +1,90 @@
 ---
 name: storage-audit
-description: Reclaim disk on Jorge's Mac mini by retiring regenerable data — snapshots, worktrees, local databases, agent churn, caches. Use for low space, recurring cleanup, or storage-automation diagnosis.
-version: 3.11.0
+description: Reclaim disk on Jorge's Mac mini with scripts/storage-hygiene.sh — worktrees, build and dependency caches, T3 Code thread history, Xcode data, tool caches. Use when free space is low, Jorge asks to clean up space, or the storage-hygiene cron needs diagnosis.
+version: 4.0.0
 mutating: true
-writes_to: ["local Time Machine snapshots", "clean backed registered git worktrees", "idle lockfile-backed node_modules", "idle .next and .turbo build caches", "stale per-user and private temp artifacts", "regenerable caches and local databases", "idle Xcode and simulator artifacts", "package-manager, Expo, React Native, and tool caches", "Chrome OptGuideOnDeviceModel component cache", "superseded self-updater tool versions", "GitHub runner _work, orphaned version trees and stale _diag", "idle BTCA sandbox clones", "~/.hermes/state/storage-hygiene/"]
+writes_to: ["registered git worktrees (clean, backed, idle)", "node_modules/.next/.turbo build state", "~/.t3/userdata/state.sqlite (old thread rows)", "Xcode DerivedData and simulator device data", "tool and package caches", "session and log churn", "~/.hermes/state/storage-hygiene/"]
 ---
 
-# Reclaim disk
+# Reclaim disk on the Mac mini
 
-One rule: **retire a path if it is a known-regenerable class AND idle.** Anything outside the
-classes below is out of scope — do not invent a queue for it. Success is the `df` delta and
-nothing else; logical bytes selected are vanity.
+One rule: retire a path when it is a **known-regenerable class and idle**. The classes are the
+script's functions; nothing else is in scope. Success is the `df` delta, never the bytes selected.
 
 ## Run it
 
 ```bash
-cd /Users/jorge/.hermes/profiles/matias
-./scripts/storage-hygiene.sh --dry-run    # preview
-./scripts/storage-hygiene.sh              # retire
+cd ~/.hermes/profiles/matias
+./scripts/storage-hygiene.sh --dry-run   # WOULD-* lines, no changes
+./scripts/storage-hygiene.sh             # retire; exit 0 at 40 GiB free or more, exit 3 below
 ```
 
-Target is **60 GiB free**. Exit 0 means the measured post-run median reached it; exit 3 means the
-run finished with an explicit physical shortfall. Override with `STORAGE_HYGIENE_TARGET_GIB`.
-The scheduled wrapper stays quiet unless free space falls below its separate alert floor, so a
-60 GiB target does not create routine Telegram noise.
-`--aggressive` additionally retires worktrees touched in the last 24h; clean, remote-backup, and
-no-process gates still apply. It also shortens the age gate on lockfile-backed `node_modules` from
-24h to 3h while preserving checkout process ownership.
-Hermes cron `storage-hygiene-every-3-hours` runs at `30 */3 * * *` via
-`storage-hygiene-scheduled.sh`; scheduled runs stay silent unless free space crosses the separate
-10 GiB alert floor.
-A below-target run escalates itself: the wrapper immediately reruns with `--aggressive` in the same
-slot (Jorge ruling 2026-08-18), so parked-but-pushed worktrees do not survive three-hour cycles while
-the disk is under target. The hard vetoes — dirty, unbacked, process-held — apply on every pass, so
-in-flight work is never retired by the cron.
+Target is 40 GiB free on `/System/Volumes/Data`. A run that starts below target switches to the
+short age gates itself (`--aggressive`: 3h instead of 24h on linked worktrees and their
+`node_modules`). Hermes cron `storage-hygiene-every-3-hours` (`30 */3 * * *`, no-agent) runs
+`storage-hygiene-scheduled.sh`, which stays silent on Telegram unless free space is under 10 GiB.
+Ledger: `~/.hermes/state/storage-hygiene/history.log` (one line per run) and `storage-hygiene.log`.
 
-## Before you report (every audit)
+## Read the result
 
-Do these even on a dry-run. Skipping any of them is how a "only ~0.4 GiB safe" report lands
-18 GiB short of the truth (measured 2026-08-05, crew `storage-60to22-second-opinion-opus-20260805`).
+The last log line is the verdict:
 
-1. **Median of three `df` samples** on `/System/Volumes/Data` — not one sample, not `/` alone.
-2. **APFS container pressure** — inspect Preboot, VM, and pending macOS updates, not Data alone.
-   APFS free space is container-wide. A staged update can hold 18 GiB in Preboot while Data looks
-   fully classified. The supported lever is installing the update and rebooting, never deleting
-   Preboot or OS-update snapshots by hand.
-3. **Swap / VM volume** — `sysctl vm.swapusage` and the APFS VM volume size. Multi-day uptime
-   routinely holds **~10 GiB** of swap. There is no retire class for it; the lever is a reboot after
-   stopping live Next/Simulator/in-flight crew. **Every below-target report must include a swap
-   line** and whether reboot is the next lever. Vault precedents: 2026-07-11, 07-17, 07-23.
-4. **`history.log` before framing timing** — `~/.hermes/state/storage-hygiene/history.log`. Treat
-   historical `freed` values before v3.11 as attribution evidence only: the old script sampled
-   `freed` and final `free` at different moments, so concurrent APFS movement could be credited to
-   cleanup. A remembered "~60 GiB yesterday" may be an update or reboot release rather than a
-   cleanup result, so
-   overnight. Attribute drops to the ledger window (e.g. 2026-08-04 11:41→14:32Z −33.8 GiB in
-   2h51m), never to "overnight" without checking.
-5. **Challenge `PROTECT xcode running`** — verify with `pgrep -x Xcode` (exact). `pgrep -f Xcode`
-   / `running '[X]code'` matches **Simulator.app** because its path lives under `Xcode.app/…`.
-   Simulator live ≠ Xcode running. CocoaPods already uses `pgrep -qx Xcode`; DerivedData must too.
-6. **Challenge `PROTECT active` on caches — against that class's own window.** `idle()` that does
-   not filter `-type f` treats a touched *directory* as activity, so check newest **file** mtime
-   (e.g. `codex-runtimes` was idle 61h while the root dir mtime looked fresh). But read the hours
-   argument at the call site before calling a guard broken: the windows differ per class
-   (`IDLE_HOURS=24` for uv/codex-runtimes/`_npx`, 72h for cacache/convex/playwright/Homebrew, 336h
-   for huggingface). Measuring all of them against 3h manufactures a 7 GiB "guard bug" that is not
-   there (2026-08-19: every one was genuinely inside its window).
-7. **Read protection reasons literally** — `PROTECT in-flight worktree (ahead=0 uncommitted=0)`
-   with no process is the **24h age gate only**, not a hard veto. Hard vetoes are dirty, unbacked,
-   or process-held. `--aggressive` drops only the age gate; say so when listing reclaim.
-8. **`.next` process-active still yields cache** — skill rule: retire `.next/cache` and `.next/dev`
-   even when the whole `.next` is protected. If the script logs `PROTECT process-active next-output`
-   and does not attempt `next-cache`, that is a branch bug — surface it, do not treat the whole
-   tree as unreclaimable.
+```
+=== storage-hygiene done freed=… free=… target=40GiB shortfall=… swap=… uptime='…' failures=N status=ok|below-target ===
+```
 
-## What gets retired
+Every other line is one decision. `RETIRED`, `PRUNED` and `SWEPT` freed something; `PROTECT <reason>`
+kept something; `JORGE-ACTION` needs a human; `FAILED` counts toward `failures`. Read the reason
+literally before repeating it:
 
-| Class | Rule |
+- Hard vetoes, never overridden: `uncommitted`, `unbacked` (HEAD not on GitHub and no merged PR),
+  `durable-convex-state`, `process-active` (argv or cwd inside the path), `open` (lsof).
+- Soft gates that time out: `age-gate(24h)` or `age-gate(3h)` on worktrees, `active` on caches.
+  Each class has its own window (3h build caches, 24h worktrees and Xcode, 72h package caches,
+  14d Hugging Face). Measure against that window before calling a guard broken.
+
+## Classes
+
+| Class | Retired when |
 |---|---|
-| Local TM snapshots | keep none while the retired destination remains disabled; any survivor pins bytes retired in the same run |
-| Git worktrees | registered linked worktrees only when clean, backed by their origin branch or live `origin/main`, process-free, and idle; `--aggressive` drops only the age gate |
-| Dependency caches | lockfile-backed `node_modules` under `~/dev`, when the owning checkout has no process and the dependency tree is idle 24h; aggressive uses 3h. Git dirt does not protect regenerated dependencies |
-| Next build output | `.next` inside registered worktrees when the checkout is clean/backed, no process references it, and output is idle for 3h; retire only `.next`, never the worktree |
-| Turbo build cache | each `.turbo` path independently, idle 3h and not held open. Never let one global `turbo` or `turbopack` name match protect every repo |
-| Per-user and private temp/cache | named Codex/sandbox artifacts in `$TMPDIR`, Chrome's code-sign clone, clang cache, `/private/tmp/node-compile-cache`, and `/private/tmp/bunx-*` after 3h with open-file and owning-process guards |
-| Next build cache | `.next/cache` and `.next/dev` inside any registered checkout, idle 3h and process-free — retired **even when the whole `.next` is protected** as uncommitted or unbacked. Build cache is orthogonal to git cleanliness. Measured 2026-08-04: a 4.3 GiB `.next` was 2.0 cache + 1.7 dev and only 193 MiB of real output |
-| Local databases | `.convex/local`, `.codex/*.sqlite` when idle **and not held open by `lsof`** |
-| Agent churn | `.codex/sessions`, t3/hermes logs, `session-scratchpad` older than 3 days |
-| Caches | `Library/Caches/{Google,Codex,t3code-updater,node-gyp,bun,CocoaPods,ms-playwright,dotslash,pnpm,cursor-compile-cache,ReactNative}`, bun install cache, Expo simulator cache, `~/.cache/{uv,codex-runtimes,convex,huggingface}`, `~/.npm/{_npx,_cacache}`, `Library/Caches/Homebrew` |
-| Chrome component cache | `Application Support/Google/Chrome/OptGuideOnDeviceModel` (~4 GiB on-device AI model) — only with Chrome closed, never any sibling profile directory. **Half-life ~30 min when Chrome is open** (measured 2026-08-04: retired ~11:41, `weights.bin` back at 12:13). Do not book it as durable reclaim against the cron; prefer the policy switch `GenAILocalFoundationalModelSettings=1` over delete-and-hope |
-| Scratch clones | agent-made throwaway checkouts of other people's repos — `~/.btca/agent/sandbox` (the `btca-local` skill), `~/dev/.temp`, `~/dev/code2`. **Pure scratch, no age gate** (Jorge ruling 2026-08-04): retired once idle 3h, non-git dirs included, because the cost of being wrong is one re-clone. Two vetoes only, for what a re-clone cannot rebuild: a live process holding the path, and locally-authored git state (dirty, unpushed on any branch, or stashed) which logs `JORGE-ACTION`. **That veto is load-bearing** — two investigation lanes reported `~/dev/code2/acredix-app` as a safe duplicate clone when it held 29 dirty files, an unpushed commit and a stash |
-| Agent session churn | `~/.grok/sessions` and `~/.local/share/opencode/log` older than 3 days, alongside the Codex sessions |
-| Convex backups | `~/.convex/convex-backend-state-backups` when idle. The live `convex-backend-state` beside it is **not** a class |
-| Stale tool versions | superseded version directories under `~/.agent-browser/browsers`, `~/.local/share/cursor-agent/versions` and `~/.local/share/claude/versions` — keep newest only. Never `ClaudeCode.app` or the auth/state files beside `versions/` |
-| Runner state | `actions-runner-*/_work` idle 3h when no **`Runner.Worker`** is live; plus `bin.*`/`externals.*` trees the current symlink no longer points at, and `_diag` files older than 7d |
-| Xcode build data | `DerivedData` and `iOS DeviceSupport` once idle and **`pgrep -x Xcode` is empty** — never gate on `pgrep -f Xcode` / path substring (that matches Simulator forever). Simulator live does not protect DerivedData |
-| Simulator devices | devices `xcrun simctl` reports unavailable, once idle and no simulator is live |
-| Simulator device data | **available** devices too: `simctl erase` a Shutdown device idle 24h holding more than 200 MiB. Erase keeps the device configured — never `delete` an available one. Measured 2026-08-19: three never-booted iPhone 17 sims held **11 GiB** of installed builds, invisible to the unavailable-only sweep, and erasing took the tree to 192 MiB |
-| Simulator runtimes | iOS runtime images superseded by the newest runtime exposed by the selected Xcode, once idle and no simulator is live |
+| Git worktrees | linked worktree, clean, HEAD on any `origin/*` ref or its branch's PR merged, no `.convex/state-kind` other than `synthetic`, no owning process, idle past the gate (creation time counts) |
+| `node_modules`, `.next`, `.turbo` | lockfile-backed, no process on the checkout, idle (24h deps in main checkouts, 3h otherwise); `.next/cache` and `.next/dev` go even when `.next` is protected |
+| T3 Code thread history | rows of threads settled more than 2 days ago that are not unsettled, snoozed, pinned or archived: events, activities, messages, sessions. T3 never prunes these itself |
+| Local DBs and churn | `.convex/local` idle 24h; Codex and Grok sessions, OpenCode and Hermes logs older than 3d; Codex log DB when not open |
+| Scratch clones | `~/.btca/agent/sandbox`, `~/dev/.temp`, `~/dev/code2` idle 3h, unless they hold dirty, unpushed or stashed git state (`JORGE-ACTION`) |
+| Xcode | stale `DerivedData/AndyPartnerDev-*` siblings whenever Xcode is closed; all of DerivedData idle 24h; unavailable simulators deleted, shutdown ones erased when idle 24h and over 200 MiB; superseded iOS runtimes |
+| Tool caches | Google, t3code-updater, bun, ReactNative, dotslash, Cursor ShipIt at 3h; CocoaPods, Homebrew, npm cacache, Convex at 72h; superseded Claude, Cursor and agent-browser versions; runner `_work` when no `Runner.Worker` |
+| Local TM snapshots | always, all of them: the destination is retired and every snapshot pins deleted bytes |
 
-A worktree with modified or untracked files is protected. Its HEAD must exactly match its live
-origin branch or be an ancestor of live `origin/main`; otherwise it is protected as unbacked. Any
-process whose argv or cwd references the path also protects it. Never use an absolute-path
-`pgrep -f` as the sole veto; relative-path launches do not expose the checkout in argv. These hard vetoes apply under `--aggressive`, and
-worktree decisions keep logging `ahead=N uncommitted=N`.
+Out of scope, and never folded into a run: Application Support (Codex, T3, Cursor auth and state),
+Chrome profiles, `~/Documents`, Screen Studio projects, `credentials/`, the vault, the selected
+Xcode and its current iOS runtime, `opencode.db` and Hermes `state.db` (reported by size only).
 
-## Why snapshots come first
+## Still below target after a run
 
-Time Machine's destination (`T7-Backup`) is retired. macOS kept `AutoBackup` on, so it made an
-hourly local snapshot that could never flush to a destination and never thinned — 23 of them
-holding ~70 GiB on 2026-08-01. Snapshots pin every byte you delete, which is why the previous
-version of this skill deleted 2.7 GiB in a run and measured a **negative** `df` delta.
+Work the levers in this order; each is a fact the log already printed.
 
-Thinning needs no privileges — `tmutil deletelocalsnapshots` runs fine as `jorge`, so cron handles it
-unattended and no sudoers rule is required. Only `tmutil disable` needs root; the script attempts it
-with `sudo -n` and logs `AUTOBACKUP_BLOCKED` if that fails, leaving a one-time `sudo tmutil disable`
-for a human. Once AutoBackup is off nothing regenerates, and thinning becomes a formality.
-Marker: `~/.hermes/state/storage-hygiene/autobackup-disabled`.
+1. **Swap and uptime.** Multi-day uptime holds several GiB of swap; the release is a reboot after
+   stopping live dev loops. Say so in the report.
+2. **T3 state file.** `JORGE-ACTION t3-state holds N GiB of free pages` means rows were pruned but
+   the file cannot shrink while T3 Code holds it. Jorge quits T3 Code, runs the script once,
+   relaunches. After that one-time VACUUM the file shrinks on every run without closing T3.
+3. **Pending macOS update or Preboot growth.** Install and reboot. Never delete Preboot or update
+   snapshots by hand.
+4. **Protected worktrees.** List each `uncommitted` or `unbacked` worktree with its
+   `ahead=/uncommitted=` numbers and ask Jorge which to push or drop.
+5. **Do not re-open** (measured and refuted, see vault `context/mac-mini-storage.md`): pnpm store
+   prune, cold files, duplicate apps, source-code volume, the mounted simulator volume (a view of
+   the 7.9 GiB asset, not extra bytes).
 
-**Consequence, stated plainly:** hourly snapshots exist, but there is no Time Machine destination,
-so they are not dependable recovery and actively pin retired bytes. Git remotes and cloud sync are
-the durable backup. That is why `AGENTS.md` requires work to be committed and pushed immediately.
+## Report
 
-## Out of scope
-
-Not retired by automation, and not silently: `Library/Application Support/{Codex,t3code,Cursor}`
-(auth and app state — losing these breaks the crew lane), Chrome profiles, `Screen Studio Projects`,
-`~/Documents`, `credentials/`, the vault. If these are the only way to reach target, say so and let
-Jorge decide; never fold them into a run.
-
-Large agent databases are **reported, never retired**, because the right outcome is supported
-retention in the owning application. `~/.t3/userdata/state.sqlite`, OpenCode's event database,
-Hermes state, and live Codex logs held about 14.7 GiB on 2026-08-22. VACUUM is not a fix when
-`freelist_count` is near zero; deleting them amputates history.
-
-One other class is **reported, never retired**, because the right outcome is a human decision:
-`/Library/Developer/CoreSimulator/Caches/dyld` (root-owned,
-so an unattended run cannot remove it — and a sudoers rule for `rm -rf` under `/Library` is a far
-worse trade than the 3 GiB). Both log a `JORGE-ACTION` line instead of failing every run.
-
-The dyld suggestion is gated on **14 days idle**: the cache rebuilds on the next simulator boot, so
-proposing it during active iOS work is churn that returns within one launch. A recurring action line
-for bytes you are about to regenerate is noise, and noise is how a real alert gets ignored.
-
-The currently selected Xcode (`xcode-select -p`), its newest available iOS runtime, and that runtime's
-`/Library/Developer/CoreSimulator/Volumes` mount are the protected iOS development floor. Routine
-cleanup never retires them; the guard follows the selected toolchain rather than a version string.
-Measured 2026-08-04 (three independent lanes): Xcode 3.5 GiB, runtime backing asset 7.9 GiB,
-simulator devices 4.0 GiB — a floor of **~12 GiB on Data**, not the ~22 GiB implied by counting the
-mounted volume as well (see the anti-pattern above; the earlier "63 GiB ceiling" estimate reached
-roughly the right answer by way of that double-count).
-
-**Aim for 60, account for the shortfall.** The 2026-08-22 audit found that earlier 60+ readings
-clustered around macOS update installation and reboot. The old ledger sampled `freed` and `free`
-separately, so it could not prove the cleaner caused those peaks. Version 3.11 makes 60 the default
-target, uses one authoritative post-run sample set, and reports `target`, `shortfall`, and deletion
-failures. A run below 60 is not complete merely because it crossed 40; it must name the remaining
-container, live-work, durable-state, and human-action blockers.
-
-## What is not the answer
-
-Measured and refuted on 2026-08-04 — do not re-investigate these without new evidence:
-
-- **Cold files**: ~3–4 GiB total above 100 MiB older than 90 days, half of it personal recordings.
-  (`atime` is unreliable on this volume — it moves on any read, including `du`; use `mtime`.)
-- **Duplicates**: ~1.2 GiB. Toolchains are clean — one Xcode, one runtime, one rustup, no nvm/volta.
-- **Unused applications**: ~2 GiB; only OBS is genuinely dead.
-- **Source code volume**: ~500k LOC across the monorepos produces megabytes. Build-cache retention
-  and dependency duplication produce the gigabytes. Dehydrate cold lockfile-backed dependencies
-  before proposing deletion of a whole source checkout. `~/dev/open-source` measured 8.9 GiB on
-  2026-08-22, but the root itself is not automatically disposable.
-- **Snapshots**: cured since 2026-08-01 and verified zero each run. Verify, don't fear.
-- **`pnpm store prune`** (added 2026-08-19): the 5.4 GiB store at `~/Library/pnpm/store` is fully
-  referenced by live checkouts — a prune removed **0 packages**. Stop proposing it as a lever.
-
-The real recurring levers, in order: fix any guard that cannot fail open; cap `.next` cache; keep one
-installed worktree per monorepo, not several; and accept that a 228 GiB volume hosting five monorepos,
-an iOS toolchain, a resident CI runner and six agent stacks is undersized — external storage for
-`_work`, worktrees and caches retires this whole problem class.
-
-## Anti-patterns
-
-- BAD: delete `*-wt-*` by name. GOOD: enumerate `git worktree list`, prove pushed, remove via git.
-- BAD: protect a worktree only when its absolute path appears in process argv. GOOD: check process
-  cwd plus literal argv ownership; relative-path dev launches are still live work.
-- BAD: protect every `.turbo` because any process contains `turbo`. GOOD: check each cache path;
-  generated Turbopack filenames otherwise create false global protection.
-- BAD: report 3 GiB selected as 3 GiB recovered. GOOD: report the `df` before/after delta.
-- BAD: `rm` a live sqlite file. GOOD: `lsof` the specific file, then retire when idle.
-- BAD: rebuild a classification state machine here. GOOD: if a class is wrong, edit the table above.
-- BAD: gate a class on a process **name**. GOOD: gate on a live *unit of work* or on `lsof` of the
-  path. This is the defect that cost the most: `_work` was gated on `Runner.Listener`, which runs
-  permanently as a launchd service (`--startuptype service`), so the class never fired once while
-  regenerating ~3 GiB/day. `codex`, `convex` and `t3code` are the same trap — they run as permanent
-  app-servers and watchdogs, so `pgrep -f codex` is always true. A guard that can never fail open is
-  indistinguishable from a class that does not exist. **When adding a class, prove its guard can be
-  false on this machine before trusting it.** Concrete sibling (2026-08-05): `running '[X]code'` /
-  `pgrep -f Xcode` matches Simulator's path under `Xcode.app` and permanently shields DerivedData
-  (~5 GiB) while Xcode.app is closed — use `pgrep -x Xcode`.
-- BAD: relay a hygiene `PROTECT` log line to Jorge as fact. GOOD: re-check the named reason
-  (`pgrep -x`, newest *file* mtime, ahead/uncommitted vs age gate) before treating the class as
-  unavailable.
-- BAD: treat directory mtime as proof of activity. GOOD: `idle` checks must consider files
-  (`find … -type f`); a cache root whose only recent node is the directory itself is idle.
-- BAD: omit swap from a below-target report. GOOD: always print `vm.swapusage` + uptime; name reboot
-  as a lever when used swap is multi-GiB.
-- BAD: call a free-space drop "overnight" from memory. GOOD: cite `history.log` timestamps; 60 GiB
-  is a post-run peak, not a resting state.
-- BAD: retire OptGuide and count it toward the daily target while Chrome stays open. GOOD: policy
-  switch, or accept ~30 min half-life.
-- BAD: escalate to `rm -rf` when `git worktree remove --force` fails. GOOD: log and skip. That
-  command fails precisely when git knows something is wrong; escalating defeats the safety that
-  just fired.
-- BAD: decide ok/below-target from one `df` sample. GOOD: median of three. Available swings several
-  GiB within minutes here (observed 40.9→33.8 in 3 minutes with no run, and 19.9→22.1 with no action).
-- BAD: sum the mounted simulator runtime **and** its backing asset. GOOD: count the asset only —
-  `diskutil info disk5` reports `Virtual: Yes`; the 16.4 GiB mount is a view of a 7.9 GiB
-  `AssetsV2` disk image. Double-counting it inflates the apparent iOS floor by ~8 GiB.
-
-## Output
-
-```text
-FREE: <gib> (target 60)   FREED: <gib> this run   SHORTFALL: <gib>   SWAP: <gib used> (uptime …)
+```
+FREE: <gib> (target 40)  FREED: <gib>  SWAP: <gib> (uptime …)
 RETIRED: <counts by class>
-PROTECTED: <paths and the reason git or a live process gave — age-gate vs hard veto named>
-BLOCKED: <pending update / Preboot / durable databases / failures / sudo gaps, or none>
-NEXT: <reboot / --aggressive trees / Jorge decision / none>
+PROTECTED: <worktree paths with the literal reason>
+NEXT: <reboot | quit T3 once | Jorge decision on … | none>
 ```
 
-Complete when the `df` delta is measured and reported, every protection has a named reason,
-swap is stated on below-target runs, and anything still blocking the target is either fixed or
-handed to Jorge as a decision.
+Done when the `df` delta is measured, every protection names its reason, and anything still
+blocking the target is either fixed or a numbered question to Jorge.
