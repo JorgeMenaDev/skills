@@ -1,7 +1,7 @@
 ---
 name: storage-audit
 description: Reclaim disk on Jorge's Mac mini with scripts/storage-hygiene.sh — worktrees, build and dependency caches, T3 Code thread history, Xcode data, tool caches. Use when free space is low, Jorge asks to clean up space, or the storage-hygiene cron needs diagnosis.
-version: 4.0.0
+version: 4.0.1
 mutating: true
 writes_to: ["registered git worktrees (clean, backed, idle)", "node_modules/.next/.turbo build state", "~/.t3/userdata/state.sqlite (old thread rows)", "Xcode DerivedData and simulator device data", "tool and package caches", "session and log churn", "~/.hermes/state/storage-hygiene/"]
 ---
@@ -53,12 +53,12 @@ literally before repeating it:
 | Local DBs and churn | `.convex/local` idle 24h; Codex and Grok sessions, OpenCode and Hermes logs older than 3d; Codex log DB when not open |
 | Scratch clones | `~/.btca/agent/sandbox`, `~/dev/.temp`, `~/dev/code2` idle 3h, unless they hold dirty, unpushed or stashed git state (`JORGE-ACTION`) |
 | Xcode | stale `DerivedData/AndyPartnerDev-*` siblings whenever Xcode is closed; all of DerivedData idle 24h; unavailable simulators deleted, shutdown ones erased when idle 24h and over 200 MiB; superseded iOS runtimes |
-| Tool caches | Google, t3code-updater, bun, ReactNative, dotslash, Cursor ShipIt at 3h; CocoaPods, Homebrew, npm cacache, Convex at 72h; superseded Claude, Cursor and agent-browser versions; runner `_work` when no `Runner.Worker` |
+| Tool caches | Google, t3code-updater, bun, ReactNative, Cursor ShipIt at 3h; CocoaPods, Homebrew, npm cacache, Convex at 72h; superseded Claude, Cursor and agent-browser versions; runner `_work` when no `Runner.Worker` |
 | Local TM snapshots | always, all of them: the destination is retired and every snapshot pins deleted bytes |
 
 Out of scope, and never folded into a run: Application Support (Codex, T3, Cursor auth and state),
 Chrome profiles, `~/Documents`, Screen Studio projects, `credentials/`, the vault, the selected
-Xcode and its current iOS runtime, `opencode.db` and Hermes `state.db` (reported by size only).
+Xcode and its current iOS runtime, `opencode.db` and Hermes `state.db` (reported by size only), `Library/Caches/dotslash` (App Management blocks unattended deletion).
 
 ## Still below target after a run
 
