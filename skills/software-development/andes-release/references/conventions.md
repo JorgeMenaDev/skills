@@ -4,28 +4,44 @@
 
 `<line>-v<major>.<minor>.<patch>[-build.<n>]`
 
-- `line` is `mobile` or `web`. A repo with only one surface still uses the prefix, so a second line can be added later without renaming history.
-- `mobile-v1.0.1-build.24` is a **prerelease**: TestFlight build 24 of version 1.0.1. `<n>` is the store build number EAS assigned, so the tag and the phone agree.
-- `mobile-v1.0.1` is a **release**: the App Store version Apple approved. It sits on the same commit as the last `-build.<n>` prerelease of that version.
+- `line` is `mobile-ios`, `mobile-android`, or `web`. A repo with only one surface still uses the prefix, so a second line can be added later without renaming history.
+- `mobile-ios-v1.0.1-build.24` is a **prerelease**: FINISHED iOS production build 24 of version 1.0.1. `<n>` is the store build number from the finished build's metadata, so the tag and the phone agree.
+- `mobile-ios-v1.0.1` is a **release**: the iOS version Apple confirmed live. It sits on the same commit as the last `-build.<n>` prerelease of that version, and it is cut only after confirmed public store-live state at the exact built sha.
+- `mobile-android-v<version>[-build.<n>]` mirrors iOS against Google Play: prereleases are FINISHED Android production builds (each submitted to the Play Internal track only), releases are versions Play confirmed live.
 - `web-v1.2.0` is a **release**: the batch of web PRs deployed to production from that commit.
 - Any other suffix (`-rc.1`, `-alpha.2`) is a prerelease. Plain `X.Y.Z` is the only release shape.
+- Bare `mobile-v*` (no platform) is the pre-platform grammar. Those tags are immutable history — never move, repurpose, or re-cut them. They survive only as explicit notes boundaries for the first iOS releases (below).
 
 ## What each line follows
 
 | Line | Version source | Prerelease trigger | Release trigger | Commit |
 | --- | --- | --- | --- | --- |
-| mobile | `apps/mobile/app.json` `expo.version` | EAS production build `FINISHED` | App Store version `READY_FOR_SALE` | the `main` sha the EAS run built |
+| mobile-ios | finished iOS build metadata (`appVersion`; dynamic app config is supporting evidence only) | production workflow after a `FINISHED` build, automatic | Apple confirms the version live | the `main` sha the run built |
+| mobile-android | finished Android build metadata (`appVersion`; dynamic app config is supporting evidence only) | production workflow after a `FINISHED` build, automatic | Play confirms the version live | the `main` sha the run built |
 | web | the tag itself | none | a named batch of merged PRs, weekly at most | the sha Vercel production serves |
 
 The web line starts at `web-v1.0.0` on the first tag, whatever `package.json` says; `package.json` versions on Andes web apps are cosmetic and are not bumped by releases.
 
+The app version is read from the repo's dynamic app config (`app.json`, `app.config.*`, or finished-build metadata) — never inferred live from a missing `app.json`.
+
+## Build vs submission vs store-live
+
+Three separate evidence states, three separate pieces of evidence:
+
+1. **Build**: the production run built a `FINISHED` binary for the exact source sha (build ID, artifact URL, fingerprint hash).
+2. **Submission**: the binary reached its internal destination (TestFlight, Play Internal track; submission IDs).
+3. **Store-live**: the store confirmed the version public (App Store `READY_FOR_SALE` / confirmed listing, Play confirmed live; receipt links).
+
+A finished build is never a store receipt and an internal submission is never public-live. The published tag records the tag the workflow cut; it never declares store truth. Never infer actual store state from the latest tag, the app config, or the branch tip.
+
 ## GitHub Release fields
 
-- Title: `<Product> <version>` for releases, `<Product> <version> (<n>) · TestFlight` for prereleases, `<Product> web <version>` for web.
-- Notes: `gh release create <tag> --generate-notes --notes-start-tag <previous tag on the same line>`. The start tag is the previous tag of the same line and shape (prerelease compares to the previous prerelease or release of that line, release compares to the previous release of that line), so a mobile note never lists web PRs.
-- `--prerelease` whenever the tag carries a suffix. `--latest` is left to GitHub's default (the newest non-prerelease across both lines); nothing forces it.
+- Title: `<Product> iOS <version>` / `<Product> Android <version>` for releases, `<Product> iOS <version> (<n>)` / `<Product> Android <version> (<n>)` for prereleases, `<Product> web <version>` for web.
+- Notes: `gh release create <tag> --generate-notes --notes-start-tag <previous tag on the same line>`. The start tag is the previous tag of the same platform line and shape (prerelease compares to the previous prerelease or release of that line, release compares to the previous release of that line), so an iOS note never lists Android or web PRs.
+- First-line boundaries: the first iOS stable release starts notes explicitly at `mobile-v1.0.1` and the first iOS build explicitly at `mobile-v1.0.1-build.24`. First Android build and stable releases use explicit initial-release notes (no previous platform tag exists). Subsequent releases use their own platform line; GitHub latest is never an implicit boundary.
+- `--prerelease` whenever the tag carries a suffix. `--latest` is left to GitHub's default (the newest non-prerelease across all lines); nothing forces it.
 - Assets: none. Binaries live in EAS and the stores; web lives on Vercel.
 
 ## Why this shape
 
-It is T3 Code's release model with the parts Andes does not need removed. They tag `vX.Y.Z`, one workflow builds artifacts and publishes one GitHub Release with generated notes pinned to the previous tag in the same channel, suffixed tags become prereleases, and the hosted web deploys only after the release exists. Their mobile app has no GitHub Release; the store is its record. Removed here: nightlies (no nightly audience), the finalize job that commits package versions back, hosted channel routing, and desktop artifacts. Added: the line prefix, because one Andes repo ships web and mobile on different rhythms, and the TestFlight prerelease, because for a store app the build is the thing users test.
+It is T3 Code's release model with the parts Andes does not need removed. They tag `vX.Y.Z`, one workflow builds artifacts and publishes one GitHub Release with generated notes pinned to the previous tag in the same channel, suffixed tags become prereleases, and the hosted web deploys only after the release exists. Their mobile app has no GitHub Release; the store is its record. Removed here: nightlies (no nightly audience), the finalize job that commits package versions back, hosted channel routing, and desktop artifacts. Added: the platform line prefix, because one Andes repo ships iOS, Android, and web on different rhythms, and the per-platform build prereleases, because for a store app the finished binary is the thing users test — while only the store can say it is live.

@@ -1,4 +1,4 @@
 interface:
   display_name: "Andes release"
-  short_description: "Tag and publish GitHub Releases that match the stores and production"
+  short_description: "Tag and publish GitHub Releases on separate iOS, Android, and web lines"
   default_prompt: "Use $andes-release to cut the release for this build"
