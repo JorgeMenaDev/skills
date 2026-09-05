@@ -2,7 +2,7 @@
 
 Done once per repo, as one PR. Completion: a pushed test tag produces a GitHub Release, and the real releases the repo already shipped exist as tags.
 
-Before touching a repo that already cuts releases, inspect its release grammar and workflow first. A repo on a different grammar gets a deliberate install migration — new workflow, backfill, docs — before any new tag. Never silently migrate by tagging, and never add a compatibility fallback that cuts old-grammar tags.
+Before touching a repo that already cuts releases, inspect its release grammar and workflow first. A repo on a different grammar gets a deliberate install migration — new workflow, backfill, docs — before any new tag. Identify repo-owned legacy notes anchors (or confirm none exist) before generating the workflow. This migration preserves historical tags and duplicates no recorded versions; a deliberately requested different migration needs its own explicit plan. Never silently migrate by tagging, and never add a compatibility fallback that cuts old-grammar tags.
 
 ## 1. The release workflow
 
@@ -13,6 +13,9 @@ name: Release
 on:
   push:
     tags: ["mobile-ios-v*", "mobile-android-v*", "web-v*"]
+concurrency:
+  group: release-${{ github.ref_name }}
+  cancel-in-progress: false
 permissions:
   contents: write
 jobs:
@@ -24,10 +27,28 @@ jobs:
       - name: Refuse tags off main
         run: git merge-base --is-ancestor "$GITHUB_SHA" origin/main
       - name: Publish
-        env: { GH_TOKEN: "${{ github.token }}" }
+        env:
+          GH_TOKEN: "${{ github.token }}"
+          # Repo-owned migration anchors; empty for repos with no legacy history.
+          IOS_ANCHOR: ""
+          IOS_BUILD_ANCHOR: ""
+          ANDROID_ANCHOR: ""
+          ANDROID_BUILD_ANCHOR: ""
         run: |
           set -euo pipefail
+          # Validate all configured anchors before publication, even if not used today.
+          for anchor in "$IOS_ANCHOR" "$IOS_BUILD_ANCHOR" "$ANDROID_ANCHOR" "$ANDROID_BUILD_ANCHOR"; do
+            if [[ -n "$anchor" ]]; then
+              git rev-parse --verify "refs/tags/$anchor^{commit}" >/dev/null || {
+                echo "Missing or non-commit configured anchor: $anchor" >&2; exit 1;
+              }
+            fi
+          done
           tag="$GITHUB_REF_NAME"
+          source="$(git rev-parse --verify "$GITHUB_SHA^{commit}")"
+          [[ "$(git rev-parse --verify "refs/tags/$tag^{commit}")" == "$source" ]] || {
+            echo "Tag source mismatch: $tag" >&2; exit 1;
+          }
           line="${tag%%-v*}"
           version="${tag#*-v}"
           shape="release"; [[ "$version" == *-* ]] && shape="prerelease"
@@ -40,22 +61,34 @@ jobs:
           else
             prev="$(git tag -l "${line}-v*" --sort=-v:refname | grep -E "^${line}-v[0-9]+(\.[0-9]+){1,2}$" | grep -v "^${tag}$" | head -1 || true)"
           fi
-          if [[ -z "$prev" && "$line" == mobile-ios ]]; then
-            prev=mobile-v1.0.1
-            [[ "$shape" == prerelease ]] && prev=mobile-v1.0.1-build.24
+          if [[ -z "$prev" ]]; then
+            case "$line/$shape" in
+              mobile-ios/release) prev="$IOS_ANCHOR" ;;
+              mobile-ios/prerelease) prev="$IOS_BUILD_ANCHOR" ;;
+              mobile-android/release) prev="$ANDROID_ANCHOR" ;;
+              mobile-android/prerelease) prev="$ANDROID_BUILD_ANCHOR" ;;
+            esac
           fi
           args=(--title "$tag")
-          if [[ -z "$prev" && "$line" == mobile-android ]]; then
-            args+=(--notes "Initial Android release. Source: $GITHUB_SHA. Build and submission evidence is recorded in the production run; store receipt remains manually verified.")
+          if [[ -z "$prev" && "$line" == mobile-* ]]; then
+            args+=(--notes "Initial $line release. Source: $source. Build and submission evidence is recorded in the production run; store receipt remains manually verified.")
           else
             args+=(--generate-notes)
           fi
           [[ -n "$prev" ]] && args+=(--notes-start-tag "$prev")
           [[ "$shape" == prerelease ]] && args+=(--prerelease)
-          gh release create "$tag" "${args[@]}"
+          if published_shape="$(gh release view "$tag" --json isPrerelease --jq .isPrerelease)"; then
+            expected=false; [[ "$shape" == prerelease ]] && expected=true
+            [[ "$published_shape" == "$expected" ]] || {
+              echo "Existing release shape mismatch: $tag" >&2; exit 1;
+            }
+            echo "Already published: $tag"; exit 0
+          fi
+          # --verify-tag refuses a missing remote tag; it never invents one at main.
+          gh release create "$tag" --verify-tag "${args[@]}"
 ```
 
-The title can be prettified per repo (`Andy Partner iOS 1.0.1 (24)`); the tag stays the contract. The published tag records the tag the workflow cut — build vs submission vs store-live state lives in the production run summary and the ticket, never in the release title. The `mobile-v*` fallbacks above are the historical first-iOS boundary, not a second grammar: nothing in this file may create a bare `mobile-v*` tag.
+The title can be prettified per repo (`Andy Partner iOS 1.0.1 (24)`); the tag stays the contract. The published tag records the tag the workflow cut — build vs submission vs store-live state lives in the production run summary and the ticket, never in the release title. For Andy only, configure `IOS_ANCHOR=mobile-v1.0.1` and `IOS_BUILD_ANCHOR=mobile-v1.0.1-build.24`; these existing legacy tags are notes boundaries, never new tags. Other repos supply their own anchors or leave them empty. Validate every configured anchor with `git rev-parse --verify "refs/tags/$anchor^{commit}"` before any tag mutation. First mobile releases without history get explicit provenance notes; web keeps generated notes even without a previous tag.
 
 ## 2. Tagging from the production workflow
 
@@ -73,23 +106,31 @@ The stable tags (`mobile-ios-v<version>`, `mobile-android-v<version>`) stay manu
 
 ## 3. Backfill
 
-Create the tags for releases that already happened, oldest first, so generated notes have a start tag:
+Backfill only genuinely unrecorded shipped versions: check all historical grammars first. A version already recorded under `mobile-v*` stays there and supplies a notes boundary; do not relabel it under `mobile-ios-v*`. Andy therefore backfills no historical mobile tags in this migration. Old tags are never moved or duplicated. For an unrecorded stable version, verify its public store receipt and exact approved build metadata first; a newer build is irrelevant.
+
+Example for a repo whose iOS 1.2.0 shipped but has no stable tag under any grammar. Set `APPROVED_SHA` from that approved build's metadata, and validate configured anchors before running:
 
 ```bash
-# SHA = sha of the approved 1.0 build
-git tag mobile-ios-v1.0 "$SHA" && git push origin mobile-ios-v1.0
+set -euo pipefail
+TAG=mobile-ios-v1.2.0
+SHA="$(git rev-parse --verify "${APPROVED_SHA:?approved build source required}^{commit}")"
+git fetch origin --tags
+git merge-base --is-ancestor "$SHA" origin/main
+if git show-ref --verify --quiet "refs/tags/$TAG"; then
+  [[ "$(git rev-parse "refs/tags/$TAG^{commit}")" == "$SHA" ]] || exit 1
+else
+  git tag "$TAG" "$SHA"
+  git push origin "refs/tags/$TAG"
+fi
 ```
 
-Tag only what really shipped: store-live versions and the current build of each platform. Old builds nobody can install are history, not releases. Never move or re-cut the pre-platform `mobile-v*` tags; the first iOS notes start explicitly at them, and the first Android notes are explicit initial-release notes.
+Binary tags remain production-workflow owned: recover the exact FINISHED build there, never hand-cut a duplicate. Both backfill and recovery distinguish tag identity from publication:
 
-A backfill tag never triggers `release.yml`: GitHub runs the workflow file that exists **at the tagged commit**, and those commits predate it. Create each backfill release directly, oldest first, with the same flags the workflow would use:
+1. Inspect `git cat-file -e "$SHA:.github/workflows/release.yml"` to establish workflow presence at the tagged commit. Presence alone proves neither triggering nor success; a commit predating the workflow cannot run that absent workflow.
+2. Check `gh release view "$TAG"` and the actual release workflow runs for this tag/source (`gh run list --workflow release.yml`, then `gh run view <run-id>`). Wait for queued/in-progress publishers; inspect failures and prefer rerunning the failed publication job. Do not race a workflow with manual publication. An authentication/network error is not proof the Release is absent.
+3. Only after confirming the Release is missing and no publisher is active or pending, recover publication using the exact **Publish** Bash body above (including its anchor environment), preceded by the off-main guard. Set `GITHUB_REF_NAME="$TAG"` and `GITHUB_SHA="$SHA"` from verified provenance, not the branch tip. It verifies the existing local tag's exact source, checks existing publication/shape, and uses `gh release create "$tag" --verify-tag` with the same notes/shape flags. A missing remote tag refuses publication; recover tag creation in its owning flow first. Never move an existing tag to repair publication.
 
-```bash
-gh release create mobile-ios-v1.0.1 --title "<Product> iOS 1.0.1" --generate-notes --notes-start-tag mobile-v1.0.1
-gh release create mobile-ios-v1.0.1-build.25 --title "<Product> iOS 1.0.1 (25)" --prerelease --generate-notes --notes-start-tag mobile-v1.0.1-build.24
-```
-
-The first tag at or after the commit that added the workflow is the one that proves it end to end.
+A successful actual run plus the matching GitHub Release proves the workflow end to end. Record both links; workflow presence or a same-SHA tag alone does not.
 
 ## 4. Document
 
