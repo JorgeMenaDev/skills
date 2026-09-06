@@ -14,6 +14,7 @@ Install: [docs.andypartner.com](https://docs.andypartner.com) / [app.andypartner
 
 - An API key is pinned to one Workspace. `get_context` shows the selection.
 - Content posts need `content:read` and `content:write`. Older `marketing:*` keys return 403 on `list_posts` and `manage_post`.
+- Conditional scopes ride on top of that base: `content:schedule` to schedule, `content:publish` to publish now, `content:approve` plus `content:schedule` to approve. Without the matching scope the call is refused — mint or pick a key that carries it.
 - `list_connections` needs `content:connections`. If that call is 403, recover `connectionId` from a `list_posts` row that already used the destination.
 - Pick the destination by human label (`@handle`, page name), never by inventing an id.
 
@@ -43,6 +44,8 @@ Upload one PNG/JPEG image (up to 3 MB raw) as JSON-transport bytes:
 1. `manage_media` `{action:"upload_bytes", bytesBase64, contentType, fileName}` → reusable photo Media Asset (replaying the same idempotency key and bytes returns the same asset)
 2. `manage_media` `{action:"inspect", assetId}` → read it back
 3. Pass its id as `mediaAssetId` on `manage_post` create — on `x`, `linkedin`, or `instagram` alike
+
+Floors differ by action: `upload_bytes` needs Owner/Admin (a member key gets `permission_denied`); `list` and `inspect` need only `content:read`, so a member agent can read back an asset it is entitled to see.
 
 Instagram requires an image Media Asset (`instagram_media_required`, non-image kinds are `instagram_media_unsupported`); X and LinkedIn carry an image optionally. The App and CLI keep the direct-upload door (`content media upload-prepare` → PUT bytes to the upload URL → `content media upload-complete`); use it only when the operator supplied a file outside MCP.
 

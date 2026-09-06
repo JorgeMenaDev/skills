@@ -15,8 +15,9 @@ Draft and publish through [Andy MCP](https://docs.andypartner.com). The operator
 
 ## Contract
 
-- Raw idea → 2-3 distinct drafts → operator picks one → stop. Creating a post before the pick is the failure this gate prevents.
-- Saving never implies publication. After the pick, the default is a draft waiting in Por aprobar: `manage_post` `{action:"create", channel, text, connectionId}` with the intent omitted (it defaults to `request_approval`, always `pending_approval`, no dispatch).
+- A raw idea with no save instruction → 2-3 distinct drafts → operator picks one → stop. Creating a post before the pick is the failure this gate prevents.
+- An explicit save request skips the ritual entirely: when the operator supplies the exact text, or names previously chosen copy and asks to save it as a draft, save it directly with the intent omitted (it defaults to `request_approval`, always `pending_approval`, no dispatch). A `pending_approval` draft is not a public position, so the 2-3 options and the pick do not apply. The ritual still applies before any `schedule` or `publish_now`.
+- When the act is already explicit (draft, schedule, or publish now), do not ask which one. When it is not explicit, default safely to a draft.
 - A live publish is a public position. Schedule or publish only when the operator explicitly names it ("schedule it", "publish now") and holds the grant: Owner/Admin, or a Workspace API key with the matching scope. Members can only leave drafts for approval.
 - Prefer native Andy tools when `manage_post` is on this session. Otherwise use a workspace API key against `https://app.andypartner.com/api/mcp`. Lane facts: [references/lane.md](references/lane.md).
 - Voice: load the host's voice or brand notes if they exist. Else write as the operator talks. `manage_brand` `inspect_voice` is a floor, not a replacement for the operator's corrections.
@@ -33,9 +34,9 @@ If `manage_post` is not on this session, read `references/lane.md` before the fi
 ## Steps
 
 1. Call `get_context`. Done when one Workspace is selected. If several are listed, ask which one.
-2. Turn the raw idea into 2-3 drafts that are different approaches, not rewords. Recommend one. Match the destination register (X short, LinkedIn a short story).
-3. **STOP.** Show numbered drafts. Wait for the pick. Writing `manage_post` create here is the failure this gate prevents.
-4. After pick: resolve the destination from `list_connections`, or from a `list_posts` row when connections are not authorized. Ask which act they want when it is not already explicit — draft (default), schedule, or publish now — then call `manage_post`:
+2. If the operator gave a raw idea with no save instruction, turn it into 2-3 drafts that are different approaches, not rewords. Recommend one. Match the destination register (X short, LinkedIn a short story).
+3. **STOP — raw ideas only.** Show numbered drafts. Wait for the pick. Writing `manage_post` create here is the failure this gate prevents. Skip this stop when the operator already supplied the exact text or named chosen copy to save: go straight to step 4.
+4. Save, schedule, or publish the chosen or supplied text: resolve the destination from `list_connections`, or from a `list_posts` row when connections are not authorized. When the act is already explicit, use it; otherwise save a draft. Then call `manage_post`:
    - Draft: `{action:"create", channel, text, connectionId}` (intent omitted → `request_approval`). An optional future `scheduledAt` (epoch ms) is only a proposal; approval still needs its own explicit date.
    - Schedule: `{action:"create", channel, text, connectionId, intent:"schedule", scheduledAt}` with an explicit future `scheduledAt`. Owner/Admin or `content:schedule` scope.
    - Publish now: `{action:"create", channel, text, connectionId, intent:"publish_now"}` and no `scheduledAt`. Owner/Admin or `content:publish` scope.
