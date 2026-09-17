@@ -104,6 +104,13 @@ case "$command" in
         git -C "$repo_root" worktree add --detach "$worktree" "$base_ref"
       else
         git -C "$repo_root" worktree add "$worktree" -b "$slug" "$base_ref"
+        # `worktree add -b <new> <path> <remote-tracking-start>` can leave the
+        # new branch tracking that start point. When <base_ref> is origin/main
+        # that points a later `git push` at the default branch: on 2026-09-17 a
+        # shipyard worktree in Arketix/acredix came up with upstream=origin/main,
+        # where a plain push would have aimed at production. Leave the branch
+        # untracked until its first `git push -u`.
+        git -C "$worktree" branch --unset-upstream >/dev/null 2>&1 || true
       fi
       echo "WORKTREE_CREATED: $worktree @ $(git -C "$worktree" rev-parse --short HEAD)"
     else
