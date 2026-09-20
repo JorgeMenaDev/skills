@@ -20,16 +20,6 @@ npx skills@latest add JorgeMenaDev/skills
 
 Most people begin with **`seo-growth-workspace`**. For unattended multi-phase shipping, add **`shiploop`**. When the question is where a plan should live, use **`work-tracking`**. To publish through Andy MCP, add **`andy-post`**.
 
-### `operator-handoff`
-
-A job-file handoff protocol between a requesting agent and the Operator — a human-supervised computer-use agent on a real desktop/browser. Jobs, reports, and evidence live in `.agents/operator/`; a per-repo `HOST.md` carries the machine-, account-, and repo-specific facts so the skill itself stays portable.
-
-Use it when a task needs real clicks or credentials the agent doesn't hold: desktop app setup, third-party dashboards, OAuth consents, captchas, 2FA, Gherkin QA runs, or delegated implementation of fully-designed code slices.
-
-```bash
-npx skills@latest add JorgeMenaDev/skills --skill operator-handoff
-```
-
 ### `counsel`
 
 A two-vendor adversarial review protocol for hard-to-reverse architecture or design decisions. Two flagship reviewers from different vendors attack a file-backed proposal in parallel; the chair synthesizes, revises, and re-convenes for up to three rounds. A one-vendor run is a *second opinion*, not counsel. Runtime launch adapters stay consumer-local (e.g. Claude Code `.claude/skills/counsel/`).
@@ -125,7 +115,6 @@ All skills below are **model-invoked** — the agent can reach for them when the
 
 ### Agent Operations
 
-- **[operator-handoff](./skills/agent-operations/operator-handoff/SKILL.md)** — Job-file handoff between a requesting agent and a human-supervised computer-use Operator: jobs, reports, evidence trails, and a per-repo `HOST.md` host profile.
 - **[orchestrate](./skills/agent-operations/orchestrate/SKILL.md)** — Conduct multi-agent work from a human-readable plan or a GitHub-autopilot spec: capability-aware frontier dispatch, isolated ticket PRs, conductor review gates, and verified integration.
 - **[crew-dispatch](./skills/agent-operations/crew-dispatch/SKILL.md)** — Crew-first task dispatch with a durable `crew/<id>/` record, plus detached completion supervision: the crew reports its terminal status and wakes its supervisor after the launching turn ends (T3/Codex runtime reference included).
 - **[source-to-system](./skills/agent-operations/source-to-system/SKILL.md)** — Turn external material into one evidence-backed, owned system improvement or an explicit no-change decision.

@@ -9,8 +9,8 @@
     },
     {
       "title": "Agent Operations",
-      "description": "Skills for evidence-backed system routing, agent and human handoffs, and delegated execution.",
-      "skills": ["operator-handoff", "counsel", "orchestrate", "source-to-system", "crew-dispatch"]
+      "description": "Skills for evidence-backed system routing, computer use and delegated execution.",
+      "skills": ["counsel", "orchestrate", "source-to-system", "crew-dispatch"]
     },
     {
       "title": "Software Development",

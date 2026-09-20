@@ -71,7 +71,7 @@ Full 25-item scorecard verified against the tree with file:line evidence; summar
 
 ### Dry runs — where a real agent actually stalls
 
-All three realistic requests fail at the **same seam**: the skill has no model of **{site → target-root → GSC property string → credential location}** — exactly the seam `operator-handoff` solved with HOST.md and `afk-pipeline` with REGISTRY.md.
+All three realistic requests fail at the **same seam**: the skill has no model of **{site → target-root → GSC property string → credential location}** — exactly the seam `afk-pipeline` solved with REGISTRY.md.
 
 - **(a) "audit the SEO of andesphere.com"** — user gives a *domain*; the skill is repo-centric. Nothing maps domain→repo. GSC access is assumed, never discovered (no "check existing creds before initiating OAuth" step). The GSC property-string form (`sc-domain:andesphere.com` vs `https://andesphere.com/`) is never shown despite causing silent 403s.
 - **(b) "my traffic dropped on superaseo"** — the description advertises the trigger, but **neither the mode table nor Scenario Routing has a drop row**. The correct playbook (branded split, AI-Overviews impressions-up/clicks-down pattern, core-update annotation) already exists at `search-console.md:20-24` — it's just unrouted. The content-engine regression path (articles stopped deploying, sitemap broke) surfaces only if the agent happens to enter `operate`.
@@ -291,7 +291,7 @@ HOW: preflight block in `search-console.md`: check `GSC_CREDENTIALS_DIR` → `GS
 Impact: kills the most frequent mid-run stall. Effort: **S**. Routing: portable skill.
 
 **I9. Portfolio registry — shape in the skill, filled map in the consumer.**
-WHY: the shared root cause of all three dry-run failures; "which site deserves the next SEO hour" is unanswerable across 5+ live workspaces. The exact seam operator-handoff solved with HOST.md and afk-pipeline with REGISTRY.md.
+WHY: the shared root cause of all three dry-run failures; "which site deserves the next SEO hour" is unanswerable across 5+ live workspaces. The exact seam afk-pipeline solved with REGISTRY.md.
 HOW: new `references/portfolio-registry.md` defining the row shape + "on any multi-site or by-name ask, read the registry first"; matias gets `.agents/seo/REGISTRY.md` with six filled rows (credential *folder names* only — values stay in `credentials/`).
 Impact: portfolio addressability. Effort: **M** (skill) + **S** (consumer). Routing: **split**.
 
