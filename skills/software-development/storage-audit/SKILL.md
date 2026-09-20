@@ -1,7 +1,7 @@
 ---
 name: storage-audit
 description: Reclaim disk on Jorge's Mac mini with scripts/storage-hygiene.sh — worktrees, build and dependency caches, T3 Code thread history, Xcode data, tool caches. Use when free space is low, Jorge asks to clean up space, or the storage-hygiene cron needs diagnosis.
-version: 5.1.1
+version: 5.2.0
 mutating: true
 writes_to: ["registered git worktrees (clean, backed, idle)", "node_modules/.next/.turbo build state", "~/.t3/userdata/state.sqlite (old thread rows)", "Xcode DerivedData and simulator device data", "tool and package caches", "session and log churn", "~/.hermes/state/storage-hygiene/"]
 ---
@@ -76,15 +76,23 @@ literally before repeating it:
 | Scratch clones | `~/.btca/agent/sandbox`, `~/dev/.temp`, `~/dev/code2` idle 3h, only with inspectable Git state and no dirty, unpushed or stashed changes |
 | Xcode | stale `DerivedData/AndyPartnerDev-*` siblings idle 3h with no owning process/open file and Xcode closed; all of DerivedData idle 24h; unavailable simulators deleted, shutdown ones erased when idle 24h and over 200 MiB; superseded iOS runtimes |
 | Tool caches | Google, t3code-updater, bun, ReactNative, Cursor ShipIt at 3h; CocoaPods, Homebrew, npm cacache, Convex at 72h; `uv` cache pruned with `--cache-dir` pinned to the inspected path (never whole-deleted; observed 2026-09-20: 3.2 GiB logical prune, ~0 physical — unreachable objects shared blocks with live venvs via hardlinks, so count the gain as logical until `df` says otherwise) idle 3h with no owning process/open file; superseded Claude, Cursor and agent-browser versions idle 3h with no owning process/open file; runner `_work` when no `Runner.Worker` |
+| Missed package/build caches | Each pnpm store version idle 72h, pruned by an installed executable whose `store path --store-dir` matches it exactly; no package operation or open owner. Electron, Sentry React Native, node-gyp, pip, Puppeteer downloads and Cursor `CachedData` idle 72h. Helium Sparkle and GoogleUpdater `crx_cache` downloads idle 3h. Bun extraction temp directories require the exact staging-name pattern, matching package.json, no Git checkout or package operation, and 3h idle. All retain the process/open-file guards |
 | Local TM snapshots | always, all of them: the destination is retired and every snapshot pins deleted bytes |
 
-Out of scope, and never folded into a run: Application Support (Codex, T3, Cursor auth and state),
+Out of scope, and never folded into a run: Application Support except the two exact cache paths above (Codex, T3, Cursor auth and state stay protected),
 Chrome profiles, `~/Documents`, Screen Studio projects, `credentials/`, the vault, the selected
 Xcode and its current iOS runtime, Hermes `state.db` (reported by size only), `Library/Caches/dotslash` (App Management blocks unattended deletion).
 
 ## Still below target after a run
 
-Work the levers in this order; each is a fact the log already printed.
+First measure a ranked directory budget beyond the script's candidate list. A successful
+run proves only that its known classes completed. Inspect large omitted directories,
+separate regenerable artifacts from protected source/state, and reclaim proven idle
+classes before proposing interruption. Historical zero-gain results do not exempt a
+path from fresh evidence: pnpm on PATH may inspect a different store version than the
+one holding the bytes. Match the reported store path before accepting a prune result.
+
+For what remains, use the log's measured constraints:
 
 1. **Swap and uptime.** Multi-day uptime holds several GiB of swap; the release is a reboot after
    stopping live dev loops. Say so in the report.
@@ -104,9 +112,8 @@ Work the levers in this order; each is a fact the log already printed.
 4. **Protected worktrees.** List each protected worktree with its size, reason and
    `ahead=/uncommitted=` numbers. `ahead=unknown` is not zero. Preserve the work unless its
    recovery or discard is authorized; do not force past the guard to reach the target.
-5. **Do not re-open** (measured and refuted, see vault `context/mac-mini-storage.md`): pnpm store
-   prune, cold files, duplicate apps, source-code volume, the mounted simulator volume (a view of
-   the 7.9 GiB asset, not extra bytes).
+5. **Avoid double counting:** hardlinks and APFS clones need a physical `df` check;
+   a mounted simulator volume is a view of its asset, not additional reclaimable bytes.
 
 ## Report
 
