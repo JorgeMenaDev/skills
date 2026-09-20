@@ -1,7 +1,7 @@
 ---
 name: storage-audit
 description: Reclaim disk on Jorge's Mac mini with scripts/storage-hygiene.sh — worktrees, build and dependency caches, T3 Code thread history, Xcode data, tool caches. Use when free space is low, Jorge asks to clean up space, or the storage-hygiene cron needs diagnosis.
-version: 5.2.0
+version: 5.2.1
 mutating: true
 writes_to: ["registered git worktrees (clean, backed, idle)", "node_modules/.next/.turbo build state", "~/.t3/userdata/state.sqlite (old thread rows)", "Xcode DerivedData and simulator device data", "tool and package caches", "session and log churn", "~/.hermes/state/storage-hygiene/"]
 ---
@@ -69,7 +69,7 @@ literally before repeating it:
 | Class | Retired when |
 |---|---|
 | Git worktrees | linked worktree, clean, current HEAD contained by a current origin branch tip or exactly matching a merged PR head, synthetic markers for any local Convex state, no owning process/open file, idle past the gate including creation time |
-| `node_modules`, `.next`, `.turbo` | `node_modules` only inside linked worktrees (main checkouts keep theirs), lockfile-backed, no process on the checkout, idle 24h or 3h aggressive; `.next` and `.turbo` anywhere idle 3h; `.next/cache` and `.next/dev` go even when `.next` is protected |
+| `node_modules`, `.next`, `.turbo` | `node_modules` only inside linked worktrees (main checkouts keep theirs), lockfile-backed, no process on the checkout, idle 24h or 3h aggressive; untracked `.next` and `.turbo` idle 3h; unrelated dirty source does not protect generated `.next`, but tracked output, failed Git inspection and active checkouts do; `.next/cache` and `.next/dev` retain their own idle/open checks |
 | T3 Code thread history | rows of threads settled more than 2 days ago that are not unsettled, snoozed, pinned or archived: events, activities, messages, sessions. T3 never prunes these itself |
 | OpenCode sessions | sessions not updated for 2 days, with their events, messages and parts (`~/.local/share/opencode/opencode.db`). Same file-shrink rule as T3; inspect all OpenCode owners, including instances outside the visible T3 app |
 | Local DBs and churn | `.convex/local` explicitly marked `synthetic`, in a known checkout, idle 24h, with no owning process or open file; Codex and Grok sessions, OpenCode and Hermes logs older than 3d; Codex log DB when not open |
