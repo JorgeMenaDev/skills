@@ -1,7 +1,7 @@
 ---
 name: storage-audit
 description: Reclaim disk on Jorge's Mac mini with scripts/storage-hygiene.sh — worktrees, build and dependency caches, T3 Code thread history, Xcode data, tool caches. Use when free space is low, Jorge asks to clean up space, or the storage-hygiene cron needs diagnosis.
-version: 5.1.0
+version: 5.1.1
 mutating: true
 writes_to: ["registered git worktrees (clean, backed, idle)", "node_modules/.next/.turbo build state", "~/.t3/userdata/state.sqlite (old thread rows)", "Xcode DerivedData and simulator device data", "tool and package caches", "session and log churn", "~/.hermes/state/storage-hygiene/"]
 ---
@@ -75,7 +75,7 @@ literally before repeating it:
 | Local DBs and churn | `.convex/local` explicitly marked `synthetic`, in a known checkout, idle 24h, with no owning process or open file; Codex and Grok sessions, OpenCode and Hermes logs older than 3d; Codex log DB when not open |
 | Scratch clones | `~/.btca/agent/sandbox`, `~/dev/.temp`, `~/dev/code2` idle 3h, only with inspectable Git state and no dirty, unpushed or stashed changes |
 | Xcode | stale `DerivedData/AndyPartnerDev-*` siblings idle 3h with no owning process/open file and Xcode closed; all of DerivedData idle 24h; unavailable simulators deleted, shutdown ones erased when idle 24h and over 200 MiB; superseded iOS runtimes |
-| Tool caches | Google, t3code-updater, bun, ReactNative, Cursor ShipIt at 3h; CocoaPods, Homebrew, npm cacache, Convex at 72h; `uv` cache pruned (never whole-deleted: its wheels are hardlinked into live venvs, so a tree rm frees almost nothing physical) idle 3h with no owning process/open file; superseded Claude, Cursor and agent-browser versions idle 3h with no owning process/open file; runner `_work` when no `Runner.Worker` |
+| Tool caches | Google, t3code-updater, bun, ReactNative, Cursor ShipIt at 3h; CocoaPods, Homebrew, npm cacache, Convex at 72h; `uv` cache pruned with `--cache-dir` pinned to the inspected path (never whole-deleted; observed 2026-09-20: 3.2 GiB logical prune, ~0 physical — unreachable objects shared blocks with live venvs via hardlinks, so count the gain as logical until `df` says otherwise) idle 3h with no owning process/open file; superseded Claude, Cursor and agent-browser versions idle 3h with no owning process/open file; runner `_work` when no `Runner.Worker` |
 | Local TM snapshots | always, all of them: the destination is retired and every snapshot pins deleted bytes |
 
 Out of scope, and never folded into a run: Application Support (Codex, T3, Cursor auth and state),
