@@ -1,7 +1,7 @@
 ---
 name: grok-cli-runtime
 description: xAI Grok auth and quota doctrine for any harness that runs the `grok` binary — T3 Code's `grok` provider instance, a headless `grok -p` sidecar, or a cloud runner seeded from GROK_AUTH_B64. Use when a Grok run fails with 401, 402, or 403, when Grok output is empty or DOA, or before any `grok login`.
-version: 2.1.0
+version: 2.1.1
 mutating: true
 writes_to: ["~/.grok/auth.json during explicit auth recovery", "configured encrypted credential store during explicit deposition", "GROK_AUTH_B64 during explicit cloud seeding"]
 ---
@@ -10,12 +10,12 @@ writes_to: ["~/.grok/auth.json during explicit auth recovery", "configured encry
 
 Every lane runs the **same `grok` binary** against the same `$GROK_HOME` (default `~/.grok`) and the same xAI quota. T3 Code spawns it as `grok agent stdio` (ACP) for the `grok` provider instance; a headless sidecar runs `grok -p`. The transport differs — the auth file, the billing, and the failure codes below do not.
 
-**Invocation is not this skill's job.** Under t3-dispatch, T3 Code owns the process, session, and permissions: pick the `grok` row in `docs/agents/delegation.md`. This skill is what to do when that run comes back red.
+**Invocation is not this skill's job.** When T3 Code runs Grok, it owns the process, session, and permissions. This skill is what to do when that run comes back red.
 
 ## Read the failure code before you touch anything
 
 - **`401`** — missing or invalid authentication. Real auth problem; continue to the gate.
-- **`402 Payment Required`** (`Grok Build usage balance exhausted`) — **quota, not auth.** The credential is valid and there is nothing to recover: no probe, no rotation, and **never `grok login`**. Logging in again cannot buy quota, and it risks a working auth file to fix a billing condition. Read the reset time from the provider usage window and route the task to another `delegation.md` row until then.
+- **`402 Payment Required`** (`Grok Build usage balance exhausted`) — **quota, not auth.** The credential is valid and there is nothing to recover: no probe, no rotation, and **never `grok login`**. Logging in again cannot buy quota, and it risks a working auth file to fix a billing condition. Read the reset time from the provider usage window and route the task to another model until then.
 - **`403 permission-denied`** — xAI rejected the selected credential or team for that endpoint. Wrong principal/policy, a stale cloud seed, or transient provider-side state. It does **not** by itself prove a lapsed subscription.
 
 Auth precedence in the CLI: per-model `api_key` → per-model `env_key` → active session token → global `XAI_API_KEY`. A plain global key does **not** override a working OAuth session. Treat `auth.json` as an opaque whole file: never extract, merge, or document its fields.
