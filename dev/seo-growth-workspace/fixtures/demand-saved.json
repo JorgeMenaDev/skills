@@ -1,0 +1,52 @@
+{
+ "fetchedAt": "2026-09-22T10:00:00.000Z",
+ "mode": "volume",
+ "location": 2826,
+ "language": "en",
+ "keywords": [
+  "widget calculator",
+  "how to use widgets",
+  "obscure widget phrase"
+ ],
+ "minVolume": 0,
+ "response": {
+  "status_code": 20000,
+  "status_message": "Ok.",
+  "cost": 0.075,
+  "tasks": [
+   {
+    "status_code": 20000,
+    "status_message": "Ok.",
+    "cost": 0.075,
+    "result": [
+     {
+      "keyword": "widget calculator",
+      "search_volume": 1300,
+      "competition": "LOW",
+      "competition_index": 12,
+      "cpc": 1.25,
+      "monthly_searches": [
+       {
+        "year": 2026,
+        "month": 8,
+        "search_volume": 1600
+       },
+       {
+        "year": 2026,
+        "month": 7,
+        "search_volume": 1000
+       }
+      ]
+     },
+     {
+      "keyword": "how to use widgets",
+      "search_volume": null,
+      "competition": null,
+      "cpc": null,
+      "monthly_searches": null
+     }
+    ]
+   }
+  ]
+ }
+}

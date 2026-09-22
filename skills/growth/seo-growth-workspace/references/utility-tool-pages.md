@@ -1,6 +1,6 @@
 # Utility Tool Pages
 
-Use this with `content-ops` or `pseo-planning` when a product can ship small, indexable utility pages that satisfy search intent directly: calculators, converters, checkers, generators, formatters, analyzers, templates, curated examples, or public datasets.
+Use when a product can ship small, indexable utility pages that satisfy search intent directly: calculators, converters, checkers, generators, formatters, analyzers, templates, curated examples, or public datasets.
 
 ## Why This Works
 
@@ -68,7 +68,7 @@ Hub requirements:
 
 ## Verification
 
-Before handoff, record evidence in `.seo/audit.md` or `.seo/pseo/plan.md`:
+Before handoff, record evidence in the review report or the bet:
 
 - Preview/live URLs sampled.
 - Rendered title, H1, meta, canonical, and robots state.
@@ -86,7 +86,7 @@ Choose blog/content first when the query needs education, comparison, opinion, e
 
 ## Plan artifact
 
-Track a batch or tools hub in `.seo/pseo/utility-tool-plan.md` (or the ticket's report):
+Track a batch or tools hub in the bet's review report:
 
 ```md
 # Utility tool page plan — last updated YYYY-MM-DD

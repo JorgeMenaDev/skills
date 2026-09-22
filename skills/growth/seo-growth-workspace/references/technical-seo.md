@@ -1,6 +1,6 @@
 # Technical SEO
 
-Use for `technical-seo-fix` mode and for the first bootstrap audit. For multilingual or multi-region sites, also load `references/international-seo.md`.
+Use for `defect` candidates, technical bets and the first crawl during setup. For multilingual or multi-region sites, also load `references/international-seo.md`.
 
 ## Audit Checklist
 

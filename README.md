@@ -64,13 +64,13 @@ I built these skills to fix failure modes I keep seeing in AI growth and agent-o
 
 **The problem.** The internet already has enough SEO checklists. The useful work is deciding what matters for *this* business, *this* repo, *this* market, and *this* moment. Most agents skip that and optimize pages without understanding the business.
 
-**The fix** is **[`seo-growth-workspace`](./skills/growth/seo-growth-workspace/SKILL.md)** — gather context, inspect live and code evidence, and turn findings into a prioritized backlog instead of stopping at recommendations.
+**The fix** is **[`seo-growth-workspace`](./skills/growth/seo-growth-workspace/SKILL.md)** — pull live Search Console, result and demand evidence, pick one to three sized bets a week, ship them, and stop the lanes that do not earn clicks.
 
 <details>
-<summary>Example: recommendation vs ticket</summary>
+<summary>Example: recommendation vs bet</summary>
 
 - **Before:** "Improve meta descriptions across the blog."
-- **After:** A `.seo/backlog.md` ticket — target URL, rendered title/description evidence, business intent, one verification step, and a handoff note in `.seo/log.md`.
+- **After:** A `.seo/bets.md` bet: the query and page behind it, its search demand, a live result check, a size scenario, a check date and a kill rule.
 
 </details>
 
@@ -78,7 +78,7 @@ I built these skills to fix failure modes I keep seeing in AI growth and agent-o
 
 **The problem.** SEO compounds only when the next pass can trust the previous one. Without durable notes, agents re-audit the same surfaces, forget blockers, and repeat work that already failed.
 
-**The fix** is a predictable workspace. **`seo-growth-workspace`** bootstraps `.seo/` — context, backlog, audit evidence, reports, backlinks, decisions, and handoffs in files the next agent can find. **`work-tracking`** applies the same idea when the question is broader: repo markdown, GitHub Issues, Linear, or memory.
+**The fix** is a predictable workspace. **`seo-growth-workspace`** keeps `.seo/`: context, owner decisions, bets, a research log, reports and a short run log in files the next agent can find. **`work-tracking`** applies the same idea when the question is broader: repo markdown, GitHub Issues, Linear, or memory.
 
 ### #3: "Done" Meant a Doc, Not Live Proof
 
@@ -96,7 +96,7 @@ I built these skills to fix failure modes I keep seeing in AI growth and agent-o
 
 **The fix** is one current focus ticket, clear done criteria, and skills for the heavy lifts:
 
-- **`seo-growth-workspace`** — one high-leverage SEO action per pass, with handoff.
+- **`seo-growth-workspace`**: one to three sized bets a week, each with a check date and a kill rule.
 - **`shiploop`** — multi-phase shipping through GitHub issue ledgers, gated PRs, and worker adapters when the run must survive context loss.
 
 ### Summary

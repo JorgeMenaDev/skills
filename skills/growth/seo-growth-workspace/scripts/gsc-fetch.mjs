@@ -2,42 +2,39 @@
 
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 const PAGE_SIZE = 25000; // GSC searchAnalytics.query per-request maximum
 const DEFAULT_MAX_ROWS = 100000;
+export const DIMENSIONS = ["query", "page", "country", "device", "date", "searchAppearance"];
+const OPERATORS = ["equals", "notEquals", "contains", "notContains", "includingRegex", "excludingRegex"];
 
 function usage() {
   return `Usage:
-  GSC_ACCESS_TOKEN=<access-token> node gsc-fetch.mjs --site https://example.com/ --start 2026-01-01 --end 2026-03-31 [--dimensions query,page|page] [--output gsc.json] [--max-rows ${DEFAULT_MAX_ROWS}]
-
-  # Or use refresh-token auth from environment variables:
-  GSC_CLIENT_ID=... GSC_CLIENT_SECRET=... GSC_REFRESH_TOKEN=... node gsc-fetch.mjs --site https://example.com/ --start 2026-01-01 --end 2026-03-31 [--output gsc.json]
-
-  # Or point at a credential home (profile/agent creds outside the repo):
-  GSC_CREDENTIALS_DIR=~/creds/acme-gsc node gsc-fetch.mjs --site https://example.com/ --start 2026-01-01 --end 2026-03-31
-  node gsc-fetch.mjs --credentials-dir ~/creds/acme-gsc --site https://example.com/ --start 2026-01-01 --end 2026-03-31
+  GSC_CREDENTIALS_DIR=~/creds/acme-gsc node gsc-fetch.mjs --site sc-domain:example.com \\
+      --start 2026-01-01 --end 2026-03-31 [--dimensions query,page] [--filter page:contains:/blog/] \\
+      [--data-state final|all] [--output gsc.json] [--max-rows ${DEFAULT_MAX_ROWS}]
 
 --site accepts both GSC property forms: sc-domain:example.com (domain property) and
 https://example.com/ (URL-prefix property). The wrong form for the verified property yields a 403.
 
-Fetches Google Search Console searchAnalytics.query data. Defaults to query+page
-rows for opportunity analysis; use --dimensions page for page-dimensional metrics
-such as Organic Outcome Bridge joins. Search Console still returns top rows rather
-than a guaranteed complete dataset.
-Pages through results with startRow (25,000 rows per request) until the export is
-complete or --max-rows (default ${DEFAULT_MAX_ROWS}) is reached; a note is printed
-to stderr if the cap is hit.
+--dimensions  Comma list from: ${DIMENSIONS.join(", ")}. Default query,page.
+              Pass "none" for one aggregated totals row.
+--filter      dimension:operator:expression, repeatable (all filters must match).
+              Operators: ${OPERATORS.join(", ")}.
+--data-state  final (default, settled data) or all (includes fresh, still-changing days).
 
-Auth:
-  - Uses GSC_ACCESS_TOKEN first when present.
-  - Then --credentials-dir / GSC_CREDENTIALS_DIR: a directory holding file-shaped
-    client_secret.json (Google OAuth client JSON, "installed" or "web" shape) and
-    token.json (containing refresh_token). Prefer this over repo-local env files.
-  - Otherwise exchanges GSC_CLIENT_ID, GSC_CLIENT_SECRET, and GSC_REFRESH_TOKEN for an access token.
-  - Client secrets and refresh tokens are read from env vars or credential files, never from CLI flags.
-  - Required OAuth scope: webmasters.readonly.
-  - This script intentionally does not print credentials or token response bodies.
-  - For browser-only access, export manually and use gsc-opportunities.mjs instead.`;
+Search Console returns top rows, not a guaranteed complete dataset, and withholds
+anonymized queries. Pages through results (25,000 rows per request) until complete or
+--max-rows is reached; a note is printed to stderr if the cap is hit.
+
+Auth (first match wins):
+  - GSC_ACCESS_TOKEN.
+  - --credentials-dir / GSC_CREDENTIALS_DIR: a directory holding client_secret.json
+    (Google OAuth client, "installed" or "web" shape) and token.json (with refresh_token).
+  - GSC_CLIENT_ID + GSC_CLIENT_SECRET + GSC_REFRESH_TOKEN.
+  Secrets are read from env vars or credential files, never from CLI flags, and are never
+  printed. Required OAuth scope: webmasters.readonly. First-time setup: gsc-oauth.mjs.`;
 }
 
 function argValue(name) {
@@ -50,6 +47,14 @@ function argValue(name) {
   return value;
 }
 
+function argValues(name) {
+  const values = [];
+  process.argv.forEach((arg, index) => {
+    if (arg === name) values.push(process.argv[index + 1]);
+  });
+  return values;
+}
+
 async function readJsonFile(filePath) {
   const text = await readFile(filePath, "utf-8");
   try {
@@ -59,8 +64,6 @@ async function readJsonFile(filePath) {
   }
 }
 
-// Reads file-shaped OAuth credentials from a directory in a credential home:
-// client_secret.json ("installed" or "web" Google OAuth client) + token.json (refresh_token).
 async function credentialsFromDir(dir) {
   const clientRaw = await readJsonFile(path.join(dir, "client_secret.json"));
   const cfg = clientRaw.installed ?? clientRaw.web ?? clientRaw;
@@ -76,19 +79,16 @@ async function credentialsFromDir(dir) {
   return { clientId, clientSecret, refreshToken };
 }
 
-async function getAccessToken() {
+export async function getAccessToken(credentialsDir = process.env.GSC_CREDENTIALS_DIR) {
   if (process.env.GSC_ACCESS_TOKEN) return process.env.GSC_ACCESS_TOKEN;
 
   let clientId = process.env.GSC_CLIENT_ID;
   let clientSecret = process.env.GSC_CLIENT_SECRET;
   let refreshToken = process.env.GSC_REFRESH_TOKEN;
-
-  const credsDir = argValue("--credentials-dir") ?? process.env.GSC_CREDENTIALS_DIR;
-  if (credsDir) {
-    ({ clientId, clientSecret, refreshToken } = await credentialsFromDir(credsDir));
+  if (credentialsDir) ({ clientId, clientSecret, refreshToken } = await credentialsFromDir(credentialsDir));
+  if (!clientId || !clientSecret || !refreshToken) {
+    throw new Error("No Search Console credentials: set GSC_CREDENTIALS_DIR (or GSC_ACCESS_TOKEN / GSC_CLIENT_* env vars).");
   }
-
-  if (!clientId || !clientSecret || !refreshToken) return null;
 
   const response = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
@@ -100,41 +100,57 @@ async function getAccessToken() {
       grant_type: "refresh_token",
     }),
   });
-
-  if (!response.ok) {
-    throw new Error(`GSC OAuth refresh failed with status ${response.status}`);
-  }
-
+  if (!response.ok) throw new Error(`GSC OAuth refresh failed with status ${response.status}`);
   const payload = await response.json();
-  if (!payload.access_token) {
-    throw new Error("GSC OAuth refresh did not return an access token");
-  }
-
+  if (!payload.access_token) throw new Error("GSC OAuth refresh did not return an access token");
   return payload.access_token;
 }
 
-async function fetchPage({ endpoint, token, startDate, endDate, dimensions, rowLimit, startRow }) {
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: {
-      authorization: `Bearer ${token}`,
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      startDate,
-      endDate,
-      dimensions,
-      rowLimit,
-      startRow,
-    }),
-  });
+export function parseDimensions(value) {
+  if (!value || value === "none") return [];
+  const dimensions = value.split(",").map((item) => item.trim()).filter(Boolean);
+  const unknown = dimensions.filter((item) => !DIMENSIONS.includes(item));
+  if (unknown.length > 0) throw new Error(`Unknown dimension(s): ${unknown.join(", ")}. Allowed: ${DIMENSIONS.join(", ")}`);
+  return dimensions;
+}
 
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(`GSC request failed ${response.status}: ${body}`);
+export function parseFilter(value) {
+  const [dimension, operator, ...rest] = value.split(":");
+  const expression = rest.join(":");
+  if (!DIMENSIONS.includes(dimension) || !OPERATORS.includes(operator) || expression === "") {
+    throw new Error(`Invalid --filter "${value}". Shape: dimension:operator:expression`);
+  }
+  return { dimension, operator, expression };
+}
+
+// Fetches every row for one request shape, paging with startRow.
+export async function queryAll({ site, startDate, endDate, dimensions = [], filters = [], dataState = "final", token, maxRows = DEFAULT_MAX_ROWS }) {
+  const endpoint = `https://www.googleapis.com/webmasters/v3/sites/${encodeURIComponent(site)}/searchAnalytics/query`;
+  const rows = [];
+  let startRow = 0;
+  let responseAggregationType = null;
+  let capped = false;
+
+  while (rows.length < maxRows) {
+    const rowLimit = Math.min(PAGE_SIZE, maxRows - rows.length);
+    const body = { startDate, endDate, dimensions, rowLimit, startRow, dataState };
+    if (filters.length > 0) body.dimensionFilterGroups = [{ groupType: "and", filters }];
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) throw new Error(`GSC request failed ${response.status}: ${await response.text()}`);
+    const payload = await response.json();
+    const page = Array.isArray(payload.rows) ? payload.rows : [];
+    responseAggregationType ??= payload.responseAggregationType ?? null;
+    rows.push(...page);
+    startRow += page.length;
+    if (page.length < rowLimit || dimensions.length === 0) break;
+    capped = rows.length >= maxRows;
   }
 
-  return response.json();
+  return { site, startDate, endDate, dimensions, filters, dataState, responseAggregationType, capped, rows };
 }
 
 async function main() {
@@ -146,68 +162,33 @@ async function main() {
   const site = argValue("--site");
   const startDate = argValue("--start");
   const endDate = argValue("--end");
-  const output = argValue("--output");
-  const dimensionsArg = argValue("--dimensions") ?? "query,page";
-  if (!["query,page", "page"].includes(dimensionsArg)) {
-    throw new Error("--dimensions must be query,page or page");
-  }
-  const dimensions = dimensionsArg.split(",");
-  const maxRows = Number(argValue("--max-rows") ?? DEFAULT_MAX_ROWS);
-  if (!Number.isInteger(maxRows) || maxRows < 1) {
-    throw new Error("--max-rows must be a positive integer");
-  }
-
   if (!site || !startDate || !endDate) throw new Error(usage());
-  const token = await getAccessToken();
-  if (!token) throw new Error(usage());
+  const dimensions = parseDimensions(argValue("--dimensions") ?? "query,page");
+  const filters = argValues("--filter").map(parseFilter);
+  const dataState = argValue("--data-state") ?? "final";
+  if (!["final", "all"].includes(dataState)) throw new Error("--data-state must be final or all");
+  const maxRows = Number(argValue("--max-rows") ?? DEFAULT_MAX_ROWS);
+  if (!Number.isInteger(maxRows) || maxRows < 1) throw new Error("--max-rows must be a positive integer");
 
-  const endpoint = `https://www.googleapis.com/webmasters/v3/sites/${encodeURIComponent(
-    site,
-  )}/searchAnalytics/query`;
-
-  const rows = [];
-  let startRow = 0;
-  let responseAggregationType = null;
-  let lastPageWasFull = false;
-
-  while (rows.length < maxRows) {
-    const rowLimit = Math.min(PAGE_SIZE, maxRows - rows.length);
-    const payload = await fetchPage({
-      endpoint,
-      token,
-      startDate,
-      endDate,
-      dimensions,
-      rowLimit,
-      startRow,
-    });
-    const page = Array.isArray(payload.rows) ? payload.rows : [];
-    responseAggregationType ??= payload.responseAggregationType ?? null;
-    rows.push(...page);
-    startRow += page.length;
-    lastPageWasFull = page.length === rowLimit && page.length > 0;
-    if (page.length < rowLimit) break;
+  const token = await getAccessToken(argValue("--credentials-dir") ?? process.env.GSC_CREDENTIALS_DIR);
+  const result = await queryAll({ site, startDate, endDate, dimensions, filters, dataState, token, maxRows });
+  if (result.capped) {
+    console.error(`Note: stopped at --max-rows (${maxRows}); more rows may exist. Narrow the range or raise the cap.`);
   }
 
-  if (lastPageWasFull && rows.length >= maxRows) {
-    console.error(
-      `Note: stopped at --max-rows (${maxRows}); more rows may exist. Re-run with a higher --max-rows or a narrower date range for a complete export.`,
-    );
-  }
-
-  const result = { dimensions, responseAggregationType, rows };
   const text = `${JSON.stringify(result, null, 2)}\n`;
-
+  const output = argValue("--output");
   if (output) {
     await writeFile(output, text);
-    console.log(`Wrote ${rows.length} rows to ${output}`);
+    console.log(`Wrote ${result.rows.length} rows to ${output}`);
     return;
   }
-
   process.stdout.write(text);
 }
 
-main().catch((error) => {
-  console.error(error.message);
-  process.exit(1);
-});
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main().catch((error) => {
+    console.error(error.message);
+    process.exit(1);
+  });
+}

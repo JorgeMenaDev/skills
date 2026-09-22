@@ -57,7 +57,7 @@ Keep one documented list of event names and UTMs; inconsistent casing splits rep
 
 - Desktop and mobile CTA paths verified.
 - Important forms/actions tested where safe.
-- Analytics/conversion tracking exists or a P1 analytics ticket is created.
+- Analytics/conversion tracking exists or an analytics bet is proposed.
 
 ## PostHog Outcome Bridge
 
@@ -107,6 +107,6 @@ Record:
 - the GSC export and Organic Outcome Bridge source paths;
 - exact dates, property/project IDs, canonicalization decisions, and quality flags;
 - whether outcome evidence changed the proposed SEO action (`yes` or `no`, with one sentence why);
-- the one resulting backlog change or an explicit no-change verdict.
+- the one resulting bet or an explicit no-change verdict.
 
 Never claim an SEO action caused an outcome without a separate experiment or defensible time-series design. Never use replay or identity data to reverse-engineer a Search Console query.

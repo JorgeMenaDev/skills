@@ -12,7 +12,7 @@ Rank work from declared evidence: query and product relevance, buyer intent, rev
 
 - Record unavailable revenue, margin, inventory, conversion, or attribution inputs as `Unknown`. Unknown margin stays `Unknown`; never estimate it or substitute points to force a ranking.
 - Prefer an opportunity only when its known evidence supports that ordering. If missing commercial evidence could reverse the order, leave the candidates tied or request the evidence.
-- Record the value field, source, observation window, currency where relevant, and limitations under [evidence conventions](operating.md). Use [Search Console](search-console.md) for query/page observations and [conversion and CTA](conversion.md) for conversion-event proof.
+- Record the value field, source, observation window, currency where relevant, and limitations under the evidence rules in SKILL.md. Use [Search Console](search-console.md) for query/page observations and [conversion and CTA](conversion.md) for conversion-event proof.
 
 ### Map demand to a page type from the live SERP
 
@@ -49,7 +49,7 @@ This reference defines no Merchant Center adapters and no provider integrations.
 
 ### Report purchases and refunds without causal upgrades
 
-Report commerce outcomes with the shared [non-causal outcome ladder](operating.md): keep rankings and traffic observations separate from landing sessions, product/collection views, add-to-cart, checkout, purchase, and refund state. Name the analytics attribution model, comparison window, currency, tax/shipping treatment, consent or data gaps, assisted-conversion limits, and known confounders such as promotions, brand demand, pricing, inventory, seasonality, paid/email/social assists, and returning customers.
+Report commerce outcomes with the outcome chain in SKILL.md: keep rankings and traffic observations separate from landing sessions, product/collection views, add-to-cart, checkout, purchase, and refund state. Name the analytics attribution model, comparison window, currency, tax/shipping treatment, consent or data gaps, assisted-conversion limits, and known confounders such as promotions, brand demand, pricing, inventory, seasonality, paid/email/social assists, and returning customers.
 
 Report gross purchases and identified refunds or adjustments separately, then label any refund-adjusted amount explicitly. A ranking or traffic change is not evidence that SEO caused purchases or revenue. Do not claim incremental or causal revenue without evidence capable of supporting causality. Conversion-event definitions and implementation remain in [conversion and CTA](conversion.md); commercial relationships and disclosures remain in [commercial integrity](commercial-integrity.md).
 

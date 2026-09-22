@@ -1,6 +1,6 @@
 # Content Operations
 
-Use for `content-ops` mode: keywords, clusters, blog calendars, briefs, article publishing, internal links, and content engines.
+Use for content bets (`gap`, `underperformer`): keywords, clusters, blog calendars, briefs, article publishing, internal links, and content engines.
 
 ## Preflight Gates
 
@@ -11,13 +11,13 @@ Use for `content-ops` mode: keywords, clusters, blog calendars, briefs, article 
 5. Production backend/CLI and authenticated UI agree on project/calendar state.
 6. Content-engine or publisher-bot repos have a local adapter in `.seo/adapters/` or equivalent strategy notes that map project, keyword, calendar, article, publish, and reconciliation proof commands.
 
-If any gate fails, create a blocker or technical ticket before importing/scheduling content.
+If any gate fails, record a `defect` candidate before importing or scheduling content.
 
 ## Keyword Research
 
 Seed sources, strongest evidence first:
 
-1. First-party GSC data: `node "$SKILL_DIR/scripts/gsc-opportunities.mjs" --input "$SITE_WORKSPACE/reports/gsc-latest.json" --format backlog` — queries already earning impressions.
+1. First-party Search Console data: the "Non-brand queries with demand" table in the latest data pack (`scripts/review-data.mjs`), which lists queries already earning impressions.
 2. Competitor demand gaps (matrix below).
 3. Utility/tool opportunities: calculators, generators, checkers, formatters, templates, and public datasets where the SERP intent is task completion; load `utility-tool-pages.md` before planning these.
 4. Community demand research: manually inspect relevant forums and Q&A sources for questions and frustrations. This is research input only; publishing an owned synthesis of community material is a separate specialist surface governed by [Community-source Pages](content-ops.md).
@@ -45,7 +45,6 @@ Score each candidate 1-10 per factor:
 
 `priorityScore = 0.4*impact + 0.3*fit + 0.2*search + 0.1*resources`
 
-The old backlog-to-keywords script is removed; extracting keywords from `.seo/backlog.md` is agent judgment guided by this rubric.
 
 ## Keyword Batch Shape
 
@@ -123,7 +122,7 @@ Use `templates/content-plan.md`. Include:
 
 When the target uses a content engine:
 
-- Load `references/workspace.md` and the repo's local adapter before creating/importing/scheduling content work.
+- Read the site's adapter note (`adapters/` in the workspace) before creating, importing or scheduling content work.
 - If the engine pushes finished articles to the target via webhook, build or audit the receiving endpoint with `references/content-engine-webhooks.md`.
 - Store durable project config and keyword batches in the target repo's established content-engine paths.
 - Prefer a small import script for repeatability.
@@ -136,7 +135,7 @@ When the target uses a content engine:
 
 Use this contract only for an owned page that synthesizes manually accessed, **publicly accessible** community sources: forums, Reddit-like communities, and Q&A sites readable without membership, login, or invitation. Access-controlled conversations (private Discord/Slack workspaces, members-only forums, closed groups) are NOT publishable sources by default — being a member does not grant republication rights. Access-controlled content may be used only with explicit, recorded authorization from both the author of each used message and the community's owner/administrator, and it still follows every attribution, redaction, and removal rule below. Community language used only for demand research remains governed by [Content Operations](content-ops.md).
 
-Use the vocabulary in [Evidence Conventions](operating.md). Use [Page Evidence](pages.md) for substantiation, information gain, revision approval, and the publish gate. When a page has commercial elements, use [Commercial Integrity](commercial-integrity.md) for selection methodology, disclosure, and the anti-authority-rental boundary. Those shared contracts own their rules; this reference adds only community-specific requirements.
+Use the evidence rules in SKILL.md. Use [Page Evidence](pages.md) for substantiation, information gain, revision approval, and the publish gate. When a page has commercial elements, use [Commercial Integrity](commercial-integrity.md) for selection methodology, disclosure, and the anti-authority-rental boundary. Those shared contracts own their rules; this reference adds only community-specific requirements.
 
 ## Community-source publishing contract
 
@@ -165,7 +164,7 @@ Use no personal information beyond a public handle needed for attribution. Redac
 
 Honor source deletion and author removal requests. Publish a monitored contact route and use this source-removal workflow:
 
-1. Record the request or detected deletion, received/detected date, requester or detection method, affected permalink, page/section, owner, and status in the existing dated report or backlog; store no unnecessary requester PII.
+1. Record the request or detected deletion, received/detected date, requester or detection method, affected permalink, page/section, owner, and status in the existing dated report or `bets.md`; store no unnecessary requester PII.
 2. Acknowledge a direct request and assess dependency within **2 business days**.
 3. Remove the quote, attribution, and identifying detail promptly; rework or remove every dependent page section within **5 business days**. If safe rework cannot finish in that window, unpublish or noindex the affected page until it can.
 4. Re-run the page-evidence publish gate for the revised page and verify rendered links and citations.
@@ -194,4 +193,4 @@ The week-12 gate passes expansion only when all pre-registered criteria pass. No
 - No ranking-time, traffic, conversion, revenue, or AI-citation guarantee; no broad rollout based only on anecdote, indexation, or impressions.
 - **Anti-token-swap assertion:** reject two or more pages that share a template or substantially identical section logic while swapping the keyword, community name, threads, or quotes. Each page must have a page-specific source set, page-specific analysis, and page-specific information gain. If any of those three is interchangeable between proposed pages, every affected page fails publication.
 
-Use existing homes only: revision evidence or dated reports for sources, reviews, and removal outcomes; `.seo/backlog.md` for follow-up. For mechanics already owned elsewhere, use [Search Console](search-console.md), [AI Search Visibility](ai-search-visibility.md), [Internal Linking](internal-linking.md), [Content Refresh](content-refresh.md), [Technical SEO](technical-seo.md), [Backlinks and Entity Authority](backlinks-entity.md), and [pSEO Gates](pseo-gates.md) rather than duplicating their workflows.
+Use existing homes only: revision evidence or dated reports for sources, reviews, and removal outcomes; `bets.md` for follow-up. For mechanics already owned elsewhere, use [Search Console](search-console.md), [AI Search Visibility](ai-search-visibility.md), [Internal Linking](internal-linking.md), [Content Refresh](content-refresh.md), [Technical SEO](technical-seo.md), [Backlinks and Entity Authority](backlinks-entity.md), and [pSEO Gates](pseo-gates.md) rather than duplicating their workflows.

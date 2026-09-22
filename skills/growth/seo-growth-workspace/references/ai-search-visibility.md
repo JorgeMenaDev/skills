@@ -1,10 +1,10 @@
 # AI Search Visibility
 
-Use the [shared evidence states, provenance fields, buyer stages, and non-causal outcome ladder](operating.md). This reference adds AI-observation fields; it does not redefine the shared vocabulary.
+Use the evidence rules in SKILL.md. This reference adds AI-observation fields.
 
-Use for the `ai-visibility` phase of every first run, for `operate` checkpoints and tickets in the `ai-visibility` area, and whenever the user asks how the site shows up in an assistant or AI search surface. AI visibility is part of ordinary organic growth work, not a separate GEO mode or backlog.
+Use for `authority` candidates that involve AI answers, for bets that aim at AI citations, and whenever the user asks how the site shows up in an assistant or AI search surface. AI visibility is part of ordinary organic growth work, not a separate mode.
 
-No special markup tricks exist for Google AI surfaces: AI Overviews and AI Mode use core Search systems, and Google says no AI-specific markup or files are required. This workflow is about access, extractability, and honest measurement, not a scoring model, preferred word count, or visibility forecast. Keep the framing from the AI Search Note in `references/first-run.md`.
+No special markup tricks exist for Google AI surfaces: AI Overviews and AI Mode use core Search systems, and Google says no AI-specific markup or files are required. This workflow is about access, extractability, and honest measurement, not a scoring model, preferred word count, or visibility forecast. For Google this is still SEO: crawlable helpful content, clear entities and visible proof. `llms.txt`, chunking and "AEO/GEO" tactics are unproven; label them so and never make them a gate.
 
 Index backing matters, but engines may combine their own crawlers, partner indexes, and user-triggered fetches. Treat a missing direct-crawler path as reduced eligibility, not proof that a URL can never surface through another source.
 
@@ -46,7 +46,7 @@ AI answers are nondeterministic dated samples, never rankings or exhaustive tele
 
 ### Interpretation and outcomes
 
-Keep these observations distinct: impression/exposure, mention, recommendation, citation/link, referral session, conversion event, qualified lead or completed/qualified call, customer, revenue, and assisted-conversion interpretation. The [shared outcome ladder](operating.md) supplies the canonical evidence states; `references/conversion.md` owns conversion and qualification workflows, and `references/local-seo-gbp.md` owns local/GBP measurement.
+Keep these observations distinct: impression/exposure, mention, recommendation, citation/link, referral session, conversion event, qualified lead or completed/qualified call, customer, revenue, and assisted-conversion interpretation. The outcome chain in SKILL.md supplies the order; `references/conversion.md` owns conversion and qualification workflows, and `references/local-seo-gbp.md` owns local/GBP measurement.
 
 A recommendation is not a click; a referral is not a lead; and a conversion event is not automatically qualified. A GBP or assistant call-button click is not proof of a completed, answered, or qualified call. UTMs help only where a controllable tagged link survives. Assistant-selected links and offline/direct journeys often do not preserve them. Geo-grid scanning is a sampling methodology, not a Google metric.
 
@@ -72,12 +72,12 @@ Create a distinct portrayal record when the answer describes the business, even 
 
 Every material gap and every portrayal finding routes to exactly one existing destination:
 
-1. `content backlog` → `.seo/backlog.md` for an owned-content deficiency or factual correction.
+1. `content` → a review candidate for an owned-content deficiency or factual correction.
 2. `backlink work-log` → `.seo/backlinks/work-log.md` for a legitimate, manually reviewed editorial/earned-media opportunity.
 3. `commercial disclosure review` → the review governed by `references/commercial-integrity.md` and link qualification in `references/backlinks-entity.md` when a material, gifted, paid, affiliate, or sponsored relationship is involved.
 4. `no action` → record a specific reason, including irrelevant, unattainable, insufficient evidence, already accurate, or no ethical/credible intervention.
 
-Do not create another ledger, outreach queue, or GEO backlog. Tag only the shared buyer stage here; construction of a customer journey belongs elsewhere. The [commercial integrity contract](commercial-integrity.md) remains the sole source for comparison methodology, ownership/self-inclusion, disclosure, and authority-rental rules.
+Keep observations in dated reports; actions become review candidates. Tag only the shared buyer stage here; construction of a customer journey belongs elsewhere. The [commercial integrity contract](commercial-integrity.md) remains the sole source for comparison methodology, ownership/self-inclusion, disclosure, and authority-rental rules.
 
 Manual review is always supported and no paid provider is required. If optional third-party data is pasted into a record, label it `Third-party estimate` and record provider, observed/export date, cost, sample/coverage, freshness, privacy constraints, UI/method drift, and limitations. It is not ground truth and does not replace row-level manual evidence.
 
@@ -87,28 +87,28 @@ Use a non-scored passage-extractability matrix for a page/query pair. Do not pre
 
 | Query | URL | Route/page family | Answer location | Self-contained subject | Sourced facts | Present in raw/server-rendered HTML | Limitation | Fix route | Verification |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| verbatim query | public URL | page family | locator | observed evidence | observed evidence | yes/no/not checked + artifact | evidence limit | existing content, technical, or AI-visibility ticket | dated recheck + artifact |
+| verbatim query | public URL | page family | locator | observed evidence | observed evidence | yes/no/not checked + artifact | evidence limit | existing content, technical, or AI-visibility candidate | dated recheck + artifact |
 
 Use `references/technical-seo.md` for raw/server-rendered HTML proof and `references/pages.md` for claim substantiation. A successful fetch does not prove support or extractability.
 
 Use a dated URL-backed source footprint to distinguish owned sources from independent evidence:
 
-| Source/platform | Owned or independent | Public URL | What it establishes | Context relevance | Public/indexable state | Checked date | Evidence limitation | Existing ticket route |
+| Source/platform | Owned or independent | Public URL | What it establishes | Context relevance | Public/indexable state | Checked date | Evidence limitation | Candidate route |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| named source | owned/independent | actual URL | bounded observed fact | why it matters | observed/not visible/not checked/unavailable | date | login gate, rate limit, manual sample, or other limit | entity, backlink, content, technical, or AI-visibility ticket |
+| named source | owned/independent | actual URL | bounded observed fact | why it matters | observed/not visible/not checked/unavailable | date | login gate, rate limit, manual sample, or other limit | entity, backlink, content, technical, or AI-visibility candidate |
 
 Login-gated, unavailable, rate-limited, or manually sampled sources are limited or missing evidence, never negative findings. Never claim a platform was automatically scanned when the evidence is a search URL or manual instruction.
 
 ## 5. Monthly spot-check
 
-Re-run the maintained prompt set monthly or at the declared cadence. Log each run to `.seo/reports/ai-visibility-YYYY-MM-DD.md` and compare like-for-like rows. Track assistant referrals in analytics where observable; citation captures remain dated samples. Standard GSC Performance can include AI-surface activity but cannot establish AI causality. Some properties may expose a separate rollout-limited UI/export; use it only when visibly available (`references/search-console.md`).
+Re-run the maintained prompt set at most monthly, when a review needs it. Log each run to `.seo/reports/ai-visibility-YYYY-MM-DD.md` and compare like-for-like rows. Track assistant referrals in analytics where observable; citation captures remain dated samples. Standard GSC Performance can include AI-surface activity but cannot establish AI causality. Some properties may expose a separate rollout-limited UI/export; use it only when visibly available (`references/search-console.md`).
 
 ## Exit criteria
 
 - Crawler allow/block decision recorded in `.seo/strategy.md`.
 - Dated observation rows and maintained prompt set saved to `.seo/reports/ai-visibility-YYYY-MM-DD.md`.
 - Every material source gap has one opportunity class and exactly one bounded action route; every portrayal finding also has exactly one bounded action route.
-- Extractability/source-footprint findings are filed into existing tickets or explicitly given `no action` with a reason.
+- Extractability/source-footprint findings become review candidates or are explicitly given `no action` with a reason.
 - Assistant-referral tracking exists in analytics, or the blocker is documented with an owner.
 
 ## Guardrails

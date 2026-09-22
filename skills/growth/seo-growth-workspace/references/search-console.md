@@ -1,6 +1,6 @@
 # Search Console Opportunity Workflow
 
-Use for `technical-seo-fix`, `monthly-report`, or focused GSC analysis. GSC is the primary keyword-leverage source: run the CLI pipeline before hand-rolling analysis.
+Use for Search Console work beyond the data pack: drops, cannibalisation, indexing and CTR diagnosis. Start from the data pack (`scripts/review-data.mjs`) before hand-rolling analysis.
 
 ## Data Window
 
@@ -12,7 +12,7 @@ Do not initiate an OAuth flow until you have checked, in order, whether access a
 
 1. `--credentials-dir` / `GSC_CREDENTIALS_DIR` — a credential-home directory with file-shaped `client_secret.json` + `token.json`. Preferred: credentials live in the profile's/agent's credential home outside the target repo.
 2. `GSC_*` env vars — `GSC_ACCESS_TOKEN` (one-off) or `GSC_CLIENT_ID`/`GSC_CLIENT_SECRET`/`GSC_REFRESH_TOKEN` (repeatable).
-3. Prior exports — reuse existing `.seo/reports/gsc-*.json` for read-only analysis without any fetch.
+3. Prior exports — reuse existing exports in `.seo/reports/data/` for read-only analysis without any fetch.
 4. Site registry — if the target has a site→property→credential registry, read it for the property string and credential location.
 
 Only when all four miss do you initiate OAuth (Safe Helper Flow below). Store the result in the credential home, not the repo's `.env.local` (`.env.local` remains a fallback for standalone use).
@@ -30,7 +30,7 @@ Primary operating loop (Node >= 18; auth setup below):
 
 1. `node "$SKILL_DIR/scripts/gsc-oauth.mjs" --help` — review the one-time auth options before writing into a credential home or ignored env file. Never print token values.
 2. `node "$SKILL_DIR/scripts/gsc-fetch.mjs" --site https://example.com/ --start 2026-01-01 --end 2026-03-31 --output "$SITE_WORKSPACE/reports/gsc-2026-03-31.json"` — exports `query,page` rows, paginating past the 25k-row API cap. Use `--dimensions page` for page-dimensional metrics; this avoids summing query rows that omit anonymized queries, but Search Console still exposes top rows rather than a guaranteed-complete dataset.
-3. `node "$SKILL_DIR/scripts/gsc-opportunities.mjs" --input "$SITE_WORKSPACE/reports/gsc-2026-03-31.json" --brand "acme, acme app" --format report` — drafts the page-2 goldmine, CTR-vs-expected-band, and cannibalization tables. Always pass `--brand` with known branded terms. Use `--format backlog` to emit draft `.seo/backlog.md` rows instead. On early-stage sites, lower `--min-impressions` (default 100) to fit the data; when nothing ranks inside positions 1-20, both formats fall back to impression-clusters-by-page (where demand already sees the site) instead of returning empty tables.
+3. `node "$SKILL_DIR/scripts/review-data.mjs" --site <property> --brand "acme,acme app"` — the data pack: totals, lanes, top pages, pages losing clicks, and non-brand queries flagged `page 1, low CTR`, `page 2`, `split across N pages` or `new`. Always pass `--brand` with known branded terms. On early-stage sites, lower `--min-impressions` to fit the data.
 
 Review every generated row before merging; opportunity output is not a full prioritization model. Save opportunity results to a dated report shaped as:
 
@@ -54,7 +54,7 @@ Scope: property, date range, data source, branded terms excluded (`--brand`)
 
 ## Diagnosis: Traffic Or Ranking Drops
 
-Route here for the `diagnose` mode ("my traffic dropped", "why did we lose rankings"). Characterize the drop before touching anything:
+Route here when traffic or rankings dropped ("my traffic dropped", "why did we lose rankings"). Characterize the drop before touching anything:
 
 1. Split branded vs non-branded (see Analysis Rules). A branded-only drop is a brand/PR/demand problem, not organic decay — do not rewrite titles for it.
 2. Impressions up + clicks down → test competing hypotheses: query mix, average-position change, snippet/title fit, and SERP composition. A live SERP sample or dedicated Generative AI export may support an AI-feature hypothesis; standard Performance alone does not.
@@ -62,7 +62,7 @@ Route here for the `diagnose` mode ("my traffic dropped", "why did we lose ranki
 4. Specific URLs 404/redirect/noindex, dropped from the sitemap, or newly blocked by robots/CDN → technical regression; verify indexability and the deploy/CDN history.
 5. Content-engine articles stopped deploying or the sitemap broke → follow `references/content-engine-webhooks.md`.
 
-Exit: the drop is characterized as branded/non-branded + SERP-feature/AI-Overviews vs core-update vs technical regression, with evidence, and the next action is filed to `.seo/backlog.md`.
+Exit: the drop is characterized as branded/non-branded + SERP-feature/AI-Overviews vs core-update vs technical regression, with evidence, and the next action is a review candidate.
 
 ## Google Generative AI Surfaces (rollout-limited, June 2026)
 
@@ -96,11 +96,11 @@ Queries where multiple URLs split impressions. Columns:
 
 ### Duplication Evidence
 
-String-level similarity between keywords or titles is an `[H]` flag that justifies investigation — never an `[E]` finding and never on its own a consolidation decision. The `[E]` evidence for a competing-pages problem is measured GSC query-overlap: two or more URLs each capturing a material share of one query's impressions, as the cannibalization table above reports.
+String-level similarity between keywords or titles is a hypothesis that justifies investigation, never a finding and never on its own a consolidation decision. The observed evidence for a competing-pages problem is measured GSC query-overlap: two or more URLs each capturing a material share of one query's impressions, as the cannibalization table above reports.
 
 Near-duplication is not by itself a policy violation — Google: "Some duplicate content on a site is normal and it's not a violation of Google's spam policies." The determinant is why the pages exist, not how similar they are; incidental duplication canonicals away, while deliberately generated query-variant pages are a doorway/scaled-content-abuse exposure judged at site level on the articles (`references/content-ops.md`).
 
-No usable third-party similarity threshold exists — Ahrefs does not use SERP overlap, Semrush documents the mechanism but no number, and the widely-cited "3 of top 10" figure has no primary source. Any threshold adopted locally is a local `[H]`, never an industry standard.
+No usable third-party similarity threshold exists — Ahrefs does not use SERP overlap, Semrush documents the mechanism but no number, and the widely-cited "3 of top 10" figure has no primary source. Any threshold adopted locally is a local hypothesis, never an industry standard.
 
 ### Money Page Mapping
 
@@ -150,7 +150,6 @@ For read-only runs:
 - Use existing `.seo` GSC reports, public sitemap/robots/status checks, and repo evidence.
 - Do not configure OAuth, request exports, inspect private GSC pages, click URL Inspection, or request indexing.
 - Mark query/page opportunity work as `partial` when no current GSC rows are already available.
-- Apply the single public-surface Done-transition rule in `references/operating.md` for measurement follow-up; record other missing evidence with its safe owner without creating a second follow-up canon.
 
 ## Repeatable API Auth Setup
 

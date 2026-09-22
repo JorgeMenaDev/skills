@@ -4,7 +4,7 @@ Use only when the business has local intent, service areas, a storefront, GBP, m
 
 If those signals are absent, exit the phase as `not applicable` and record the evidence. Do not create a local SEO action for SaaS, publisher, or product sites without local intent.
 
-Use the shared evidence states, outcome ladder, and provenance rules in [Evidence Conventions](operating.md). The local visibility states and measurement classes below are narrower GBP contracts; do not substitute one vocabulary for the other. Local-AI observation is outside this workflow and belongs to the AI measurement workflow.
+Use the evidence rules in SKILL.md. The local visibility states and measurement classes below are narrower GBP contracts; do not substitute one vocabulary for the other. Local-AI observation is outside this workflow and belongs to the AI measurement workflow.
 
 ## Operating Pattern
 
@@ -85,7 +85,7 @@ Before approving a post, service description, profile description, or photo plan
 
 ## Geo-grid measurement
 
-Use this module only when the business has genuine local/map-pack intent, at least one priority query triggers local results, and geographic visibility is material to the ticket. It is optional and manual-first: no bundled script, paid tool, or particular provider is required or endorsed.
+Use this module only when the business has genuine local/map-pack intent, at least one priority query triggers local results, and geographic visibility is material to the bet. It is optional and manual-first: no bundled script, paid tool, or particular provider is required or endorsed.
 
 Choose and label one evidence class:
 
@@ -104,7 +104,7 @@ Never invent locations or use fake addresses. A service-area business can be eli
 
 The observation ledger replaces ambiguous competitor fields such as “gap” when visibility is uncertain. Add priority, impact hypothesis, recheck window, and next action only after the evidence rows are recorded.
 
-Depth tiers: quick scan (default) covers categories, reviews, and obvious observations for the top 3 competitors; run the full module matrix only when a local ticket justifies it.
+Depth tiers: quick scan (default) covers categories, reviews, and obvious observations for the top 3 competitors; run the full module matrix only when a local bet justifies it.
 
 ## Customer-Language Mining
 

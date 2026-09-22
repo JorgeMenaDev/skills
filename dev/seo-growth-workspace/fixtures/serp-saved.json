@@ -1,0 +1,62 @@
+{
+ "fetchedAt": "2026-09-22T10:00:00.000Z",
+ "domain": "example.com",
+ "gl": "gb",
+ "hl": "en",
+ "num": 20,
+ "results": [
+  {
+   "q": "widget calculator",
+   "response": {
+    "organic": [
+     {
+      "title": "Widget Calculator Pro",
+      "link": "https://www.rival.io/calc",
+      "position": 1
+     },
+     {
+      "title": "Free widget calculator",
+      "link": "https://example.com/tools/calculator",
+      "position": 2
+     },
+     {
+      "title": "Widgets 101",
+      "link": "https://wiki.org/widgets",
+      "position": 3
+     }
+    ],
+    "peopleAlsoAsk": [
+     {
+      "question": "How do widgets work?"
+     }
+    ],
+    "answerBox": {
+     "snippet": "x"
+    }
+   }
+  },
+  {
+   "q": "how to use widgets",
+   "response": {
+    "organic": [
+     {
+      "title": "Guide",
+      "link": "https://docs.example.com/start",
+      "position": 11
+     },
+     {
+      "title": "Other",
+      "link": "https://other.net/a",
+      "position": 1
+     }
+    ]
+   }
+  },
+  {
+   "q": "widget | pipe",
+   "response": {
+    "error": "HTTP 500"
+   }
+  }
+ ]
+}

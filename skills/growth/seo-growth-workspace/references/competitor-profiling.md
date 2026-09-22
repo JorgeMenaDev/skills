@@ -1,25 +1,25 @@
 # Competitor Profiling
 
-Use when a ticket needs competitor evidence: demand gaps, backlink gaps, local packs, or positioning.
+Use when a bet or review candidate needs competitor evidence: demand gaps, backlink gaps, local packs, or positioning.
 
 Profiles are dated snapshots, not living documents. Every claim traces to a saved page or a named data pull; label inferences as inferences.
 
 ## Selecting The Competitor Set
 
-When the ticket names the category but not the competitors, build the set before profiling:
+When the request names the category but not the competitors, build the set before profiling:
 
 - Seed from demand, not memory: run the site's own money queries (from GSC or the keyword plan) through live SERP checks and note which *product* domains recur. Record the queries and date in the report header.
 - Separate product competitors from SERP occupants. Agencies, affiliate listicles, and news sites that rank for the money queries are SERP obstacles, not positioning competitors — exclude them from profiling and say so, or the matrix fills with rows that can't feed any destination.
-- Name the geo caveat: most search tools proxy from one country (often US), so local-market SERPs (es-CL, pt-BR, ...) are approximations. Record the limitation; a deep profile can verify with a true local SERP tool via `references/data-tools.md`.
-- Skip competitors the site already covers with live alternatives/vs content unless the ticket asks to re-audit them — the marginal evidence is small; spend the scan budget on unprofiled players.
+- Name the geo caveat: most search tools proxy from one country (often US), so local-market SERPs (es-CL, pt-BR, ...) are approximations. Record the limitation; a deep profile can verify with `scripts/serp.mjs` set to the local market (`references/data.md`).
+- Skip competitors the site already covers with live alternatives/vs content unless the bet asks to re-audit them — the marginal evidence is small; spend the scan budget on unprofiled players.
 - Cap the set at what the depth budget affords (3–5 for quick scans) and list who was deliberately left out.
 
 ## Depth Contract
 
 | Depth | Scope | When |
 | --- | --- | --- |
-| Quick scan (default, ~30 min per competitor) | Homepage, pricing, blog hub, one money page, GSC-visible query overlap | Any ticket that needs competitor context |
-| Deep profile | Quick scan + full page-type crawl, review mining, third-party SEO data via `references/data-tools.md` | Only when a specific ticket justifies the cost — record why |
+| Quick scan (default, ~30 min per competitor) | Homepage, pricing, blog hub, one money page, GSC-visible query overlap | Any candidate that needs competitor context |
+| Deep profile | Quick scan + full page-type crawl, review mining, third-party SEO data via `references/data.md` | Only when a specific bet justifies the cost — record why |
 
 Default to quick scan. Record the depth in the report header.
 
@@ -44,7 +44,7 @@ Per competitor, one line each with the source file: headline/value proposition, 
 
 ## Cross-Reference Rule
 
-Marketing claims are not evidence. Before a competitor claim ("10,000 customers", "#1 in category") enters `.seo/strategy.md`, check it against third-party data — traffic, backlinks, review counts via `references/data-tools.md` — or label it `unverified claim`. Do not inflate competitor weaknesses or downplay strengths; inaccurate profiles produce bad tickets.
+Marketing claims are not evidence. Before a competitor claim ("10,000 customers", "#1 in category") enters `.seo/strategy.md`, check it against third-party data — traffic, backlinks, review counts via `references/data.md` — or label it `unverified claim`. Do not inflate competitor weaknesses or downplay strengths; inaccurate profiles produce bad bets.
 
 ## Feeding The Matrices
 
@@ -67,5 +67,5 @@ Profiling is input, not output. Route findings into the existing matrices:
 
 - Dated snapshot folder exists per competitor; the profile cites it.
 - Page-type matrix and positioning snapshot produced at the declared depth.
-- Findings routed into destination matrices or filed as backlog tickets; leftovers explicitly deferred.
+- Findings routed into destination matrices or review candidates; leftovers explicitly deferred.
 - Third-party claims cross-checked or labeled `unverified claim`.

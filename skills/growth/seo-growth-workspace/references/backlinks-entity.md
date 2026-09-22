@@ -1,12 +1,12 @@
 # Backlinks, Citations, And Entity Authority
 
-Use the evidence states, provenance fields, and non-causal outcome ladder in `references/operating.md`. Comparisons and commercial relationships consume `references/commercial-integrity.md` rather than redefining disclosure rules here.
+Use the evidence rules in SKILL.md. Comparisons and commercial relationships consume `references/commercial-integrity.md` rather than redefining disclosure rules here.
 
 Use for backlink audits, authority planning, local citations, and brand/entity optimization.
 
 ## Backlink Gap Matrix
 
-Depth tiers: quick scan (default) covers competitors' top linked pages and obvious gaps via public SERP/operator research; deep gap analysis builds the full 3-5 competitor matrix and needs a ticket that justifies the effort. Without backlink tools, document the limitation.
+Depth tiers: quick scan (default) covers competitors' top linked pages and obvious gaps via public SERP/operator research; deep gap analysis builds the full 3-5 competitor matrix and needs a bet that justifies the effort. Without backlink tools, document the limitation.
 
 Columns:
 
@@ -29,11 +29,11 @@ Scope: target, competitors, data source
 
 Work manual-first. Search live SERPs for the money queries and their close variants (`best <category> software`, `top <category> tools`, `<competitor> alternatives`, and pages listing known competitors); inspect competitor mentions and outbound links; and use GSC, directories, industry publications, and product-category pages where relevant. Every prospecting run records **Query**, **Market/geo**, **Source URL**, **Qualification result**, **Limitations**, and **Date** so another operator can reproduce it.
 
-Qualify the page before contact. Prefer page relevance, editorial legitimacy, public indexability, available traffic or ranking evidence, a legitimate contact route, and a useful destination that fits the visitor's intent. These facts outweigh DR or another third-party authority proxy. Ahrefs is strictly an optional accelerator: if available, its competitor-backlink views can screen page titles or URLs for listicle patterns, but provider selection and specifics remain in `references/data-tools.md`. Record Ahrefs as unavailable or not used when absent; its absence never blocks the run. Published response rates such as 241 messages → 9 links or 146 messages → 16 replies → 3 links are illustrative anecdotes, never targets or expected benchmarks.
+Qualify the page before contact. Prefer page relevance, editorial legitimacy, public indexability, available traffic or ranking evidence, a legitimate contact route, and a useful destination that fits the visitor's intent. These facts outweigh DR or another third-party authority proxy. Ahrefs is strictly an optional accelerator: if available, its competitor-backlink views can screen page titles or URLs for listicle patterns, but provider selection and specifics remain in `references/data.md`. Record Ahrefs as unavailable or not used when absent; its absence never blocks the run. Published response rates such as 241 messages → 9 links or 146 messages → 16 replies → 3 links are illustrative anecdotes, never targets or expected benchmarks.
 
 Before outreach begins, declare a prospect cap and a review threshold (for example, review after the first 10 individually researched contacts). Stop at that threshold until a human reviews qualification quality, reply dispositions, complaints, paid requests, and message specificity and explicitly approves the next bounded batch. Never silently turn manual-first outreach into bulk or generic volume outreach.
 
-Record each prospect in `.seo/backlinks/work-log.md` under **Authority funnel (v4)**. Preserve the legacy six-column table untouched; whole-file migration is an explicit operator opt-in only. Use the lifecycle `discovered → qualified → contacted → replied → won → live/verified → lost/expired` and fill query, market/geo, source URL, qualification, limitations, and date plus reply disposition, paid request and amount, link-live and indexable as separate facts, 30/90-day check dates, referral, qualified conversion, cost, evidence, and next step. A won link does not skip live verification; a live link does not prove indexability. Label observations and outcomes using `references/operating.md`.
+Record each prospect in `.seo/backlinks/work-log.md` under **Authority funnel (v4)**. Preserve the legacy six-column table untouched; whole-file migration is an explicit operator opt-in only. Use the lifecycle `discovered → qualified → contacted → replied → won → live/verified → lost/expired` and fill query, market/geo, source URL, qualification, limitations, and date plus reply disposition, paid request and amount, link-live and indexable as separate facts, 30/90-day check dates, referral, qualified conversion, cost, evidence, and next step. A won link does not skip live verification; a live link does not prove indexability. Label observations and outcomes with the evidence rules in SKILL.md.
 
 Paid-placement requests do not become undisclosed editorial wins: apply the disclosure contract in `references/commercial-integrity.md` and the sponsored-link mechanics below. Reject reciprocal schemes, link farms, mass outreach, authority rental, and opaque indexers; consume the anti-authority-rental boundary in `references/commercial-integrity.md` rather than recreating it here. Image distribution or rights-based reclamation additionally passes `references/backlinks-entity.md` before it can enter this same funnel.
 
@@ -84,7 +84,7 @@ Check: Organization/LocalBusiness schema on the homepage; `sameAs`/profile links
 
 ## Image Rights
 
-Use for original-image distribution, reuse discovery, and attribution-reclamation decisions. Substantiation: `references/pages.md`; provider selection: `references/data-tools.md`; disclosure and paid-placement integrity: `references/commercial-integrity.md`; conversion events: `references/conversion.md`.
+Use for original-image distribution, reuse discovery, and attribution-reclamation decisions. Substantiation: `references/pages.md`; provider selection: `references/data.md`; disclosure and paid-placement integrity: `references/commercial-integrity.md`; conversion events: `references/conversion.md`.
 
 ### Asset-rights master and structural gate
 

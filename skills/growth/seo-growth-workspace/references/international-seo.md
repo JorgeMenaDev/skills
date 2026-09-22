@@ -1,6 +1,6 @@
 # International SEO
 
-Use for `technical-seo-fix` when the site targets multiple languages or regions. The site-type classifier in `references/first-run.md` routes multilingual/multi-region sites here.
+Use for `defect` candidates and bets on sites that target multiple languages or regions.
 
 Misconfigured hreflang fails silently: Google drops broken pairs without warning and may index only one locale. Verify rendered output, never framework config.
 
@@ -41,6 +41,6 @@ Thin or machine-translated locales are a site-wide quality risk: helpful-content
 ## Exit Criteria
 
 - Structure decision recorded in `.seo/strategy.md` with rationale.
-- Hreflang checklist run against rendered output; every failure filed as a backlog ticket with evidence URLs.
+- Hreflang checklist run against rendered output; every failure recorded as a review candidate with evidence URLs.
 - Locale quality assessed; each thin locale has an improve-or-remove decision.
 - Per-locale GSC baseline recorded, or the access blocker documented with an owner.

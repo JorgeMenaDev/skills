@@ -24,7 +24,7 @@ Use for schema audits, JSON-LD implementation, and rich-results validation.
 
 ## Deprecated Rich Results
 
-The markup can stay valid when it accurately describes visible content, but the SERP feature is gone. Do not claim schema grounds AI answers, and do not file tickets or forecast wins on these removed result types:
+The markup can stay valid when it accurately describes visible content, but the SERP feature is gone. Do not claim schema grounds AI answers, and do not propose bets or forecast wins on these removed result types:
 
 | Removed  | Rich result                                                                                              |
 | -------- | -------------------------------------------------------------------------------------------------------- |
@@ -35,7 +35,7 @@ The markup can stay valid when it accurately describes visible content, but the 
 
 ## Detection Honesty
 
-`curl` and web-fetch cannot prove schema absence: many CMS/SEO plugins inject JSON-LD client-side, and fetch tools strip `<script>` tags. Before filing a "missing schema" ticket, require rendered-DOM evidence (`document.querySelectorAll('script[type="application/ld+json"]')`) or a Rich Results Test result.
+`curl` and web-fetch cannot prove schema absence: many CMS/SEO plugins inject JSON-LD client-side, and fetch tools strip `<script>` tags. Before proposing a "missing schema" bet, require rendered-DOM evidence (`document.querySelectorAll('script[type="application/ld+json"]')`) or a Rich Results Test result.
 
 ## Audit Matrix
 

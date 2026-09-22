@@ -1,6 +1,6 @@
 # pSEO Gates
 
-Use for `pseo-planning` mode and before publishing programmatic pages.
+Use before planning or publishing programmatic pages.
 
 ## Default Decision
 
@@ -26,7 +26,7 @@ Publish batch N+1 only after batch N reaches a target indexed rate (for example 
 
 ## Plan Shape
 
-Use `.seo/pseo/plan.md` or `templates/pseo-plan.md` with:
+Record the plan in the bet's review report, shaped by `templates/pseo-plan.md`, with:
 
 - Page types and URL patterns.
 - Data source paths.
@@ -95,7 +95,7 @@ If unique local proof is missing, create a broader service page, location hub, o
 
 - Sample generated pages locally or in preview.
 - Run the target's pSEO data validator before publishing when one exists; save the manifest/report.
-- When reviewing a planned batch, save the publish-preview manifest with `--snapshot-output .seo/pseo/<slug>-publish-snapshot.json` and review it before building routes or requesting indexing.
+- When reviewing a planned batch, save the publish-preview manifest with `--snapshot-output .seo/reports/data/pseo-<slug>-publish-snapshot.json` and review it before building routes or requesting indexing.
 - Routes rendered before the gate clears stay `noindex,nofollow` and out of `sitemap.xml` until the normal blog/indexing path and manual QA are proven.
 - Check title/meta/H1 uniqueness.
 - Check internal links and sitemap: for the first batch, homepage/hub links reach all published/indexable pages and no crawl paths reach planned/noindex pages.
