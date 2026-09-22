@@ -47,7 +47,7 @@ Write five to ten candidates, drawn from at least three kinds:
 | `authority` | Listings, links, partner pages and AI-answer sources that would send visitors or trust |
 | `cut` | A lane whose clicks per URL do not justify what it costs (see step 5) |
 
-For each candidate record: evidence (with its label), the demand it serves, the mechanism (new ranking, better position, more clicks at the same position, more conversions, referral traffic), a size scenario, effort, confidence and who it reaches. Before ranking, run the lookup that would change a row's place: a live result check with `serp.mjs` for any ranking claim, a `demand.mjs` volume for a `gap`. Check `research.md` first and reuse anything under 30 days old. Default budget per review: ten live checks and one demand request, unless `context.md` sets another.
+For each candidate record: evidence (with its label), the demand it serves, the mechanism (new ranking, better position, more clicks at the same position, more conversions, referral traffic), a size scenario, effort, confidence and who it reaches. Navigational demand (people looking for another site's login or portal, such as "pronexo iniciar sesión") rarely clicks a third-party page even at position 5; size it near zero unless the page serves that exact step. Before ranking, run the lookup that would change a row's place: a live result check with `serp.mjs` for any ranking claim, a `demand.mjs` volume for a `gap`. Check `research.md` first and reuse anything under 30 days old. Default budget per review: ten live checks and one demand request, unless `context.md` sets another.
 
 Done when every row has a mechanism, a size (a number or a stated direction with its reason) and evidence labels.
 

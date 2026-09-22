@@ -1,5 +1,9 @@
 # Changelog
 
+## 8.0.1
+
+Fixes from the first two live v8 reviews (Andy Partner and Acredix, 2026-09-22). `references/setup.md`: brand terms must not be substrings of ordinary words; "acredita" matched "acreditación" and counted generic searches as brand. `references/review.md`: navigational demand for another site's login or portal is sized near zero; Acredix's Pronexo page ranks 7 to 9 on about 330 monthly impressions of that kind and earns no clicks. `scripts/review-data.mjs`: live checks report permanent (301, 308) and temporary (302, 303, 307) redirects separately.
+
 ## 8.0.0
 
 The skill changes jobs: from operating a measurement loop to finding and shipping bets that grow search traffic. Audit behind the change: matias `vault/AGENT-DESK/reports/2026-09-22-seo-skill-growth-audit.md`. On the two busiest v7 workspaces, ten weeks of daily operation left 2 non-brand clicks per 28 days on each site, while most runs re-measured pages with a few dozen impressions. Design borrowed from [every-app/open-seo](https://github.com/every-app/open-seo) (shortlist then choose, honest sizing, research log, "what else we checked") and [iannuttall/seo](https://github.com/iannuttall/seo) (small router over tested scripts; its crawler replaces our link-graph tooling).

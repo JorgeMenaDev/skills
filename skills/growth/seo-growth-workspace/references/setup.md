@@ -24,7 +24,7 @@ Credentials are locations (a directory or environment variable name), never valu
    ## Business: name, site, category, market, language, what it sells, price level
    ## Conversions: the qualified outcome (signup, demo, booking, order) and where it is tracked
    ## Audience: best-fit customer, bad-fit customer, words they use
-   ## Brand terms: the strings that mark a branded query
+   ## Brand terms: the strings that mark a branded query; none may be a substring of an ordinary word ("acredita" also matches "acreditación")
    ## Competitors: names, sites, why they matter
    ## Data access: Search Console property and credentials location, analytics, SERP and demand keys
    ## Approval boundary: what the agent may ship without asking (default: nothing public)

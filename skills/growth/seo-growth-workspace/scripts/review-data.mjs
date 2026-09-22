@@ -369,7 +369,7 @@ async function liveCheck(url) {
     const location = response.headers.get("location") ?? "";
     const headerRobots = response.headers.get("x-robots-tag") ?? "";
     if (response.status !== 200) {
-      return { url, status: response.status, target: location, robots: headerRobots, verdict: response.status >= 300 && response.status < 400 ? "redirect" : "check" };
+      return { url, status: response.status, target: location, robots: headerRobots, verdict: [301, 308].includes(response.status) ? "permanent redirect" : [302, 303, 307].includes(response.status) ? "temporary redirect" : "check" };
     }
     const html = await response.text();
     const canonical = /<link[^>]+rel=["']canonical["'][^>]*>/i.exec(html)?.[0];
