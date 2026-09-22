@@ -7,7 +7,7 @@ Where evidence comes from, what each source can and cannot say, and what it cost
 | Weekly or monthly data pack | `review-data.mjs` | Search Console, final data. Withholds anonymized queries: the pack prints query-row coverage | Free |
 | Any other Search Console cut | `gsc-fetch.mjs` (any dimensions, filters) | Same | Free |
 | First-time Search Console auth | `gsc-oauth.mjs` | Google OAuth, `webmasters.readonly` | Free |
-| Where a site ranks right now | `serp.mjs` (`SERPER_API_KEY`) | Serper Google results for one query, country and language at one moment | Pay per query |
+| Where a site ranks right now | `serp.mjs` (`SERPER_API_KEY`) | Serper Google results for one query, country and language at one moment. Free accounts allow quoted and `site:` queries only at 10 results | Pay per query |
 | How many people search a phrase | `demand.mjs` (`DATAFORSEO_LOGIN`, `DATAFORSEO_PASSWORD`) | DataForSEO Google Ads volumes: 12-month averages, estimates, empty for much of the long tail | Pay per request; the response states the cost |
 | Technical crawl | `DO_NOT_TRACK=1 npx -y seo@0.2.40 report --url <origin> --actions-only --json` | [iannuttall/seo](https://github.com/iannuttall/seo) crawler, about 100 pages by default: broken and orphan links, metadata, indexability, structured data. No login needed | Free |
 | Search outcomes | Product analytics; PostHog through the Organic Outcome Bridge in [conversion.md](conversion.md) | Landing-page level, never per query | Free |

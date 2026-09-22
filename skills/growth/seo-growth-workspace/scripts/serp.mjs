@@ -21,7 +21,8 @@ domain ranks among organic results, the top organic results, and which result fe
 --q              A query; repeatable. --queries-file reads one query per line.
 --gl / --hl      Google country and interface language (for example cl / es, gb / en).
 --domain         Domain to locate (subdomains count as the same site).
---num            Organic results requested per query (default 20). Deeper requests may cost more credits.
+--num            Organic results requested per query (default 10). Serper free accounts reject
+                 quoted and site: queries above 10 ("Query pattern not allowed for free accounts").
 --out            Path prefix: writes <prefix>.json (responses) and <prefix>.md.
 --from-response  Re-render a saved <prefix>.json without network access.
 --dry-run        Print the request bodies and exit without calling the API.
@@ -77,6 +78,7 @@ export function render(saved) {
   for (const { q, response } of saved.results) {
     const organic = Array.isArray(response?.organic) ? [...response.organic].sort((a, b) => a.position - b.position) : [];
     out.push(`## ${q}`, "");
+    if (response?.error) out.push(`Lookup failed: ${response.error}`);
     for (const result of organic.slice(0, 10)) out.push(`${result.position}. ${hostOf(result.link)} ${result.title ?? ""}`.trim());
     const questions = (response?.peopleAlsoAsk ?? []).map((item) => item.question).filter(Boolean);
     if (questions.length > 0) out.push("", `People also ask: ${questions.join(" · ")}`);
@@ -102,7 +104,7 @@ async function main() {
   const gl = argValue("--gl") ?? "us";
   const hl = argValue("--hl") ?? "en";
   const domain = argValue("--domain") ?? "";
-  const num = Number(argValue("--num") ?? 20);
+  const num = Number(argValue("--num") ?? 10);
   if (queries.length === 0) throw new Error(`At least one --q is required.\n\n${usage()}`);
 
   const bodies = queries.map((q) => ({ q, gl, hl, num }));
@@ -120,7 +122,8 @@ async function main() {
       headers: { "X-API-KEY": key, "content-type": "application/json" },
       body: JSON.stringify(body),
     });
-    results.push({ q: body.q, response: response.ok ? await response.json() : { error: `HTTP ${response.status}` } });
+    const payload = await response.json().catch(() => ({}));
+    results.push({ q: body.q, response: response.ok ? payload : { error: `HTTP ${response.status}${payload.message ? `: ${payload.message}` : ""}` } });
   }
 
   const saved = { fetchedAt: new Date().toISOString(), domain, gl, hl, num, results };

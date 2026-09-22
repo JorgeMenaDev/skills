@@ -22,3 +22,5 @@ People also ask: How do widgets work?
 11. docs.example.com Guide
 
 ## widget | pipe
+
+Lookup failed: HTTP 500

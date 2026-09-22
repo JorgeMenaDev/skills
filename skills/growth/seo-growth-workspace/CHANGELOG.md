@@ -1,5 +1,9 @@
 # Changelog
 
+## 8.0.2
+
+`scripts/serp.mjs` defaults to 10 results and prints Serper's error message. Serper free accounts answer quoted and `site:` queries at 10 results but reject them at 20 with "Query pattern not allowed for free accounts"; the old default of 20 turned every operator query into a bare HTTP 400 during the 2026-09-22 Bsale and BHP research.
+
 ## 8.0.1
 
 Fixes from the first two live v8 reviews (Andy Partner and Acredix, 2026-09-22). `references/setup.md`: brand terms must not be substrings of ordinary words; "acredita" matched "acreditación" and counted generic searches as brand. `references/review.md`: navigational demand for another site's login or portal is sized near zero; Acredix's Pronexo page ranks 7 to 9 on about 330 monthly impressions of that kind and earns no clicks. `scripts/review-data.mjs`: live checks report permanent (301, 308) and temporary (302, 303, 307) redirects separately.
