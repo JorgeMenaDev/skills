@@ -5,22 +5,40 @@
     {
       "title": "Growth",
       "description": "Skills for SEO, content operations, conversion, and organic growth work that needs evidence and verification.",
-      "skills": ["seo-growth-workspace", "andy-post"]
+      "skills": [
+        "seo-growth-workspace",
+        "andy-post",
+        "painted-music-video"
+      ]
     },
     {
       "title": "Agent Operations",
       "description": "Skills for evidence-backed system routing, computer use and delegated execution.",
-      "skills": ["counsel", "orchestrate", "source-to-system", "crew-dispatch"]
+      "skills": [
+        "counsel",
+        "orchestrate",
+        "source-to-system",
+        "crew-dispatch"
+      ]
     },
     {
       "title": "Software Development",
       "description": "Skills for sidecar delegation, planning, tracking, fork maintenance, design-system enforcement, mobile iOS delivery, and shipping multi-step work across repos.",
-      "skills": ["cursor-subagent", "work-tracking", "sync-github-fork", "design-system-keeper", "using-git-worktrees", "mobile-monorepo-ios"]
+      "skills": [
+        "cursor-subagent",
+        "work-tracking",
+        "sync-github-fork",
+        "design-system-keeper",
+        "using-git-worktrees",
+        "mobile-monorepo-ios"
+      ]
     },
     {
       "title": "DevOps",
       "description": "Skills for durable agent operations, release trains, webhooks, and execution supervision.",
-      "skills": ["shiploop"]
+      "skills": [
+        "shiploop"
+      ]
     }
   ]
 }

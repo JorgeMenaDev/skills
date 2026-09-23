@@ -36,6 +36,14 @@ A system-first review loop for external articles, videos, repositories, prompts,
 npx skills@latest add JorgeMenaDev/skills --skill source-to-system
 ```
 
+### `painted-music-video`
+
+A music video painted entirely in code: an original song with vocals (Google Lyria 3 Pro), watercolour animation in p5.brush, word-by-word karaoke, and chapters painted by parallel subagents from one storyboard, rendered to MP4 in headless Chrome. Ships the engine as templates and a complete worked example. Method inspired by [PDoomVideo](https://github.com/JohnHeibel/PDoomVideo).
+
+```bash
+npx skills@latest add JorgeMenaDev/skills --skill painted-music-video
+```
+
 ### `andy-post`
 
 Draft and publish social posts through [Andy MCP](https://docs.andypartner.com). The operator gives a raw idea. The agent returns 2-3 drafts. After a pick, it publishes or schedules. Andy MCP is an active build: file skill or MCP friction on this repo.
