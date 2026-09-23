@@ -1,7 +1,7 @@
 ---
 name: youtube-thumbnails
 description: "Make YouTube thumbnails and channel banners with an image model (Codex image generation on a ChatGPT plan), grounded in the real brand assets. Use when the user wants a thumbnail, a channel banner or channel art, or says a channel or its thumbnails look poor, generic or AI-made."
-version: 0.1.0
+version: 0.2.0
 license: MIT
 mutating: true
 writes_to: ["image files in a working directory", "ChatGPT plan image usage (Codex)"]
@@ -22,7 +22,7 @@ A thumbnail is half of a **package**: the thumbnail carries the emotion or the m
 ## Steps
 
 1. **Brief.** Per video, write the promise in one sentence, the audience, the title it will pair with, and three concepts. Each concept names its moment as a verb (someone asking, booking, finishing). Done when every concept passes the one-second test: a stranger would get the promise from the concept line alone.
-2. **Brand kit.** Collect the source logo or mascot file (PNG with alpha), palette hexes, and brand font. Look at the brand's own site so the scenes share its world. Done when every path is absolute and opened once.
+2. **Style and brand kit.** When the human names a channel whose look they want, follow its profile in `references/styles/` (one exists: [t3dotgg](references/styles/t3dotgg.md), a mascot reacting to evidence); the profile overrides the defaults here where they conflict. Collect the source logo or mascot file (PNG with alpha), palette hexes, and brand font. Look at the brand's own site so the scenes share its world. Done when every path is absolute and opened once.
 3. **Generate.** Two variants per concept with Codex image generation. Mechanism, sizes and the non-Codex route: [references/codex-imagegen.md](references/codex-imagegen.md). Prompt skeletons, mascot references and text rules: [references/prompts.md](references/prompts.md). Record each prompt, output path and seconds in `prompts.jsonl`.
 4. **Finish.** For each keeper, `scripts/finish.sh` places the real logo, optionally sets a headline, and exports 1280×720 JPG under 2 MB. Model-rendered words stay only if every glyph is right, accents included.
 5. **Check.** `scripts/review-sheet.sh <dir>` renders every candidate at full size and at 168×94 with a duration badge. Drop any candidate that fails the [checklist](references/craft.md#checklist). Done when every survivor passes all 15 lines.
