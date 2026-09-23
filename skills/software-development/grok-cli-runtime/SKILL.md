@@ -1,7 +1,7 @@
 ---
 name: grok-cli-runtime
 description: xAI Grok auth and quota doctrine for any harness that runs the `grok` binary — T3 Code's `grok` provider instance, a headless `grok -p` sidecar, or a cloud runner seeded from GROK_AUTH_B64. Use when a Grok run fails with 401, 402, or 403, when Grok output is empty or DOA, or before any `grok login`.
-version: 2.1.1
+version: 2.1.2
 mutating: true
 writes_to: ["~/.grok/auth.json during explicit auth recovery", "configured encrypted credential store during explicit deposition", "GROK_AUTH_B64 during explicit cloud seeding"]
 ---
@@ -40,12 +40,12 @@ Minimal real chat probe:
 ```bash
 command -v grok >/dev/null 2>&1 && GROK=grok || GROK="$HOME/.grok/bin/grok"
 env -u XAI_API_KEY GROK_HOME="${GROK_HOME:-$HOME/.grok}" \
-  "$GROK" -p "Reply only OK" -m grok-4.6 --effort low --output-format json
+  "$GROK" -p "Reply only OK" -m grok-4.7 --effort low --output-format json
 ```
 
 ## Gotchas
 
-- Effort menu is model-specific. `grok-4.6` accepts `low|medium|high|xhigh` and defaults `high`. `grok-4.5` accepts `low|medium|high` and defaults `high`. Cursor's `grok-4.5-xhigh` is a different harness with different auth — do not pass Cursor ids to this binary.
+- Effort menu is model-specific. `grok-4.7` accepts `low|medium|high|xhigh` and defaults `high`. `grok-4.5` accepts `low|medium|high` and defaults `high`. Cursor's `grok-4.5-xhigh` is a different harness with different auth — do not pass Cursor ids to this binary.
 - `GROK_AUTH_B64` is an AFK harness convention, not a native xAI CLI setting.
 - Active-session precedence requires Grok CLI 0.2.66 or newer.
 - Do not confuse lanes: Cursor also runs Grok models, through Cursor's CLI and Cursor's auth. A red Cursor lane says nothing about this one.

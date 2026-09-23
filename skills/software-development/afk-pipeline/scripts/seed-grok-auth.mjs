@@ -57,7 +57,7 @@ if (!repo) {
     for (let attempt = 1; attempt <= 3; attempt += 1) {
       const probe = run(
         grok,
-        ["-p", "Reply only OK", "-m", "grok-4.6", "--effort", "low", "--output-format", "json"],
+        ["-p", "Reply only OK", "-m", "grok-4.7", "--effort", "low", "--output-format", "json"],
         {
           env: { ...probeEnvironment, GROK_HOME: temporaryHome },
           stdio: ["ignore", "pipe", "pipe"],
