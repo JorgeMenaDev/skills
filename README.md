@@ -44,6 +44,14 @@ A music video painted entirely in code: an original song with vocals (Google Lyr
 npx skills@latest add JorgeMenaDev/skills --skill painted-music-video
 ```
 
+### `youtube-thumbnails`
+
+YouTube thumbnails and channel banners painted by an image model (Codex image generation on a ChatGPT plan) and grounded in the real brand: the model paints one moment, the real logo is composited on top, and every candidate is judged at the 168×94 size phone viewers see. Ships the evidence behind each rule, prompt skeletons, a finish-and-export script and a review-sheet script.
+
+```bash
+npx skills@latest add JorgeMenaDev/skills --skill youtube-thumbnails
+```
+
 ### `andy-post`
 
 Draft and publish social posts through [Andy MCP](https://docs.andypartner.com). The operator gives a raw idea. The agent returns 2-3 drafts. After a pick, it publishes or schedules. Andy MCP is an active build: file skill or MCP friction on this repo.
