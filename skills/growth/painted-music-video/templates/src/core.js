@@ -61,7 +61,9 @@ const bar = t => Math.floor(bpOf(t) / 4);
 
 // ---------- shape builders (all return [[x, y], ...]) ----------
 function ellPts(cx, cy, rx, ry, n = 28, j = 0, rot = 0) {
-  const p = []; for (let i = 0; i < n; i++) { const a = rot + i / n * TAU; p.push([cx + Math.cos(a) * rx + jit(j), cy + Math.sin(a) * ry + jit(j)]); } return p;
+  const p = [], cr = Math.cos(rot), sr = Math.sin(rot);
+  for (let i = 0; i < n; i++) { const a = i / n * TAU, x = Math.cos(a) * rx, y = Math.sin(a) * ry; p.push([cx + x * cr - y * sr + jit(j), cy + x * sr + y * cr + jit(j)]); }
+  return p;
 }
 function rectPts(x, y, w, h, j = 0) { return [[x + jit(j), y + jit(j)], [x + w + jit(j), y + jit(j)], [x + w + jit(j), y + h + jit(j)], [x + jit(j), y + h + jit(j)]]; }
 function rrPts(x, y, w, h, r, j = 0) {

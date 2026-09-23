@@ -1,7 +1,7 @@
 ---
 name: painted-music-video
 description: "Make a music video painted entirely in code: an original sung song, watercolour animation in p5.brush, word-by-word karaoke, rendered to MP4. Use when the user wants a music video, an animated explainer or product intro with a song, a mascot video, or something like PDoomVideo."
-version: 1.0.0
+version: 1.0.1
 license: MIT
 mutating: true
 writes_to: ["a new video repo (engine, song, chapters)", "Google Cloud Vertex AI usage (Lyria)", "YouTube (Unlisted upload)"]
@@ -43,18 +43,20 @@ need ~1.5 GB per 90 s.
 
 1. **Brief.** Settle with the human or from the context: the hero, the singer, the language, the length
    (45–95 s), and "what the viewer must learn, in order". Done when that list is written into the repo README.
-2. **Song.** Read [references/song.md](references/song.md) in full. Write `music/lyrics.md`, generate three
+2. **Scaffold.** Copy `templates/` into a new repo (`gitignore` → `.gitignore`), `npm install`, render a quality
+   bar into `out/reference/quality-bar.jpg` (PDoomVideo frames, or frames of a previous film in this style).
+3. **Song.** Read [references/song.md](references/song.md) in full. Write `music/lyrics.md`, generate three
    takes, analyse them, pick one, lock `src/song.js`. Done when the chosen take's transcript matches the lyrics
    and `align.py` matched most words.
-3. **Scaffold.** Copy `templates/` into a new repo (`gitignore` → `.gitignore`), `npm install`, render a quality
-   bar into `out/reference/quality-bar.jpg` (PDoomVideo frames, or frames of a previous film in this style).
 4. **Cast and set.** Read [references/storyboard.md](references/storyboard.md). Write the rigs and the recurring
-   set, render the model sheet, fix it until every rig is on-model.
+   set, render the model sheet, fix it until every rig is on-model. A sequel reuses the previous film's rigs and
+   sets unchanged and adds new ones beside them.
    **STOP** until the model sheet passes: dispatching chapters on a broken rig copies the defect into every chapter.
 5. **Storyboard and guide.** Write `STORYBOARD.md` (one row and one gag per lyric line) and fill
    `ANIMATION_GUIDE.md`'s Characters section. Commit and push.
 6. **Chapters.** Read [references/chapters.md](references/chapters.md). Dispatch one agent per chapter in
-   parallel with the prompt template. Done when every chapter has reported.
+   parallel with the prompt template, then watch `out/check/` for each chapter's renders. Done when every
+   chapter has its `out/check/<cid>_report.md` (reports can be delivered to another session, the file cannot).
 7. **Integrate.** Fix the reported shared-file bugs, render the whole-film review sheet, fix what it shows.
    **STOP** before the full render until every lyric line's gag is visible in the sheet: a 15-minute render of an
    unchecked film is the waste this gate prevents.
@@ -68,14 +70,14 @@ need ~1.5 GB per 90 s.
 - **Text-heavy frames**: labels and captions that repeat the lyric. The karaoke already says it.
 - **Snapped moods**: a face or pose that changes between frames with no take (squash, emote, then the new pose).
 - **Chapter agents editing shared files**: they report; you fix once, after all of them finish.
-- **Re-rolling the song after painting**: it re-times every chapter. Lock it in step 2.
+- **Re-rolling the song after painting**: it re-times every chapter. Lock it in step 3.
 
 ## Output
 
 ```
 STATUS: DONE | DONE_WITH_CONCERNS | BLOCKED
 Video: <link> (Unlisted) · <duration> · 1920x1080
-Song: <take + style> · <cost> · alternates: <files>
+Song: <take + style> · <cost estimated from list price> · alternates: <files>
 Repo: <url> @ <sha>
 Chapters: <n> · concerns: <one line each, or none>
 ```

@@ -127,3 +127,8 @@ Iterate until each shot is charming, readable, lively and on-model. Fix scale, c
 - Watercolour `fill` shapes cost far more than `wash` shapes: a crowd of fill shadows can add a second per
   frame. Use `wash` with low `washOp` for shadows and repeated small things.
 - Limbs raised past the head's silhouette vanish behind it: the rigs clamp them. Pose "arms up" as a V.
+- Brush line weight is absolute, not scaled: small glyphs drawn with `brushLine` (badges, stamps, doodles on a
+  phone) smear into grey blobs. Paint small things as filled shapes, and give any phone-screen teaching point a
+  close-up (a hand-held phone's doodles are ~20 px wide).
+- Hand hooks draw before the singer's torso: a prop held at the chest is hidden. Draw such props after the rig
+  call, in world space.

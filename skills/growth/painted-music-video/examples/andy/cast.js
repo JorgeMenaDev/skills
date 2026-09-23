@@ -7,7 +7,8 @@
 //   Face:  eyes: dot, closed (asleep), happy, wide, tired, heart, star, look (+ lookX -1..1)
 //          brows: none, up, worried, angry;  mouth: smile, grin, o, O, flat, wobble, yawn
 //          blush (0..1), frizz (0..1 stress hair), sweat (0..1), tilt (head only)
-//   Hooks: handL(s, sw) / handR(s, sw) at the hand centre (hold a phone, a coffee cup, a calendar),
+//   Hooks: handL(s, sw) / handR(s, sw) at the hand centre (hold a phone, a coffee cup, a calendar). They draw
+//          BEFORE the torso: a prop held at the chest is hidden, so draw those after owner() in world space.
 //          draw(s, sw) in body-local space (feet at 0, head centre at (0, -11.4s), head radius ~2.8s).
 //   Also:  emote / emoteK like Andy ('heart', 'spark', 'zzz', 'note', '!', '?', 'sweat', 'check').
 // client(x, y, s, o): simple round customers. o.seed picks skin, hair and shirt; o.phone = true holds a phone.

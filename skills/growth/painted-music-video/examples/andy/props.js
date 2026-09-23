@@ -4,10 +4,10 @@
 //   o.night 0..1 (1 = 3 AM, dark blue; 0 = warm day), o.lamp 0..1 (the ceiling lamp's pool of light),
 //   o.window: true (default) shows the big window with the city and the Andes behind, o.party 0..1 adds bunting.
 //   Layout (x): window 560..1360 (sill y 560), wall clock at (240, 250), wall calendar at (1640, 300),
-//   counter from x 1180 to 1800 (top y 640), salon chair + mirror at x ~380, door with a bell at x 1860.
+//   counter from x 1180 to 1800 (top y 640), salon chair at x ~380. (No door: chapters that need one paint it.)
 // shopFront(t, o): foreground pieces that overlap characters (the counter front, plants). Paint last.
 // cityWindow(x, y, w, h, t, night): the window view on its own (skyline + Andes + moon/sun).
-// wallClock(x, y, r, hour, o), wallCalendar(x, y, s, o) (o.marks = [[col,row,colour],...], o.flip 0..1 page turn),
+// wallClock(x, y, r, hour, o), wallCalendar(x, y, s, o) (o.marks = [[col,row,colour,pop],...]),
 // counter(x, y, w), register(x, y, s, o) (o.ding 0..1 pops the drawer + a bell sparkle),
 // moonSky(t, o): a full-frame night sky with moon and twinkling stars (used for outside shots).
 // andyLogo(x, y, r, o): the flat Andy mark (face on a disc) for title cards and end cards.

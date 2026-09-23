@@ -20,7 +20,9 @@ Report the link, and let the human watch it with sound and decide.
 YouTube Studio with no API: drive the human's signed-in Chrome on macOS with AppleScript, which can run page
 JavaScript (`tell application "Google Chrome" to execute active tab of front window javascript js`).
 
-- Open `https://studio.youtube.com/channel/<channel id>/videos/upload` in a new Chrome window.
+- Open `https://studio.youtube.com/channel/<channel id>/videos` in a new Chrome window. Dismiss any welcome or
+  "Get started / Dismiss" popup, then click Create → "Upload videos" (the `/videos/upload` URL no longer opens
+  the dialog by itself).
 - Studio is web components: walk every `shadowRoot` to find controls. Title and description are the
   contenteditable `#textbox` elements (set with `execCommand('selectAll')` + `execCommand('insertText')`).
   Audience: `tp-yt-paper-radio-button[name=VIDEO_MADE_FOR_KIDS_NOT_MFK]`. Then `#next-button` three times,
@@ -29,6 +31,8 @@ JavaScript (`tell application "Google Chrome" to execute active tab of front win
   click it with `cliclick c:x,y`, then System Events `Cmd+Shift+G`, type the path, Return, Return.
 - Read JS files into AppleScript as UTF-8 (`read POSIX file "/tmp/x.js" as «class utf8»`): the default
   MacRoman read garbles every accent and emoji in the title.
+- An `execute` can fail once with "Application isn't running" (-600) while Chrome is open: retry it.
+- The Visibility step shows the youtu.be link; the content list needs a reload before the new row appears.
 - Verify twice: Studio's row shows `Unlisted`, and anonymous
   `curl "https://www.youtube.com/oembed?url=https://youtu.be/<id>&format=json"` returns the title.
 - Close the Chrome window you opened.

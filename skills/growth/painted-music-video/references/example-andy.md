@@ -46,3 +46,13 @@ bar (`node render.mjs --sheet=0.8,4,9,14,24,31,40,47,55,62,78,88,100,112,120,128
 A dancing-mascot loop on an empty stage, before any of this: "nicer, but not even close". The difference
 was never the brush: it was the song with a story, full sets, a gag per lyric line, supporting characters,
 and chapters that hand off to each other. Start from those.
+
+## Episode two: the skill test (same day)
+
+A fresh agent with only this skill made "Andy: vive tu vida" (61.7 s, 5 chapters) about the iPhone app (the
+three-pile inbox, the handoff notification) and Andy Marketing (topic → post in her voice → one-tap approval →
+scheduled). It reused the Andy rigs and sets unchanged, added a beach, a school hall and the inside of the phone,
+and matched the first film's quality in about 2 hours. Its lessons are folded into 1.0.1: scaffold before the
+song, a line budget for short songs, sets shared between chapters live in `props.js`, chapter agents read their
+stub before writing and leave `<cid>_report.md` files, and a slow first Write is not a dead agent.
+

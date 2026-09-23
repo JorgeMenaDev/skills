@@ -22,6 +22,9 @@ Write them yourself in `music/lyrics.md`, in the audience's language and registe
 - **Structure** that fits ~90 s: `[Intro] [Verse 1] [Pre-Chorus] [Chorus] [Verse 2] [Bridge] [Final Chorus]
   [Outro]`. Section tags in square brackets; ad-libs in parentheses (the aligner skips both). A shorter film
   (~45–60 s) drops Verse 2 or the Bridge, never the chorus.
+- **Line budget**: about 3.5 s per sung line at ~100 BPM plus a 3–5 s intro, so 60 s holds 15–17 lines and 90 s
+  holds ~23. Say the length in `prompt.md` ("about 60 seconds, short intro, no long instrumental breaks") and ask
+  for a 3–4 s instrumental outro: the end card needs a hold after the last word.
 - The problem comes first (verse 1: the pain, sung funny), then the hero arrives (pre-chorus), then the promise
   (chorus). The bridge carries the twist that keeps the human in charge.
 

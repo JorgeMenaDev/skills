@@ -14,6 +14,12 @@ shows, including its mistakes.
   contained deviation (Andy's half-closed `lid`). The hero acts with the body: squash, lean, bounce,
   limbs. A fixed face that leans and peeks cannot argue and cannot become a first-person persona.
 - **Chibi proportions for everyone**: big heads, short bodies, so the singer and the hero read as one family.
+- **Any set two chapters use lives in `props.js`**, never inside a chapter (the title street that the finale
+  pulls back to, a room seen from inside and outside).
+- **Rig file names**: `studio.html` loads `src/hero.js`, `src/cast.js`, `src/props.js`. Copy example rigs under
+  those names (`examples/andy/andy.js` → `src/hero.js`) or edit the script tags; keep the two in step.
+- **A sequel** copies the previous film's rigs, props and palette unchanged, adds its new sets and characters
+  beside them in the same style, and re-renders the model sheet with old and new side by side.
 - **The recurring set** is one function (`shopBack(t, { night, lamp, party, … })` + `shopFront`) with a fixed
   layout written in its header comment. Chapters return to it; a fixed layout keeps them consistent.
 - Backgrounds are layered watercolour `fill` shapes, never one flat colour.
@@ -49,4 +55,5 @@ its shape.
 ## ANIMATION_GUIDE.md
 
 Copy `templates/ANIMATION_GUIDE.md` and fill its `## Characters` section from your rig files (signatures,
-options, hooks, sizes). Everything else in it is engine-generic, including the engine traps list.
+options, hooks, sizes). Everything else in it is engine-generic, including the engine traps list. Set `WIPES`
+and `HERO_WORD` (the name the karaoke paints in the hero colours) in `src/timeline.js`.

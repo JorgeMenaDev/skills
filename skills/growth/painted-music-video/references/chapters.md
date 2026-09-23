@@ -9,6 +9,10 @@ chapters yourself in time order with the same loop, one chapter per pass.
 Before dispatching, commit the scaffold so every agent starts from the same engine, and stub every chapter
 file listed in `studio.html` (`// cN: not painted yet`).
 
+**Watching them.** An agent's first move is often one ~550-line Write, which leaves it silent for 10–15 minutes;
+that is slow, not dead. Watch `out/check/<cid>_*` renders, not transcripts or line counts. Re-dispatch a chapter
+only when it has no render at all after ~20 minutes, and never while its first agent may still write the same file.
+
 Prompt template (fill the angle brackets; keep every other line):
 
 ```
@@ -30,7 +34,8 @@ Chapter-specific notes:
 - <sizes, who sings, anything exported for a later chapter (e.g. window.streetScene)>
 - Karaoke covers y ~985–1060: keep faces above y 960.
 
-Rules: only create/edit `src/ch/<file>.js`. Do not edit shared files (report real bugs in your final message
+Rules: only create/edit `src/ch/<file>.js` (it exists as a stub: Read it before your first Write). Write a small
+skeleton with every shot registered and render it within the first 5 minutes, then build up. Do not edit shared files (report real bugs in your final message
 instead). Do not run any git commands. Every shot is a pure function of t (no Math.random, no state). Keep
 ≤ 1.5 s/frame.
 
@@ -41,7 +46,8 @@ audio if useful. Iterate at least 3 times until every moment is charming, readab
 matches the reference quality.
 
 Final message: list your shots with times, what each shows, ms/frame, anything you could not get right, and
-any shared-file bugs you found. Keep it short.
+any shared-file bugs you found. Keep it short. Also write that same report to `out/check/<cid>_report.md` and
+leave your final contact sheet at `out/check/<cid>_final.jpg`.
 ```
 
 The hand-off bullets are what make the film feel continuous: tell each agent the exact last frame of the chapter
@@ -52,7 +58,7 @@ window exactly on the next chapter's opening camera because both were written in
 
 When every agent has reported:
 
-1. **Review each chapter as it lands**: one contact sheet of 12 frames per chapter, read it yourself.
+1. **Review each chapter as it lands** (its `_report.md` appears): one contact sheet of 12 frames, read it yourself.
 2. **Collect the shared-file bugs** from all reports. Fix them only after every agent is done (a mid-run fix moves
    the ground under agents still iterating), and only in ways that cannot break the workarounds agents wrote
    (additive guards, clamps, wider sets; no renamed options). Re-render the model sheet to confirm.
