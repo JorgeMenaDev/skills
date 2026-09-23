@@ -16,3 +16,10 @@ Tutorial (80 s: create your AI agent in 5 steps):
 1. *5 pasos*: a small business owner at the counter, laptop open, a big "5 PASOS", a satisfied look.
 2. *Antes / después*: left, a phone flooded with unread chats; right, the same counter calm, chats answered.
 3. *Tu turno*: the owner's hands setting up the agent on a laptop, a café or salon behind.
+
+## What shipped (second run, t3dotgg style)
+
+- Jorge chose the [t3dotgg profile](../references/styles/t3dotgg.md) for the channel: the bird reacts to evidence from its own world (customer messages, booking confirmations), composited with `scripts/compose-reactor.py`.
+- The pose kit (cheeks, mouth covered, chin, facepalm, peeking, sunglasses win) lives in the Matias vault under `companies/Andesphere/assets/andy-pose-kit/`; reuse it, and lock new poses with `scripts/face-lock.sh --keep` so wings and glasses survive.
+- The approved banner was composed with PIL, width-fit asserted inside the safe area — now `scripts/finish-banner.py`.
+- Brief prices come from the source, never retyped: a shell heredoc once turned "$12.900" into ".900", so no price was displayed.

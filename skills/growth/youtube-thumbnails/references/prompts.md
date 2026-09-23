@@ -13,9 +13,10 @@ Subject: <the one focal point, its emotion, its place in frame (left third / rig
 Supporting: <one object that proves the moment, e.g. a phone showing a booking confirmation>.
 Setting: <real place with real texture>, <light: time of day, practical lamps>.
 Style: photorealistic, tactile, shallow depth of field, high contrast. (or: flat vector, thick outlines)
-Text: exactly "<≤4 words>", <weight, colour, placement>. No other text anywhere. | No text anywhere.
+Text: exactly "<0–3 words>", <weight, colour, placement>. No other text anywhere. | No text anywhere.
 Keep empty: bottom-right corner (duration badge) and <where the logo will go>.
-Avoid: neon glow, glassy floating UI, collage, stock smiling faces, invented logos.
+Phones face their screen to the viewer; no interface on the camera side.
+Avoid: neon glow, glassy floating UI, collage, stock smiling faces, invented logos, signboards or menu surfaces unless the concept names one.
 ```
 
 Then iterate with single-change edits: "Change only X. Keep subject, layout, light and text exactly the same."
@@ -41,4 +42,5 @@ Then iterate with single-change edits: "Change only X. Keep subject, layout, lig
 | Mascot drift | Composite the real file; see above. |
 | Invented text or signage | Read every word; edit "remove the sign, change nothing else". |
 | Subject in the badge corner | "Keep the bottom-right quarter empty." |
+| Phone UI on the wrong side | Show the screen on the front; no interface on the camera side. |
 | Moderation refusal | Drop hyperbole ("shocked", "screaming"); describe the scene neutrally. |

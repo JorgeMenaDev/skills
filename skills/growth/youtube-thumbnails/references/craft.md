@@ -36,18 +36,18 @@ YouTube made "managing AI slop" a 2026 priority, and about 21% of a new account'
 
 ## Checklist
 
-1. One focal point; three major elements at most.
-2. The subject (face or mascot) shows a clear emotion that still reads at 168×94.
-3. Text is 0–3 words, large, and every glyph (accents included) is correct.
-4. The words add something the title does not say.
-5. Three colours at most, one of them extreme; the base is not YouTube red/white/black.
+1. One focal point; three major elements at most. A before/after pair counts as one unit.
+2. The subject shows a clear emotion that still reads at 168×94; on a small channel an object-led result image may stand in for the face.
+3. Text is 0–3 designed words, large, every glyph (accents included) correct. Evidence text inside a style profile follows that profile.
+4. The words add something the title does not say; a searchable tutorial may repeat its number ("5 PASOS").
+5. Three designed colour families at most, one extreme; brand-asset colours, natural skin and photographic neutrals are exempt; the base is not YouTube red/white/black.
 6. The subject fills about a third of the frame; the background is simple.
 7. The logo or mascot is the real file, or passed the side-by-side identity check.
 8. No garbled text, hands or invented brand marks anywhere in the scene.
 9. Bottom-right fifth, bottom edge and corners hold nothing important.
 10. Passes the phone test in the review sheet's 168×94 column.
 11. A stranger gets the promise in under a second.
-12. Three diverse variants exist for the video.
+12. Three diverse concepts reach final/ for the video (different hook, not different hue); a failed concept is rebriefed, never shipped short.
 13. Exported 1280×720 JPG under 2 MB.
 14. It does not look like the default AI look listed above.
-15. After publishing, judge by watch-time share after 1–2 weeks, not day-one CTR.
+15. Handoff, not a gate: after publishing, the publisher judges by watch-time share after 1–2 weeks, not day-one CTR.
