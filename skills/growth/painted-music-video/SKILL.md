@@ -1,7 +1,8 @@
 ---
 name: painted-music-video
-description: "Make a music video painted entirely in code: an original sung song, watercolour animation in p5.brush, word-by-word karaoke, rendered to MP4. Use when the user wants a music video, an animated explainer or product intro with a song, a mascot video, or something like PDoomVideo."
-version: 1.0.1
+description: "Make a music video painted entirely in code: an original sung song, watercolour animation, word-by-word karaoke, rendered to MP4."
+disable-model-invocation: true
+version: 1.0.2
 license: MIT
 mutating: true
 writes_to: ["a new video repo (engine, song, chapters)", "Google Cloud Vertex AI usage (Lyria)", "YouTube (Unlisted upload)"]
