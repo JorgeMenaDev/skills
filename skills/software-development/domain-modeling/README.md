@@ -1,6 +1,6 @@
 # domain-modeling — divergent fork of mattpocock/skills
 
-Vendored from [mattpocock/skills → skills/engineering/domain-modeling](https://github.com/mattpocock/skills/tree/main/skills/engineering/domain-modeling) (v1.1.0 body, verbatim below the fork block), then extended with the `<target-repo>` block. Adopted as an owned fork on 2026-07-08, superseding the retired `grill-with-docs` fork (now in `skills/deprecated/`) as the home of target-repo routing.
+Vendored from [mattpocock/skills → skills/engineering/domain-modeling](https://github.com/mattpocock/skills/tree/main/skills/engineering/domain-modeling) (body verbatim below the fork block; last synced to upstream commit `c55ee46`, 2026-09-18), then extended with the `<target-repo>` block. Adopted as an owned fork on 2026-07-08, superseding the retired `grill-with-docs` fork (now in `skills/deprecated/`) as the home of target-repo routing.
 
 ## Why it forked
 

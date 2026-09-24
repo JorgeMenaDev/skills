@@ -4,7 +4,7 @@ This skill is a copy of [mattpocock/skills → skills/productivity/writing-for-a
 
 Formerly `writing-great-skills` — upstream renamed and restructured it in v1.2.0 (breaking, no alias): the reference now covers any document an agent consumes, `GLOSSARY.md` was merged into `SKILL.md`, skill-only mechanics moved to `SKILL-MECHANICS.md`, and the skill became model-invoked. Our fork followed the rename on 2026-08-05.
 
-**Last synced:** upstream commit `0986eba` (2026-08-05, post-v1.2.0).
+**Last synced:** upstream commit `c55ee46` (2026-09-18).
 
 ## What's Matt's vs ours
 

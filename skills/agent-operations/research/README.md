@@ -4,7 +4,7 @@ This skill is a copy of [mattpocock/skills → skills/engineering/research](http
 
 Promoted from a vendored install in the Matias profile on 2026-08-05, when the local copy routed the background run through `crew-dispatch`. That edit was removed on 2026-09-22: the Matias crew lane is now opt-in, so the opening paragraph is Matt's again.
 
-**Last synced:** upstream commit `0986eba` (2026-08-05, post-v1.2.0 — upstream's `SKILL.md` unchanged since 2026-07-01; our opening paragraph went back to Matt's on 2026-09-22).
+**Last synced:** upstream commit `c55ee46` (2026-09-18). Our opening paragraph went back to Matt's on 2026-09-22.
 
 ## What's Matt's vs ours
 
