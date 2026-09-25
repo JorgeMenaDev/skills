@@ -1,10 +1,10 @@
 ---
 name: design-system-keeper
 description: Extract, encode, and enforce a repo's real design system as an agent-readable canon (v0 Design Systems 2.0 shape). Use when the user wants agents to learn or import their design system, asks why pages look inconsistent or like different design systems mixed together, wants a design consolidation or cleanup, or when building UI in a repo that has a canon (`design/` + DESIGN.md).
-version: 0.2.2
+version: 0.2.3
 license: MIT
 mutating: true
-writes_to: [DESIGN.md, design/, AGENTS.md, CLAUDE.md]
+writes_to: [DESIGN.md, design/, AGENTS.md]
 ---
 
 # Design System Keeper
@@ -37,7 +37,7 @@ git rev-parse --show-toplevel 2>/dev/null && echo "REPO: yes" || echo "REPO: no"
 1. **Extract.** Fan out read-only subagents per [references/extraction.md](references/extraction.md): tokens/theming, component inventory, page patterns, and surface census (which routes/pages use which visual language). Completion: every UI surface in the repo is attributed to a named visual language, with file paths — including the ugly ones.
 2. **Interview.** Where extraction found more than one visual language, ask the user which is canonical (show concrete route/file examples of each). Ask only what extraction could not decide: canonical language, surfaces exempt from the canon (e.g. legacy embeds), naming. Completion: every non-canonical language is marked *legacy* by the user, not by you.
 3. **Encode.** Write the canon in the v0 shape using [references/canon-template.md](references/canon-template.md): `DESIGN.md` (the rules, ≤100 lines) + `design/foundations.md`, `design/components.md`, `design/patterns.md`, `design/drift.md`. Upgrade existing docs in place (Contract §3). Completion: every rule and every indexed primitive carries a real path, spot-checked by Reading 3 cited files.
-4. **Wire.** Point the repo's agent entrypoints (AGENTS.md / CLAUDE.md) at the canon: one line — read `DESIGN.md` before UI work, verify against source. Completion: a fresh agent session in this repo would load the canon without being told.
+4. **Wire.** Point the repo's `AGENTS.md` at the canon (Claude Code reads it natively; never create a `CLAUDE.md` for this): one line — read `DESIGN.md` before UI work, verify against source. Completion: a fresh agent session in this repo would load the canon without being told.
 5. **Report drift.** `design/drift.md`: each legacy surface, its language, effort to migrate, ordered by user-facing impact. STOP — do not start migrating. Mass-refactoring on setup enthusiasm, before the user has picked a slice, is the failure this gate prevents. Hand the backlog to the user.
 
 ## Build

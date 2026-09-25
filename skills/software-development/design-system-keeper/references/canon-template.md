@@ -41,6 +41,6 @@ Rules carry their *why* only when it changes behavior. If a DESIGN.md already ex
 - <date> <path> — <one-line violation>
 ```
 
-## Wiring line (AGENTS.md / CLAUDE.md)
+## Wiring line (AGENTS.md)
 
 > UI work: read `DESIGN.md` first; verify components/tokens/icons against their source files; log violations to `design/drift.md`.
