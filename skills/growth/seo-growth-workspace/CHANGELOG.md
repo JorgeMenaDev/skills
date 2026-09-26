@@ -2,7 +2,7 @@
 
 ## 8.1.0
 
-`references/data.md` and `references/ai-search-visibility.md` add Bing Webmaster Tools' AI Performance report as an observed AI-citation source: citations, cited pages and grounding queries for Copilot and Bing AI summaries, exported as CSV (no API). Grounding queries become an accepted source for prompt panels. Found in the 2026-09-26 source review of a Refix SEO article (matias `vault/AGENT-DESK/reports/2026-09-26-refix-seo-loop-source-review.md`); until now, the skill's only AI-answer evidence was prompt panels it built itself.
+`references/data.md` and `references/ai-search-visibility.md` add Bing Webmaster Tools' AI Performance report as an observed AI-citation source: citations, cited pages and grounding queries for Copilot and Bing AI summaries, exported as CSV (no API). Grounding queries become an accepted panel source, labelled as engine search phrases, and a source of `gap` and `authority` candidates. The export observes citations only, so the panel still covers mentions, recommendations and other engines. Found in the 2026-09-26 source review of a Refix SEO article (matias `vault/AGENT-DESK/reports/2026-09-26-refix-seo-loop-source-review.md`); until now, the skill's only AI-answer evidence was prompt panels it built itself.
 
 ## 8.0.2
 
