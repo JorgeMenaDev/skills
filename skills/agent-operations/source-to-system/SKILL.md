@@ -1,6 +1,6 @@
 ---
 name: source-to-system
-description: Turn external material into system improvements. Use when a user shares a source (post, article, video, repository) and asks whether to adopt it or what it should change in systems they already run.
+description: Turn external material into system improvements. Use when a user shares a source (a post, video, or repository) and asks whether to adopt it or what it should change in a workflow, product, or knowledge base they already run.
 version: 1.1.0
 mutating: true
 writes_to: ["temporary directory reported as SCRATCH", "user-approved workspace artifacts", "user-approved owning systems"]
@@ -21,10 +21,10 @@ Turn outside material into leverage, not a scrapbook.
 ## Analysis
 
 1. **Orient.** Read the workspace instructions and the configured knowledge, tracker, repositories, and current priorities. Finish when the existing systems that could own a change are named.
-2. **Capture.** Resolve the root source and the replies, media, citations, tools, or repositories needed to assess its material claims. Use `references/capture.md` when media or inaccessible formats need extraction, and preserve the capture under `SCRATCH`. Finish when each claim, including those carried in embedded code, tables, images, or quoted posts, is traceable to captured material or an explicit evidence gap.
+2. **Capture.** Resolve the root source and its material dependencies: the replies, media, citations, tools, or repositories needed to assess its material claims, not every link. Use `references/capture.md` when media or inaccessible formats need extraction, and preserve the capture under `SCRATCH`. Finish when each claim, including those carried in embedded code, tables, images, or quoted posts, is traceable to captured material or an explicit evidence gap.
 3. **Atomize.** List the material claims, tactics, artifacts, prerequisites, promised outcomes, and commercial relationships. Apply `references/evidence-and-trust.md`. Finish when every item has an evidence class and confidence.
-4. **Map.** Walk every row in `references/destination-map.md`, mark it `plausible` or `ruled out`, and inspect the current state of every plausible owner. A target the user names starts as one plausible row. Finish when every row is marked and ownership conflicts are resolved or surfaced.
-5. **Compare.** Give each idea one disposition: `COVERED | ADOPT | RESEARCH | SKIP`. `COVERED` cites where the owner already does it (file and line, record, or setting); `SKIP` names its reason, including any owner doctrine the idea contradicts. For each `ADOPT` and `RESEARCH` idea, record owner, expected leverage, evidence, risk, dependencies, and proof method. Select the smallest coherent improvement and give it one owner and one proof method, or select no change. Finish when every idea is dispositioned with its citation or reason.
+4. **Map.** Walk every row in `references/destination-map.md`, starting with the row of any target the user names, mark it `plausible` or `ruled out`, and inspect the current state of every plausible owner. Finish when every row is marked and ownership conflicts are resolved or surfaced.
+5. **Compare.** Give each idea one disposition: `COVERED | ADOPT | RESEARCH | SKIP`. `COVERED` cites where the owner already does it (file and line, record, or setting); `SKIP` names its reason, including any owner doctrine the idea contradicts. For each `ADOPT` and `RESEARCH` idea, record owner, expected leverage, evidence, risk, dependencies, and proof method. Select the smallest coherent improvement, or select no change. Finish when every idea is dispositioned: `COVERED` with its citation, `SKIP` with its reason, `ADOPT` and `RESEARCH` with the full record.
 6. **Recommend.** Report what is useful, misleading, already covered, and why the selected improvement beats the alternatives. Then STOP for approval; mutating while the user is still deciding is the failure this gate prevents.
 
 After approval, read `references/materialize.md` in full before making any change. If the workspace has no smaller configured coordination artifact, use `templates/system-improvement-brief.md`. Examples are in `references/examples.md`.
