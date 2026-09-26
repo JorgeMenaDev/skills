@@ -9,7 +9,10 @@
 | Marketing | A benefit, metric, testimonial, or comparison asserted by an interested party | Keep as a claim until independently verified |
 | Unknown | Material support is missing or inaccessible | State what evidence would resolve it |
 
-Material dependencies are the linked artifacts needed to verify a material claim, not every link in a source. Missing secondary context produces `NEEDS_EVIDENCE`; a missing root source produces `BLOCKED`.
+## Claim checks
+
+- Recompute every headline number from its stated inputs. A gain that compares different metrics, windows, or baselines stays marketing until a like-for-like figure exists. Example: "under 5 clicks a week" before and "30,000 impressions a week" after, reported as "47x", a figure its own inputs cannot produce.
+- When the author sells the step they call most important, judge that step's mechanism on its own evidence and disposition the product as a separate idea.
 
 ## Repositories and tools
 

@@ -26,7 +26,7 @@
 
 ## System comparison
 
-| Destination | Current state | Gap | Disposition |
+| Destination | Current state (location) | Gap | Disposition |
 |---|---|---|---|
 | | | | COVERED / ADOPT / RESEARCH / SKIP |
 
