@@ -6,6 +6,8 @@ Use for `authority` candidates that involve AI answers, for bets that aim at AI 
 
 No special markup tricks exist for Google AI surfaces: AI Overviews and AI Mode use core Search systems, and Google says no AI-specific markup or files are required. This workflow is about access, extractability, and honest measurement, not a scoring model, preferred word count, or visibility forecast. For Google this is still SEO: crawlable helpful content, clear entities and visible proof. `llms.txt`, chunking and "AEO/GEO" tactics are unproven; label them so and never make them a gate.
 
+For Microsoft surfaces, start from the Bing Webmaster Tools AI Performance export (limits in [data.md](data.md)). Save the CSV under `.seo/reports/data/` and label it **observed**, with its date range. It observes citations only: mentions and recommendations, and every other engine, still need the observation panel below. A run with no saved export notes the missing export; it is never zero. A grounding query whose cited page only loosely answers it is a `gap` candidate in the review.
+
 Index backing matters, but engines may combine their own crawlers, partner indexes, and user-triggered fetches. Treat a missing direct-crawler path as reduced eligibility, not proof that a URL can never surface through another source.
 
 ## 1. Crawler access inventory
@@ -18,7 +20,7 @@ Do not scrape assistant products or add a provider integration. Manual observati
 
 ### Panel construction, freeze, and versioning
 
-Build the initial prompt panel from named, dated demand evidence before the first baseline — never from operator memory or convenience. Acceptable sources: first-party Search Console queries, the site's maintained keyword/query plan, sales-call/support/customer language, live SERP observations for money queries, or explicitly recorded business-context assumptions when first-party evidence does not exist yet. For every prompt preserve, alongside its stable prompt ID, version, and verbatim query: the source and its observation date, the selection rationale, buyer stage, branded/non-branded state, locale/market, intended surface or mode, and the known evidence limitation.
+Build the initial prompt panel from named, dated demand evidence before the first baseline — never from operator memory or convenience. Acceptable sources: first-party Search Console queries, Bing AI Performance grounding queries (with their limit from data.md), the site's maintained keyword/query plan, sales-call/support/customer language, live SERP observations for money queries, or explicitly recorded business-context assumptions when first-party evidence does not exist yet. For every prompt preserve, alongside its stable prompt ID, version, and verbatim query: the source and its observation date, the selection rationale, buyer stage, branded/non-branded state, locale/market, intended surface or mode, and the known evidence limitation.
 
 Freeze the declared panel before running the baseline. Any addition, removal, or wording change afterwards creates a new prompt/panel version; prior observations remain unchanged, and the report records why the panel changed and which comparisons are no longer like-for-like. Never add or remove prompts because observed results were favourable or unfavourable — post-hoc selection invalidates the baseline it appears to improve.
 
