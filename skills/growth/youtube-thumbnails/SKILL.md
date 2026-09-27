@@ -1,7 +1,7 @@
 ---
 name: youtube-thumbnails
 description: "Make YouTube thumbnails and channel banners with an image model (Codex image generation on a ChatGPT plan), grounded in the real brand assets. Use when the user wants a thumbnail, a channel banner or channel art, or says a channel or its thumbnails look poor, generic or AI-made."
-version: 0.3.0
+version: 0.3.1
 license: MIT
 mutating: true
 writes_to: ["image files in a working directory", "ChatGPT plan image usage (Codex)"]

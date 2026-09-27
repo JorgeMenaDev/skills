@@ -59,8 +59,8 @@ async function readJsonFile(filePath) {
   const text = await readFile(filePath, "utf-8");
   try {
     return JSON.parse(text);
-  } catch (error) {
-    throw new Error(`Invalid JSON in ${filePath}: ${error.message}`);
+  } catch {
+    throw new Error(`Invalid JSON in ${filePath}`);
   }
 }
 
