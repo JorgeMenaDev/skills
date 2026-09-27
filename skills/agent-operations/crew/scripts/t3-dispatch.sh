@@ -255,7 +255,7 @@ provider_failure() {
 assert_launched() {
   local crew_dir="$1" thread_id="$2" baseline="$3" waited=0 snap ts lines
   while [ "$waited" -lt 30 ]; do
-    snap="$(api GET "/api/orchestration/threads/$thread_id")" || return 0
+    snap="$(api GET "/api/orchestration/threads/$thread_id")" || { ASSERT_REASON="startup snapshot unavailable"; return 3; }
     lines="$(wc -l < "$crew_dir/status" | tr -d ' ')"
     [ "$lines" -gt "$baseline" ] && return 0
     ts="$(printf '%s' "$snap" | thread_ask turn)"
@@ -267,7 +267,8 @@ assert_launched() {
     esac
     sleep 2; waited=$((waited+2))
   done
-  return 0
+  ASSERT_REASON="no child startup acknowledgement within 30 seconds"
+  return 3
 }
 
 # compose_title <parent-title> <task-segment> -> "🚢 parser investigation · reproduce-error"

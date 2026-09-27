@@ -131,7 +131,7 @@ Growth fundamentals matter more than ever: context before advice, memory between
 
 ## Reference
 
-All skills below are **model-invoked** — the agent can reach for them when the task fits, or you can invoke them directly.
+Invocation is declared in each skill. Crew is user-invoked: run `/crew` explicitly.
 
 ### Growth
 
