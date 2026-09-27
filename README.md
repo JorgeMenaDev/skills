@@ -20,6 +20,16 @@ npx skills@latest add JorgeMenaDev/skills
 
 Most people begin with **`seo-growth-workspace`**. For unattended multi-phase shipping, add **`shiploop`**. When the question is where a plan should live, use **`work-tracking`**. To publish through Andy MCP, add **`andy-post`**.
 
+### `crew`
+
+Use your configured T3 Code providers in one workflow. Crew opens visible worker threads, gives each a bounded brief and working directory, and brings its report back for verification. It includes the dispatcher and all helper scripts; authentication stays with your own T3 installation.
+
+```bash
+npx skills@latest add JorgeMenaDev/skills --skill crew
+```
+
+See [setup and compatibility](./skills/agent-operations/crew/README.md) before your first run.
+
 ### `counsel`
 
 A two-vendor adversarial review protocol for hard-to-reverse architecture or design decisions. Two flagship reviewers from different vendors attack a file-backed proposal in parallel; the chair synthesizes, revises, and re-convenes for up to three rounds. A one-vendor run is a *second opinion*, not counsel. Runtime launch adapters stay consumer-local (e.g. Claude Code `.claude/skills/counsel/`).
@@ -121,7 +131,7 @@ Growth fundamentals matter more than ever: context before advice, memory between
 
 ## Reference
 
-All skills below are **model-invoked** — the agent can reach for them when the task fits, or you can invoke them directly.
+Invocation is declared in each skill. Crew is user-invoked: run `/crew` explicitly.
 
 ### Growth
 
@@ -132,7 +142,7 @@ All skills below are **model-invoked** — the agent can reach for them when the
 ### Agent Operations
 
 - **[orchestrate](./skills/agent-operations/orchestrate/SKILL.md)** — Conduct multi-agent work from a human-readable plan or a GitHub-autopilot spec: capability-aware frontier dispatch, isolated ticket PRs, conductor review gates, and verified integration.
-- **[crew-dispatch](./skills/agent-operations/crew-dispatch/SKILL.md)** — Crew-first task dispatch with a durable `crew/<id>/` record, plus detached completion supervision: the crew reports its terminal status and wakes its supervisor after the launching turn ends (T3/Codex runtime reference included).
+- **[crew](./skills/agent-operations/crew/SKILL.md)** — Dispatch visible T3 Code workers across your configured providers, with verified model options, local reports and recoverable hand-backs. Includes the complete dispatcher.
 - **[source-to-system](./skills/agent-operations/source-to-system/SKILL.md)** — Turn external material into one evidence-backed, owned system improvement or an explicit no-change decision.
 - **[grok-deep-research](./skills/agent-operations/grok-deep-research/SKILL.md)** — Run isolated, bounded Grok research with native or Firecrawl search and produce a stable cited report plus an iteration ledger.
 
