@@ -37,7 +37,7 @@
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { execFileSync, execSync, spawn } from "node:child_process";
+import { execSync, spawn } from "node:child_process";
 
 const CONVEX_DIR = "{{CONVEX_DIR}}";
 const GATE_PREP = "{{CONVEX_GATE_PREP}}";
@@ -227,12 +227,12 @@ if (REGEN_ONLY) {
 // canonical output — validated by the typecheck+schema push above — so commit
 // it here rather than failing the run (see header).
 const repoRoot = path.resolve(".");
-const status = execFileSync("git", ["status", "--porcelain", "-z", "--no-renames", "--untracked-files=all", "--", CONVEX_DIR], {
+const status = execSync(`git status --porcelain -- "${CONVEX_DIR}"`, {
   cwd: repoRoot,
   encoding: "utf8",
 });
 const generatedDrift = status
-  .split("\0")
+  .split("\n")
   .filter((line) => line.includes("_generated"));
 if (generatedDrift.length > 0) {
   console.warn(
@@ -240,10 +240,11 @@ if (generatedDrift.length > 0) {
       generatedDrift.map((l) => `  ${l}`).join("\n") +
       `\nconvex-gate: SELF-HEAL — committing the canonical codegen output.`
   );
-  // NUL-delimited porcelain keeps filenames literal; pass them as argv.
-  const files = generatedDrift.map((line) => line.slice(3)).filter(Boolean);
+  // Porcelain line: XY<space>path (codegen never renames; _generated paths
+  // have no spaces). `git add` stages modifications, additions and deletions.
+  const files = generatedDrift.map((l) => l.slice(3).trim()).filter(Boolean);
   try {
-    execFileSync("git", ["add", "--", ...files], {
+    execSync(`git add -- ${files.map((f) => JSON.stringify(f)).join(" ")}`, {
       cwd: repoRoot,
       stdio: "inherit",
     });

@@ -1157,9 +1157,41 @@ function runReviewInDocker(attemptDir: string, timeoutMinutes: number): void {
   fs.rmSync(reviewOutput, { recursive: true, force: true });
   fs.mkdirSync(reviewOutput, { recursive: true });
 
-  // The initial full checkout fetched origin/base before any agent ran.
-  // Review against that run-start base; a late authenticated fetch would read
-  // agent-writable Git configuration on the host.
+  // Fetch base ref on host before mounting ro. HARDENED: the workspace's
+  // .git/config is agent-writable — a planted ext:: origin URL or credential
+  // helper would be host code execution under this process's env. So: fetch
+  // an explicit trusted URL (never the configured 'origin' remote), forbid
+  // the ext protocol, disable credential helpers and hooks, and run with the
+  // scrubbed harness env carrying ONLY the auth extraheader it needs.
+  if (GH_TOKEN && GH_REPO) {
+    try {
+      const auth = Buffer.from(`x-access-token:${GH_TOKEN}`).toString("base64");
+      execFileSync(
+        "git",
+        [
+          "-c",
+          `core.hooksPath=${emptyHooksPath()}`,
+          "-c",
+          "protocol.ext.allow=never",
+          "-c",
+          "credential.helper=",
+          "-c",
+          `http.https://github.com/.extraheader=AUTHORIZATION: basic ${auth}`,
+          "fetch",
+          "--no-tags",
+          `https://github.com/${GH_REPO}`,
+          `${BASE_BRANCH}:refs/remotes/origin/${BASE_BRANCH}`,
+        ],
+        { stdio: "inherit", env: harnessGitEnv() }
+      );
+    } catch {
+      console.warn("[attempt-loop] base-branch fetch failed; review may degrade");
+    }
+  } else {
+    console.warn(
+      "[attempt-loop] skipping base-branch fetch (missing GH_TOKEN or GH_REPO); review may degrade"
+    );
+  }
 
   const uid = process.getuid?.() ?? 0;
   const gid = process.getgid?.() ?? 0;
