@@ -84,4 +84,3 @@ export async function withProviders<T>(read: (rpc: (tag: string, payload: object
     catch { console.error("t3-provider-client: temporary T3 session revocation failed; expires within five minutes"); }
   }
 }
-

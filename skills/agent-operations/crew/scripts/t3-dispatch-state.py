@@ -286,7 +286,7 @@ def thread_question(question, args):
             print("unknown")
             return 0
         if question == "describe":
-            print("(unreadable: empty response)" if not raw.strip() else f"(unreadable: {error}) {raw[:200]}")
+            print("(unreadable: empty response)" if not raw.strip() else "(unreadable: malformed response)")
             return 0
         raise ValueError(f"thread {question}: unreadable snapshot ({error})")
     if question == "idle":

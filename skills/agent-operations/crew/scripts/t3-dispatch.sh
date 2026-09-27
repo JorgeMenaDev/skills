@@ -358,7 +358,7 @@ cmd_resolve() {
   if [ -s "$pending" ]; then
     nonce="$(cat "$pending")"
     local tid
-    tid="$(sqlite3 "file:$STATE_DB?immutable=1" \
+    tid="$(sqlite3 "file:$STATE_DB?mode=ro" \
       "select thread_id from projection_thread_messages where role='assistant' and text like '%${nonce}%' order by created_at desc limit 1;" 2>/dev/null || true)"
     if [ -n "$tid" ]; then
       printf '%s\n' "$tid" >"$cache"
