@@ -10,7 +10,7 @@
 #
 # `up` creates (or reuses) the sibling worktree, copies ignored env files,
 # installs, runs `setup:worktree`, starts `qa:local` detached, and prints the
-# QA_LOCAL_READY lines. `down` stops every process living in the worktree and
+# QA_LOCAL_READY lines. `down` stops the recorded server process after ownership checks and
 # optionally retires it. Repos without `qa:local` fall back to
 # `dev:<surface>` / `dev`.
 
@@ -52,7 +52,15 @@ if [[ "$git_dir" != "$git_common" ]]; then
   exit 1
 fi
 worktree_root="$(dirname "$repo_root")/$(basename "$repo_root")-worktrees"
+if [[ "$command" != "list" && ! "$slug" =~ ^[a-zA-Z0-9][a-zA-Z0-9._-]*$ ]]; then
+  echo "Invalid worktree slug: use letters, numbers, dots, underscores or hyphens." >&2
+  exit 2
+fi
 worktree="$worktree_root/$slug"
+if [[ -L "$worktree_root" || -L "$worktree" ]]; then
+  echo "Refusing symlinked worktree path." >&2
+  exit 2
+fi
 run_dir="$worktree/.worktree-dev"
 log_file="$run_dir/server.log"
 pid_file="$run_dir/server.pid"
@@ -73,17 +81,24 @@ derive_ports() { # stable per worktree path, aligned with the fleet port contrac
 }
 
 reap_worktree_processes() {
-  local pids="" pid
-  pids="$(lsof +D "$worktree" -t 2>/dev/null | sort -u || true)"
-  if [[ -f "$pid_file" ]]; then
-    pids="$(printf '%s\n%s' "$pids" "$(cat "$pid_file")" | sort -u)"
-  fi
-  [[ -z "${pids// /}" ]] && return 0
-  for pid in $pids; do kill -TERM "$pid" 2>/dev/null || true; done
+  [[ -f "$pid_file" && ! -L "$pid_file" ]] || return 0
+  local pid cwd
+  pid="$(cat "$pid_file")"
+  [[ "$pid" =~ ^[1-9][0-9]*$ && "$pid" -gt 1 ]] || {
+    echo "Refusing invalid recorded server PID." >&2; return 1
+  }
+  kill -0 "$pid" 2>/dev/null || return 0
+  cwd="$(lsof -a -p "$pid" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p')"
+  case "$cwd" in
+    "$worktree"|"$worktree"/*) ;;
+    *) echo "Recorded PID no longer belongs to this worktree; refusing to stop it." >&2; return 1 ;;
+  esac
+  kill -TERM "$pid" 2>/dev/null || return 0
   sleep 3
-  for pid in $pids; do
-    if kill -0 "$pid" 2>/dev/null; then kill -KILL "$pid" 2>/dev/null || true; fi
-  done
+  if kill -0 "$pid" 2>/dev/null; then
+    cwd="$(lsof -a -p "$pid" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p')"
+    case "$cwd" in "$worktree"|"$worktree"/*) kill -KILL "$pid" 2>/dev/null || true ;; esac
+  fi
 }
 
 case "$command" in
@@ -170,6 +185,11 @@ case "$command" in
     if [[ ! -d "$worktree" ]]; then
       echo "No worktree at $worktree" >&2; exit 1
     fi
+    target_common="$(cd "$worktree" && cd "$(git rev-parse --git-common-dir)" && pwd -P)"
+    target_git="$(cd "$worktree" && cd "$(git rev-parse --git-dir)" && pwd -P)"
+    [[ "$target_common" == "$git_common" && "$target_git" != "$target_common" ]] || {
+      echo "Refusing a path that is not a linked worktree of this repository." >&2; exit 2
+    }
     reap_worktree_processes
     echo "RUNTIME_STOPPED: $worktree"
     if [[ "$remove" == "yes" ]]; then
@@ -183,7 +203,7 @@ case "$command" in
           echo "$unpushed" >&2; exit 1
         fi
       fi
-      "$script_dir/dehydrate-worktree.sh" "$worktree" --apply 2>/dev/null || true
+      "$script_dir/dehydrate-worktree.sh" "$worktree" --apply
       git -C "$repo_root" worktree remove --force "$worktree"
       git -C "$repo_root" branch -D "$slug" 2>/dev/null || true
       echo "WORKTREE_REMOVED: $worktree"

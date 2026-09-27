@@ -28,29 +28,58 @@ fi
 W=${SIZE%x*}; H=${SIZE#*x}
 CHROME=${CHROME:-"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"}
 command -v google-chrome >/dev/null 2>&1 && [ ! -x "$CHROME" ] && CHROME=$(command -v google-chrome)
-pos() { case $1 in tl) echo "top:5%;left:4%";; tr) echo "top:5%;right:4%";; bl) echo "bottom:7%;left:4%";; *) echo "bad pos $1" >&2; exit 2;; esac; }
 TMP=$(mktemp -d); trap 'rm -rf "$TMP"' EXIT
-FAM=$FONT; FONTLINK="<link href='https://fonts.googleapis.com/css2?family=$(printf %s "$FONT" | sed 's/ /+/g')&wght@800;900&display=block' rel=stylesheet>"
-if [ -n "$FONTFILE" ]; then
-  FAM="BrandFont"
-  FONTLINK="<style>@font-face{font-family:'BrandFont';font-weight:800 900;src:url('file://$FONTFILE')}</style>"
-fi
-{
-  echo "<!doctype html><meta charset=utf-8>$FONTLINK"
-  echo "<style>*{margin:0}body{width:${W}px;height:${H}px;overflow:hidden;position:relative;background:url('file://$IN') center/cover}"
-  echo ".l{position:absolute;$(pos "$LPOS");height:${LSIZE}%;filter:drop-shadow(0 4px 18px rgba(0,0,0,.55))}"
-  echo ".t{position:absolute;$(pos "$TPOS");max-width:58%;font:900 $((H/7))px/.95 '$FAM',sans-serif;letter-spacing:-.01em;color:$COLOR;text-shadow:0 4px 30px rgba(0,0,0,.6)}</style><body>"
-  echo "<script>document.fonts.ready.then(function(){try{var ok=document.fonts.size>0&&document.fonts.check('900 100px \"$FAM\"');document.body.dataset.fonts=ok?'ok':'fallback';}catch(e){document.body.dataset.fonts='error';}});</script>"
-  [ -n "$LOGO" ] && echo "<img class=l src='file://$LOGO'>"
-  [ -n "$TEXT" ] && echo "<div class=t>$TEXT</div>"
-  echo "</body>"
-} > "$TMP/f.html"
+FAM=$FONT
+[ -z "$FONTFILE" ] || FAM=BrandFont
+python3 - "$IN" "$LOGO" "$FONTFILE" "$FONT" "$COLOR" "$W" "$H" "$LSIZE" "$LPOS" "$TPOS" "$TEXT" > "$TMP/f.html" <<'PYHTML'
+import base64
+import hashlib
+import html
+import json
+from pathlib import Path
+import re
+import sys
+from urllib.parse import quote_plus
+
+source, logo, fontfile, font, color, width, height, logo_size, logo_pos, text_pos, text = sys.argv[1:]
+if not re.fullmatch(r"[A-Za-z0-9 -]+", font):
+    raise SystemExit("finish: font must be a plain font family name")
+if not re.fullmatch(r"#[0-9a-fA-F]{3}(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{5})?", color):
+    raise SystemExit("finish: color must be a hex color")
+if not all(re.fullmatch(r"[1-9][0-9]{0,3}", n) for n in (width, height)):
+    raise SystemExit("finish: size must contain positive pixel dimensions up to 9999")
+if not re.fullmatch(r"(?:[0-9]+(?:\.[0-9]+)?)", logo_size) or not 0 < float(logo_size) <= 100:
+    raise SystemExit("finish: logo size must be a percentage above 0 and at most 100")
+positions = {"tl": "top:5%;left:4%", "tr": "top:5%;right:4%", "bl": "bottom:7%;left:4%"}
+if logo_pos not in positions or text_pos not in positions:
+    raise SystemExit("finish: position must be tl, tr or bl")
+uri = lambda path: Path(path).as_uri()
+family = "BrandFont" if fontfile else font
+font_check = json.dumps('900 100px "' + family + '"')
+script = "document.fonts.ready.then(function(){try{var ok=document.fonts.size>0&&document.fonts.check(" + font_check + ");document.body.dataset.fonts=ok?'ok':'fallback';}catch(e){document.body.dataset.fonts='error';}});"
+digest = base64.b64encode(hashlib.sha256(script.encode()).digest()).decode()
+csp = "default-src 'none'; img-src file: data:; font-src file: https://fonts.gstatic.com; style-src 'unsafe-inline' https://fonts.googleapis.com; script-src 'sha256-" + digest + "'"
+print('<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="' + html.escape(csp, quote=True) + '">')
+if fontfile:
+    print("<style>@font-face{font-family:BrandFont;font-weight:800 900;src:url(" + json.dumps(uri(fontfile)) + ")}</style>")
+else:
+    print('<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=' + quote_plus(font) + '&amp;wght@800;900&amp;display=block">')
+print('<style>*{margin:0}body{width:' + width + 'px;height:' + height + 'px;overflow:hidden;position:relative;background:url(' + json.dumps(uri(source)) + ') center/cover}')
+print('.l{position:absolute;' + positions[logo_pos] + ';height:' + logo_size + '%;filter:drop-shadow(0 4px 18px rgba(0,0,0,.55))}')
+print('.t{position:absolute;' + positions[text_pos] + ';max-width:58%;font:900 ' + str(int(height)//7) + 'px/.95 ' + json.dumps(family) + ',sans-serif;letter-spacing:-.01em;color:' + color + ';text-shadow:0 4px 30px rgba(0,0,0,.6)}</style><body>')
+print('<script>' + script + '</script>')
+if logo:
+    print('<img class="l" src="' + html.escape(uri(logo), quote=True) + '">')
+if text:
+    print('<div class="t">' + html.escape(text) + '</div>')
+print('</body>')
+PYHTML
 if [ -n "$TEXT" ]; then
-"$CHROME" --headless=new --disable-gpu --hide-scrollbars --virtual-time-budget=10000 \
+"$CHROME" --user-data-dir="$TMP/profile" --no-first-run --headless=new --disable-gpu --hide-scrollbars --virtual-time-budget=10000 \
   --allow-file-access-from-files --dump-dom "file://$TMP/f.html" 2>/dev/null | grep -q 'data-fonts="ok"' \
   || { echo "finish: font '$FAM' failed to load, refusing silent fallback (pass --font-file)" >&2; exit 1; }
 fi
-"$CHROME" --headless=new --disable-gpu --hide-scrollbars --force-device-scale-factor=1 --virtual-time-budget=6000 \
+"$CHROME" --user-data-dir="$TMP/profile" --no-first-run --headless=new --disable-gpu --hide-scrollbars --force-device-scale-factor=1 --virtual-time-budget=6000 \
   --allow-file-access-from-files --window-size="$W,$H" --screenshot="$TMP/f.png" "file://$TMP/f.html" >/dev/null 2>&1
 case $OUT in
   *.jpg|*.jpeg) ffmpeg -loglevel error -y -i "$TMP/f.png" -q:v 2 "$OUT";;

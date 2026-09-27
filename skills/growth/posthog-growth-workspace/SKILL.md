@@ -1,7 +1,7 @@
 ---
 name: posthog-growth-workspace
 description: "Use when operating data-driven growth for a product instrumented with PostHog — funnels, activation, retention, experiments, session-replay mining, campaign plays, and periodic growth reviews. Triggers: \"growth review\", \"why aren't users activating\", \"run an experiment\", \"mine session replays\", \"what does the product data say\", \"set up the growth workspace\", \"monthly growth report\". Creates a durable .growth workspace per product, reads live PostHog data CLI-first, does one verified high-leverage action per pass, and logs handoffs. Installs in a single product repo (standalone) or in an orchestrator/agent-profile repo managing many products (hub). Install/instrumentation doctrine and SEO/search-channel work belong to other skills."
-version: 1.2.0
+version: 1.2.1
 license: MIT
 mutating: true
 writes_to: [".growth/"]

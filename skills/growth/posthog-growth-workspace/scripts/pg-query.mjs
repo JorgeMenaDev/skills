@@ -20,7 +20,17 @@ const opt = (name) => {
 }
 
 const apiKey = process.env.POSTHOG_PERSONAL_API_KEY || process.env.POSTHOG_CLI_API_KEY
-const host = (process.env.POSTHOG_API_HOST || 'https://us.posthog.com').replace(/\/$/, '')
+let host
+try {
+  const configuredHost = process.env.POSTHOG_API_HOST || 'https://us.posthog.com'
+  if (!/^https?:\/\//.test(configuredHost) || /[\\\s?#]/.test(configuredHost)) throw new Error()
+  host = new URL(configuredHost)
+  if (!['https:', 'http:'].includes(host.protocol) || host.username || host.password ||
+      host.pathname !== '/' || host.search || host.hash) throw new Error()
+} catch {
+  console.error('pg-query: POSTHOG_API_HOST must be an HTTP(S) origin without credentials, a path, query or fragment')
+  process.exit(2)
+}
 
 if (!apiKey) {
   console.error('pg-query: set POSTHOG_PERSONAL_API_KEY (or POSTHOG_CLI_API_KEY) to a personal API key')
@@ -30,17 +40,32 @@ if (!apiKey) {
 const headers = { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' }
 
 async function request(method, path, body) {
-  const res = await fetch(`${host}${path}`, {
-    method,
-    headers,
-    body: body === undefined ? undefined : JSON.stringify(body),
-  })
-  const text = await res.text()
-  if (!res.ok) {
-    console.error(`pg-query: ${method} ${path} → HTTP ${res.status}\n${text.slice(0, 2000)}`)
+  let url
+  try {
+    if (!path.startsWith('/api/') || /[\\\s#]/.test(path)) throw new Error()
+    url = new URL(path, host)
+    if (url.origin !== host.origin || !url.pathname.startsWith('/api/') ||
+        url.username || url.password || url.hash) throw new Error()
+  } catch {
+    console.error('pg-query: request path must start with /api/ and stay on the configured origin without a fragment')
+    process.exit(2)
+  }
+  try {
+    const res = await fetch(url, {
+      method,
+      headers,
+      redirect: 'error',
+      body: body === undefined ? undefined : JSON.stringify(body),
+    })
+    if (!res.ok) {
+      console.error(`pg-query: ${method} request failed with HTTP ${res.status}`)
+      process.exit(1)
+    }
+    return await res.text()
+  } catch {
+    console.error('pg-query: request failed; redirects are disabled')
     process.exit(1)
   }
-  return text
 }
 
 const getPath = opt('--get')

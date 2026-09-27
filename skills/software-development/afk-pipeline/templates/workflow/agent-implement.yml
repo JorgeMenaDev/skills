@@ -133,6 +133,17 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           persist-credentials: false
 
+      - name: Preserve trusted push and salvage outside the agent workspace
+        if: steps.preflight.outputs.refused != 'true'
+        id: trusted_salvage
+        run: |
+          set -euo pipefail
+          umask 077
+          trusted_dir=$(mktemp -d "$RUNNER_TEMP/afk-salvage.XXXXXX")
+          GIT_NO_REPLACE_OBJECTS=1 git show "$GITHUB_SHA:.sandcastle/salvage.sh" > "$trusted_dir/salvage.sh"
+          chmod 400 "$trusted_dir/salvage.sh"
+          echo "script=$trusted_dir/salvage.sh" >> "$GITHUB_OUTPUT"
+
       - name: Compute branch name
         if: steps.preflight.outputs.refused != 'true'
         id: branch
@@ -552,13 +563,9 @@ jobs:
         env:
           BRANCH: ${{ steps.branch.outputs.name }}
           AGENT_PAT: ${{ secrets.AGENT_PAT }}
-        # Force-push recovers from orphan branches whose PR has since closed.
-        # Authentication is one-shot and never persisted in Git config, so no
-        # earlier tool-enabled phase can read or reuse the write credential.
-        run: |
-          test -n "$AGENT_PAT"
-          auth=$(printf 'x-access-token:%s' "$AGENT_PAT" | base64 | tr -d '\n')
-          git -c http.https://github.com/.extraheader="AUTHORIZATION: basic $auth" push --force origin "$BRANCH"
+          TRUSTED_SALVAGE: ${{ steps.trusted_salvage.outputs.script }}
+        # Use the pinned helper and isolated Git metadata for credentialed push.
+        run: bash "$TRUSTED_SALVAGE" --push-only
 
       - name: Write PR title and description
         if: steps.preflight.outputs.refused != 'true' && success()
@@ -672,12 +679,13 @@ jobs:
         # SUCCESS only — so a salvaged branch survives until superseded by a
         # good run. Cannot cover a crash inside the implement phase itself
         # (work not yet committed); that class stays lossy by nature.
-        if: steps.preflight.outputs.refused != 'true' && (failure() || cancelled()) && steps.branch.outputs.name != ''
+        if: steps.preflight.outputs.refused != 'true' && (failure() || cancelled()) && steps.branch.outputs.name != '' && steps.trusted_salvage.outputs.script != ''
         id: salvage
         continue-on-error: true
         env:
           BRANCH: ${{ steps.branch.outputs.name }}
           AGENT_PAT: ${{ secrets.AGENT_PAT }}
+          TRUSTED_SALVAGE: ${{ steps.trusted_salvage.outputs.script }}
         # Salvage body lives in .sandcastle/salvage.sh (extracted v2.5.0).
         # Host-side on all lanes. Vercel-lane honesty: sandcastle sync-out runs
         # only AFTER a phase succeeds, so this saves commits from COMPLETED
@@ -687,7 +695,8 @@ jobs:
         # full coverage via the shared workspace.
         # Outputs: salvaged=true, salvage_sha=<full HEAD> for blocked-comment
         # evidence pinning (spec §8.4).
-        run: bash .sandcastle/salvage.sh
+        # Execute the workflow-pinned copy, even if the agent altered .sandcastle.
+        run: bash "$TRUSTED_SALVAGE"
 
       - name: Mark blocked on failure
         # Body is rendered from the parsed attempts manifest by
