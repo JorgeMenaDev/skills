@@ -1,7 +1,7 @@
 ---
 name: using-git-worktrees
 description: Use when creating an isolated Git workspace, running the default branch locally, or closing development work that used a worktree.
-version: 2.1.2
+version: 2.1.3
 mutating: true
 writes_to: ["<repo-name>-worktrees/", "**/.env.local", "**/.convex/state-kind", "regenerable worktree artifacts"]
 ---
@@ -20,8 +20,12 @@ When the repository exposes `setup:worktree` in its root `package.json` (the And
 contract), do not walk sections 1–5 by hand. Run one command and stop:
 
 ```bash
-<skill-dir>/scripts/worktree-dev.sh up <slug> [--surface <s>]... [--mode human|smoke]
+<skill-dir>/scripts/worktree-dev.sh up <slug> [--surface <s>]... [--mode <m>]
 ```
+
+`--mode` is passed to `qa:local` only when you give it. Pass it only if that repo's `qa:local`
+documents it: a launcher without it rejects the flag and exits. Omitted, the launcher uses its own
+default, which may be a slow strict login check (smoke); pass `--mode human` there for a play session.
 
 It performs the whole contract — sibling worktree off `origin/main`, storage preflight (defaults:
 floor 10 GiB, freeze no; override with `WORKTREE_FREE_FLOOR_GIB` / `WORKTREE_HYDRATION_FREEZE`),

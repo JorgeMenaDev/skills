@@ -4,7 +4,7 @@
 # the Andes repository contract (`setup:worktree` + `qa:local`).
 #
 #   worktree-dev.sh up <slug> [--surface <s>]... [--repo <path>] [--base <ref>]
-#                             [--mode human|smoke] [--budget 2|3|4]
+#                             [--mode <m>] [--budget 2|3|4]
 #   worktree-dev.sh down <slug> [--repo <path>] [--remove]
 #   worktree-dev.sh list [--repo <path>]
 #
@@ -12,19 +12,20 @@
 # installs, runs `setup:worktree`, starts `qa:local` detached, and prints the
 # QA_LOCAL_READY lines. `down` stops the recorded server process after ownership checks and
 # optionally retires it. Repos without `qa:local` fall back to
-# `dev:<surface>` / `dev`.
+# `dev:<surface>` / `dev`. `--mode` is forwarded to `qa:local` only when
+# given (see SKILL.md).
 
 set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 
-usage() { sed -n '3,15p' "${BASH_SOURCE[0]}"; exit 2; }
+usage() { sed -n '3,16p' "${BASH_SOURCE[0]}"; exit 2; }
 
 command="${1:-}"; shift || usage
 slug=""
 repo="$PWD"
 base_ref=""
-mode="human"
+mode=""
 budget="4"
 remove="no"
 surfaces=()
@@ -147,7 +148,7 @@ case "$command" in
 
     start_cmd=(bun run qa:local --)
     for s in "${surfaces[@]+"${surfaces[@]}"}"; do start_cmd+=(--surface "$s"); done
-    start_cmd+=(--mode "$mode")
+    if [[ -n "$mode" ]]; then start_cmd+=(--mode "$mode"); fi
     ready_pattern='QA_LOCAL_READY'
     if ! has_script "$worktree" "qa:local"; then
       if [[ ${#surfaces[@]} -gt 0 ]] && has_script "$worktree" "dev:${surfaces[0]}"; then
