@@ -13,7 +13,7 @@
 # QA_LOCAL_READY lines. `down` stops the recorded server process after ownership checks and
 # optionally retires it. Repos without `qa:local` fall back to
 # `dev:<surface>` / `dev`. `--mode` is forwarded to `qa:local` only when
-# given: not every launcher accepts it (Andy and SuperaSEO reject it).
+# given (see SKILL.md).
 
 set -euo pipefail
 

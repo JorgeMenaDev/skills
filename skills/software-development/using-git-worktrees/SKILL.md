@@ -23,8 +23,9 @@ contract), do not walk sections 1–5 by hand. Run one command and stop:
 <skill-dir>/scripts/worktree-dev.sh up <slug> [--surface <s>]... [--mode <m>]
 ```
 
-`--mode` is passed to `qa:local` only when you give it. Give it only to a launcher that accepts it
-(Acredix: `--mode human|smoke`); Andy and SuperaSEO reject the flag and exit.
+`--mode` is passed to `qa:local` only when you give it. Pass it only if that repo's `qa:local`
+documents it: a launcher without it rejects the flag and exits. Omitted, the launcher uses its own
+default, which may be a slow strict login check (smoke); pass `--mode human` there for a play session.
 
 It performs the whole contract — sibling worktree off `origin/main`, storage preflight (defaults:
 floor 10 GiB, freeze no; override with `WORKTREE_FREE_FLOOR_GIB` / `WORKTREE_HYDRATION_FREEZE`),
