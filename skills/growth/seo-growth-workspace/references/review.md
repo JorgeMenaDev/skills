@@ -68,7 +68,7 @@ Choose up to three unshipped bets within remaining capacity. Prefer a demonstrat
 
 Record the opportunity and hypothesis in the current focus. Take each chosen bet to **finished** with [ship.md](ship.md) in this run; its package table routes page, engine, authority, local, technical and conversion work.
 
-**Propose an approval-boundary line when approvals repeat.** When a bet ends as a `package` waiting on the same kind of approval as an earlier package in `bets.md`, draft one line for the site's approval boundary that lets that class of change ship without per-item approval: the class, its limits and the gates that still apply. Present it as an owner decision in the report's next move. The boundary changes only when the owner accepts it; then record the dated decision in `strategy.md` and the line in `context.md`.
+**Propose an approval-boundary line when approvals repeat.** When a bet ends as a `package` waiting on the same kind of approval as an earlier package in `bets.md`, draft one line for the site's approval boundary that lets that class of change ship without per-item approval: the class, its limits and the gates that still apply. The [pages.md](pages.md) launch gates and the human article value review in [content-ops.md](content-ops.md) always still apply. Present it as an owner decision in the report's next move. The boundary changes only when the owner accepts it; then record the dated decision in `strategy.md` and the line in `context.md`.
 
 No-action is a valid outcome when the site's mandate, exhausted capacity or evidence about the alternatives supports it. Record the reason and the trigger that reopens the choice.
 

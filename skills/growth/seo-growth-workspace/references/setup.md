@@ -46,7 +46,7 @@ Keep this short section at the top of `strategy.md`, with links to the owner dec
 - Business outcome: <desired action; agreed target if one exists; baseline/date or Unknown>
 - Constraint: <what limits progress, evidence and uncertainty>
 - Chosen opportunity: <coherent customer opportunity and hypothesis; bet IDs>
-- Capacity and authority: <growth/maintenance/paused, effort/cadence, execution boundary>
+- Capacity and authority: <growth/maintenance/paused, effort/cadence, approval boundary>
 - Next decision: <what evidence or due date changes the choice>
 ```
 

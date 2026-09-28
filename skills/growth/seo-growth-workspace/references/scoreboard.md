@@ -16,7 +16,7 @@ The monthly read that says whether SEO is working, per site and across a hub. Ru
 
    ```md
    # SEO scoreboard: <site>, YYYY-MM
-   | Clicks | Non-brand clicks (query rows, coverage) | Impressions | Search outcomes | Live / package / evidence request · delivery wins / outcome wins / lost / killed |
+   | Clicks | Non-brand clicks (query rows, coverage) | Impressions | Search outcomes | Opened · live / package / evidence request · delivery wins / outcome wins / lost / killed |
    - What worked: <prediction supported, evidence and limits>
    - What we stopped or changed: <one line>
    - Focus next month: <one line>

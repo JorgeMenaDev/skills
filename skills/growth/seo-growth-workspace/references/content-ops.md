@@ -27,7 +27,7 @@ Choose with the judgment method in [review.md](review.md). Engine keyword tiers 
 
 ## From intent to finished page
 
-1. **Complete the evidence brief** in [pages.md](pages.md): the destination decision first, then the first-hand proof it asks you to collect.
+1. **Complete the evidence brief** in [pages.md](pages.md), including its destination decision and the first-hand proof it asks you to collect.
 2. **Plan before drafting.** Specify sections, the question each answers, sources/proof and real examples. Use the engine's native plan when available; otherwise the package template [templates/content-plan.md](../templates/content-plan.md).
 3. **Produce and edit.** Build the tool or page, or write the complete draft, then review factual support, intent coverage, distinctive value, voice and readability, and revise the specific failures.
 4. **Connect and deliver.** Prepare contextual incoming and outgoing link edits with [internal-linking.md](internal-linking.md), and the CTA and destination with [conversion.md](conversion.md). Continue through [ship.md](ship.md) to finished.

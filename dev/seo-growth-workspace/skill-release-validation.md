@@ -14,13 +14,13 @@ This checks frontmatter/version, the file graph, script help, offline golden dat
 
 ## Behavioral comparison
 
-For changes to the operating method, use saved real site inputs with enough evidence to choose and prepare work. Keep private customer data and credentials out of the public skill repository.
+For every release that changes `SKILL.md`, a reference or a template, use saved real site inputs with enough evidence to choose and prepare work. Keep private customer data and credentials out of the public skill repository.
 
 1. Save the starting skill revision and the candidate revision, the exact request, the input manifest and evaluation constraints.
 2. Run fresh agents independently against each version with the same request and raw site evidence. Give them only the applicable skill and inputs. Do not give them the intended answer, suspected defect, proposed fix or the other run's output. Restrict evaluation writes to scratch output and prohibit external mutations.
-3. Use the standing case set: one frozen packet each for a growth site with live bets awaiting results, a business with a measurable qualified-outcome path and an explicit maintenance/pause mandate, plus a synthetic held-out case. The consumer keeps the packets in its private store with checksums and reuses them across releases so results compare. Add a held-out case when a finding changes the instructions.
+3. Use the standing case set: one frozen packet for each of three cases (a growth site with live bets awaiting results; a business with a measurable qualified-outcome path; a site under an explicit maintenance or pause mandate), plus a synthetic held-out case. The consumer keeps the packets in its private store with checksums and reuses them across releases so results compare. Add a held-out case when a finding changes the instructions.
 4. Run both versions on each model a consumer's scheduled review uses, before merge.
-5. Judge actual outputs: respects the mandate and current decisions; uses performance and outside demand proportionately; chooses against alternatives; identifies original proof; avoids live/queued duplicates; takes each chosen bet to a finished state (`live`, `package` or `evidence request`) with substantiated work; proposes an approval-boundary line only when the same approval repeats; distinguishes delivery from outcomes; handles capacity/interference; keeps unknowns honest. Record failures and trade-offs, not just a pass count.
+5. Judge actual outputs: respects the mandate and current decisions; uses performance and outside demand proportionately; chooses against alternatives; identifies original proof; avoids live/queued duplicates; takes each chosen bet to a finished state (`live`, `package` or `evidence request`) with substantiated work; proposes an approval-boundary line only when the same approval repeats, and only one that removes a per-item approval; distinguishes delivery from outcomes; handles capacity/interference; keeps unknowns honest. Record failures and trade-offs, not just a pass count.
 6. Fix observed instruction failures and rerun the affected behavior. A small replay is evidence about those cases, not proof of general model reliability or future rankings.
 
 ## Live use and release record
