@@ -30,12 +30,12 @@ ffmpeg -y -i out/silent.mp4 -vf "select='not(mod(n\,30))',scale=480:-1,tile=6x6:
 
 - `out/film.mp4` is H.264 60 fps with AAC, 6–20 MB for 16 s (flat UI small, detailed maps and photos large): X,
   LinkedIn, Instagram (as a Reel) and TikTok accept it as is. Over ~20 MB, re-encode at `-crf 20`.
-- **Two cuts:** `out/silent.mp4` (faststart) is the muted cut for autoplay embeds; make its web copy with the
-  command below minus the audio flags. `out/film.mp4` is the scored cut for social. A muted embed with no
+- **Two cuts:** `out/silent.mp4` (faststart) is the muted cut for autoplay embeds; its web copy:
+  `ffmpeg -i out/silent.mp4 -vf scale=-2:720 -c:v libx264 -crf 26 -an -movflags +faststart muted.mp4`. `out/film.mp4` is the scored cut for social. A muted embed with no
   unmute control never plays the score, so spend on music only for the social cut.
 - **Licences:** name each source's licence in the delivery note, with the page you read and the date: Mixkit
   (https://mixkit.co/license/) and Pexels (https://www.pexels.com/license/) were free for commercial use without
-  attribution when this skill was written. For paid music, read the cancellation clause (do published films stay
+  attribution (checked 2026-09-28). For paid music, read the cancellation clause (do published films stay
   cleared after you stop paying?) and skip personal-only or non-commercial tiers. A licence page you could not
   read is **unverified**: say so rather than assume it.
 - A web preview copy: `ffmpeg -i out/film.mp4 -vf scale=-2:720 -c:v libx264 -crf 26 -c:a aac -b:a 96k web.mp4`.

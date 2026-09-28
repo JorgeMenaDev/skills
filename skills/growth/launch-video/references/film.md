@@ -26,7 +26,7 @@ and fonts. Then write the same structure for this product, with the product's ow
 | 13–16 | **Result** | One change per half-beat on the result (Scheduled → Published, a counter climbing, a checkbox ticking). |
 | 16–21 | **Back** | The flood shrinks back into the object it came from, carrying the result; the wider product fills in (one item per beat). |
 | 21–27 | **Line** | A button or card grows into the whole frame (it keeps its shape until it reaches the edges while the camera pushes in); its label grows to headline size and slides out. The tagline rises word by word. |
-| 27–32 | **Mark** | The ecosystem (channels, platforms, integrations) pops in, merges into the logo, and the wordmark wipes out from behind it; name and URL rise under it. All motion ends by beat 28 (so the card holds about 2 s at 124 BPM), then it stays still to the last frame, with no fade-out. |
+| 27–32 | **Mark** | The ecosystem (channels, platforms, integrations) pops in, merges into the logo, and the wordmark wipes out from behind it; name and URL rise under it. All motion ends about 2 s before the last frame (4 beats at 120 BPM), then the card stays still to the end, with no fade-out. |
 
 Adapt it and keep its rules: something happens on every beat, the payoff sits on the drop, the breakdown shows
 visible work, the machinery (Work + Payoff + Result) stays under about 5 s, breadth (the ecosystem) comes last,
@@ -38,7 +38,7 @@ identical to its first, cursor position and speed included.
 Every string on screen is **product chrome**: a typed request, a chat bubble, a row, a toast, a button
 label. The film shows the product doing one specific thing for one specific customer.
 
-- At most **one caption** outside the UI (the tagline). The interface states everything else. No voiceover.
+- At most **one caption** outside the UI (the tagline). The interface and the score carry everything else, with no voiceover.
 - Let the UI state the payoff: a timestamp on the question and the answer says "instant" better than the word.
 - A real-sounding customer, place and price beat a generic one ("Café Lastarria", "Great Gable, 899 m").
 - Show the problem before the product, and keep architecture words (API, MCP, webhook) out of films for

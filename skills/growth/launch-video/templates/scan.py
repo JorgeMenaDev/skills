@@ -1,8 +1,8 @@
 """Measure a render: single-frame pops, rest windows and the end hold.  python3 scan.py out/silent.mp4
 
 POP: a frame difference >3x both neighbours (something appears or jumps for one frame).
-REST: runs of >=0.25 s where every frame stays within a small difference of the run's FIRST frame (so a
-slow drift or a residual ease does not count as still). The run that reaches the final frame is the END HOLD;
+REST: runs of >=0.25 s where every frame stays within a small difference of the run's FIRST frame. A slow
+drift splits into short back-to-back windows, so read REST as an upper bound; END HOLD (the last run) is exact. The run that reaches the final frame is the END HOLD;
 a film should close on about 2 s (at least 1.5 s) of still brand frame.
 """
 import subprocess, sys, numpy as np
