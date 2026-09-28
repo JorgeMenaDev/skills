@@ -4,7 +4,8 @@
 <meta charset="utf-8">
 <title>Launch film</title>
 <style>
-/* Serve this folder over HTTP (render.mjs does): file:// blocks @font-face loads. */
+/* Serve this folder over HTTP (render.mjs does): file:// blocks @font-face loads.
+   One @font-face per family (e.g. a serif display face beside the UI sans), each listed in FONTS below. */
 @font-face { font-family: Brand; src: url(assets/font.woff2) format('woff2'); font-weight: 100 900; }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { overflow: hidden; background: #f5f5f3; } /* size set from W/H at boot */
@@ -148,7 +149,8 @@ function seek(t) {
 // ======================= BOOT =======================
 // Preload every image and font before the first seek; declare every variable above this line.
 const PRELOAD = [];
-window.ready = Promise.all([document.fonts.load('600 20px Brand').catch(() => console.warn('assets/font.woff2 missing: system font')),
+const FONTS = ['600 20px Brand'];      // one entry per @font-face family
+window.ready = Promise.all([...FONTS.map(f => document.fonts.load(f).catch(() => console.warn(`font missing: ${f}`))),
   ...PRELOAD.map(s => new Promise(r => { const i = new Image(); i.onload = i.onerror = r; i.src = s; }))])
   .then(() => document.fonts.ready).then(() => { seek(0); return true; });
 Object.assign(window, { seek, SFX, MUSIC, DURATION, P, W, H });

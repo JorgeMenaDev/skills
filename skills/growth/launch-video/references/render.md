@@ -18,10 +18,12 @@ ffmpeg -y -i out/silent.mp4 -vf "select='not(mod(n\,30))',scale=480:-1,tile=6x6:
 - **Frame-by-frame:** for every fast moment (the act click, the drop, the page fill, the logo merge) render
   stills at quarter-beats (`node render.mjs stills 11.75,12,12.25,12.5`) and look for empty shapes, overlapping
   text, and content escaping its mask.
-- **Loudness:** `ffmpeg -i out/mix.wav -af ebur128 -f null - 2>&1 | grep -A1 Integrated` should read about -14 LUFS.
+- **Loudness:** measure the final MP4, not `mix.wav` (AAC adds ~0.6 dB of true peak):
+  `ffmpeg -i out/film.mp4 -af ebur128=peak=true -f null - 2>&1 | grep -A6 Integrated` → about -14 LUFS, true peak
+  under -1 dBTP.
 
 ## Delivering
 
-- `out/film.mp4` is H.264 60 fps with AAC, ~6 MB for 16 s at 1920x1080: X, LinkedIn, Instagram (as a Reel) and
-  TikTok accept it as is.
+- `out/film.mp4` is H.264 60 fps with AAC, 6–20 MB for 16 s (flat UI small, detailed maps and photos large): X,
+  LinkedIn, Instagram (as a Reel) and TikTok accept it as is. Over ~20 MB, re-encode at `-crf 20`.
 - A web preview copy: `ffmpeg -i out/film.mp4 -vf scale=-2:720 -c:v libx264 -crf 26 -c:a aac -b:a 96k web.mp4`.

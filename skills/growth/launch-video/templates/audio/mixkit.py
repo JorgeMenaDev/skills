@@ -5,12 +5,13 @@
   python3 audio/mixkit.py get music <id>     → audio/music/<id>.mp3
   python3 audio/mixkit.py get sfx <id>       → audio/sfx/<id>.mp3
 
-Tags are Mixkit URL slugs: music `upbeat`, `tech`, `corporate`, genre pages such as `genre/electronica`;
-sfx `click`, `pop`, `whoosh`, `swoosh`, `impact`, `notification`, `sparkle`, `typing`.
+Tags are Mixkit URL paths: music `mood/energetic`, `mood/happy`, `mood/uplifting`, `tag/corporate`,
+`tag/technology` (~25-36 tracks each); sfx `click`, `pop`, `whoosh`, `swoosh`, `impact`, `notification`,
+`sparkle`, `typing`.
 Each item's <h2> title comes AFTER its preview URL in the HTML; pairing a URL with the title before it
 mislabels every row.
 """
-import html, os, re, sys, urllib.request
+import html, os, re, sys, urllib.error, urllib.request
 
 UA = {"User-Agent": "Mozilla/5.0"}
 def fetch(url):
@@ -18,13 +19,19 @@ def fetch(url):
 
 def listing(kind, tag):
     base = "https://mixkit.co/free-stock-music/" if kind == "music" else "https://mixkit.co/free-sound-effects/"
-    s = fetch(base + tag.strip("/") + "/").decode("utf-8", "replace")
+    try:
+        s = fetch(base + tag.strip("/") + "/").decode("utf-8", "replace")
+    except urllib.error.HTTPError as e:
+        sys.exit(f"{kind} tag '{tag}': HTTP {e.code}. Try one of the tags in this script's docstring.")
+    except urllib.error.URLError as e:
+        sys.exit(f"mixkit.co unreachable: {e.reason}")
     pat = r'preview-url-value="([^"]+)".*?item-grid-card__title">\s*(.*?)\s*</h2>.*?meta-time[^>]*>\s*([\d:]+)'
     seen = set()
     for url, title, dur in re.findall(pat, s, re.S):
         m = re.search(r"/(?:music|sfx)/(\d+)/", url)
         if m and m.group(1) not in seen:
             seen.add(m.group(1)); print(f"{m.group(1):>6}  {dur:>5}  {html.unescape(title)}")
+    if len(seen) < 3: print(f"only {len(seen)} items under '{tag}': try another tag")
 
 def get(kind, id_):
     url = (f"https://assets.mixkit.co/music/{id_}/{id_}.mp3" if kind == "music"
