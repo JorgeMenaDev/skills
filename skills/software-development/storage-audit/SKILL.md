@@ -1,7 +1,7 @@
 ---
 name: storage-audit
 description: Reclaim disk on any Mac running Jorge's workspace (the Mac mini or the MacBook Pro) with scripts/storage-hygiene.sh, covering leaked processes and swap, worktrees, dependency and build caches, agent histories, Xcode and simulators. Use when free space is low, Jorge asks to free space, or the storage-hygiene cron alerts or fails.
-version: 7.0.0
+version: 7.1.0
 mutating: true
 writes_to: ["orphaned dev processes (killed)", "registered git worktrees (clean, backed, idle)", "node_modules/.next/.turbo build state", "T3, OpenCode and Cursor agent history", "Xcode DerivedData and simulator device data", "tool and package caches", "logs and temp bundles", "~/.hermes/state/storage-hygiene/"]
 ---
@@ -43,8 +43,9 @@ Done when you can state free space and swap, and name the `meter.log` field that
 ```
 
 On the Mac mini, Hermes cron `storage-hygiene-every-3-hours` (`30 */3 * * *`, no-agent) runs the
-cleanup; Telegram hears only failures and free space under 10 GiB. The laptop runs no Hermes crons,
-so run the script there by hand when it is low. Exit 0 = at target, 3 = below target, 2 = failed,
+cleanup; Telegram hears only failures and free space under 10 GiB. On the laptop, the LaunchAgent
+`com.matias.storage-hygiene` runs it at :30 every 3 hours with no alerts
+(`scripts/install-storage-hygiene-agent.sh`; its output is in `launchd.log` in the state dir). Exit 0 = at target, 3 = below target, 2 = failed,
 4 = another run holds the lock (never delete `run.lock`). Below target it shortens its own gates.
 
 The last log line is the verdict (`freed= free= swap= failures= status=`); `METER` above it is
