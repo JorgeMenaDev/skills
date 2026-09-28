@@ -5,7 +5,7 @@
 1. **Check green:** `node dev/seo-growth-workspace/check-skill.mjs` must exit 0. It covers structure, links, script help, the golden fixtures in `fixtures/`, credential-free dry runs, and retired v7 terms.
 2. **CHANGELOG entry:** add a `## <version>` section at the top of `skills/growth/seo-growth-workspace/CHANGELOG.md` and set the same `version:` in SKILL.md.
 3. **Editorial pass on prose:** hunt no-ops sentence by sentence and delete what fails. Add a step before adding a warning.
-4. **Replay the standing cases** when a change touches `SKILL.md`, `review.md`, `ship.md` or a reference every review reaches: [skill-release-validation.md](skill-release-validation.md), Behavioral comparison, on each model a consumer's scheduled review uses.
+4. **Replay the standing cases** for every release that changes `SKILL.md`, a reference or a template: [skill-release-validation.md](skill-release-validation.md), Behavioral comparison.
 5. **Run it for real** when a change touches `review.md` or a script: one review on a live site, read the report, and fix the instruction rather than the output.
 6. **Push**, then consumers update through `npx skills update seo-growth-workspace`.
 

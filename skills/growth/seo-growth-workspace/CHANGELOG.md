@@ -5,10 +5,10 @@
 Tightens v9 without changing its method. Every chosen bet now ends a run in one defined state, and the page workflow has one owner for each field.
 
 - `ship.md` defines **finished**: `live`, `package` (the work itself at its execution owner) or `evidence request`, with a package table per bet kind. SKILL.md, review, content, authority and local references point to it instead of 14 differently worded completion phrases.
-- When a package waits on the same kind of approval as an earlier one, the review drafts one approval-boundary line as an owner decision. The boundary changes only when the owner accepts it. The article value review follows the site's approval boundary, matching `pages.md`.
+- When a package waits on the same kind of approval as an earlier one, the review drafts one approval-boundary line as an owner decision. The boundary changes only when the owner accepts it.
 - `pages.md` alone owns the evidence brief; `content-ops.md` and the package template link to it. Engine preflight, calendar verification and adapter handling move to `content-engine-webhooks.md`.
 - Removes contradictions: directional outside demand still counts as discovery (`data.md`), one judgment method lives in `review.md`, and `pages.md` drops the v7 "ticket Blocked" state.
-- `review.md` states its rules positively; prohibitions remain only for evidence and authority guardrails.
+- `review.md` states its rules positively; prohibitions remain only for evidence and authority guardrails. The before/after causation and unknown-evidence rules now live once in SKILL.md's evidence rules.
 - Release process: method changes replay the standing case set on each model a consumer's scheduled review uses.
 
 ## 9.0.0

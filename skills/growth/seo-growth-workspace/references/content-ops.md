@@ -27,13 +27,10 @@ Choose with the judgment method in [review.md](review.md). Engine keyword tiers 
 
 ## From intent to finished page
 
-1. **Resolve the destination.** Inspect the live URL inventory, planned work, queued drafts and relevant query-to-page evidence. Choose keep, refresh, create or merge, with the buyer job and reason. Treat keyword or title similarity as a prompt to inspect query-to-page evidence for cannibalization. A queued item that already serves the job is the work to improve.
-2. **Complete the evidence brief** in [pages.md](pages.md), including the first-hand proof it asks you to collect.
-3. **Plan before drafting.** Specify sections, the question each answers, sources/proof, real examples, intended links and the next customer action. Use the engine's native plan when available; otherwise the package template [templates/content-plan.md](../templates/content-plan.md).
-4. **Produce and edit.** Build the tool or page, or write the complete draft, then review factual support, intent coverage, distinctive value, voice and readability, and revise the specific failures.
-5. **Connect and deliver.** Prepare contextual incoming and outgoing link edits with [internal-linking.md](internal-linking.md), and the CTA and destination with [conversion.md](conversion.md). Continue through [ship.md](ship.md) to finished.
-
-The package lives in the engine revision, product PR or dated report that already holds the work.
+1. **Complete the evidence brief** in [pages.md](pages.md): the destination decision first, then the first-hand proof it asks you to collect.
+2. **Plan before drafting.** Specify sections, the question each answers, sources/proof and real examples. Use the engine's native plan when available; otherwise the package template [templates/content-plan.md](../templates/content-plan.md).
+3. **Produce and edit.** Build the tool or page, or write the complete draft, then review factual support, intent coverage, distinctive value, voice and readability, and revise the specific failures.
+4. **Connect and deliver.** Prepare contextual incoming and outgoing link edits with [internal-linking.md](internal-linking.md), and the CTA and destination with [conversion.md](conversion.md). Continue through [ship.md](ship.md) to finished.
 
 ## Competitor Demand Gaps
 
@@ -60,7 +57,7 @@ Check, and build where missing:
 
 ## Publish Gate
 
-Every published article gets a per-article value review by a named human, unless the site's approval boundary names another reviewer. Automated calendar publishing without a per-article value check is a policy risk: Google's scaled content abuse policy (March 2024) targets publishing many pages without added value, regardless of how they were produced. Its sibling, the site-reputation-abuse policy (algorithmic enforcement since November 2024), targets third-party or partner content published to exploit a host domain's ranking signals — relevant when running sponsored or partner content across sites.
+A human reviews every published article for added value. Automated calendar publishing without a per-article value check is a policy risk: Google's scaled content abuse policy (March 2024) targets publishing many pages without added value, regardless of how they were produced. Its sibling, the site-reputation-abuse policy (algorithmic enforcement since November 2024), targets third-party or partner content published to exploit a host domain's ranking signals — relevant when running sponsored or partner content across sites.
 
 Every new or materially revised page passes [pages.md](pages.md): its evidence brief before drafting and its launch gates before publish.
 

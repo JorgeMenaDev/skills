@@ -4,7 +4,7 @@ The weekly growth cycle: diagnose the business constraint, discover demand, choo
 
 ## 1. Establish the focus
 
-Read `context.md`, `strategy.md`, `bets.md`, the newest review and `research.md`. Reconcile the current focus in [setup.md](setup.md) with the latest owner decisions. Name the customer, desired business outcome, baseline or unknown, constraint, capacity and approval boundary. A candidate that contradicts an owner decision is rejected with that decision as the reason.
+Read `context.md`, `strategy.md`, `bets.md`, the newest review and `research.md`. Reconcile the current focus in [setup.md](setup.md) with the latest owner decisions. Name the customer, desired business outcome, baseline or unknown, constraint, capacity and approval boundary. A candidate outside the mandate or contrary to an owner decision is rejected, citing that decision.
 
 Inspect pending work, queued content and every open `package` or `evidence request` before adding anything. Resolve stale status from delivery evidence. At most three **unshipped** bets may be open; live bets awaiting results leave those slots free. Advance an existing bet that serves the same customer job instead of opening another. If no v8 review has read `archive/v7/backlog.md`, read its open rows once as candidates.
 
@@ -68,11 +68,11 @@ Choose up to three unshipped bets within remaining capacity. Prefer a demonstrat
 
 Record the opportunity and hypothesis in the current focus. Take each chosen bet to **finished** with [ship.md](ship.md) in this run; its package table routes page, engine, authority, local, technical and conversion work.
 
-**Propose a standing boundary when approvals repeat.** When a bet ends as a `package` waiting on the same kind of approval as an earlier package in `bets.md`, draft one line for the site's approval boundary: the class of change, its limits and the gates that still apply. Present it as an owner decision in the report's next move. The boundary changes only when the owner accepts it; then record the dated decision in `strategy.md` and the line in `context.md`.
+**Propose an approval-boundary line when approvals repeat.** When a bet ends as a `package` waiting on the same kind of approval as an earlier package in `bets.md`, draft one line for the site's approval boundary: the class of change, its limits and the gates that still apply. Present it as an owner decision in the report's next move. The boundary changes only when the owner accepts it; then record the dated decision in `strategy.md` and the line in `context.md`.
 
 No-action is a valid outcome when the site's mandate, exhausted capacity or evidence about the alternatives supports it. Record the reason and the trigger that reopens the choice.
 
-## 6. Record the decision and handoff
+## 6. Record the decision
 
 Keep bets short; detail belongs in the report or existing engine revision:
 
@@ -86,14 +86,14 @@ Keep bets short; detail belongs in the report or existing engine revision:
 - Success: <metric and threshold/baseline>. Kill: <rule>. Check: <date or live date + window>.
 ```
 
-Status moves `proposed → approved → live → won | lost | killed`. Approval comes from the owner or an existing standing boundary. Record that basis and reuse granted authority.
+Status moves `proposed → approved → live → won | lost | killed`. Approval comes from the owner or the site's approval boundary. Record that basis and reuse granted authority.
 
 Write `reports/review-YYYY-MM-DD.md` with these sections:
 
 - **Your next SEO move:** at most three bullets: each chosen bet's finished state, and the next actor, action or owner decision, including any proposed boundary line.
 - **Focus and numbers:** current business constraint, 28 days vs previous 28, qualified outcomes or unknown, non-brand query-row coverage, lane calls.
 - **Discovery and choice:** demand-to-destination table, candidate comparison, strongest rejected alternative and capacity/interference decisions.
-- **Finished bets:** state with live proof or package location, distribution, conversion, baseline, success/kill rule and check date; remaining gate and owner.
+- **Finished bets:** state with live proof or package location, distribution, conversion, baseline, success/kill rule and check date; remaining gate, owner and next action.
 - **Learning:** resolved bets, prediction tested and next changed choice.
 - **What else we checked:** remaining candidates and reasons.
 - **How this was made:** data windows, source dates, live query/country/language/time, actual lookups/costs, preparation effort, operator handoffs and limits.

@@ -16,7 +16,7 @@ The job is to attract people the business can serve and help them take a useful 
 1. **Keep a current focus.** `strategy.md` names the customer, business outcome, constraint, chosen opportunity and capacity, grounded in owner decisions. Unknown outcomes stay unknown.
 2. **Discover beyond current rankings.** Active growth reviews combine site performance with bounded outside demand and buyer evidence. Maintenance and owner pauses still govern effort.
 3. **Finish chosen bets.** Each chosen bet ends the run `live`, as a `package` at its execution owner, or as an `evidence request`. Definitions: [references/ship.md](references/ship.md).
-4. **Keep few bets moving.** At most three unshipped bets per site. Live bets awaiting results do not use those slots. Defer independent work only for a stated capacity, owner or interference reason.
+4. **Keep few bets moving.** At most three unshipped bets per site. Live bets awaiting results leave those slots free. Defer independent work only for a stated capacity, owner or interference reason.
 5. **Learn before expanding.** Check outcomes when due, distinguish delivery from business results, and judge URL groups by maturity, purpose and qualified outcomes as well as clicks. Record the next decision that changes.
 6. **Use honest evidence.** Follow the rules below in every report, bet and log line.
 
@@ -49,14 +49,15 @@ Read the mode's reference in full before its first step. Data sources, commands 
 
 - Label every number: **observed** (Search Console, analytics, a live fetch; with dates), **estimate** (third-party volume, difficulty or traffic; with provider, market and date) or **hypothesis**.
 - Partial data is never a zero and never an all-clear. Search Console withholds anonymized queries and lags two to three days; state what share of clicks the query rows cover.
+- Unavailable evidence and unknown costs are written as unknown, with what would supply them.
 - A ranking claim needs a live result check with query, country, language and time. One check is a sample, not a baseline.
 - Size opportunities as scenarios with a stated click share. Search volume is not visits. Never promise rankings, traffic or AI citations.
-- Outcome chain: impression → click → visit → qualified outcome (signup, demo, booking) → customer → revenue. No arrow implies causation.
+- Outcome chain: impression → click → visit → qualified outcome (signup, demo, booking) → customer → revenue. No arrow implies causation, and before/after movement alone is not causal proof.
 - Keep secrets out of every file and message.
 
 ## Unattended runs
 
-Scheduled and delegated runs follow the same method and existing authority as interactive runs. Read the site boundary and the run's explicit restrictions before acting. Prepare work in SITE_WORKSPACE or the authorized repository; execute through the existing owner and ship process when authorized. A schedule alone grants no publication, deployment, indexing, engine-setting or outreach permission. Outreach needs explicit authorization. Work the run may not execute ends as a `package`. In a hub the prompt names the site; a missing workspace or unnamed site ends the run as blocked. The last line of the run is one JSON object:
+Scheduled and delegated runs follow the same method and existing authority as interactive runs. Read the site's approval boundary and the run's explicit restrictions before acting. Prepare work in SITE_WORKSPACE or the authorized repository; execute through the existing owner and ship process when authorized. A schedule alone grants no publication, deployment, indexing, engine-setting or outreach permission. Outreach needs explicit authorization. Work the run may not execute ends as a `package`. In a hub the prompt names the site; a missing workspace or unnamed site ends the run as blocked. The last line of the run is one JSON object:
 
 ```json
 {"status":"ok|alerted|blocked","site":"…","mode":"review","next_move":"one line","bets_opened":[],"bets_resolved":[],"needs_owner":[]}
@@ -75,4 +76,4 @@ Load one only when a bet needs it:
 - Visitors who do not convert, organic outcomes: [conversion.md](references/conversion.md).
 - Links, listings, entity: [backlinks-entity.md](references/backlinks-entity.md). Local and Google Business Profile: [local-seo-gbp.md](references/local-seo-gbp.md).
 - AI answers and citations: [ai-search-visibility.md](references/ai-search-visibility.md). Competitors: [competitor-profiling.md](references/competitor-profiling.md).
-- Content engine (SuperaSEO or another webhook publisher): [content-engine-webhooks.md](references/content-engine-webhooks.md).
+- Content engine (SuperaSEO or another) adapter, calendar and webhook publishing: [content-engine-webhooks.md](references/content-engine-webhooks.md).
