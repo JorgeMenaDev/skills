@@ -104,22 +104,14 @@ while IFS= read -r source_file; do
   temp_file="$(mktemp "$target_parent/.env.local.XXXXXX")"
   active_temp="$temp_file"
   pending_target="$target_file"
-  if ! awk \
-    -v worktree_id="$WORKTREE_ID" -v app_port="$WORKTREE_APP_PORT" \
-    -v cloud_port="$WORKTREE_CONVEX_CLOUD_PORT" -v site_port="$WORKTREE_CONVEX_SITE_PORT" '
-    BEGIN {
-      own["WORKTREE_ID"] = worktree_id
-      own["WORKTREE_APP_PORT"] = app_port
-      own["WORKTREE_CONVEX_CLOUD_PORT"] = cloud_port
-      own["WORKTREE_CONVEX_SITE_PORT"] = site_port
-    }
+  if ! awk '
     /^[[:space:]]*(export[[:space:]]+)?WORKTREE_(ID|APP_PORT|CONVEX_CLOUD_PORT|CONVEX_SITE_PORT)[[:space:]]*=/ {
       prefix = $0
       sub(/=.*/, "", prefix)
       sub(/[[:space:]]+$/, "", prefix)
       name = prefix
       sub(/^.*[[:space:]]/, "", name)
-      print prefix "=" own[name]
+      print prefix "=" ENVIRON[name]
       next
     }
     /^[[:space:]]*(export[[:space:]]+)?(CONVEX_[A-Za-z0-9_]*|NEXT_PUBLIC_CONVEX_URL|NEXT_PUBLIC_CONVEX_SITE_URL|QA_CONVEX_ADMIN_KEY)[[:space:]]*=/ {

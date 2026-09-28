@@ -73,11 +73,6 @@ has_script() { # has_script <dir> <name>
   node -e 'const s=require(process.argv[1]+"/package.json").scripts||{};process.exit(s[process.argv[2]]?0:1)' "$1" "$2"
 }
 
-derive_ports() {
-  derive_worktree_ports "$worktree"
-  export WORKTREE_ID WORKTREE_APP_PORT WORKTREE_CONVEX_CLOUD_PORT WORKTREE_CONVEX_SITE_PORT
-}
-
 reap_worktree_processes() {
   [[ -f "$pid_file" && ! -L "$pid_file" ]] || return 0
   local pid cwd
@@ -135,7 +130,7 @@ case "$command" in
       "$script_dir/storage-preflight.sh" "$worktree" "$budget"
 
     "$script_dir/copy-env-local.sh" "$repo_root" "$worktree"
-    derive_ports
+    derive_worktree_ports "$worktree"
     mkdir -p "$run_dir"
 
     (cd "$worktree" && bun install --frozen-lockfile)

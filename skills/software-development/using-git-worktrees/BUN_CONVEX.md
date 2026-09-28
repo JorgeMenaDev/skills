@@ -4,7 +4,7 @@ Read repository instructions first. This contract begins only after `storage-pre
 
 ## 1. Copy local environment
 
-Resolve helpers against this skill directory. Use `<skill-dir>/scripts/copy-env-local.sh <primary-checkout> <worktree>` on first creation or when files are missing. It copies files named exactly `.env.local` only when both checkouts ignore the path, excludes provider/database/build state, and strips only true Convex keys: every plain single-line assignment whose variable name is `CONVEX_`-prefixed, plus the exact Convex deploy/URL-style keys `NEXT_PUBLIC_CONVEX_URL`, `NEXT_PUBLIC_CONVEX_SITE_URL`, and `QA_CONVEX_ADMIN_KEY`. Clerk/auth vars are kept even when the name contains `CONVEX`, e.g. `CLERK_CONVEX_JWT_TEMPLATE`. Copied `WORKTREE_ID`, `WORKTREE_APP_PORT`, `WORKTREE_CONVEX_CLOUD_PORT` and `WORKTREE_CONVEX_SITE_PORT` assignments are rewritten to the target worktree's own values (`scripts/worktree-ports.sh`, the same derivation `worktree-dev.sh` uses, which never yields 3214, 3215 or 8081), so a hand-hydrated worktree never inherits the source's ports. Quoted, backtick, or continued Convex assignments block the copy. Never overwrite a warm `local-main` target merely to refresh it or print values.
+Resolve helpers against this skill directory. Use `<skill-dir>/scripts/copy-env-local.sh <primary-checkout> <worktree>` on first creation or when files are missing. It copies files named exactly `.env.local` only when both checkouts ignore the path, excludes provider/database/build state, and strips only true Convex keys: every plain single-line assignment whose variable name is `CONVEX_`-prefixed, plus the exact Convex deploy/URL-style keys `NEXT_PUBLIC_CONVEX_URL`, `NEXT_PUBLIC_CONVEX_SITE_URL`, and `QA_CONVEX_ADMIN_KEY`. Clerk/auth vars are kept even when the name contains `CONVEX`, e.g. `CLERK_CONVEX_JWT_TEMPLATE`. Copied `WORKTREE_ID`, `WORKTREE_APP_PORT`, `WORKTREE_CONVEX_CLOUD_PORT` and `WORKTREE_CONVEX_SITE_PORT` assignments are rewritten to the target worktree's own values (`scripts/worktree-ports.sh`, the same derivation `worktree-dev.sh` uses, which never yields 8081; 3214/3215 are below its range), so a hand-hydrated worktree never inherits the source's ports. An existing target `.env.local` is protected and keeps its values; delete it and copy again to re-derive. Quoted, backtick, or continued Convex assignments block the copy. Never overwrite a warm `local-main` target merely to refresh it or print values.
 
 Prefer a runtime-neutral repository `setup:worktree` command when present and verify the same result.
 
@@ -14,14 +14,14 @@ Run `bun install --frozen-lockfile` at the monorepo root using the declared Bun 
 
 ## 3. Allocate isolated runtime identity
 
-Derive `WORKTREE_ID` from the slug (`local-main` for launch mode). Reserve an unused contiguous app-port block and an unused consecutive Convex cloud/site pair. Export:
+Derive the identity and ports from the worktree path with the shared helper, so they match what `copy-env-local.sh` wrote into `.env.local`:
 
 ```bash
-export WORKTREE_ID="$slug"
-export WORKTREE_APP_PORT=<free-port>
-export WORKTREE_CONVEX_CLOUD_PORT=<free-even-port>
-export WORKTREE_CONVEX_SITE_PORT=$((WORKTREE_CONVEX_CLOUD_PORT + 1))
+source <skill-dir>/scripts/worktree-ports.sh
+derive_worktree_ports "$worktree"   # exports WORKTREE_ID, WORKTREE_APP_PORT, WORKTREE_CONVEX_CLOUD_PORT, WORKTREE_CONVEX_SITE_PORT
 ```
+
+`local-main` gets its identity the same way. If a derived port is already bound by another process, stop and report it; never take a port you don't own.
 
 Use unique Portless routes. One proxy may be shared; routes, app ports, Convex ports, and databases may not.
 
