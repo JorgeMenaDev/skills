@@ -54,6 +54,14 @@ A music video painted entirely in code: an original song with vocals (Google Lyr
 npx skills@latest add JorgeMenaDev/skills --skill painted-music-video
 ```
 
+### `launch-video`
+
+A 15–20 s keynote-style launch film for one product feature, rendered entirely in code: one HTML file whose `seek(t)` draws any frame, cut to a royalty-free song's beat grid (fitted to the kick drums, so the payoff lands on the drop), real Mixkit sound effects placed by measured peak and mixed to -14 LUFS, and a Playwright + ffmpeg render at 60 fps with subframe motion blur. Ships the engine, the audio tools and a worked example (Andy Publicaciones). Method from zero (@twoclipping)'s article "How I Make $10K Launch Videos for $0".
+
+```bash
+npx skills@latest add JorgeMenaDev/skills --skill launch-video
+```
+
 ### `youtube-thumbnails`
 
 YouTube thumbnails and channel banners painted by an image model (Codex image generation on a ChatGPT plan) and grounded in the real brand: the model paints one moment, the real logo is composited on top, and every candidate is judged at the 168×94 size phone viewers see. Ships the evidence behind each rule, prompt skeletons, a finish-and-export script and a review-sheet script.
