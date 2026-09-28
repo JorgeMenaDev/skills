@@ -4,7 +4,7 @@
 
 Use this contract only for an owned page that synthesizes manually accessed, **publicly accessible** community sources: forums, Reddit-like communities, and Q&A sites readable without membership, login, or invitation. Access-controlled conversations (private Discord/Slack workspaces, members-only forums, closed groups) are NOT publishable sources by default — being a member does not grant republication rights. Access-controlled content may be used only with explicit, recorded authorization from both the author of each used message and the community's owner/administrator, and it still follows every attribution, redaction, and removal rule below. Community language used only for demand research remains governed by [Content Operations](content-ops.md).
 
-Use the evidence rules in SKILL.md. Use [Page Evidence](pages.md) for substantiation, information gain, revision approval, and the publish gate. When a page has commercial elements, use [Commercial Integrity](commercial-integrity.md) for selection methodology, disclosure, and the anti-authority-rental boundary. Those shared contracts own their rules; this reference adds only community-specific requirements.
+Use the evidence rules in SKILL.md. Use [Page Evidence](pages.md) for substantiation, information gain, revision approval, and the launch gates. When a page has commercial elements, use [Commercial Integrity](commercial-integrity.md) for selection methodology, disclosure, and the anti-authority-rental boundary. Those shared contracts own their rules; this reference adds only community-specific requirements.
 
 ## Community-source publishing contract
 
@@ -25,7 +25,7 @@ For every used source, record these attribution fields in the existing page revi
 
 Structure the page so **Quote**, **Paraphrase**, and **Publisher analysis** are explicitly labelled or otherwise unambiguous and editorially separate. Quotes must be minimal, necessary, directly attributed, and linked to their source. Paraphrases must not mimic source wording or imply endorsement. Publisher analysis must be the page's own page-specific synthesis, categorization, comparison, testing, decision criteria, or other information gain; it must not be presented as community consensus. Do not imply platform affiliation or endorsement.
 
-Every community-source page also carries two explicit, visible disclosures regardless of whether it is classified as commercial: a statement that the source community/platform does not endorse the publisher or its product, and a statement of the publisher's relationship to the product, service, or topic discussed. These are affirmative page requirements — a page without both fails the publish gate. Commercial elements additionally trigger the full [Commercial Integrity](commercial-integrity.md) contract.
+Every community-source page also carries two explicit, visible disclosures regardless of whether it is classified as commercial: a statement that the source community/platform does not endorse the publisher or its product, and a statement of the publisher's relationship to the product, service, or topic discussed. These are affirmative page requirements — a page without both fails the launch gates. Commercial elements additionally trigger the full [Commercial Integrity](commercial-integrity.md) contract.
 
 ### Privacy, deletion, and maintenance
 
@@ -36,7 +36,7 @@ Honor source deletion and author removal requests. Publish a monitored contact r
 1. Record the request or detected deletion, received/detected date, requester or detection method, affected permalink, page/section, owner, and status in the existing dated report or `bets.md`; store no unnecessary requester PII.
 2. Acknowledge a direct request and assess dependency within **2 business days**.
 3. Remove the quote, attribution, and identifying detail promptly; rework or remove every dependent page section within **5 business days**. If safe rework cannot finish in that window, unpublish or noindex the affected page until it can.
-4. Re-run the page-evidence publish gate for the revised page and verify rendered links and citations.
+4. Re-run the page-evidence launch gates for the revised page and verify rendered links and citations.
 5. Record the completed action, outcome, completion date, verifier, and any remaining follow-up in the same existing record.
 
 Periodically verify source availability and material edits on the topic-appropriate refresh cadence. A deleted, materially changed, or unmaintainable source cannot remain as support. This is an operational publication policy, not jurisdictional legal advice; escalate disputes that need legal judgment.

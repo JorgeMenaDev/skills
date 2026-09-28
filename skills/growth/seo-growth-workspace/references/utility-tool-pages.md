@@ -68,7 +68,7 @@ Hub requirements:
 
 ## Verification
 
-Before handoff, record evidence in the review report or the bet:
+Before the bet is finished, record evidence in the review report or the bet:
 
 - Preview/live URLs sampled.
 - Rendered title, H1, meta, canonical, and robots state.

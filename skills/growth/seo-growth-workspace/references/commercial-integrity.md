@@ -23,7 +23,7 @@ Third-party publishing must serve that host's audience with original, useful con
 
 Use this specialist contract only for affiliate links, referral codes or links, coupon or promo-code pages, CPA offers, partner-funded placements, sponsored comparisons, or commission-influenced recommendations.
 
-Use [Commercial Integrity](commercial-integrity.md) for material-benefit disclosure, comparison methodology, editorial conflicts, and the anti-authority-rental boundary. Every commission-bearing relationship must appear in that required disclosure; a commission-bearing link without it fails publication. Use [Page Evidence](pages.md) for claim substantiation, revision approval, and the publish gate. Use [Conversion and CTA Audits](conversion.md) for event mechanics and the evidence rules in SKILL.md for evidence labels and the outcome chain. Those references own their rules; this contract adds only affiliate-, referral-, and offer-specific controls.
+Use [Commercial Integrity](commercial-integrity.md) for material-benefit disclosure, comparison methodology, editorial conflicts, and the anti-authority-rental boundary. Every commission-bearing relationship must appear in that required disclosure; a commission-bearing link without it fails publication. Use [Page Evidence](pages.md) for claim substantiation, revision approval, and the launch gates. Use [Conversion and CTA Audits](conversion.md) for event mechanics and the evidence rules in SKILL.md for evidence labels and the outcome chain. Those references own their rules; this contract adds only affiliate-, referral-, and offer-specific controls.
 
 ### Offer evidence and publication state
 

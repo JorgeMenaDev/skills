@@ -1,8 +1,19 @@
-# Content Engine Webhooks
+# Content Engines and Webhooks
 
-Use when a content engine (keyword-research plus article-generation/scheduling SaaS) pushes finished articles to the target application through a webhook and the target should deploy them automatically.
+Use when a site's content comes from a content engine (keyword-research plus article-generation/scheduling SaaS): operating its project and calendar, and wiring the webhook that pushes finished articles to the target application.
 
 The engine owns keywords, calendar, and article production. The target owns the receiving endpoint, rendering, and live verification. The skill's job is to wire the two safely and prove the published result is real.
+
+## Operating the engine
+
+Before creating, importing or scheduling content:
+
+1. Read the site's adapter note (`.seo/adapters/<engine>.md`); it maps the project, keyword, calendar, article, publish and reconciliation commands.
+2. Confirm `context.md` covers audience, market, language, conversion path and competitors.
+3. Confirm the target project exists in the engine or is created intentionally, a blog renderer or publishing destination exists, the sitemap includes the blog hub and generated posts, and the production backend or CLI agrees with the authenticated UI on project and calendar state. A failed check in steps 2 or 3 is a `defect` candidate.
+4. Store durable project config and keyword batches in the target repository's established content-engine paths; a small import script keeps them repeatable.
+
+After seeding a lane, verify with the engine's CLI or status commands and record in the review: keyword tier counts, scheduled rows (date, locale or lane, status, content type, keyword), visibility in the production UI, the next planned item or queue status, blog route and sitemap behavior, and any UI/backend mismatch. Keep API keys, admin keys and provider secrets out of all output.
 
 ## Integration Contract
 
