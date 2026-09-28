@@ -13,3 +13,6 @@ that returns into a journal tile.
   [wainwright-tracker](https://github.com/Andesphere/wainwright-tracker) checkout; it shows the pattern, not a drop-in tool.
 
 Assets (fonts, logo, Pexels photos, generated map layers) are not bundled.
+
+It predates the end-hold gate: `scan.py` measures its end hold at 0.83 s, so a new film should finish the
+end card's motion earlier.

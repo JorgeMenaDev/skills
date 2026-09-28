@@ -64,7 +64,7 @@ if (mode === 'stills' || mode === 'beats') {
   const outFile = path.join(OUT, 'silent.mp4');
   const ff = spawn('ffmpeg', ['-y', '-v', 'error', '-f', 'image2pipe', '-framerate', String(FPS * S), '-c:v', 'mjpeg', '-i', '-',
     '-vf', `tmix=frames=${S},select='eq(mod(n\\,${S})\\,${S - 1})',setpts=N/(${FPS}*TB)`,
-    '-r', String(FPS), '-c:v', 'libx264', '-preset', 'medium', '-crf', '15', '-pix_fmt', 'yuv420p', outFile], { stdio: ['pipe', 'inherit', 'inherit'] });
+    '-r', String(FPS), '-c:v', 'libx264', '-preset', 'medium', '-crf', '15', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', outFile], { stdio: ['pipe', 'inherit', 'inherit'] });
   const t0 = Date.now();
   for (let f = 0; f < frames; f++) {
     for (let s = 0; s < S; s++) {

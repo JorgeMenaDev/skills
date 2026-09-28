@@ -22,6 +22,7 @@ named in the beat map, and `hit0..3.wav` cut from Mixkit 2532 "Slow typing on a 
 - The beat grid from onset autocorrelation was 0.15 s late and put the "drop" one beat early; refitting to the
   kicks fixed it (now built into `audio/beats.py`).
 - Mixkit titles were paired with the wrong URLs (now fixed in `audio/mixkit.py`).
+- Its end hold measures 1.15 s with `scan.py` (it predates the end-hold gate); a new film holds about 2 s.
 - The calendar at zoom 1 was too small to read on a phone, and the mid-morph frame around beat 7 was an empty
   blue block. Both are listed as anti-patterns.
 

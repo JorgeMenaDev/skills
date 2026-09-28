@@ -1,7 +1,7 @@
 ---
 name: launch-video
 description: "Make a code-rendered launch video: one HTML film driven by seek(t), cut to a royalty-free song's beat grid, rendered to a 60 fps MP4 with motion blur and real sound effects. Use when asked for a launch video, a feature promo or demo clip, or motion design for a product."
-version: 1.1.0
+version: 1.2.0
 license: MIT
 mutating: true
 writes_to: ["a new film folder (index.html, audio/, out/)"]
@@ -22,7 +22,9 @@ Method from zero (@twoclipping)'s article "How I Make $10K Launch Videos for $0"
   and the **payoff** (the one moment the film exists to show) lands on the drop.
 - **One continuous take.** Objects change shape, rise out of mask lines, or flood the frame; nothing cuts or fades.
 - **The product's own design canon** (colours, fonts, logo, UI vocabulary, light or dark), from its repo or site.
-- **Real sound effects** for every event, placed by measured peak, mixed to -14 LUFS.
+- **It reads in silence.** Landing pages autoplay muted, so every beat is legible without sound. Sound is
+  for the social cut: real effects for every event, placed by measured peak, mixed to -14 LUFS, from sources
+  whose licence you can name.
 - The deliverable is a file: posting it anywhere is the human's decision.
 
 ## Preamble
@@ -60,8 +62,8 @@ Any `no`: install it first (`CHROME: no` → `npx playwright install chromium` a
 6. **Sound.** Fetch one Mixkit effect per event, declare each with `sfx()`, run `audio/mix.py`.
    Done when it prints no `MISSING` line.
 7. **Render and verify.** Read [references/render.md](references/render.md). Render with 8 subframes, scan,
-   mux, and step through every fast moment frame by frame. Done when `scan.py` prints `POPS: none` and the
-   contact sheet reads as the beat map.
+   mux, and step through every fast moment frame by frame. Done when `scan.py` prints `POPS: none` and an
+   end hold of at least 1.5 s, and the contact sheet reads as the beat map.
 8. **Deliver.** Hand over the MP4, the beat map and the known weaknesses, and keep the folder: director notes
    ("too slow here", "hit the drop harder") usually take 2–3 rounds of minutes each. Done when the Output
    block below is filled.
@@ -80,8 +82,9 @@ Any `no`: install it first (`CHROME: no` → `npx playwright install chromium` a
 
 ```
 STATUS: DONE | DONE_WITH_CONCERNS | BLOCKED
-Video: <path or link> · <duration> · <W>x<H> 60fps · <LUFS> · pops: <none | n>
+Video: <path or link> · <duration> · <W>x<H> 60fps · <LUFS> · pops: <none | n> · end hold <s> · muted cut <path>
 Music: <track, BPM, payoff on film beat N> · effects: <n>
 Folder: <path> · beat map: BEATMAP.md
 Weaknesses: <one line each, or none>
+Unverified: <what you could not check, e.g. how the mix sounds; what a human should listen and look for>
 ```
