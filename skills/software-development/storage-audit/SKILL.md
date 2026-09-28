@@ -1,15 +1,26 @@
 ---
 name: storage-audit
-description: Reclaim disk on Jorge's Mac mini with scripts/storage-hygiene.sh, covering leaked processes and swap, worktrees, dependency and build caches, agent histories, Xcode and simulators. Use when free space is low, Jorge asks to free space, or the storage-hygiene cron alerts or fails.
-version: 6.0.0
+description: Reclaim disk on any Mac running Jorge's workspace (the Mac mini or the MacBook Pro) with scripts/storage-hygiene.sh, covering leaked processes and swap, worktrees, dependency and build caches, agent histories, Xcode and simulators. Use when free space is low, Jorge asks to free space, or the storage-hygiene cron alerts or fails.
+version: 7.0.0
 mutating: true
 writes_to: ["orphaned dev processes (killed)", "registered git worktrees (clean, backed, idle)", "node_modules/.next/.turbo build state", "T3, OpenCode and Cursor agent history", "Xcode DerivedData and simulator device data", "tool and package caches", "logs and temp bundles", "~/.hermes/state/storage-hygiene/"]
 ---
 
-# Reclaim disk on the Mac mini
+# Reclaim disk on a workspace Mac
 
-228 GiB of SSD, 16 GB of RAM, T3 Code development all day. Target: 40 GiB free on
-`/System/Volumes/Data`. Count **physical bytes**: the `df` delta or APFS private size, never
+T3 Code threads run on both Macs; Jorge picks the host from his phone. `<clone>/.host` says which
+one you are on (`mini` or `laptop`). The script is the same on both, and paths are derived, never
+machine-specific. Target: 40 GiB free on the internal `/System/Volumes/Data` on each Mac.
+
+| Mac | Internal | `~/dev/code` |
+|---|---|---|
+| Mac mini (`mini`) | 228 GiB, 16 GB RAM | its own 2 TB NVMe `Code` volume, mounted there by `/etc/fstab`, holding repos, worktrees, the Bun/npm/uv caches and runner `_work` |
+| MacBook Pro (`laptop`) | everything | a plain folder on the internal disk |
+
+Pressure is per volume. The script leaves caches and build output alone on a separate disk with at
+least 100 GiB free (`PROTECT roomy-volume`), because deleting them there frees nothing on Data. Tool
+caches are found by asking each tool (`bun pm cache`, `npm config get cache`, `uv cache dir`), so
+the Mac mini's code-disk caches and the laptop's default ones both resolve. Count **physical bytes**: the `df` delta or APFS private size, never
 `du`. Bun `node_modules` are clones of its cache, `uv` venvs hardlink theirs, and a mounted
 simulator runtime is a view of its image, so `du` counts shared blocks once per copy.
 
@@ -31,8 +42,9 @@ Done when you can state free space and swap, and name the `meter.log` field that
 ./scripts/storage-hygiene.sh             # guarded cleanup
 ```
 
-Hermes cron `storage-hygiene-every-3-hours` (`30 */3 * * *`, no-agent) runs the cleanup; Telegram
-hears only failures and free space under 10 GiB. Exit 0 = at target, 3 = below target, 2 = failed,
+On the Mac mini, Hermes cron `storage-hygiene-every-3-hours` (`30 */3 * * *`, no-agent) runs the
+cleanup; Telegram hears only failures and free space under 10 GiB. The laptop runs no Hermes crons,
+so run the script there by hand when it is low. Exit 0 = at target, 3 = below target, 2 = failed,
 4 = another run holds the lock (never delete `run.lock`). Below target it shortens its own gates.
 
 The last log line is the verdict (`freed= free= swap= failures= status=`); `METER` above it is
@@ -41,7 +53,8 @@ are done, `PROTECT <reason>` kept something, `JORGE-ACTION` needs a human, `FAIL
 `BUDGET` ranks candidates of 50 MiB or more by logical size.
 
 - **Vetoes** hold forever: `uncommitted-or-inspection-failed`, `unbacked`, `durable-or-unknown-convex-state`,
-  `process-active`, `open`, `shared-clone-source`. Failed inspection is no proof of clean or idle.
+  `process-active`, `open`, `shared-clone-source`. `roomy-volume` holds while that disk keeps 100 GiB free
+  (`STORAGE_HYGIENE_ROOMY_GIB`). Failed inspection is no proof of clean or idle.
 - **Gates** expire: `age-gate(Nh)` carries `gate_until`. Check it before calling a guard broken.
 
 The classes are the script's functions (`grep -n '() {' scripts/storage-hygiene.sh`); read one before explaining or changing it.
@@ -58,7 +71,8 @@ Disk goes three ways. Check them in order; the first that explains the loss is t
 2. **A metered consumer grew.** Diff `meter.log` across the drop. Known growers: `opencode.db`
    (every `message.updated` event stores the session's diffs again, ~2.6 GiB a day), new worktrees,
    `$TMPDIR`, simulators.
-3. **Nothing covers it.** Measure: `du -xk -d 3 ~ | sort -rn | head -40`, then
+3. **Nothing covers it.** Measure: `du -xk -d 3 ~ | sort -rn | head -40` (`-x` stays on Data, so the
+   mini's code disk is skipped), then
    `python3 scripts/storage-hygiene-support.py private <path>` for its physical KiB. A new
    regenerable class becomes a script function (name the friction in the commit); anything else goes to Jorge.
 
@@ -81,7 +95,8 @@ class, waiting on a gate, or listed for Jorge.
 
 ## Levers outside the cron
 
-- **Reboot** returns all swap. Stop live dev loops first.
+- **Reboot** returns all swap. Stop live dev loops first. On the mini, confirm `mount | grep dev/code`
+  afterwards; the code disk must stay plugged in, or `~/dev/code` is an empty folder.
 - **Protected worktrees.** List each with size, reason and `ahead=/uncommitted=`; `ahead=unknown` is not zero.
 - **`JORGE-ACTION pending-macos-update`.** Install and reboot. Only OS updates grow Preboot.
 
@@ -95,5 +110,5 @@ PROTECTED: <worktree paths with the literal reason>
 NEXT: <reboot | Jorge decision on … | none>
 ```
 
-A dry audit reports and stops. After a cleanup, verify `df` and record failures or open steps on
-matias#592. Authorization persists: an ordered reboot or app restart needs no second ask.
+A dry audit reports and stops. After a cleanup, verify `df` and record failures or open steps on the
+open matias storage issue (open one if none exists), naming the host. Authorization persists: an ordered reboot or app restart needs no second ask.
