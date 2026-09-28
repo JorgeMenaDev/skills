@@ -13,7 +13,7 @@ Target = the current repo, unless an **explicit signal** names another repo. Sig
 2. The **primary artifact under work** — the issue, PR, plan doc, or wayfinder map being grilled — belongs to a visible owner/repo that is not the current repo. A repo merely *mentioned* in conversation is NOT a signal. If several artifacts are in play, the one the user's latest instruction acts on is primary.
 3. A wayfinder map's `## Notes` names a target repo.
 
-Only after a signal fires, resolve the local clone: the AFK registry (`.agents/afk-pipeline/REGISTRY.md`) if present, else known checkout roots (`~/dev/code/<repo>`), else **ask**. Never silently fall back to the current repo when a signal named a repo you can't resolve.
+Only after a signal fires, resolve the local clone: the project's repository registry if present, else known checkout roots (`~/dev/code/<repo>`), else **ask**. Never silently fall back to the current repo when a signal named a repo you can't resolve.
 
 Safe default in orchestration dirs: if the session sits in a profile/orchestration workspace rather than the artifact's own repo and no signal has fired, ask for the target instead of assuming the current repo — a profile dir is almost never where domain docs belong. Exception: when the domain doc under work is the profile's own glossary, the profile IS the target.
 
