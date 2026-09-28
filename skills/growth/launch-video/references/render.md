@@ -18,8 +18,8 @@ ffmpeg -y -i out/silent.mp4 -vf "select='not(mod(n\,30))',scale=480:-1,tile=6x6:
 - **Frame-by-frame:** for every fast moment (the act click, the drop, the page fill, the logo merge) render
   stills at quarter-beats (`node render.mjs stills 11.75,12,12.25,12.5`) and look for empty shapes, overlapping
   text, and content escaping its mask.
-- **Rest and end hold:** `scan.py` also prints `REST` (still windows) and `END HOLD`. An end hold under 1.5 s
-  means the brand frame never lands: finish the end card's motion earlier.
+- **Rest and end hold:** `scan.py` also prints `REST` (still windows, each measured against its own first frame)
+  and `END HOLD`. Aim for about 2 s; under 1.5 s the brand frame never lands: finish the end card's motion earlier.
 - **Embed width:** read the contact sheet scaled to the width the film will really play at (a landing hero is
   ~1000 px wide, a phone feed ~400 px), not at full size.
 - **Loudness:** measure the final MP4, not `mix.wav` (AAC adds ~0.6 dB of true peak):
@@ -30,8 +30,12 @@ ffmpeg -y -i out/silent.mp4 -vf "select='not(mod(n\,30))',scale=480:-1,tile=6x6:
 
 - `out/film.mp4` is H.264 60 fps with AAC, 6–20 MB for 16 s (flat UI small, detailed maps and photos large): X,
   LinkedIn, Instagram (as a Reel) and TikTok accept it as is. Over ~20 MB, re-encode at `-crf 20`.
-- **Two cuts:** `out/silent.mp4` is already the muted cut for autoplay embeds (landing pages); `out/film.mp4`
-  is the scored cut for social.
-- **Licences:** Mixkit's licence (free for commercial use, no attribution) and Pexels' licence cover their
-  files. Name both in the delivery note; any other source needs its licence named before it ships.
+- **Two cuts:** `out/silent.mp4` (faststart) is the muted cut for autoplay embeds; make its web copy with the
+  command below minus the audio flags. `out/film.mp4` is the scored cut for social. A muted embed with no
+  unmute control never plays the score, so spend on music only for the social cut.
+- **Licences:** name each source's licence in the delivery note, with the page you read and the date: Mixkit
+  (https://mixkit.co/license/) and Pexels (https://www.pexels.com/license/) were free for commercial use without
+  attribution when this skill was written. For paid music, read the cancellation clause (do published films stay
+  cleared after you stop paying?) and skip personal-only or non-commercial tiers. A licence page you could not
+  read is **unverified**: say so rather than assume it.
 - A web preview copy: `ffmpeg -i out/film.mp4 -vf scale=-2:720 -c:v libx264 -crf 26 -c:a aac -b:a 96k web.mp4`.

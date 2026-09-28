@@ -86,4 +86,5 @@ Video: <path or link> · <duration> · <W>x<H> 60fps · <LUFS> · pops: <none | 
 Music: <track, BPM, payoff on film beat N> · effects: <n>
 Folder: <path> · beat map: BEATMAP.md
 Weaknesses: <one line each, or none>
+Unverified: <what you could not check, e.g. how the mix sounds; what a human should listen and look for>
 ```
