@@ -38,7 +38,7 @@ identical to its first, cursor position and speed included.
   statuses, icons from its repo). Call it a stylised redraw when delivering.
 - **Phone app**: a phone frame (screen ~428x926, radius ~56, thin black bezel, status bar) built in DOM around
   the redraw; a finger is a soft circle that presses (scale) instead of a cursor. Camera zoom that fills the frame
-  with the phone: `min(W / phoneW, H / phoneH) * 0.98` (2.05 for a 932-tall phone in 1080x1920); pull back to
+  with the phone: `min(W / phoneW, H / phoneH) * 0.98` (~2.0 for a 428x926 screen in a 1080x1920 frame); pull back to
   ~0.6 of that to show the whole device, push in to ~1.5 of it for one control.
 - **Maps and terrain**: draw them as pure functions: SVG paths and contour polylines from real data (GeoJSON,
   a DEM exported to contours), a canvas redrawn inside `seek()`, or a still render of the real map as an image

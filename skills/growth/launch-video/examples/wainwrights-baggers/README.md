@@ -9,6 +9,7 @@ that returns into a journal tile.
 - `BEATMAP.md`: the brief, the beat map and the step-4 gate verdict.
 - `index.html`: the scene (fells from `assets/fells.json`, map layers `map_overview.jpg` / `map_detail.jpg`).
 - `gen_map.py`: builds those assets from the product repo's terrain tiles and fell catalogue (hillshade,
-  water, woods, contours). Its paths point at that repo; it shows the pattern, not a drop-in tool.
+  water, woods, contours). Pass the path of a
+  [wainwright-tracker](https://github.com/Andesphere/wainwright-tracker) checkout; it shows the pattern, not a drop-in tool.
 
 Assets (fonts, logo, Pexels photos, generated map layers) are not bundled.

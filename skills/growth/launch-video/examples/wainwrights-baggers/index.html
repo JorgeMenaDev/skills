@@ -485,9 +485,9 @@ function placeWords(ws, s0, t) {
 
 // ======================= BOOT =======================
 const PRELOAD = ['assets/map_overview.jpg', 'assets/map_detail.jpg', 'assets/logo.png', 'assets/p35734483.jpg', 'assets/p16520669.jpg', 'assets/p18774238.jpg', 'assets/p8465231.jpg'];
+const FONTS = ['600 20px Brand', '600 20px Serif'];   // one entry per @font-face family
 window.ready = Promise.all([fetch('assets/fells.json').then(r => r.json()),
-  document.fonts.load('600 20px Brand').catch(() => console.warn('assets/font.woff2 missing: system font')),
-  document.fonts.load('600 20px Serif').catch(() => console.warn('assets/serif.woff2 missing')),
+  ...FONTS.map(f => document.fonts.load(f).catch(() => console.warn(`font missing: ${f}`))),
   ...PRELOAD.map(s => new Promise(r => { const i = new Image(); i.onload = i.onerror = r; i.src = s; }))])
   .then(([data]) => document.fonts.ready.then(() => data))
   .then(data => {

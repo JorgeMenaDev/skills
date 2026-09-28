@@ -23,6 +23,8 @@ def listing(kind, tag):
         s = fetch(base + tag.strip("/") + "/").decode("utf-8", "replace")
     except urllib.error.HTTPError as e:
         sys.exit(f"{kind} tag '{tag}': HTTP {e.code}. Try one of the tags in this script's docstring.")
+    except urllib.error.URLError as e:
+        sys.exit(f"mixkit.co unreachable: {e.reason}")
     pat = r'preview-url-value="([^"]+)".*?item-grid-card__title">\s*(.*?)\s*</h2>.*?meta-time[^>]*>\s*([\d:]+)'
     seen = set()
     for url, title, dur in re.findall(pat, s, re.S):

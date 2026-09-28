@@ -1,9 +1,9 @@
 """Stylised map layers from the product's own terrain data (read-only), plus fells.json.
-python3 tools/gen_map.py  → assets/map_overview.jpg, assets/map_detail.jpg, assets/fells.json"""
-import csv, json, re, numpy as np
+python3 gen_map.py <path to the wainwright-tracker checkout>  → assets/map_overview.jpg, assets/map_detail.jpg, assets/fells.json"""
+import csv, json, re, sys, numpy as np
 from scipy import ndimage
 from PIL import Image
-REPO = '/Users/jorge/dev/code/wainwright-tracker'
+REPO = sys.argv[1] if len(sys.argv) > 1 else 'wainwright-tracker'  # github.com/Andesphere/wainwright-tracker
 T = REPO + '/apps/web/public/terrain/v2/'
 
 def decode(buf, n):

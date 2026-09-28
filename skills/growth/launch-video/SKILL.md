@@ -43,9 +43,9 @@ Any `no`: install it first (`CHROME: no` → `npx playwright install chromium` a
    (types a request, taps a place, drags a slider), what the viewer must learn in order, the language, the
    frame (1920x1080, 1080x1920 vertical, 1440x1440 square) and length (~32 beats ≈ 16 s). Collect the brand's
    font, logo, colours and any real screen recordings. Done when these head `BEATMAP.md` in the film folder.
-2. **Scaffold.** Copy `templates/` to a new folder in the host's git-ignored output or scratch area, outside any
-   product repo (`gitignore` → `.gitignore`),
-   `npm install`, put the font at `assets/font.woff2` and the logo in `assets/`, set `W`/`H` in `index.html`.
+2. **Scaffold.** Copy `templates/` to a new folder outside any product repo, in a git-ignored output area
+   (`gitignore` → `.gitignore`),
+   `npm install`, put the fonts in `assets/` (one `@font-face` and `FONTS` entry each) and the logo, set `W`/`H`.
    Done when `node render.mjs beats` renders the demo.
 3. **Music.** Read [references/audio.md](references/audio.md) in full. Pick a track with a breakdown and a drop,
    run `audio/beats.py`, set `BPM` and `MUSIC` in `index.html`. Done when the drop sits on the payoff beat.

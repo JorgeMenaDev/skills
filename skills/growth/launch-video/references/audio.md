@@ -35,7 +35,7 @@ cards, an impact on the drop, a success tone per status flip, a whoosh as the pa
   (`sfx('1143.mp3', 12, 0.55, true)`).
 - Keystrokes: typing recordings are long takes. `python3 audio/peaks.py --hits audio/sfx/<id>.mp3 4` cuts four
   isolated keystrokes to `hit0..3.wav`; play one on most typed characters, rotating through them.
-- Proven defaults (ids), so one listing round is optional: click `1117`, light pop `3005`, pop `2358`, hard pop
+- Proven defaults (ids), so one listing round is optional: click `1117`, phone tap `2585`, tick `1109`, light pop `3005`, pop `2358`, hard pop
   `2364`, card sweep `166`, short swoosh `1461`, wind swoosh `1471`, fast whoosh `1490`, cinematic whoosh `1492`,
   deep impact `1143`, confirmation tone `2867`, sparkle `3083`, slow typing (for `--hits`) `2532`.
 - Levels: clicks 0.8–0.9, pops 0.4–0.6, success tones ~0.3, impacts ~0.55, keys ~0.9 (they are quiet).
@@ -43,5 +43,6 @@ cards, an impact on the drop, a success tone per status flip, a whoosh as the pa
 ## Mix
 
 `node render.mjs` (any mode) writes `out/timeline.json`; `python3 audio/mix.py` mixes the song from
-`MUSIC.offset` with a 0.9 s tail fade plus every SFX, then loudnorms to -14 LUFS / -1 dBTP into `out/mix.wav`.
+`MUSIC.offset` with a 0.9 s tail fade plus every SFX, then loudnorms (single pass) to -14 LUFS / -1.5 dBTP into `out/mix.wav`; the final-MP4
+measurement in `render.md` is the check that counts.
 It prints `MISSING` for any file it could not find.
