@@ -6,7 +6,7 @@ Use for backlink audits, authority planning, local citations, and brand/entity o
 
 ## Complete an authority bet
 
-Choose a real audience/distribution need, then verify source relevance, editorial or profile eligibility, a legitimate route and a useful destination. State why this opportunity beats the strongest alternative using [review.md](review.md). Prepare the exact listing correction, useful asset or individual message with supporting facts and reader value. Execute only within existing authorization; outreach requires explicit authorization. If it needs a decision, hand off the completed change or message, exact dependency and owner. Verify the resulting live placement/change, then record follow-up and qualified referrals where observable. Third-party authority scores are context, not the objective.
+Choose a real audience/distribution need, then verify source relevance, editorial or profile eligibility, a legitimate route and a useful destination. State why this opportunity beats the strongest alternative using [review.md](review.md). Prepare the exact listing correction, useful asset or individual message with supporting facts and reader value. Execute only within existing authorization; outreach requires explicit authorization. Work that needs a decision ends as a `package` ([ship.md](ship.md)). Verify the resulting live placement/change, then record follow-up and qualified referrals where observable. Third-party authority scores are context, not the objective.
 
 ## Backlink Gap Matrix
 

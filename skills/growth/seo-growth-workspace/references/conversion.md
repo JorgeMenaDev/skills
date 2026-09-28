@@ -2,7 +2,7 @@
 
 Use for CRO, cold organic visitor paths, lead capture, signup, and CTA hierarchy.
 
-For each selected search opportunity, identify the visitor's next useful action, actual destination and evidence that the path works. Include the exact CTA/path change in the same work package as content or distribution. Reuse available events and the bridge below before proposing new instrumentation. Separate CTA clicks, lead events, qualified leads, bookings and customers; one does not establish the next.
+For each selected search opportunity, identify the visitor's next useful action, actual destination and evidence that the path works. Include the exact CTA/path change in the same package as content or distribution. Reuse available events and the bridge below before proposing new instrumentation. Separate CTA clicks, lead events, qualified leads, bookings and customers; one does not establish the next.
 
 ## Audit Matrix
 

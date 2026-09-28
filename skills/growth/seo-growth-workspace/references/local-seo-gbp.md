@@ -45,7 +45,7 @@ These eight rewritten GBP outputs—categories, attributes, reviews, review resp
 
 ## From opportunity to work
 
-Connect the local candidate to a real customer job and the site's focus using [review.md](review.md). Prepare the exact eligible profile edit, service/location page, useful asset or booking-path correction, with factual proof and the conversion destination. Collect missing business facts with a specific question and owner. Carry the completed package through [ship.md](ship.md), applying the mutation gate below and the site's existing authorization. A competitor observation or generic recommendation alone is not completion.
+Connect the local candidate to a real customer job and the site's focus using [review.md](review.md). Prepare the exact eligible profile edit, service/location page, useful asset or booking-path correction, with factual proof and the conversion destination. Collect missing business facts with a specific question and owner. Carry it to finished through [ship.md](ship.md), applying the mutation gate below and the site's existing authorization.
 
 ## GBP observation and mutation ledgers
 

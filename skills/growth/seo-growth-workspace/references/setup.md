@@ -27,7 +27,7 @@ Credentials are locations (a directory or environment variable name), never valu
    ## Brand terms: the strings that mark a branded query; none may be a substring of an ordinary word ("acredita" also matches "acreditación")
    ## Competitors: names, sites, why they matter
    ## Data access: Search Console property and credentials location, analytics, SERP and demand keys
-   ## Approval boundary: what the agent may ship without asking (default: nothing public)
+   ## Approval boundary: what the agent may ship without asking (default: nothing public; reviews propose additions when the same approval repeats)
    ## Review budget: live checks and demand requests per review (default 10 and 1)
    ```
 

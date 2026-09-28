@@ -1,7 +1,7 @@
 ---
 name: seo-growth-workspace
 description: "Use when growing organic search traffic for a product or local-business website: weekly SEO review, deciding what to build or fix next for search, sizing search opportunities, shipping SEO bets, traffic drops, AI-search visibility, and the monthly SEO scoreboard. Triggers: \"SEO review\", \"what should we do for SEO\", \"why am I not ranking\", \"my traffic dropped\", \"set up SEO\", \"monthly SEO report\", \"how do we show up in ChatGPT\". Keeps a .seo workspace per site (one repo, or a hub of many sites), connects business goals and demand discovery to finished work, distribution, conversion and measured learning."
-version: 9.0.0
+version: 9.1.0
 license: MIT
 mutating: true
 writes_to: [".seo/"]
@@ -9,13 +9,13 @@ writes_to: [".seo/"]
 
 # SEO Growth Workspace
 
-The job is to attract people the business can serve and help them take a useful next step. Work through one cycle: business constraint → customer evidence and demand → focused opportunity → finished work → distribution and conversion → learning. A review advances that cycle, including execution within existing authorization.
+The job is to attract people the business can serve and help them take a useful next step. Work through one cycle: business constraint → customer evidence and demand → focused opportunity → finished work → distribution and conversion → learning. A review takes its chosen bets to **finished**, executing what existing authorization allows.
 
 ## Contract
 
 1. **Keep a current focus.** `strategy.md` names the customer, business outcome, constraint, chosen opportunity and capacity, grounded in owner decisions. Unknown outcomes stay unknown.
 2. **Discover beyond current rankings.** Active growth reviews combine site performance with bounded outside demand and buyer evidence. Maintenance and owner pauses still govern effort.
-3. **Finish useful work.** Advance an authorized change or prepare the complete work and an explicit handoff. Missing proof becomes a specific collection action. A generic recommendation is not completion.
+3. **Finish chosen bets.** Each chosen bet ends the run `live`, as a `package` at its execution owner, or as an `evidence request`. Definitions: [references/ship.md](references/ship.md).
 4. **Keep few bets moving.** At most three unshipped bets per site. Live bets awaiting results do not use those slots. Defer independent work only for a stated capacity, owner or interference reason.
 5. **Learn before expanding.** Check outcomes when due, distinguish delivery from business results, and judge URL groups by maturity, purpose and qualified outcomes as well as clicks. Record the next decision that changes.
 6. **Use honest evidence.** Follow the rules below in every report, bet and log line.
@@ -38,8 +38,8 @@ SITE_WORKSPACE is the one site folder a run works in, and `.seo/<file>` in any r
 
 | Mode | Use when | Read first | Done when |
 | --- | --- | --- | --- |
-| `review` | Weekly, or "what should we do for SEO", or traffic dropped | [references/review.md](references/review.md) | Useful work advanced or complete handoff prepared; evidence, bets and log agree |
-| `ship` | A chosen bet needs preparation or authorized execution | [references/ship.md](references/ship.md) | Live and verified, or finished package with exact dependency and owner |
+| `review` | Weekly, or "what should we do for SEO", or traffic dropped | [references/review.md](references/review.md) | Every chosen bet finished, or no-action recorded with its trigger; report, bets and log agree |
+| `ship` | A chosen bet needs preparation or authorized execution | [references/ship.md](references/ship.md) | The bet is finished |
 | `scoreboard` | First days of a month | [references/scoreboard.md](references/scoreboard.md) | Scoreboard report written with lane calls |
 | `setup` | No `.seo/`, a new hub site, or a v7 workspace | [references/setup.md](references/setup.md) | Workspace files exist and Search Console access is proven |
 
@@ -56,7 +56,7 @@ Read the mode's reference in full before its first step. Data sources, commands 
 
 ## Unattended runs
 
-Scheduled and delegated runs follow the same method and existing authority as interactive runs. Read the site boundary and the run's explicit restrictions before acting. Prepare work in SITE_WORKSPACE or the authorized repository; execute through the existing owner and ship process when authorized. A schedule alone grants no publication, deployment, indexing, engine-setting or outreach permission. Outreach needs explicit authorization. If execution is restricted, finish the reviewable package and name its handoff, dependency and owner. In a hub the prompt names the site; a missing workspace or unnamed site ends the run as blocked. The last line of the run is one JSON object:
+Scheduled and delegated runs follow the same method and existing authority as interactive runs. Read the site boundary and the run's explicit restrictions before acting. Prepare work in SITE_WORKSPACE or the authorized repository; execute through the existing owner and ship process when authorized. A schedule alone grants no publication, deployment, indexing, engine-setting or outreach permission. Outreach needs explicit authorization. Work the run may not execute ends as a `package`. In a hub the prompt names the site; a missing workspace or unnamed site ends the run as blocked. The last line of the run is one JSON object:
 
 ```json
 {"status":"ok|alerted|blocked","site":"…","mode":"review","next_move":"one line","bets_opened":[],"bets_resolved":[],"needs_owner":[]}
