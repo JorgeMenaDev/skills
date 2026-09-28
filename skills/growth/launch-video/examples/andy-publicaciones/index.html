@@ -527,7 +527,7 @@ function seek(t) {
 // ---------- boot ----------
 const imgs = ['assets/p302899.jpg', 'assets/andy_logo.svg', 'assets/instagram-icon.svg'];
 window.ready = Promise.all([document.fonts.load('600 20px Geist'), document.fonts.load('500 20px Geist'), ...imgs.map(s => new Promise(r => { const i = new Image(); i.onload = i.onerror = r; i.src = s; }))]).then(() => document.fonts.ready).then(() => { seek(0); return true; });
-Object.assign(window, { seek, SFX, MUSIC, DURATION, P });
+Object.assign(window, { seek, SFX, MUSIC, DURATION, P, W, H });
 </script>
 </body>
 </html>

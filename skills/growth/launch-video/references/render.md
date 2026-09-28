@@ -2,7 +2,7 @@
 
 ```bash
 node render.mjs video 8                  # out/silent.mp4: 60 fps, 8 subframes, 180° shutter
-python3 audio/scan.py out/silent.mp4     # POPS: none
+python3 scan.py out/silent.mp4           # POPS: none
 python3 audio/mix.py                     # out/mix.wav
 ffmpeg -y -i out/silent.mp4 -i out/mix.wav -c:v copy -c:a aac -b:a 192k -shortest -movflags +faststart out/film.mp4
 ffmpeg -y -i out/silent.mp4 -vf "select='not(mod(n\,30))',scale=480:-1,tile=6x6:padding=4" -frames:v 1 out/sheet.jpg
@@ -22,7 +22,6 @@ ffmpeg -y -i out/silent.mp4 -vf "select='not(mod(n\,30))',scale=480:-1,tile=6x6:
 
 ## Delivering
 
-- `out/film.mp4` is H.264 1920x1080 60 fps with AAC, ~6 MB for 16 s: X, LinkedIn, Instagram (as a Reel) and
+- `out/film.mp4` is H.264 60 fps with AAC, ~6 MB for 16 s at 1920x1080: X, LinkedIn, Instagram (as a Reel) and
   TikTok accept it as is.
 - A web preview copy: `ffmpeg -i out/film.mp4 -vf scale=-2:720 -c:v libx264 -crf 26 -c:a aac -b:a 96k web.mp4`.
-- The deliverable is the file. Posting it anywhere is a public act the human decides on.

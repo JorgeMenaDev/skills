@@ -1,14 +1,16 @@
-// node render.mjs stills 0,4.5,12.2   → out/stills/b<beat>.jpg (beats, not seconds)
+// node render.mjs stills 0,4.5,12.2   → out/stills/<n>_b<beat>.jpg (beats, not seconds)
 // node render.mjs beats               → out/beats.jpg, one frame per beat on one sheet
 // node render.mjs video [subframes]   → out/silent.mp4, 60 fps, subframes blended for motion blur (default 8)
 // Every run also writes out/timeline.json (SFX, MUSIC, DURATION) for audio/mix.py.
+// The frame size comes from the page's W and H (1920x1080, 1080x1920, 1440x1440...).
 import { chromium } from 'playwright-core';
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 
-const ROOT = path.dirname(new URL(import.meta.url).pathname);
+const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const OUT = path.join(ROOT, 'out');
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.svg': 'image/svg+xml', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp', '.woff2': 'font/woff2', '.mp4': 'video/mp4' };
 // Static server on a random free port: fonts need HTTP, and a fixed port can collide with a dev server.
@@ -21,6 +23,7 @@ const server = http.createServer((req, res) => {
 await new Promise(r => server.listen(0, '127.0.0.1', r));
 
 const [mode = 'stills', arg] = process.argv.slice(2);
+if (!['stills', 'beats', 'video'].includes(mode)) { console.error(`unknown mode ${mode}: stills | beats | video`); process.exit(1); }
 fs.mkdirSync(OUT, { recursive: true });
 // System Chrome: no Chromium download. Set CHROME_CHANNEL=chromium after `npx playwright install chromium` if there is none.
 const browser = await chromium.launch({ channel: process.env.CHROME_CHANNEL || 'chrome', headless: true });
@@ -28,7 +31,9 @@ const page = await browser.newPage({ viewport: { width: 1920, height: 1080 }, de
 page.on('pageerror', e => { console.error('PAGE ERROR', e.message); process.exitCode = 1; });
 await page.goto(`http://127.0.0.1:${server.address().port}/index.html`);
 await page.evaluate(() => window.ready);
-const meta = await page.evaluate(() => ({ SFX: window.SFX, MUSIC: window.MUSIC, DURATION: window.DURATION, P: window.P }));
+const size = await page.evaluate(() => ({ width: window.W, height: window.H }));
+await page.setViewportSize(size);
+const meta = await page.evaluate(() => ({ SFX: window.SFX, MUSIC: window.MUSIC, DURATION: window.DURATION, P: window.P, W: window.W, H: window.H }));
 fs.writeFileSync(path.join(OUT, 'timeline.json'), JSON.stringify(meta, null, 1));
 
 async function still(beat, file) {
@@ -44,7 +49,8 @@ if (mode === 'stills' || mode === 'beats') {
   for (const [i, b] of beats.entries()) await still(b, path.join(dir, `${String(i).padStart(3, '0')}_b${b}.jpg`));
   if (mode === 'beats') {
     const cols = 6, rows = Math.ceil(beats.length / cols);
-    spawnSync('ffmpeg', ['-v', 'error', '-y', '-pattern_type', 'glob', '-i', path.join(dir, '*.jpg'), '-vf', `scale=480:-1,tile=${cols}x${rows}:padding=4`, '-frames:v', '1', path.join(OUT, 'beats.jpg')], { stdio: 'inherit' });
+    const r = spawnSync('ffmpeg', ['-v', 'error', '-y', '-pattern_type', 'glob', '-i', path.join(dir, '*.jpg'), '-vf', `scale=480:-1,tile=${cols}x${rows}:padding=4`, '-frames:v', '1', path.join(OUT, 'beats.jpg')], { stdio: 'inherit' });
+    if (r.status !== 0) { console.error('ffmpeg failed building out/beats.jpg'); process.exitCode = 1; }
     console.log(path.join(OUT, 'beats.jpg'));
   } else console.log(dir);
 } else if (mode === 'video') {
@@ -65,8 +71,9 @@ if (mode === 'stills' || mode === 'beats') {
     if (f % 120 === 0) console.log(`frame ${f}/${frames}  ${((Date.now() - t0) / 1000).toFixed(0)}s`);
   }
   ff.stdin.end();
-  await new Promise(r => ff.on('close', r));
-  console.log(outFile);
-} else console.error(`unknown mode ${mode}`);
+  const code = await new Promise(r => ff.on('close', r));
+  if (code !== 0) { console.error(`ffmpeg exited ${code}: ${outFile} is not valid`); process.exitCode = 1; }
+  else console.log(outFile);
+}
 await browser.close();
 server.close();

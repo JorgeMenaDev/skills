@@ -1,57 +1,83 @@
 # Writing the film
 
+## Start from a reference (optional)
+
+When the human has a launch video they like, or you find one for a similar product, break it down before
+writing your own:
+
+```bash
+ffmpeg -i reference.mp4 -vf "fps=2,scale=480:-1,tile=6x5:padding=4" out/ref_%02d.jpg
+```
+
+Read the sheets and note, per beat: what happens, how each scene turns into the next, the camera moves, colours
+and fonts. Then write the same structure for this product. Borrow structure, never assets.
+
 ## The beat map
 
-`BEATMAP.md` opens with the brief (product, the request, what the viewer learns, language, brand) and then has
-one row per beat. The default arc for 32 beats, with the song starting 12 beats before its drop:
+`BEATMAP.md` opens with the brief and then has one row per beat. The default arc for 32 beats puts the
+**payoff** on beat 12, with the song starting 12 beats before its drop (`audio.md`):
 
 | Beats | Scene | What happens |
 |---|---|---|
-| 0–6 | **Ask** | Close on the product's input (composer, search box, button). The request types on fixed lines with a real keystroke rhythm; supporting chips or attachments pop in on half-beats. |
-| 6 | **Act** | The cursor clicks. A fill ripples out of the button and turns the input into the next object; one pull-back reveals the product around it. |
-| 7–11 | **Work** | The breakdown: the music drops out, so show the product working, one visible step per beat (a badge lands, a counter ticks, a status changes). A popover or button rises for the payoff click. |
-| 12 | **Drop** | The payoff click lands on the drop. A colour flood clears the frame edge to edge in ~0.35 s and the result bursts in (cards, previews, numbers). |
-| 13–16 | **Result** | One status flip per half-beat on the results (Scheduled → Published, 0 → 12). |
-| 16–21 | **Back** | The flood shrinks back into the object it came from, carrying the result; the wider product fills in (one item pops per beat). |
-| 21–27 | **Line** | A button grows into the whole page (it stays a pill until it reaches the edges while the camera pushes in); its label grows to headline size and slides out. The tagline rises word by word, white on black. |
-| 27–32 | **Mark** | The ecosystem (channels, integrations) pops in, merges into the logo, and the wordmark wipes out from behind it; product name and URL rise under it. |
+| 0–6 | **Ask** | Close on where the user starts: an input typing on fixed lines, a phone screen where a finger taps a place, a slider being dragged. Supporting details pop in on half-beats. |
+| 6 | **Act** | The action lands (click, tap, release). A fill ripples out of the touched object and turns it into the next one; one pull-back reveals the product around it. |
+| 7–11 | **Work** | The breakdown: the music drops out, so show the product working, one visible step per beat (a badge lands, a route draws, a counter ticks). Something rises for the payoff action. |
+| 12 | **Payoff** | On the drop: a colour flood clears the frame edge to edge in ~0.35 s and the result bursts in (cards, a 3D view, numbers). |
+| 13–16 | **Result** | One change per half-beat on the result (Scheduled → Published, 0 → 12 fells, a summit ticked). |
+| 16–21 | **Back** | The flood shrinks back into the object it came from, carrying the result; the wider product fills in (one item per beat). |
+| 21–27 | **Line** | A button or card grows into the whole frame (it keeps its shape until it reaches the edges while the camera pushes in); its label grows to headline size and slides out. The tagline rises word by word. |
+| 27–32 | **Mark** | The ecosystem (channels, platforms, places) pops in, merges into the logo, and the wordmark wipes out from behind it; name and URL rise under it. |
 
-Adapt it, keep its rules: something happens on every beat, the payoff sits on the drop, the breakdown shows
-visible work, and the last frame is the brand.
+Adapt it and keep its rules: something happens on every beat, the payoff sits on the drop, the breakdown shows
+visible work, and the last frame is the brand. A **looping** film (square, UI morphs) instead ends on a frame
+identical to its first, cursor position and speed included.
+
+## Surfaces
+
+- **Web or desktop UI**: a stylised redraw in DOM from the product's real vocabulary (labels, sidebar items,
+  statuses, icons from its repo). Say so when delivering; never call it a screenshot.
+- **Phone app**: a phone frame (screen ~428x926, radius ~56, thin black bezel, status bar) built in DOM around
+  the redraw; a finger is a soft circle that presses (scale) instead of a cursor.
+- **Maps and terrain**: draw them as pure functions: SVG paths and contour polylines from real data (GeoJSON,
+  a DEM exported to contours), a canvas redrawn inside `seek()`, or a still render of the real map as an image
+  the camera moves over. A live WebGL map is not frame-deterministic: use its screenshots or a screen recording.
+- **Real footage** (screen recordings, product shots): re-encode all-intra (`ffmpeg -i in.mp4 -g 1 -c:v libx264
+  -crf 12 footage.mp4`), load it as a blob URL, and in `seek()` set `currentTime` and await `seeked` before
+  drawing. `seek()` may be async; `render.mjs` awaits it.
+- **Photos**: Pexels (free licence): search in a browser, download
+  `https://images.pexels.com/photos/<id>/pexels-photo-<id>.jpeg?w=1600` directly (their search pages refuse
+  scripts). Crop per surface with `background-position`.
 
 ## Motion vocabulary
 
-- **Shape change over fade**: a circle grows into a pill, a card morphs into a calendar chip, a button into a page.
-  Animate `left/top/width/height/border-radius` together on one element.
+- **Shape change over fade**: animate `left/top/width/height/border-radius` together on one element.
 - **Mask lines**: text rises out of a clipped line (`riser()` + `rise()`), and leaves the same way.
-- **Floods**: a screen-space layer with `clip-path: circle(r at x y)`, centred on the clicked object's screen
-  position (`toScreen(camAt(...), x, y)`). It must overscale past the farthest corner and take ~0.35 s; faster
+- **Floods**: a screen-space layer with `clip-path: circle(r at x y)`, centred on the touched object's screen
+  position (`toScreen(camAt(...), x, y)`). It overscales past the farthest corner and takes ~0.35 s; faster
   reads as a flash, slower as a wipe.
-- **Shared elements**: every handoff carries its content. The flood carries a copy of the words in white; a
-  morphing card carries its text out through its own mask while the destination's text rises in.
+- **Shared elements**: every handoff carries its content. The flood carries a copy of the words; a morphing card
+  carries its text out through its own mask while the destination's text rises in.
 - **Springs**: `sp(t, t0)` for every pop and landing (tiny overshoot). Several targets on one value = the sum of
   one spring per change.
-- **Camera**: one transform on `#cam`, keyframed `[beat, zoom, cx, cy]`. A slow push while typing, one pull-back on
-  the act, one push toward the payoff, then reposition only while a flood covers the frame.
-- **Cursor**: world space, so it scales with the camera (divide by zoom above 1.3 so it stays readable). It
-  enters, moves on an eased path, presses ~0.1 s before the click beat, springs back after.
+- **Camera**: one transform on `#cam`, keyframed `[beat, zoom, cx, cy]`. A slow push during the ask, one
+  pull-back on the act, one push toward the payoff, then reposition only while a flood covers the frame.
+- **Cursor or finger**: world space, so it scales with the camera (divide by zoom above 1.3 so it stays
+  readable). It enters, moves on an eased path, presses ~0.1 s before the beat, springs back after.
 
 ## Look
 
-- Warm white canvas (`#f5f5f3`), black UI, the brand's one accent colour, the brand font. 2D only.
-- UI is a **stylised redraw** of the product, built from its real vocabulary (labels, sidebar items, status
-  names, provider marks). Say so when delivering; never present it as a screenshot.
-- Real photography where the story needs content (Pexels), cropped per surface.
-- Size for a phone: 1920x1080 is watched at ~400 px wide. Body text under ~28 px at the current zoom disappears.
+The product's canon decides colour, type and mode. Without one, use the fallback: warm white canvas
+(`#f5f5f3`), black UI, one accent, one clean sans. Size for a phone: a 1920x1080 film is watched ~400 px wide,
+so text under ~28 px at the current zoom disappears.
 
 ## Checklist (the step-4 gate)
 
 - [ ] The brief's "what the viewer learns" list maps to named beats, in order.
-- [ ] Every beat from 0 to 32 has a change; no hold over ~1 s.
-- [ ] The payoff click is on beat 12 and the breakdown (8–11) shows visible work.
+- [ ] Every beat has a change; no hold over ~1 s.
+- [ ] The payoff is on the drop and the breakdown shows visible work.
 - [ ] Every transition is a shape change, mask rise, flood or shared element; no crossfade.
 - [ ] The camera never zooms in and straight back out.
-- [ ] The 4 stills use the brand's font, colours and logo, and their smallest text is legible at phone width.
+- [ ] The stills use the brand's font, colours and logo, and their smallest text is legible at phone size.
 - [ ] The copy is in the product's language and voice, and claims only what the product does.
 
 ## Gotchas
@@ -62,4 +88,3 @@ visible work, and the last frame is the brand.
 - Never let the camera chase a wrapping text cursor: type on fixed lines.
 - Text that swaps inside a morphing shape needs its own mask and timing, or old and new overlap.
 - Declare every variable before the first `seek()`; preload every image in `PRELOAD`.
-- Measure widths only from elements whose content is fixed at build time (`offsetWidth` forces layout each frame).

@@ -1,4 +1,4 @@
-# Music and sound
+# Music and sound effects
 
 ## Pick the track
 
@@ -13,18 +13,19 @@ with no drop can still work if you put the payoff on a bar downbeat, but it lose
 ## Lock the grid
 
 `beats.py` fits the grid to the kick drums (a fine tempo/phase search, then a least-squares refit to per-beat
-kick onsets) and prints:
+kick onsets; autocorrelation alone lands the phase ~0.15 s late) and prints:
 
-- `BPM` and `offset`: put the BPM in `index.html`.
-- `DROP beat N ... MUSIC.offset X`: put `X` in `MUSIC.offset`, which starts the song 12 beats before its drop so
-  the drop is film beat 12 and the breakdown is film beats 8–11.
+- `BPM`: put it in `index.html`. (The `offset` on that line is the song's first beat, for reference only.)
+- `DROP beat N ... MUSIC.offset X`: put `X` in `MUSIC.offset`. It starts the song 12 beats before its drop, so
+  the drop is film beat 12 (the payoff) and a 4-beat breakdown falls on film beats 8–11. For a different
+  payoff beat pass `--build N`. A drop too early for the build is refused: take a later one.
 
 Check the residual: under ~20 ms is a good fit. Much higher means the kick is buried or the tempo drifts: try
 another track.
 
 ## Sound effects
 
-One real effect per event, the article's list: keystrokes, the send/act click, a pop per landing, a sweep for
+One real effect per event: keystrokes, the send/act click, a pop per landing, a sweep for
 cards, an impact on the drop, a success tone per status flip, a whoosh as the page fills, a sparkle on the logo.
 
 - List and fetch: `python3 audio/mixkit.py sfx <tag>` (`click`, `pop`, `whoosh`, `swoosh`, `impact`,

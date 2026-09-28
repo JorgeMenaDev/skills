@@ -19,6 +19,7 @@ def hits(path, n):
         else: i += 1
     good = sorted(((e[o:o + int(0.12 * SR)].max(), o) for o in ons if o > int(0.06 * SR)
                    and e[o - int(0.06 * SR):o - int(0.01 * SR)].max() < 0.25 * thr), reverse=True)
+    if len(good) < n: print(f"only {len(good)} isolated hits found (asked for {n}): try a slower typing take")
     for k, (_, o) in enumerate(good[:n]):
         st = max(0, o - int(0.005 * SR)) / SR
         subprocess.run(["ffmpeg", "-v", "quiet", "-y", "-ss", f"{st:.4f}", "-t", "0.13", "-i", path,

@@ -1,8 +1,7 @@
-"""Beat grid for a song, fitted to its kick drums.  python3 audio/beats.py audio/music/<id>.mp3 [film_beats]
+"""Beat grid for a song, fitted to its kick drums.  python3 audio/beats.py audio/music/<id>.mp3 [--build 12]
 
-Prints the exact BPM and first-beat offset, per-beat energy, the breakdown/drop candidates, and the MUSIC
-offset that puts the drop on film beat 12 (the default template: 12 beats of build, then the drop).
-Tempo from onset autocorrelation alone lands the phase ~0.15 s late: always refit to the kicks.
+Prints the exact BPM and first-beat offset, per-beat energy, the breakdown/drop candidates, and for each drop
+the MUSIC.offset that starts the song --build beats before it, so the drop lands on film beat --build.
 """
 import subprocess, sys, numpy as np
 from scipy.signal import butter, sosfilt
@@ -24,13 +23,14 @@ def rough_tempo(y):
     m = (bpm >= 90) & (bpm <= 160)
     return float(bpm[m][np.argmax(ac[m])])
 
-def main(path, film_beats=32):
+def main(path, build=12):
     y = load(path)
     lo = sosfilt(butter(4, 150, "low", fs=SR, output="sos"), y)
     env = np.convolve(np.abs(lo), np.ones(int(0.003 * SR)) / int(0.003 * SR), "same")
     # fine search: tempo ±2 BPM (autocorrelation lags are coarse) and phase, scored on the kick envelope
     dur, best = len(y) / SR - 0.1, (-1, 0, 0)
-    for bpm in np.arange(rough_tempo(y) - 2, rough_tempo(y) + 2, 0.01):
+    r = rough_tempo(y)
+    for bpm in np.arange(r - 2, r + 2, 0.01):
         P = 60 / bpm
         for o in np.linspace(0, P, 48, endpoint=False):
             sc = env[(np.arange(o, dur, P) * SR).astype(int)].mean()
@@ -67,11 +67,14 @@ def main(path, film_beats=32):
     print("song beat : time  : low-band energy")
     for b in range(min(n, 64)): print(f"  {b:3d} {O + b * P:7.3f}  {'#' * int(energy[b] * 30)}")
     for score, b in drops[:4]:
-        start = b - 12
-        print(f"DROP beat {b} at {O + b * P:.3f}s (jump x{score:.1f}) → MUSIC.offset {O + start * P:.4f} puts it on film beat 12"
-              + ("" if start >= 0 else "  (drop too early for 12 beats of build)"))
-    if not drops: print("DROP none found: pick a track with a breakdown, or place the hero moment on a downbeat")
+        start = b - build
+        if start < 0:
+            print(f"DROP beat {b} at {O + b * P:.3f}s (jump x{score:.1f}): too early for {build} beats of build, use a later drop")
+        else:
+            print(f"DROP beat {b} at {O + b * P:.3f}s (jump x{score:.1f}) → MUSIC.offset {O + start * P:.4f} puts it on film beat {build}")
+    if not drops: print("DROP none found: pick a track with a breakdown, or place the payoff on a bar downbeat")
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2: print(__doc__); sys.exit(1)
-    main(sys.argv[1])
+    a = sys.argv[1:]
+    if not a: print(__doc__); sys.exit(1)
+    main(a[0], int(a[a.index("--build") + 1]) if "--build" in a else 12)

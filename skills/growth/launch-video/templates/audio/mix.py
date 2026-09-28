@@ -12,6 +12,7 @@ def load(p):
 m = json.load(open("out/timeline.json"))
 N = int((m["DURATION"] + 0.1) * SR); out = np.zeros((N, 2)); missing = []
 mu = m.get("MUSIC") or {}
+if mu.get("offset", 0) < 0: raise SystemExit("MUSIC.offset is negative: pick a later drop from beats.py")
 if mu.get("file") and os.path.exists(mu["file"]):
     a = int(mu.get("offset", 0) * SR); s = load(mu["file"])[a:a + N] * mu.get("gain", 0.75)
     s[:960] *= np.linspace(0, 1, 960)[:, None]
