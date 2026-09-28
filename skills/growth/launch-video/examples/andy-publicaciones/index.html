@@ -1,0 +1,533 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Andy Publicaciones — launch film</title>
+<style>
+@font-face { font-family: Geist; src: url(assets/font.woff2) format('woff2'); font-weight: 100 900; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 1920px; height: 1080px; overflow: hidden; background: #f5f5f3; }
+body { font-family: Geist, -apple-system, 'Helvetica Neue', sans-serif; color: #171717; -webkit-font-smoothing: antialiased; }
+.abs { position: absolute; }
+#stage { position: absolute; inset: 0; overflow: hidden; background: #f5f5f3; }
+#cam { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0; z-index: 1; }
+#fx { position: absolute; inset: 0; z-index: 10; pointer-events: none; }
+.mask { position: absolute; overflow: hidden; }
+.mask > * { position: absolute; left: 0; top: 0; white-space: nowrap; }
+/* app window */
+#win { left: 150px; top: 100px; width: 1620px; height: 880px; background: #fff; border-radius: 18px; box-shadow: 0 0 0 1px #e6e6e6, 0 30px 80px -30px rgba(0,0,0,.18); overflow: hidden; }
+#bar { left: 0; top: 0; width: 1620px; height: 48px; background: #f7f7f7; border-bottom: 1px solid #ebebeb; }
+.dot { width: 12px; height: 12px; border-radius: 6px; top: 18px; background: #dcdcdc; }
+#url { left: 560px; top: 10px; width: 500px; height: 28px; border-radius: 8px; background: #fff; box-shadow: 0 0 0 1px #ebebeb; font-size: 13px; color: #666; line-height: 28px; text-align: center; }
+#side { left: 0; top: 48px; width: 250px; height: 832px; background: #fafafa; border-right: 1px solid #ebebeb; }
+.nav { left: 16px; width: 218px; height: 38px; border-radius: 8px; font-size: 15px; line-height: 38px; padding-left: 14px; color: #444; }
+.nav.on { background: #ececec; color: #111; font-weight: 550; }
+.badge { position: absolute; right: 10px; top: 9px; min-width: 22px; height: 20px; border-radius: 10px; background: #111; color: #fff; font-size: 12px; font-weight: 600; line-height: 20px; text-align: center; padding: 0 6px; }
+.hline { height: 1px; background: #ebebeb; transform-origin: 0 0; }
+.vline { width: 1px; background: #ebebeb; transform-origin: 0 0; }
+.dayh { font-size: 14px; color: #666; font-weight: 500; }
+.dayh b { color: #111; font-weight: 600; }
+.today { display: inline-block; width: 26px; height: 26px; line-height: 26px; border-radius: 13px; background: #111; color: #fff !important; text-align: center; }
+.time { font-size: 12px; color: #999; font-family: ui-monospace, 'SF Mono', Menlo, monospace; }
+#newbtn { width: 176px; height: 40px; border-radius: 20px; background: #0a0a0a; color: #fff; font-size: 15px; font-weight: 550; line-height: 40px; text-align: center; transform-origin: 50% 50%; }
+/* composer */
+#glow { border-radius: 40px; filter: blur(34px); opacity: .55; }
+#card { left: 725px; top: 450px; width: 720px; height: 300px; background: #fff; border-radius: 22px; box-shadow: 0 0 0 1px #e8e8e8, 0 20px 50px -24px rgba(0,0,0,.25); overflow: hidden; }
+.avatar { width: 36px; height: 36px; border-radius: 18px; background: #0a0a0a; color: #fff; font-size: 13px; font-weight: 600; line-height: 36px; text-align: center; }
+.typed { font-size: 34px; line-height: 44px; font-weight: 500; letter-spacing: -0.02em; white-space: pre; }
+.caret { display: inline-block; width: 3px; height: 36px; background: #616FF7; vertical-align: -6px; margin-left: 2px; border-radius: 2px; }
+.chip { width: 48px; height: 48px; border-radius: 12px; background: #fff; box-shadow: 0 0 0 1.5px #111; transform-origin: 50% 50%; }
+.chip svg, .chip img { position: absolute; left: 12px; top: 12px; width: 24px; height: 24px; }
+#thumb { width: 112px; height: 112px; border-radius: 14px; background-size: cover; background-position: 50% 45%; transform-origin: 50% 50%; }
+#prog { width: 176px; height: 48px; border-radius: 24px; background: #0a0a0a; color: #fff; font-size: 17px; font-weight: 600; line-height: 48px; text-align: center; transform-origin: 50% 50%; }
+#when { font-size: 15px; color: #666; }
+/* morphing post */
+#morph { overflow: hidden; background: linear-gradient(135deg, #4BC0F4, #616FF7); }
+#morphInk { color: #fff; }
+.pchip { overflow: hidden; border-radius: 10px; }
+.pchip .t1 { font-size: 11px; font-family: ui-monospace, 'SF Mono', Menlo, monospace; }
+.pchip .t2 { font-size: 14px; line-height: 18px; font-weight: 550; white-space: normal; width: 140px; }
+.pbadge { width: 26px; height: 26px; border-radius: 13px; background: #fff; transform-origin: 50% 50%; }
+.pbadge svg, .pbadge img { position: absolute; left: 6px; top: 6px; width: 14px; height: 14px; }
+#pop { width: 240px; height: 128px; background: #fff; border-radius: 14px; box-shadow: 0 0 0 1px #e6e6e6, 0 18px 40px -16px rgba(0,0,0,.28); transform-origin: 0 0; }
+#aprobar { left: 16px; top: 74px; width: 208px; height: 38px; border-radius: 19px; background: #0a0a0a; color: #fff; font-size: 15px; font-weight: 600; line-height: 38px; text-align: center; transform-origin: 50% 50%; }
+/* cursor */
+#cursor { width: 30px; height: 42px; transform-origin: 3px 3px; z-index: 50; }
+/* screen fx */
+#flood { position: absolute; inset: 0; background: linear-gradient(135deg, #4BC0F4 0%, #616FF7 100%); }
+.pcard { width: 330px; height: 460px; border-radius: 28px; background: #0a0a0a; color: #fff; overflow: hidden; transform-origin: 50% 50%; }
+.pcard .hd { position: absolute; left: 22px; top: 22px; height: 28px; font-size: 15px; font-weight: 600; line-height: 28px; }
+.pcard .hd span { color: rgba(255,255,255,.5); font-weight: 400; }
+.pcard .mk { position: absolute; left: 0; top: 2px; width: 24px; height: 24px; }
+.pcard .tx { position: absolute; left: 22px; width: 286px; font-size: 16px; line-height: 22px; color: rgba(255,255,255,.92); white-space: normal; }
+.pcard .ph { position: absolute; background-size: cover; background-image: url(assets/p302899.jpg); }
+.status { position: absolute; left: 22px; bottom: 22px; height: 36px; border-radius: 18px; overflow: hidden; }
+.status > div { position: absolute; left: 0; top: 0; height: 36px; line-height: 36px; padding: 0 16px; font-size: 14px; font-weight: 600; white-space: nowrap; border-radius: 18px; }
+.s1 { background: rgba(255,255,255,.12); color: rgba(255,255,255,.8); }
+.s2 { background: #fff; color: #0a0a0a; }
+#clock { font-size: 40px; font-weight: 600; color: #fff; letter-spacing: -0.03em; }
+#pill { background: #0a0a0a; }
+.big { font-size: 96px; font-weight: 600; letter-spacing: -0.05em; color: #fff; line-height: 110px; }
+.mark { width: 124px; height: 124px; border-radius: 30px; background: #fff; transform-origin: 50% 50%; }
+.mark svg, .mark img { position: absolute; left: 32px; top: 32px; width: 60px; height: 60px; }
+#logo { width: 190px; height: 190px; transform-origin: 50% 50%; }
+#word { font-size: 150px; font-weight: 650; letter-spacing: -0.055em; color: #fff; line-height: 170px; }
+#sub { font-size: 50px; font-weight: 500; letter-spacing: -0.03em; color: rgba(255,255,255,.62); }
+#url2 { font-size: 26px; color: rgba(255,255,255,.45); font-family: ui-monospace, 'SF Mono', Menlo, monospace; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="cam"></div>
+  <div id="fx"></div>
+</div>
+<script>
+// ---------- time ----------
+const BPM = 124.0036, P = 60 / BPM, B = b => b * P;
+const DURATION = B(32) + 0.45;
+const MUSIC = { file: 'audio/music/471.mp3', offset: 9.7051, gain: 0.75 }; // Mixkit "Rising Forest": drop (song beat 32) = film beat 12
+const W = 1920, H = 1080;
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, t) => a + (b - a) * t;
+const E = {
+  lin: t => t,
+  io: t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2,
+  io5: t => t < .5 ? 16 * t ** 5 : 1 - Math.pow(-2 * t + 2, 5) / 2,
+  out: t => 1 - Math.pow(1 - t, 3),
+  out5: t => 1 - Math.pow(1 - t, 5),
+  in: t => t * t * t,
+  in2: t => t * t,
+};
+const pr = (t, a, b, e = E.io) => e(clamp((t - a) / (b - a)));
+// closed-form spring step response 0→1 (tiny overshoot)
+function sp(t, t0, f = 2.4, z = 0.62) {
+  const u = t - t0; if (u <= 0) return 0;
+  const w = 2 * Math.PI * f, wd = w * Math.sqrt(1 - z * z);
+  return 1 - Math.exp(-z * w * u) * (Math.cos(wd * u) + (z * w / wd) * Math.sin(wd * u));
+}
+const rnd = i => { const x = Math.sin(i * 78.233 + 12.9898) * 43758.5453; return x - Math.floor(x); };
+
+// ---------- dom helpers ----------
+function el(tag, cls, parent, html) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (html != null) e.innerHTML = html;
+  parent.appendChild(e); return e;
+}
+function box(e, x, y, w, h) { e.style.left = x + 'px'; e.style.top = y + 'px'; if (w != null) e.style.width = w + 'px'; if (h != null) e.style.height = h + 'px'; }
+const vis = (e, on) => { e.style.visibility = on ? 'inherit' : 'hidden'; };
+const TF = (e, s) => { e.style.transform = s; };
+
+// ---------- provider marks ----------
+const SVG = {
+  x: c => `<svg viewBox="0 0 24 24" fill="${c}"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>`,
+  linkedin: c => `<svg viewBox="0 0 24 24" fill="${c || '#0A66C2'}"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 1 1 0-4.125 2.062 2.062 0 0 1 0 4.125zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.225 0z"/></svg>`,
+  tiktok: c => `<svg viewBox="0 0 24 24" fill="${c}"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/></svg>`,
+  instagram: () => `<img src="assets/instagram-icon.svg">`,
+};
+const PROV = ['x', 'linkedin', 'instagram', 'tiktok'];
+const markHTML = (p, dark) => SVG[p](p === 'linkedin' ? null : (dark ? '#fff' : '#0a0a0a'));
+
+// ---------- world ----------
+const cam = document.getElementById('cam'), fx = document.getElementById('fx');
+const win = el('div', 'abs', cam); win.id = 'win';
+const bar = el('div', 'abs', win); bar.id = 'bar';
+[20, 40, 60].forEach(x => { const d = el('div', 'abs dot', bar); d.style.left = x + 'px'; });
+const url = el('div', 'abs', bar, 'app.andypartner.com/cafe-lastarria/posts?view=calendar'); url.id = 'url';
+const side = el('div', 'abs', win); side.id = 'side';
+// sidebar content (rises from masks)
+const sideItems = [];
+function riser(parent, x, y, w, h, html, cls) {
+  const m = el('div', 'mask', parent); box(m, x, y, w, h);
+  const c = el('div', cls || '', m, html); c.style.width = w + 'px'; c.style.height = h + 'px'; c.style.position = 'absolute';
+  return { m, c };
+}
+sideItems.push(riser(side, 16, 18, 218, 44, `<div class="abs avatar" style="left:0;top:4px">CL</div><div class="abs" style="left:48px;top:0;line-height:44px;font-size:15px;font-weight:600">Café Lastarria</div>`));
+sideItems.push(riser(side, 16, 74, 218, 44, `<div class="abs" style="left:0;top:4px;width:218px;height:36px;border-radius:10px;box-shadow:0 0 0 1px #e3e3e3;background:#fff;font-size:14px;font-weight:600;line-height:36px;padding-left:12px">Publicaciones <span style="font-size:10px;font-weight:700;background:#111;color:#fff;border-radius:5px;padding:2px 6px;margin-left:6px;vertical-align:1px">NUEVO</span></div>`));
+const navLabels = ['Componer', 'Calendario', 'Por aprobar', 'Canales'];
+const navs = navLabels.map((l, i) => { const r = riser(side, 16, 140 + i * 44, 218, 40, '', ''); const n = el('div', 'abs nav' + (i === 1 ? ' on' : ''), r.c, l); n.style.left = '0px'; n.style.top = '1px'; r.n = n; return r; });
+const pendBadge = el('div', 'badge', navs[2].n, '0');
+// main header
+const crumb = riser(win, 250 + 440, 64, 430, 36, `<div style="width:430px;text-align:center;font-size:15px;line-height:36px;color:#666">Publicaciones <span style="color:#bbb">/</span> <span style="color:#111;font-weight:550">Calendario</span></div>`);
+const newbtn = el('div', 'abs', win, 'Nueva publicación'); newbtn.id = 'newbtn'; box(newbtn, 1420, 60);
+// grid (world coords converted into window-local by subtracting 150,100)
+const GX = 500, GY = 280, CW = 1240 / 7, RH = 680 / 3, WX = 150, WY = 100;
+const hlines = [230, 280, 280 + RH, 280 + 2 * RH].map((y, i) => { const l = el('div', 'abs hline', win); box(l, 430 - WX, y - WY, 1310, 1); return l; });
+const vlines = []; for (let c = 0; c <= 7; c++) { const l = el('div', 'abs vline', win); box(l, GX + c * CW - WX, 230 - WY, 1, 730); vlines.push(l); }
+const days = [['Lun', 28], ['Mar', 29], ['Mié', 30], ['Jue', 1], ['Vie', 2], ['Sáb', 3], ['Dom', 4]];
+const dayRis = days.map(([d, n], c) => riser(win, GX + c * CW - WX + 14, 236 - WY, CW - 20, 38, `<div class="dayh" style="line-height:38px">${d} <b class="${c === 0 ? 'today' : ''}">${n}</b></div>`));
+const timeRis = ['09:00', '13:00', '19:00'].map((s, r) => riser(win, 436 - WX, GY + r * RH + 10 - WY, 60, 20, `<div class="time">${s}</div>`));
+const cellRect = (c, r) => ({ x: GX + c * CW + 8, y: GY + r * RH + 10, w: CW - 16, h: 112 });
+// post chips in the week (light)
+const weekPosts = [
+  { c: 2, r: 1, t: 'Nuevo menú de otoño 🍂', p: ['instagram', 'tiktok'] },
+  { c: 3, r: 0, t: 'Música en vivo este jueves', p: ['x', 'instagram'] },
+  { c: 4, r: 2, t: 'Happy hour 2x1 en lattes', p: ['instagram', 'tiktok', 'x'] },
+  { c: 5, r: 1, t: 'Brunch de sábado', p: ['linkedin', 'instagram'] },
+];
+function buildChip(parent, rc, text, provs, dark) {
+  const ch = el('div', 'abs pchip', parent); box(ch, rc.x - WX, rc.y - WY, rc.w, rc.h);
+  ch.style.background = dark ? 'linear-gradient(135deg,#4BC0F4,#616FF7)' : '#f4f4f5';
+  ch.style.boxShadow = dark ? 'none' : '0 0 0 1px #e6e6e6';
+  ch.style.color = dark ? '#fff' : '#171717';
+  const t1 = el('div', 'abs t1', ch, '09:00'); box(t1, 12, 10); t1.style.opacity = dark ? .75 : .5;
+  const t2 = el('div', 'abs t2', ch, text); box(t2, 12, 28);
+  const badges = provs.map((p, i) => { const b = el('div', 'abs pbadge', ch, markHTML(p)); box(b, 12 + i * 20, 76); b.style.boxShadow = dark ? '0 0 0 2px #5a97f6' : '0 0 0 1px #e3e3e3'; return b; });
+  const st = el('div', 'abs', ch, ''); st.style.cssText += `right:10px;top:10px;font-size:11px;font-weight:600;white-space:nowrap;`;
+  st.style.color = dark ? 'rgba(255,255,255,.85)' : '#888';
+  return { ch, t1, t2, badges, st };
+}
+const week = weekPosts.map(w => { const k = buildChip(win, cellRect(w.c, w.r), w.t, w.p, false); k.t1.textContent = ['09:00', '13:00', '19:00'][w.r]; k.st.textContent = 'Programado'; return k; });
+// hero chip (target of the morph), Mar 29 09:00
+const HERO = cellRect(1, 0);
+const hero = buildChip(win, HERO, 'Mañana abrimos en Lastarria ☕', PROV, true);
+// approve popover
+const POP = { x: HERO.x + HERO.w + 14, y: HERO.y - 4 };
+const pop = el('div', 'abs', cam); pop.id = 'pop'; box(pop, POP.x, POP.y);
+el('div', 'abs', pop, '4 publicaciones listas').style.cssText += 'left:16px;top:16px;font-size:15px;font-weight:600;';
+el('div', 'abs', pop, 'X · LinkedIn · Instagram · TikTok').style.cssText += 'left:16px;top:40px;font-size:13px;color:#777;';
+const aprobar = el('div', 'abs', pop, 'Aprobar'); aprobar.id = 'aprobar';
+const APR = { x: POP.x + 16 + 104, y: POP.y + 74 + 19 };
+
+// composer
+const CARD = { x: 725, y: 450, w: 720, h: 300 };
+const glow = el('div', 'abs', cam); glow.id = 'glow';
+const card = el('div', 'abs', cam); card.id = 'card';
+el('div', 'abs avatar', card, 'CL').style.cssText += 'left:32px;top:28px;';
+el('div', 'abs', card, 'Café Lastarria <span style="color:#999;font-weight:400">· Nueva publicación</span>').style.cssText += 'left:80px;top:28px;line-height:36px;font-size:17px;font-weight:600;';
+const LINES = ['Mañana abrimos en Lastarria ☕', 'Café gratis de 8 a 10.'];
+const typed = LINES.map((l, i) => { const d = el('div', 'abs typed', card); box(d, 32, 88 + i * 46); return d; });
+const thumb = el('div', 'abs', card); thumb.id = 'thumb'; box(thumb, 720 - 32 - 112, 86); thumb.style.backgroundImage = 'url(assets/p302899.jpg)';
+const chips = PROV.map((p, i) => { const c = el('div', 'abs chip', card, markHTML(p)); box(c, 32 + i * 60, 220); return c; });
+const when = el('div', 'abs', card, '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2" style="vertical-align:-2px;margin-right:6px"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Mar 29 · 09:00'); when.id = 'when'; box(when, 720 - 32 - 176 - 150, 234);
+const prog = el('div', 'abs', card, 'Programar'); prog.id = 'prog'; box(prog, 720 - 32 - 176, 220);
+const PROG = { x: CARD.x + 720 - 32 - 88, y: CARD.y + 244 };
+// ripple copy (white ink on blue) clipped by circle, and the morph shape
+const morph = el('div', 'abs', cam); morph.id = 'morph';
+const morphInk = el('div', 'abs', morph); morphInk.id = 'morphInk';
+const inkLines = LINES.map((l, i) => { const d = el('div', 'abs typed', morphInk, l); box(d, 32, 88 + i * 46); d.style.color = '#fff'; return d; });
+const inkHead = el('div', 'abs', morphInk, 'Café Lastarria · Programado'); inkHead.style.cssText += 'left:32px;top:28px;line-height:36px;font-size:17px;font-weight:600;white-space:nowrap;color:rgba(255,255,255,.85)';
+const chipInk = el('div', 'abs', morph); // chip-sized content rising at the end of the morph
+chipInk.innerHTML = `<div class="abs" style="left:12px;top:10px;font-size:11px;font-family:ui-monospace,Menlo,monospace;color:rgba(255,255,255,.75)">09:00</div><div class="abs" style="left:12px;top:28px;width:140px;font-size:14px;line-height:18px;font-weight:550;color:#fff;white-space:normal">Mañana abrimos en Lastarria ☕</div>`;
+// cursor
+const cursor = el('div', 'abs', cam, `<svg width="30" height="42" viewBox="0 0 30 42"><path d="M3 3 L3 33 L10.5 26 L15.5 38 L20.5 36 L15.5 24.5 L25.5 24.5 Z" fill="#0a0a0a" stroke="#fff" stroke-width="2.4" stroke-linejoin="round"/></svg>`); cursor.id = 'cursor';
+
+// ---------- screen fx ----------
+const flood = el('div', '', fx); flood.id = 'flood';
+const clockM = el('div', 'mask', fx); box(clockM, 0, 150, W, 56);
+const clock = el('div', '', clockM, '<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" style="vertical-align:-5px;margin-right:12px"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Martes 29 · 09:00'); clock.id = 'clock'; clock.style.width = W + 'px'; clock.style.textAlign = 'center';
+const CARDW = 330, CARDH = 460, GAP = 36, CX0 = (W - (4 * CARDW + 3 * GAP)) / 2, CY0 = 250;
+const TXT = 'Mañana abrimos en Lastarria ☕ Café gratis de 8 a 10.';
+const pcards = PROV.map((p, i) => {
+  const c = el('div', 'abs pcard', fx); box(c, CX0 + i * (CARDW + GAP), CY0);
+  if (p === 'tiktok') {
+    const ph = el('div', 'ph', c); box(ph, 0, 0, CARDW, CARDH); ph.style.backgroundPosition = '62% 50%';
+    el('div', 'abs', c).style.cssText = 'left:0;top:0;width:330px;height:460px;background:linear-gradient(180deg,rgba(0,0,0,.35) 0%,rgba(0,0,0,0) 30%,rgba(0,0,0,0) 45%,rgba(0,0,0,.85) 100%)';
+    el('div', 'hd', c, `<div class="mk">${markHTML(p, true)}</div><div style="padding-left:34px">cafelastarria</div>`);
+    const tx = el('div', 'tx', c, TXT); tx.style.top = '300px';
+  } else {
+    el('div', 'hd', c, `<div class="mk">${markHTML(p, true)}</div><div style="padding-left:34px">Café Lastarria ${p === 'x' ? '<span>@cafelastarria</span>' : p === 'linkedin' ? '<span>· Empresa</span>' : ''}</div>`);
+    const tx = el('div', 'tx', c, TXT); tx.style.top = p === 'instagram' ? '316px' : '66px';
+    const ph = el('div', 'ph', c);
+    if (p === 'x') { box(ph, 22, 124, 286, 161); ph.style.borderRadius = '16px'; ph.style.backgroundPosition = '50% 45%'; }
+    if (p === 'linkedin') { box(ph, 0, 124, 330, 172); ph.style.backgroundPosition = '50% 40%'; }
+    if (p === 'instagram') { box(ph, 0, 62, 330, 244); ph.style.backgroundPosition = '55% 50%'; }
+  }
+  const st = el('div', 'status', c);
+  const s1 = el('div', 's1', st, 'Programado · Mar 09:00');
+  const s2 = el('div', 's2', st, '✓ Publicado');
+  return { c, st, s1, s2 };
+});
+const pill = el('div', 'abs', fx); pill.id = 'pill';
+const pillLabM = el('div', 'mask', fx);
+const pillLab = el('div', '', pillLabM, 'Nueva publicación'); pillLab.style.color = '#fff'; pillLab.style.fontWeight = '550'; pillLab.style.textAlign = 'center';
+function wordLine(text, y) {
+  const words = text.split(' ');
+  const wrap = el('div', 'abs', fx); wrap.style.left = '0px'; wrap.style.top = y + 'px'; wrap.style.width = W + 'px'; wrap.style.textAlign = 'center';
+  const ms = words.map(w => { const m = el('span', '', wrap); m.style.cssText = 'display:inline-block;overflow:hidden;vertical-align:top;height:124px;margin:0 13px;position:relative'; const i = el('span', 'big', m, w); i.style.display = 'inline-block'; return { m, i }; });
+  return { wrap, ms };
+}
+const line1 = wordLine('Escribe una vez.', 360);
+const line2 = wordLine('Andy lo publica en todas partes.', 486);
+const marks = PROV.map(p => el('div', 'abs mark', fx, markHTML(p)));
+const logo = el('img', 'abs', fx); logo.id = 'logo'; logo.src = 'assets/andy_logo.svg';
+const wordM = el('div', 'mask', fx); const word = el('div', '', wordM, 'Andy'); word.id = 'word';
+const subM = el('div', 'mask', fx); const sub = el('div', '', subM, 'Publicaciones'); sub.id = 'sub';
+const urlM = el('div', 'mask', fx); const url2 = el('div', '', urlM, 'andypartner.com'); url2.id = 'url2';
+
+// ---------- camera ----------
+// [beat, zoom, cx, cy]  (cx,cy = world point at screen centre)
+const CAMK = [
+  [0, 2.3, 1085, 600, E.lin],
+  [5.9, 2.55, 1085, 600, E.io],
+  [6.3, 2.55, 1085, 600, E.io],
+  [7.8, 1.0, 960, 540, E.io5],
+  [8.0, 1.0, 960, 540, E.io],
+  [11.7, 1.42, 850, 380, E.io],
+  [13.2, 1.42, 850, 380, E.io],
+  [13.8, 1.0, 960, 540, E.io],
+  [16.9, 1.0, 960, 540, E.io],
+  [20.7, 1.06, 1060, 520, E.io],
+  [21.0, 1.06, 1060, 520, E.io],
+  [22.5, 2.2, 1658, 180, E.io],
+];
+function camAt(t) {
+  const b = t / P; let k = CAMK[CAMK.length - 1];
+  if (b <= CAMK[0][0]) k = CAMK[0];
+  for (let i = 0; i < CAMK.length - 1; i++) {
+    const a = CAMK[i], c = CAMK[i + 1];
+    if (b >= a[0] && b <= c[0]) {
+      const u = c[4]((b - a[0]) / (c[0] - a[0]));
+      return { z: Math.exp(lerp(Math.log(a[1]), Math.log(c[1]), u)), x: lerp(a[2], c[2], u), y: lerp(a[3], c[3], u) };
+    }
+  }
+  return { z: k[1], x: k[2], y: k[3] };
+}
+const toScreen = (c, x, y) => ({ x: W / 2 + (x - c.x) * c.z, y: H / 2 + (y - c.y) * c.z });
+
+// ---------- typing schedule ----------
+const KEYS = []; // {t, line, n}
+(function () {
+  let t = B(0.2); const end = B(3.7);
+  const total = LINES[0].length + LINES[1].length;
+  const dt = (end - t - 0.14) / total;
+  LINES.forEach((l, li) => {
+    for (let i = 1; i <= [...l].length; i++) { KEYS.push({ t, li, n: i }); t += dt * (0.6 + 0.8 * rnd(KEYS.length)); }
+    t += 0.14;
+  });
+})();
+const TYPE_END = KEYS[KEYS.length - 1].t;
+// cursor path: [beat, x, y]
+const CUR = [
+  [4.9, 1500, 800], [5.8, PROG.x + 20, PROG.y + 6], [6.4, PROG.x + 20, PROG.y + 6],
+  [6.41, 1300, 700], [10.2, 1300, 700], [11.55, APR.x + 30, APR.y + 4], [12.5, APR.x + 30, APR.y + 4],
+  [12.51, 1500, 520], [19.6, 1500, 520], [20.75, 1420 + WX + 120, 60 + WY + 26], [22, 1420 + WX + 120, 60 + WY + 26],
+];
+const CLICKS = [6.0, 12.0, 21.0];
+function cursorAt(t) {
+  const b = t / P;
+  for (let i = 0; i < CUR.length - 1; i++) { const a = CUR[i], c = CUR[i + 1]; if (b >= a[0] && b <= c[0]) { const u = E.io((b - a[0]) / (c[0] - a[0])); return { x: lerp(a[1], c[1], u), y: lerp(a[2], c[2], u) }; } }
+  return { x: CUR[CUR.length - 1][1], y: CUR[CUR.length - 1][2] };
+}
+function press(t, beat) { // 0..1 press depth around a click
+  const d = t - B(beat);
+  if (d < -0.12 || d > 0.35) return 0;
+  if (d < 0) return E.out((d + 0.12) / 0.12);
+  return 1 - sp(t, B(beat), 3.2, 0.55);
+}
+
+// ---------- sound events ----------
+const SFX = [];
+KEYS.forEach((k, i) => { if (i % 2 === 0 || rnd(i + 99) > .6) SFX.push({ f: 'hit' + (i % 4) + '.wav', t: k.t, v: 0.9 }); });
+SFX.push({ f: '2358.mp3', t: B(4.0), v: 0.35 });
+[4.5, 4.75, 5.0, 5.25].forEach(b => SFX.push({ f: '3005.mp3', t: B(b), v: 0.55 }));
+SFX.push({ f: '1117.mp3', t: B(6.0), v: 0.9 });
+SFX.push({ f: '1492.mp3', t: B(6.9), v: 0.55, peak: true });
+[8, 9, 10, 11].forEach(b => SFX.push({ f: '2364.mp3', t: B(b), v: 0.45 }));
+SFX.push({ f: '166.mp3', t: B(10.1), v: 0.35, peak: true });
+SFX.push({ f: '1117.mp3', t: B(12.0), v: 0.9 });
+SFX.push({ f: '1143.mp3', t: B(12.0) + 0.05, v: 0.55, peak: true });
+SFX.push({ f: '1461.mp3', t: B(12.3), v: 0.45, peak: true });
+SFX.push({ f: '166.mp3', t: B(13.0), v: 0.3, peak: true });
+[14, 14.5, 15, 15.5].forEach(b => SFX.push({ f: '2867.mp3', t: B(b), v: 0.32 }));
+SFX.push({ f: '1471.mp3', t: B(16.35), v: 0.5, peak: true });
+[17, 18, 19, 20].forEach(b => SFX.push({ f: '3005.mp3', t: B(b), v: 0.5 }));
+SFX.push({ f: '1117.mp3', t: B(21.0), v: 0.9 });
+SFX.push({ f: '1490.mp3', t: B(21.8), v: 0.55, peak: true });
+[27, 27.5, 28, 28.5].forEach(b => SFX.push({ f: '2358.mp3', t: B(b), v: 0.4 }));
+SFX.push({ f: '3083.mp3', t: B(29.45), v: 0.5, peak: true });
+SFX.push({ f: '1461.mp3', t: B(30.1), v: 0.3, peak: true });
+
+// ---------- seek ----------
+function seek(t) {
+  const b = t / P;
+  const c = camAt(t);
+  TF(cam, `translate(${W / 2 - c.x * c.z}px, ${H / 2 - c.y * c.z}px) scale(${c.z})`);
+
+  // --- composer card (beats 0-6.7) ---
+  const cardOn = b < 6.75;
+  vis(card, cardOn);
+  LINES.forEach((l, i) => {
+    let n = 0; for (const k of KEYS) if (k.li === i && k.t <= t) n = k.n;
+    const chars = [...l].slice(0, n).join('');
+    const lastLine = KEYS.filter(k => k.t <= t).pop();
+    const active = lastLine ? lastLine.li === i : i === 0;
+    const blinkOn = t < TYPE_END + 0.05 || Math.floor((t - TYPE_END) / 0.42) % 2 === 1;
+    typed[i].innerHTML = chars.replace(/&/g, '&amp;').replace(/</g, '&lt;') + (active && b < 5.9 && blinkOn ? '<span class="caret"></span>' : '');
+  });
+  const th = sp(t, B(4.0), 2.2, 0.6);
+  TF(thumb, `scale(${th})`); vis(thumb, th > 0.001);
+  chips.forEach((ch, i) => { const s = sp(t, B(4.5 + i * 0.25), 2.6, 0.55); TF(ch, `scale(${s})`); vis(ch, s > 0.001); });
+  const pd = press(t, 6.0);
+  TF(prog, `scale(${1 - 0.07 * pd})`);
+  // glow ring follows the card / morph shape
+  const gRot = t * 70;
+  glow.style.background = `conic-gradient(from ${gRot}deg, #4BC0F4, #616FF7, #a78bfa, #4BC0F4, #7dd3fc, #4BC0F4)`;
+
+  // --- ripple + morph (beats 6.0-7.8) ---
+  const rip = pr(t, B(6.0), B(6.0) + 0.36, E.out);
+  const mo = pr(t, B(6.55), B(7.75), E.io5);
+  const R = { x: lerp(CARD.x, HERO.x, mo), y: lerp(CARD.y, HERO.y, mo), w: lerp(CARD.w, HERO.w, mo), h: lerp(CARD.h, HERO.h, mo) };
+  const morphOn = b >= 6.0 && b < 7.9;
+  vis(morph, morphOn);
+  if (morphOn) {
+    box(morph, R.x, R.y, R.w, R.h);
+    morph.style.borderRadius = lerp(22, 10, mo) + 'px';
+    const rr = rip * 780; // covers card corners from the button
+    const ox = PROG.x - CARD.x, oy = PROG.y - CARD.y;
+    morph.style.clipPath = rip < 1 ? `circle(${rr}px at ${ox}px ${oy}px)` : 'none';
+    const out = pr(t, B(6.5), B(6.95), E.in);
+    TF(morphInk, `translateY(${-out * 240}px)`);
+    const inn = pr(t, B(7.2), B(7.75), E.out);
+    TF(chipInk, `translateY(${(1 - inn) * (R.h + 20)}px)`); vis(chipInk, inn > 0);
+  }
+  const gOn = b < 7.4;
+  vis(glow, gOn);
+  if (gOn) {
+    const G = b < 6.55 ? CARD : R;
+    const spread = 18 * (1 - pr(t, B(6.55), B(7.3), E.out));
+    box(glow, G.x - spread, G.y - spread, G.w + 2 * spread, G.h + 2 * spread);
+    glow.style.opacity = (0.55 * (1 - pr(t, B(6.8), B(7.3), E.lin))).toFixed(3);
+  }
+
+  // --- app build (beats 6.5-7.8) ---
+  hlines.forEach((l, i) => TF(l, `scaleX(${pr(t, B(6.6 + i * 0.12), B(7.5 + i * 0.12), E.out5)})`));
+  vlines.forEach((l, i) => TF(l, `scaleY(${pr(t, B(6.7 + i * 0.06), B(7.6 + i * 0.06), E.out5)})`));
+  const rise = (r, s) => TF(r.c, `translateY(${(1 - pr(t, s, s + B(0.7), E.out5)) * 100}%)`);
+  dayRis.forEach((r, i) => rise(r, B(6.9 + i * 0.07)));
+  timeRis.forEach((r, i) => rise(r, B(7.0 + i * 0.1)));
+  sideItems.forEach((r, i) => rise(r, B(6.8 + i * 0.1)));
+  navs.forEach((r, i) => rise(r, B(7.0 + i * 0.09)));
+  rise(crumb, B(7.1));
+  const nb = sp(t, B(7.4), 2.4, 0.6);
+  const np = press(t, 21.0);
+  TF(newbtn, `scale(${nb * (1 - 0.07 * np)})`); vis(newbtn, nb > 0.001 && b < 21.05);
+
+  // --- hero chip ---
+  const heroOn = b >= 7.75;
+  vis(hero.ch, heroOn);
+  hero.badges.forEach((bd, i) => { const s = sp(t, B(8 + i), 2.8, 0.5); TF(bd, `scale(${s})`); vis(bd, s > 0.001); });
+  hero.st.textContent = b < 12 ? (b >= 8 ? 'Por aprobar' : '') : (b < 16.5 ? 'Programado' : '✓ Publicado');
+  const heroPop = b >= 16.5 ? sp(t, B(16.55), 2.4, 0.55) : 1;
+  TF(hero.ch, `scale(${0.9 + 0.1 * heroPop})`);
+  // sidebar pending badge
+  const cnt = b < 8 ? 0 : b < 16.6 ? Math.min(4, Math.floor(b - 7)) : 0;
+  pendBadge.textContent = cnt || '';
+  const lastStep = b < 16.6 ? Math.min(11, Math.floor(b)) : 16.6;
+  const bs = cnt ? 0.75 + 0.25 * sp(t, B(lastStep), 3, 0.5) : 0;
+  TF(pendBadge, `scale(${bs})`); vis(pendBadge, cnt > 0);
+
+  // --- popover + approve (beats 10-12) ---
+  const ps = sp(t, B(10.0), 2.3, 0.62);
+  const popOn = b >= 10 && b < 12.8;
+  vis(pop, popOn);
+  TF(pop, `scale(${ps})`);
+  TF(aprobar, `scale(${1 - 0.08 * press(t, 12.0)})`);
+
+  // --- week fill (beats 17-20) ---
+  week.forEach((k, i) => { const s = sp(t, B(17 + i), 2.5, 0.58); TF(k.ch, `scale(${s})`); vis(k.ch, s > 0.001); });
+
+  // --- cursor ---
+  const cp = cursorAt(t);
+  const curOn = (b >= 4.9 && b < 6.4) || (b >= 10.2 && b < 12.5) || (b >= 19.6 && b < 21.4);
+  vis(cursor, curOn);
+  const pdAll = Math.max(...CLICKS.map(cb => press(t, cb)));
+  const cs = 1 / Math.max(1, c.z / 1.3); // keep cursor readable at high zoom
+  box(cursor, cp.x, cp.y);
+  TF(cursor, `scale(${cs * (1 - 0.12 * pdAll)})`);
+
+  // --- flood (beats 12-16.8), screen space ---
+  let floodOn = false;
+  const cA = camAt(B(12));
+  const aS = toScreen(cA, APR.x, APR.y);
+  const RMAX = Math.hypot(Math.max(aS.x, W - aS.x), Math.max(aS.y, H - aS.y)) * 1.12;
+  if (b >= 12 && b < 16) {
+    floodOn = true;
+    const r = pr(t, B(12), B(12) + 0.35, E.out) * RMAX;
+    flood.style.clipPath = `circle(${r}px at ${aS.x}px ${aS.y}px)`;
+  }
+  const heroS = toScreen(camAt(B(16.5)), HERO.x + HERO.w / 2, HERO.y + HERO.h / 2);
+  if (b >= 16 && b < 17) {
+    floodOn = true;
+    const u = pr(t, B(16), B(16.75), E.io);
+    const RM2 = Math.hypot(Math.max(heroS.x, W - heroS.x), Math.max(heroS.y, H - heroS.y)) * 1.05;
+    const cx = lerp(W / 2, heroS.x, E.out(u)), cy = lerp(H / 2, heroS.y, E.out(u));
+    flood.style.clipPath = `circle(${lerp(RM2, 0, u)}px at ${cx}px ${cy}px)`;
+  }
+  vis(flood, floodOn);
+
+  // cards burst (12.15) and fly into the hero chip (16.0)
+  pcards.forEach((k, i) => {
+    const on = b >= 12.1 && b < 16.8;
+    vis(k.c, on);
+    if (!on) return;
+    const s = sp(t, B(12.15) + i * 0.05, 2.1, 0.66);
+    const hx = CX0 + i * (CARDW + GAP) + CARDW / 2, hy = CY0 + CARDH / 2;
+    const bx = lerp(W / 2, hx, s), by = lerp(H / 2 + 40, hy, s);
+    const f = pr(t, B(16) + i * 0.04, B(16.6) + i * 0.04, E.io5);
+    const x = lerp(bx, heroS.x, f), y = lerp(by, heroS.y, f);
+    const sc = lerp(s, 0.06, f);
+    TF(k.c, `translate(${x - hx}px, ${y - hy}px) scale(${sc})`);
+    const fl = pr(t, B(14 + i * 0.5), B(14 + i * 0.5) + 0.22, E.out5);
+    TF(k.s1, `translateY(${-fl * 40}px)`);
+    TF(k.s2, `translateY(${(1 - fl) * 40}px)`);
+    k.st.style.width = lerp(k.s1.offsetWidth, k.s2.offsetWidth, fl) + 'px';
+  });
+  const clk = b >= 13 && b < 16.2;
+  vis(clockM, clk);
+  if (clk) TF(clock, `translateY(${(1 - pr(t, B(13), B(13) + 0.4, E.out5)) * 60 - pr(t, B(15.8), B(16.1), E.in) * 60}px)`);
+
+  // --- outro pill (beats 21-23) ---
+  const nbS = toScreen(camAt(B(21)), 1420 + WX + 88, 60 + WY + 20);
+  const pillOn = b >= 21.02;
+  vis(pill, pillOn); vis(pillLabM, pillOn && b < 23.2);
+  if (pillOn) {
+    const u = pr(t, B(21.02), B(22.5), E.io5);
+    const w = lerp(176 * camAt(B(21)).z, 2300, E.io(u)), h = lerp(40 * camAt(B(21)).z, 1300, Math.pow(u, 1.6));
+    const cx = lerp(nbS.x, W / 2, E.out(u)), cy = lerp(nbS.y, H / 2, E.out(u));
+    const r = h / 2 * (1 - pr(t, B(22.2), B(22.5), E.lin));
+    box(pill, cx - w / 2, cy - h / 2, w, h); pill.style.borderRadius = r + 'px';
+    const fs = lerp(15 * camAt(B(21)).z, 96, E.io(pr(t, B(21.1), B(22.4))));
+    pillLab.style.fontSize = fs + 'px'; pillLab.style.letterSpacing = lerp(0, -0.05, E.io(u)) + 'em';
+    const lh = fs * 1.25;
+    box(pillLabM, cx - W / 2, cy - lh / 2, W, lh); pillLab.style.width = W + 'px'; pillLab.style.lineHeight = lh + 'px';
+    TF(pillLab, `translateY(${-pr(t, B(22.7), B(23.15), E.in) * 110}%)`);
+  }
+  // words
+  const wordsIn = (L, start, step) => L.ms.forEach((w, i) => TF(w.i, `translateY(${(1 - pr(t, B(start) + i * step, B(start) + i * step + 0.42, E.out5)) * 110 - pr(t, B(26.9) + i * 0.03, B(27.3) + i * 0.03, E.in) * 110}%)`));
+  const wOn = b >= 23 && b < 27.5;
+  vis(line1.wrap, wOn); vis(line2.wrap, wOn);
+  wordsIn(line1, 23.1, 0.1); wordsIn(line2, 24.4, 0.09);
+  // provider marks → logo
+  const MW = 124, MG = 40, MX0 = (W - (4 * MW + 3 * MG)) / 2;
+  const merge = pr(t, B(29), B(29) + 0.34, E.in2);
+  marks.forEach((m, i) => {
+    const s = sp(t, B(27.3 + i * 0.5), 2.6, 0.55);
+    const on = b >= 27.3 && merge < 1; vis(m, on && s > 0.001);
+    const x = lerp(MX0 + i * (MW + MG), W / 2 - MW / 2, merge);
+    box(m, x, H / 2 - MW / 2);
+    TF(m, `scale(${s * lerp(1, 0.25, merge)})`);
+    m.style.borderRadius = lerp(30, 62, merge) + 'px';
+  });
+  const lg = sp(t, B(29) + 0.3, 2.2, 0.6);
+  const slide = pr(t, B(30), B(30.7), E.io5);
+  const LOGO = 190, wordW = 380, gap = 36, groupW = LOGO + gap + wordW;
+  const lx = lerp(W / 2 - LOGO / 2, W / 2 - groupW / 2, slide), ly = H / 2 - LOGO / 2 - 40;
+  vis(logo, b >= 29 && lg > 0.001);
+  box(logo, lx, ly); TF(logo, `scale(${lg})`);
+  const wx = lx + LOGO + gap;
+  box(wordM, wx, ly + 10, wordW * slide + 2, 170); vis(wordM, slide > 0);
+  TF(word, `translateX(${(slide - 1) * 60}px)`);
+  box(subM, 0, ly + LOGO + 34, W, 64); sub.style.width = W + 'px'; sub.style.textAlign = 'center';
+  TF(sub, `translateY(${(1 - pr(t, B(30.5), B(30.5) + 0.45, E.out5)) * 110}%)`); vis(subM, b >= 30.5);
+  box(urlM, 0, ly + LOGO + 108, W, 40); url2.style.width = W + 'px'; url2.style.textAlign = 'center';
+  TF(url2, `translateY(${(1 - pr(t, B(31.2), B(31.2) + 0.45, E.out5)) * 110}%)`); vis(urlM, b >= 31.2);
+}
+
+// ---------- boot ----------
+const imgs = ['assets/p302899.jpg', 'assets/andy_logo.svg', 'assets/instagram-icon.svg'];
+window.ready = Promise.all([document.fonts.load('600 20px Geist'), document.fonts.load('500 20px Geist'), ...imgs.map(s => new Promise(r => { const i = new Image(); i.onload = i.onerror = r; i.src = s; }))]).then(() => document.fonts.ready).then(() => { seek(0); return true; });
+Object.assign(window, { seek, SFX, MUSIC, DURATION, P });
+</script>
+</body>
+</html>

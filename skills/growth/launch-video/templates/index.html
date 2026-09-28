@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Launch film</title>
+<style>
+/* Serve this folder over HTTP (render.mjs does): file:// blocks @font-face loads. */
+@font-face { font-family: Brand; src: url(assets/font.woff2) format('woff2'); font-weight: 100 900; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 1920px; height: 1080px; overflow: hidden; background: #f5f5f3; }
+body { font-family: Brand, -apple-system, 'Helvetica Neue', sans-serif; color: #171717; -webkit-font-smoothing: antialiased; }
+.abs { position: absolute; }
+#stage { position: absolute; inset: 0; overflow: hidden; }
+/* world layer: everything the camera moves. Never put will-change on it (text goes blurry). */
+#cam { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0; z-index: 1; }
+/* screen layer: floods, full-frame cards, end card. Positions come from toScreen(). */
+#fx { position: absolute; inset: 0; z-index: 10; pointer-events: none; }
+/* a mask line: text rises out of it instead of fading in */
+.mask { position: absolute; overflow: hidden; }
+.mask > * { position: absolute; left: 0; top: 0; white-space: nowrap; }
+#cursor { width: 30px; height: 42px; transform-origin: 3px 3px; z-index: 50; }
+</style>
+</head>
+<body>
+<div id="stage"><div id="cam"></div><div id="fx"></div></div>
+<script>
+// ======================= CONFIG =======================
+// Fill from `python3 audio/beats.py <song>`: bpm, offset (first-beat time) and the start beat it suggests.
+const BPM = 124;                       // exact fitted tempo
+const MUSIC = { file: 'audio/music/song.mp3', offset: 0.0, gain: 0.75 }; // offset = song time of film beat 0
+const BEATS = 8;                       // film length in beats (the demo is 8)
+const W = 1920, H = 1080;
+const P = 60 / BPM, B = b => b * P;    // B(beat) → seconds. Author every time in beats.
+const DURATION = B(BEATS) + 0.45;
+
+// ======================= MATH =======================
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, t) => a + (b - a) * t;
+const E = {
+  lin: t => t,
+  io: t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2,
+  io5: t => t < .5 ? 16 * t ** 5 : 1 - Math.pow(-2 * t + 2, 5) / 2,
+  out: t => 1 - Math.pow(1 - t, 3),
+  out5: t => 1 - Math.pow(1 - t, 5),
+  in: t => t * t * t,
+};
+// progress of t through [a,b], eased
+const pr = (t, a, b, e = E.io) => e(clamp((t - a) / (b - a)));
+// closed-form spring step response 0→1 starting at t0 (tiny overshoot = objects "land").
+// A value with several targets is the SUM of one sp() per change, so it stays a pure function of t.
+function sp(t, t0, f = 2.4, z = 0.62) {
+  const u = t - t0; if (u <= 0) return 0;
+  const w = 2 * Math.PI * f, wd = w * Math.sqrt(1 - z * z);
+  return 1 - Math.exp(-z * w * u) * (Math.cos(wd * u) + (z * w / wd) * Math.sin(wd * u));
+}
+// deterministic noise: never Math.random (frames render out of order)
+const rnd = i => { const x = Math.sin(i * 78.233 + 12.9898) * 43758.5453; return x - Math.floor(x); };
+
+// ======================= DOM =======================
+function el(tag, cls, parent, html) {
+  const e = document.createElement(tag); if (cls) e.className = cls;
+  if (html != null) e.innerHTML = html; parent.appendChild(e); return e;
+}
+function box(e, x, y, w, h) { e.style.left = x + 'px'; e.style.top = y + 'px'; if (w != null) e.style.width = w + 'px'; if (h != null) e.style.height = h + 'px'; }
+// 'inherit', never 'visible': a visible child shows through a hidden parent
+const vis = (e, on) => { e.style.visibility = on ? 'inherit' : 'hidden'; };
+const TF = (e, s) => { e.style.transform = s; };
+// text that rises out of a mask line: rise(r, t, startSeconds)
+function riser(parent, x, y, w, h, html) {
+  const m = el('div', 'mask', parent); box(m, x, y, w, h);
+  const c = el('div', '', m, html); c.style.width = w + 'px'; c.style.height = h + 'px';
+  return { m, c };
+}
+const rise = (r, t, s, dur = 0.35) => TF(r.c, `translateY(${(1 - pr(t, s, s + dur, E.out5)) * 105}%)`);
+
+// ======================= CAMERA =======================
+// [beat, zoom, cx, cy, easing]: (cx,cy) is the world point at screen centre. One move per scene.
+const CAMK = [
+  [0, 2.2, 960, 540, E.lin],
+  [3.5, 2.4, 960, 540, E.io5],
+  [5.0, 1.0, 960, 540, E.io],
+];
+function camAt(t) {
+  const b = t / P;
+  if (b <= CAMK[0][0]) return { z: CAMK[0][1], x: CAMK[0][2], y: CAMK[0][3] };
+  for (let i = 0; i < CAMK.length - 1; i++) {
+    const a = CAMK[i], c = CAMK[i + 1];
+    if (b <= c[0]) { const u = c[4]((b - a[0]) / (c[0] - a[0])); return { z: Math.exp(lerp(Math.log(a[1]), Math.log(c[1]), u)), x: lerp(a[2], c[2], u), y: lerp(a[3], c[3], u) }; }
+  }
+  const k = CAMK[CAMK.length - 1]; return { z: k[1], x: k[2], y: k[3] };
+}
+const toScreen = (c, x, y) => ({ x: W / 2 + (x - c.x) * c.z, y: H / 2 + (y - c.y) * c.z });
+
+// ======================= CURSOR =======================
+// [beat, x, y] in world space; it scales with the camera. CLICKS are beats.
+const CUR = [[1.0, 1300, 760], [1.9, 980, 548], [3.0, 980, 548]];
+const CLICKS = [2.0];
+function cursorAt(t) {
+  const b = t / P;
+  for (let i = 0; i < CUR.length - 1; i++) { const a = CUR[i], c = CUR[i + 1]; if (b >= a[0] && b <= c[0]) { const u = E.io((b - a[0]) / (c[0] - a[0])); return { x: lerp(a[1], c[1], u), y: lerp(a[2], c[2], u) }; } }
+  const k = CUR[CUR.length - 1]; return { x: k[1], y: k[2] };
+}
+function press(t, beat) { // 0..1 press depth around a click
+  const d = t - B(beat); if (d < -0.12 || d > 0.35) return 0;
+  return d < 0 ? E.out((d + 0.12) / 0.12) : 1 - sp(t, B(beat), 3.2, 0.55);
+}
+
+// ======================= SOUND =======================
+// One real SFX per event. peak:true aligns the file's measured peak to the time (whooshes, impacts);
+// otherwise its start is placed there (clicks, pops, keys). Files live in audio/sfx/.
+const SFX = [];
+const sfx = (f, beat, v = 0.5, peak = false) => SFX.push({ f, t: B(beat), v, peak });
+
+// ======================= SCENE (demo: replace) =======================
+// The article's studio test: a black circle springs into a pill, a label rises inside it,
+// a click floods the frame, the end card rises. Every idiom the real film needs is here once.
+const cam = document.getElementById('cam'), fx = document.getElementById('fx');
+const pill = el('div', 'abs', cam); pill.style.background = '#0a0a0a';
+const label = riser(cam, 760, 520, 400, 40, '<div style="width:400px;text-align:center;color:#fff;font-size:22px;font-weight:600;line-height:40px">Launch</div>');
+const cursor = el('div', 'abs', cam, '<svg width="30" height="42" viewBox="0 0 30 42"><path d="M3 3 L3 33 L10.5 26 L15.5 38 L20.5 36 L15.5 24.5 L25.5 24.5 Z" fill="#0a0a0a" stroke="#fff" stroke-width="2.4" stroke-linejoin="round"/></svg>');
+cursor.id = 'cursor';
+const flood = el('div', '', fx); flood.style.cssText = 'position:absolute;inset:0;background:#2f6bff';
+const endcard = riser(fx, 0, 480, W, 120, '<div style="width:1920px;text-align:center;color:#fff;font-size:96px;font-weight:650;letter-spacing:-0.05em;line-height:120px">Your product</div>');
+sfx('pop.mp3', 0.1, 0.5); sfx('click.mp3', 2.0, 0.9); sfx('whoosh.mp3', 2.3, 0.5, true);
+
+function seek(t) {
+  const b = t / P, c = camAt(t);
+  TF(cam, `translate(${W / 2 - c.x * c.z}px, ${H / 2 - c.y * c.z}px) scale(${c.z})`);
+  // circle → pill: width follows one spring, radius stays h/2
+  const s = sp(t, B(0.1)), w = lerp(0, 60, s) + 220 * sp(t, B(1.0), 2.2, 0.65), h = 60 * s;
+  box(pill, 960 - w / 2, 540 - h / 2, w, h); pill.style.borderRadius = h / 2 + 'px';
+  TF(pill, `scale(${1 - 0.06 * press(t, 2.0)})`);
+  rise(label, t, B(1.3));
+  // cursor
+  const p = cursorAt(t); box(cursor, p.x, p.y); vis(cursor, b >= 1 && b < 3);
+  TF(cursor, `scale(${(1 / Math.max(1, c.z / 1.3)) * (1 - 0.12 * press(t, 2.0))})`);
+  // flood: screen space, from the clicked object's screen position, clears the farthest corner in ~0.35 s
+  const o = toScreen(camAt(B(2)), 960, 540);
+  const R = Math.hypot(Math.max(o.x, W - o.x), Math.max(o.y, H - o.y)) * 1.12;
+  flood.style.clipPath = `circle(${pr(t, B(2), B(2) + 0.35, E.out) * R}px at ${o.x}px ${o.y}px)`;
+  vis(flood, b >= 2);
+  rise(endcard, t, B(4)); vis(endcard.m, b >= 4);
+}
+
+// ======================= BOOT =======================
+// Preload every image and font before the first seek; declare every variable above this line.
+const PRELOAD = [];
+window.ready = Promise.all([document.fonts.load('600 20px Brand').catch(() => console.warn('assets/font.woff2 missing: system font')),
+  ...PRELOAD.map(s => new Promise(r => { const i = new Image(); i.onload = i.onerror = r; i.src = s; }))])
+  .then(() => document.fonts.ready).then(() => { seek(0); return true; });
+Object.assign(window, { seek, SFX, MUSIC, DURATION, P });
+</script>
+</body>
+</html>
