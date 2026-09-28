@@ -37,7 +37,9 @@ identical to its first, cursor position and speed included.
 - **Web or desktop UI**: a stylised redraw in DOM from the product's real vocabulary (labels, sidebar items,
   statuses, icons from its repo). Call it a stylised redraw when delivering.
 - **Phone app**: a phone frame (screen ~428x926, radius ~56, thin black bezel, status bar) built in DOM around
-  the redraw; a finger is a soft circle that presses (scale) instead of a cursor.
+  the redraw; a finger is a soft circle that presses (scale) instead of a cursor. Camera zoom that fills the frame
+  with the phone: `min(W / phoneW, H / phoneH) * 0.98` (2.05 for a 932-tall phone in 1080x1920); pull back to
+  ~0.6 of that to show the whole device, push in to ~1.5 of it for one control.
 - **Maps and terrain**: draw them as pure functions: SVG paths and contour polylines from real data (GeoJSON,
   a DEM exported to contours), a canvas redrawn inside `seek()`, or a still render of the real map as an image
   the camera moves over. A live WebGL map is not frame-deterministic: use its screenshots or a screen recording.
@@ -49,9 +51,11 @@ identical to its first, cursor position and speed included.
 - **Fonts**: take the product's own font files from its repo (`.woff2` as is; convert `.ttf`/`.otf` with
   `pip install fonttools brotli && fonttools ttLib.woff2 compress Font.ttf`), else the same family from Google
   Fonts. System fonts (SF Pro) are not redistributable: use the closest open family (Inter) and say so.
-- **Photos**: Pexels (free licence): search in a browser, download
-  `https://images.pexels.com/photos/<id>/pexels-photo-<id>.jpeg?w=1600` directly (their search pages refuse
-  scripts). Crop per surface with `background-position`.
+- **Photos**: Pexels (free licence). Its search pages refuse scripts, so open
+  `https://www.pexels.com/search/<query>/` in the host's browser tool and collect ids from the photo links
+  (`[...document.querySelectorAll('a[href*="/photo/"]')].map(a => a.href)`), then download
+  `https://images.pexels.com/photos/<id>/pexels-photo-<id>.jpeg?w=1600` directly. Crop per surface with
+  `background-position`.
 
 ## Motion vocabulary
 
@@ -59,13 +63,18 @@ identical to its first, cursor position and speed included.
 - **Mask lines**: text rises out of a clipped line (`riser()` + `rise()`), and leaves the same way.
 - **Floods**: a screen-space layer with `clip-path: circle(r at x y)`, centred on the touched object's screen
   position (`toScreen(camAt(...), x, y)`). It overscales past the farthest corner and takes ~0.35 s; faster
-  reads as a flash, slower as a wipe.
+  reads as a flash, slower as a wipe. To return into a card or tile, contract with
+  `clip-path: inset(top right bottom left round r)` toward the tile's screen rect, scaling the carried content
+  with it.
 - **Shared elements**: every handoff carries its content. The flood carries a copy of the words; a morphing card
   carries its text out through its own mask while the destination's text rises in.
 - **Springs**: `sp(t, t0)` for every pop and landing (tiny overshoot). Several targets on one value = the sum of
   one spring per change.
 - **Camera**: one transform on `#cam`, keyframed `[beat, zoom, cx, cy]`. A slow push during the ask, one
   pull-back on the act, one push toward the payoff, then reposition only while a flood covers the frame.
+- **Map fly-to** (a camera inside the camera): keep the page camera still and move the map layer: zoom in log
+  space, move the target's on-screen position linearly, and blend in a sharper map image as the zoom passes ~2x
+  so the upscaled overview never reads soft.
 - **Cursor or finger**: world space, so it scales with the camera (divide by zoom above 1.3 so it stays
   readable). It enters, moves on an eased path, presses ~0.1 s before the beat, springs back after.
 
@@ -93,5 +102,7 @@ comfortably).
 - Set `z-index` on every layer, or a card floats over the flood.
 - Never let the camera chase a wrapping text cursor: type on fixed lines.
 - Text that swaps inside a morphing shape needs its own mask and timing, or old and new overlap.
+- Anything that appears springs from scale 0 or rises from a mask; switching on at partial scale is a one-frame
+  pop that `scan.py` catches only after a full render.
 - Declare every variable before the first `seek()`; preload every image in `PRELOAD`.
 - Measure widths only from elements whose content is fixed at build time: `offsetWidth` forces a layout each frame.

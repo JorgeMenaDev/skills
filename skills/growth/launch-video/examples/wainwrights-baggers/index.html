@@ -1,0 +1,501 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<title>Wainwrights Baggers: launch film</title>
+<style>
+/* Serve this folder over HTTP (render.mjs does): file:// blocks @font-face loads. */
+@font-face { font-family: Brand; src: url(assets/font.woff2) format('woff2'); font-weight: 100 900; }
+@font-face { font-family: Serif; src: url(assets/serif.woff2) format('woff2'); font-weight: 100 900; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { overflow: hidden; background: #f3f1e4; }
+body { font-family: Brand, -apple-system, 'Helvetica Neue', sans-serif; color: #112318; -webkit-font-smoothing: antialiased; }
+.abs { position: absolute; }
+.serif { font-family: Serif, Georgia, serif; }
+#stage { position: absolute; inset: 0; overflow: hidden; background: #f3f1e4; }
+#cam { position: absolute; left: 0; top: 0; transform-origin: 0 0; z-index: 1; }
+#fx { position: absolute; inset: 0; z-index: 10; pointer-events: none; }
+.mask { position: absolute; overflow: hidden; }
+.mask > * { position: absolute; left: 0; top: 0; white-space: nowrap; }
+#phone { position: absolute; background: #0e0f0e; border-radius: 68px; box-shadow: 0 0 0 2px #3a3c3a, 0 40px 80px rgba(17,35,24,.28); z-index: 1; }
+#scr { position: absolute; overflow: hidden; border-radius: 55px; background: #dfe9d3; z-index: 2; }
+#map { position: absolute; inset: 0; overflow: hidden; }
+#map img { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+.mk { position: absolute; border-radius: 50%; background: #fafae8; border: 2px solid #112318; transform-origin: 50% 50%; }
+.mk.bag { background: #e3a23b; border-color: #1f4232; }
+.mk svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.lbl { position: absolute; text-align: center; font-weight: 700; font-size: 11px; line-height: 12px; color: #112318;
+  text-shadow: 0 0 2px #eef3e4, 0 0 2px #eef3e4, 0 0 3px #eef3e4; }
+.lbl small { display: block; font-weight: 500; font-size: 9.5px; }
+.sheet { position: absolute; overflow: hidden; background: rgba(241,245,234,.96); box-shadow: 0 -2px 24px rgba(17,35,24,.14); }
+.sec { color: #5d6b62; }
+.tile { position: absolute; border-radius: 13px; background: rgba(17,35,24,.055); }
+.finger { position: absolute; width: 46px; height: 46px; margin: -23px 0 0 -23px; border-radius: 50%;
+  background: radial-gradient(circle at 50% 45%, rgba(255,255,255,.75), rgba(230,232,226,.55)); border: 1.5px solid rgba(17,35,24,.28);
+  box-shadow: 0 6px 18px rgba(17,35,24,.28); z-index: 50; }
+.jt { position: absolute; }
+.jt .img { position: absolute; left: 0; top: 0; width: 176px; height: 176px; border-radius: 18px; overflow: hidden; background-size: cover; background-position: center; }
+.jt .nm { position: absolute; left: 0; top: 184px; font: 600 16px/20px Serif, Georgia, serif; }
+.jt .dt { position: absolute; left: 0; top: 205px; font-size: 12px; line-height: 16px; color: #5d6b62; }
+.jt .nt { position: absolute; left: 0; top: 221px; font-size: 12px; line-height: 16px; color: #5d6b62; white-space: nowrap; }
+.badge { position: absolute; right: 8px; top: 8px; padding: 3px 7px; border-radius: 10px; background: rgba(0,0,0,.35); color: #fff; font-size: 11px; font-weight: 700; }
+</style>
+</head>
+<body>
+<div id="stage"><div id="cam"></div><div id="fx"></div></div>
+<script>
+// ======================= CONFIG =======================
+// Mixkit "Rising Forest" (471): beats.py → BPM 124.0102, DROP song beat 32 → MUSIC.offset 9.7051 puts it on film beat 12.
+const BPM = 124.0102;
+const MUSIC = { file: 'audio/music/471.mp3', offset: 9.7051, gain: 0.75 };
+const BEATS = 32;
+const W = 1080, H = 1920;
+const P = 60 / BPM, B = b => b * P;
+const DURATION = B(BEATS) + 0.45;
+
+// ======================= MATH =======================
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, t) => a + (b - a) * t;
+const E = {
+  lin: t => t,
+  io: t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2,
+  io5: t => t < .5 ? 16 * t ** 5 : 1 - Math.pow(-2 * t + 2, 5) / 2,
+  out: t => 1 - Math.pow(1 - t, 3),
+  out5: t => 1 - Math.pow(1 - t, 5),
+  in: t => t * t * t,
+};
+const pr = (t, a, b, e = E.io) => e(clamp((t - a) / (b - a)));
+function sp(t, t0, f = 2.4, z = 0.62) {
+  const u = t - t0; if (u <= 0) return 0;
+  const w = 2 * Math.PI * f, wd = w * Math.sqrt(1 - z * z);
+  return 1 - Math.exp(-z * w * u) * (Math.cos(wd * u) + (z * w / wd) * Math.sin(wd * u));
+}
+const rnd = i => { const x = Math.sin(i * 78.233 + 12.9898) * 43758.5453; return x - Math.floor(x); };
+
+// ======================= DOM =======================
+function el(tag, cls, parent, html) {
+  const e = document.createElement(tag); if (cls) e.className = cls;
+  if (html != null) e.innerHTML = html; parent.appendChild(e); return e;
+}
+function box(e, x, y, w, h) { e.style.left = x + 'px'; e.style.top = y + 'px'; if (w != null) e.style.width = w + 'px'; if (h != null) e.style.height = h + 'px'; }
+const vis = (e, on) => { e.style.visibility = on ? 'inherit' : 'hidden'; };
+const TF = (e, s) => { e.style.transform = s; };
+function riser(parent, x, y, w, h, html) {
+  const m = el('div', 'mask', parent); box(m, x, y, w, h);
+  const c = el('div', '', m, html); c.style.width = w + 'px'; c.style.height = h + 'px';
+  return { m, c };
+}
+const rise = (r, t, s, dur = 0.35) => TF(r.c, `translateY(${(1 - pr(t, s, s + dur, E.out5)) * 105}%)`);
+// rise in at s, leave upward at o
+const riseOut = (r, t, s, o, dur = 0.35) => TF(r.c, `translateY(${(1 - pr(t, s, s + dur, E.out5)) * 105 - pr(t, o, o + dur, E.in) * 105}%)`);
+
+// ======================= CAMERA =======================
+// World = the 1080x1920 frame; the phone screen sits at (SX, SY), 430x932 points.
+const SX = 325, SY = 494, SW = 430, SH = 932;
+const CAMK = [
+  [0, 2.05, 540, 960, E.lin],
+  [5.8, 2.24, 506, 968, E.io],
+  [7.6, 1.55, 540, 990, E.io],
+  [8.2, 1.55, 540, 990, E.lin],
+  [11.7, 2.3, 540, 1232, E.io],
+  [12.4, 2.3, 540, 1232, E.lin],
+  [13.0, 2.05, 540, 960, E.io],
+  [20.95, 2.05, 540, 960, E.lin],
+  [22.6, 2.7, 602, 612, E.io5],
+];
+function camAt(t) {
+  const b = t / P;
+  if (b <= CAMK[0][0]) return { z: CAMK[0][1], x: CAMK[0][2], y: CAMK[0][3] };
+  for (let i = 0; i < CAMK.length - 1; i++) {
+    const a = CAMK[i], c = CAMK[i + 1];
+    if (b <= c[0]) { const u = c[4]((b - a[0]) / (c[0] - a[0])); return { z: Math.exp(lerp(Math.log(a[1]), Math.log(c[1]), u)), x: lerp(a[2], c[2], u), y: lerp(a[3], c[3], u) }; }
+  }
+  const k = CAMK[CAMK.length - 1]; return { z: k[1], x: k[2], y: k[3] };
+}
+const toScreen = (c, x, y) => ({ x: W / 2 + (x - c.x) * c.z, y: H / 2 + (y - c.y) * c.z });
+function press(t, beat) {
+  const d = t - B(beat); if (d < -0.12 || d > 0.35) return 0;
+  return d < 0 ? E.out((d + 0.12) / 0.12) : 1 - sp(t, B(beat), 3.2, 0.55);
+}
+
+// ======================= SOUND =======================
+const SFX = [];
+const sfx = (f, beat, v = 0.5, peak = false) => SFX.push({ f, t: B(beat), v, peak });
+
+// ======================= DATA =======================
+const AREAS = ['Eastern', 'Far Eastern', 'Central', 'Southern', 'Northern', 'North Western', 'Western'];
+const BOOKW = ['One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven'];
+const TOTAL = [35, 36, 27, 30, 24, 29, 33];
+const DONE = [9, 6, 11, 7, 8, 4, 2];               // 47 before Great Gable
+const MUST = ['helvellyn', 'tarn-crag-easedale', 'scafell-pike', 'skiddaw', 'catbells'];
+const AY = 440;                                      // map anchor: screen y of the map centre
+const S0 = SW / 39000, S1 = SW / 3000;               // px per metre: whole district, Great Gable close-up
+const OVC = { e: 329000, n: 515500 };
+const GGP1 = { x: 215, y: 392 };                     // where the Great Gable pin ends on screen
+
+// ======================= SCENE =======================
+const cam = document.getElementById('cam'), fx = document.getElementById('fx');
+for (const e of [document.documentElement, document.body, cam]) { e.style.width = W + 'px'; e.style.height = H + 'px'; }
+const ICON_MTN = c => `<svg viewBox="0 0 24 24"><path d="M2 19 L9 8 L13 14 L15.5 10.5 L22 19 Z" fill="${c}"/></svg>`;
+const TICK = (c, w = 2.6) => `<svg viewBox="0 0 26 26"><path d="M7.5 13.5 L11.5 17.5 L19 9.5" fill="none" stroke="${c}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+// The app's ContourArtwork: wobbly closed rings, every fifth heavier (Pro/ContourArtwork.swift).
+function contourSVG(w, h, cx, cy, rings, spacing, color, k = 1) {
+  let s = `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="position:absolute;left:0;top:0">`;
+  const ring = (x0, y0, n, sp_, ph) => {
+    for (let r = 1; r <= n; r++) {
+      let d = '';
+      for (let i = 0; i <= 96; i++) {
+        const a = i / 96 * 2 * Math.PI, wob = 1 + 0.13 * Math.sin(3 * a + ph + r * 0.35) + 0.07 * Math.cos(5 * a - r * 0.22);
+        d += (i ? 'L' : 'M') + (x0 + Math.cos(a) * r * sp_ * wob * 1.25).toFixed(1) + ' ' + (y0 + Math.sin(a) * r * sp_ * wob).toFixed(1);
+      }
+      const idx = r % 5 === 0;
+      s += `<path d="${d}" fill="none" stroke="${color}" stroke-opacity="${idx ? 0.3 : 0.14}" stroke-width="${(idx ? 1.4 : 0.8) * k}"/>`;
+    }
+  };
+  ring(cx, cy, rings, spacing, 0.4); ring(w - cx * 0.75, cy * 0.3, Math.max(3, rings >> 1), spacing * 0.9, 2.1);
+  return s + '</svg>';
+}
+
+let F, GG, marks = [], labels = [], mapImgs, S;  // built in build()
+function build(data) {
+  F = data.fells; const OV = data.OV, DT = data.DT;
+  GG = F.find(f => f.id === 'great-gable');
+  // bagged set: the required journal fells first, then a deterministic pick per book
+  F.forEach((f, i) => { f.ai = AREAS.indexOf(f.area); f.i = i; });
+  for (let a = 0; a < 7; a++) {
+    const inA = F.filter(f => f.ai === a && f.id !== 'great-gable');
+    inA.sort((p, q) => (MUST.includes(q.id) - MUST.includes(p.id)) || rnd(p.book) - rnd(q.book));
+    inA.slice(0, DONE[a]).forEach(f => f.bag = true);
+  }
+  const byH = [...F].sort((p, q) => q.m - p.m); GG.rank = byH.indexOf(GG) + 1;
+
+  // --- phone
+  const phone = el('div', '', cam); phone.id = 'phone'; box(phone, SX - 13, SY - 13, SW + 26, SH + 26);
+  const scr = el('div', '', cam); scr.id = 'scr'; box(scr, SX, SY, SW, SH);
+  // --- map screen
+  const mapS = el('div', 'abs', scr); box(mapS, 0, 0, SW, SH);
+  const map = el('div', '', mapS); map.id = 'map';
+  const ov = el('img', '', map); ov.src = 'assets/map_overview.jpg';
+  const dt = el('img', '', map); dt.src = 'assets/map_detail.jpg';
+  mapImgs = [[ov, OV], [dt, DT]];
+  for (const f of F) {
+    const m = el('div', 'mk' + (f.bag ? ' bag' : ''), map);
+    if (f.bag) m.innerHTML = TICK('#1f4232', 3.2);
+    marks.push(m);
+  }
+  const ggBag = el('div', 'abs', map); ggBag.style.cssText += 'border-radius:50%;background:#e3a23b;border:2px solid #1f4232';
+  ggBag.innerHTML = TICK('#1f4232', 3.2);
+  const pin = el('div', 'abs', map, `<svg width="54" height="64" viewBox="0 0 54 64" style="position:absolute;left:0;top:0">
+    <path d="M20 50 L27 60 L34 50 Z" fill="#112318"/><circle cx="27" cy="27" r="24" fill="#112318"/><circle cx="27" cy="27" r="20.5" fill="#f1f0e2"/>
+    <path d="M14 36 L22.5 22 L27.5 29.5 L30.5 25 L40 36 Z" fill="#1f4232"/></svg>`);
+  const pinBag = el('div', 'abs', pin, `<svg width="54" height="64" viewBox="0 0 54 64" style="position:absolute;left:0;top:0">
+    <circle cx="27" cy="27" r="20.5" fill="#e3a23b"/><path d="M18.5 27.5 L24.5 33.5 L36 21.5" fill="none" stroke="#1f4232" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`);
+  // labels: [id, rise beat] (big four), others appear with the close-up
+  const L = [['scafell-pike', 4], ['helvellyn', 4], ['skiddaw', 4.5], ['great-gable', 4.5],
+    ['kirk-fell', -1], ['great-end', -1], ['lingmell', -1], ['haystacks-buttermere', -1], ['fleetwith-pike', -1], ['brandreth', -1], ['base-brown', -1], ['grey-knotts', -1]];
+  for (const [id, bt] of L) {
+    const f = F.find(x => x.id === id); if (!f) continue;
+    const r = riser(map, 0, 0, 120, 26, `<div class="lbl" style="width:120px">${f.name.replace(/ \(.*\)/, '')}<small>${Math.round(f.m)} m</small></div>`);
+    labels.push({ f, bt, r });
+  }
+  // status bar + island + map controls
+  const island = el('div', 'abs', scr); island.style.cssText += 'background:#000;border-radius:19px;z-index:30'; box(island, 152, 11, 126, 37);
+  const sb = el('div', 'abs', scr, `<div style="position:absolute;left:52px;top:17px;font-weight:700;font-size:17px">9:41</div>
+    <svg style="position:absolute;left:318px;top:21px" width="86" height="14" viewBox="0 0 86 14"><rect x="0" y="8" width="3.5" height="5" rx="1" fill="#112318"/><rect x="5.5" y="6" width="3.5" height="7" rx="1" fill="#112318"/><rect x="11" y="3.5" width="3.5" height="9.5" rx="1" fill="#112318"/><rect x="16.5" y="1" width="3.5" height="12" rx="1" fill="#112318"/>
+    <path d="M33 5.5 a11 11 0 0 1 15 0 M36 8.6 a6.5 6.5 0 0 1 9 0" stroke="#112318" stroke-width="2" fill="none" stroke-linecap="round"/><circle cx="40.5" cy="11.6" r="1.6" fill="#112318"/>
+    <rect x="57" y="1" width="25" height="12" rx="3.5" stroke="#112318" stroke-opacity=".4" fill="none"/><rect x="59" y="3" width="19" height="8" rx="2" fill="#112318"/><rect x="83" y="5" width="1.8" height="4" rx=".8" fill="#112318" fill-opacity=".4"/></svg>`);
+  sb.style.zIndex = 29; box(sb, 0, 0, SW, 54);
+  el('div', 'abs', mapS, `<div style="position:absolute;left:0;top:0;width:48px;height:96px;border-radius:24px;background:rgba(244,247,238,.94);box-shadow:0 2px 10px rgba(17,35,24,.12)">
+    <div style="position:absolute;top:13px;width:48px;text-align:center;font-weight:700;font-size:16px">2D</div>
+    <div style="position:absolute;left:10px;top:48px;width:28px;height:1px;background:rgba(17,35,24,.12)"></div>
+    <svg style="position:absolute;left:13px;top:59px" width="22" height="22" viewBox="0 0 24 24"><path d="M21 3 L3 10.5 L11 13 L13.5 21 Z" fill="none" stroke="#112318" stroke-width="2" stroke-linejoin="round"/></svg></div>
+    <div style="position:absolute;left:0;top:108px;width:48px;height:48px;border-radius:24px;background:rgba(244,247,238,.94);box-shadow:0 2px 10px rgba(17,35,24,.12)">
+    <svg style="position:absolute;left:14px;top:9px" width="20" height="30" viewBox="0 0 20 30"><path d="M10 8 L15 22 L10 19 Z" fill="#5d6b62"/><path d="M10 8 L5 22 L10 19 Z" fill="#112318" fill-opacity=".3"/><text x="10" y="7" text-anchor="middle" font-size="8" font-weight="700" fill="#112318">N</text></svg></div>`).style.cssText += 'left:370px;top:72px';
+
+  // --- the sheet: progress (collapsed) → fell card (expanded)
+  const sheet = el('div', 'sheet', mapS); S = { sheet };
+  el('div', 'abs', sheet).style.cssText += 'left:187px;top:7px;width:36px;height:5px;border-radius:3px;background:rgba(17,35,24,.2)';
+  const prog = el('div', 'abs', sheet); S.prog = prog; box(prog, 0, 0, 410, 150);
+  prog.innerHTML = `<div class="abs" style="left:14px;top:20px;width:318px;height:44px;border-radius:22px;background:rgba(17,35,24,.07)">
+      <svg style="position:absolute;left:14px;top:12px" width="20" height="20" viewBox="0 0 24 24"><circle cx="10" cy="10" r="7" fill="none" stroke="#5d6b62" stroke-width="2.2"/><path d="M15.5 15.5 L21 21" stroke="#5d6b62" stroke-width="2.4" stroke-linecap="round"/></svg>
+      <div style="position:absolute;left:44px;top:11px;font-size:17px;color:#7c8a81">Search 214 fells</div></div>
+    <div class="abs" style="left:344px;top:18px;width:48px;height:48px;border-radius:50%;background:#5c946f;overflow:hidden">
+      <div style="position:absolute;left:16px;top:10px;width:16px;height:16px;border-radius:50%;background:#fafae8"></div><div style="position:absolute;left:8px;top:30px;width:32px;height:30px;border-radius:50%;background:#fafae8"></div></div>
+    <svg class="abs" style="left:14px;top:78px" width="60" height="60" viewBox="0 0 60 60"><circle cx="30" cy="30" r="26" fill="none" stroke="rgba(62,110,84,.16)" stroke-width="5"/>
+      <circle cx="30" cy="30" r="26" fill="none" stroke="#e3a23b" stroke-width="5" stroke-linecap="round" stroke-dasharray="${(2 * Math.PI * 26 * 47 / 214).toFixed(1)} 400" transform="rotate(-90 30 30)"/>
+      <path d="M16 38 L25 24 L30 31 L33 27 L43 38 Z" fill="#1f4232"/></svg>
+    <div class="abs serif" style="left:88px;top:80px;font-size:26px;font-weight:700;line-height:32px">47 of 214</div>
+    <div class="abs sec" style="left:88px;top:112px;font-size:16px">167 to go</div>`;
+  // card content, each piece on its own mask line
+  const C = S.card = {};
+  C.title = riser(sheet, 22, 26, 300, 42, `<div class="serif" style="font-size:32px;font-weight:700;line-height:42px;letter-spacing:-0.01em">Great Gable</div>`);
+  C.close = el('div', 'abs', sheet, `<svg width="34" height="34" viewBox="0 0 34 34"><circle cx="17" cy="17" r="17" fill="rgba(17,35,24,.08)"/><path d="M12 12 L22 22 M22 12 L12 22" stroke="#3d4a42" stroke-width="2.2" stroke-linecap="round"/></svg>`); box(C.close, 354, 28, 34, 34);
+  C.sub = riser(sheet, 22, 70, 340, 22, `<div class="sec" style="font-size:15px;line-height:22px">The Western Fells · Book Seven</div>`);
+  const tiles = [['Height', `${Math.round(GG.m)} m`, `${GG.ft.toLocaleString('en-GB')} ft`], ['Book', 'Seven', 'Western'], ['Rank', `#${GG.rank}`, 'by height']];
+  C.tiles = tiles.map(([a, v, s], i) => { const d = el('div', 'tile', sheet); box(d, 22 + i * 125, 104, 116, 78);
+    d.innerHTML = `<div class="abs sec" style="left:12px;top:9px;font-size:12px">${a}</div><div class="abs" style="left:12px;top:25px;font-size:20px;font-weight:700">${v}</div><div class="abs sec" style="left:12px;top:52px;font-size:12px">${s}</div>`; return d; });
+  C.dateRow = riser(sheet, 22, 196, 366, 44, `<div class="abs" style="left:0;top:11px;font-size:16px">Date walked</div>`);
+  C.pill = el('div', 'abs', C.dateRow.c); C.pill.style.cssText += 'border-radius:19px;background:rgba(17,35,24,.08);overflow:hidden'; box(C.pill, 226, 3, 140, 38);
+  C.d1 = el('div', 'abs', C.pill, '<div style="width:140px;text-align:center;font-size:16px;line-height:38px">28 Sep 2026</div>');
+  C.d2 = el('div', 'abs', C.pill, '<div style="width:140px;text-align:center;font-size:16px;line-height:38px;font-weight:600">26 Sep 2026</div>');
+  C.btn = el('div', 'abs', sheet, `<div style="position:absolute;inset:0;border-radius:29px;background:#3e6e54"></div>
+    <div style="position:absolute;left:0;top:0;width:366px;height:58px;display:flex;align-items:center;justify-content:center;gap:10px;color:#fff;font-size:18px;font-weight:600">
+    <svg width="22" height="22" viewBox="0 0 26 26"><circle cx="13" cy="13" r="12" fill="#fff"/><path d="M7.5 13.5 L11.5 17.5 L19 9.5" fill="none" stroke="#3e6e54" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Bag it</div>`);
+  box(C.btn, 22, 256, 366, 58);
+
+  // --- journal screen
+  const jS = el('div', 'abs', scr); S.journal = jS; box(jS, 0, 0, SW, SH); jS.style.background = '#f3f1e4';
+  el('div', 'abs', jS, `<svg width="12" height="20" viewBox="0 0 12 20" style="position:absolute;left:0;top:2px"><path d="M10 2 L2 10 L10 18" fill="none" stroke="#3e6e54" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span style="position:absolute;left:18px;top:0;font-size:17px;color:#3e6e54">Map</span>`).style.cssText += 'left:16px;top:64px';
+  el('div', 'abs', jS, '<div style="width:430px;text-align:center;font-size:17px;font-weight:700">Journal</div>').style.cssText += 'left:0;top:64px';
+  S.year = riser(jS, 33, 100, 200, 46, '<div class="serif" style="font-size:36px;font-weight:600;line-height:46px">2026</div>');
+  S.ycount = riser(jS, 33, 146, 220, 22, '<div class="sec" style="font-size:14px;line-height:22px">6 fells · 9 photos</div>');
+  S.print = el('div', 'abs', jS, `<div style="position:absolute;inset:0;border-radius:16px;background:rgba(62,110,84,.14)"></div>
+    <div style="position:absolute;left:0;top:0;width:122px;height:32px;display:flex;align-items:center;justify-content:center;gap:6px;color:#3e6e54;font-size:14px;font-weight:600">
+    <svg width="16" height="16" viewBox="0 0 24 24"><path d="M6 9V3h12v6M6 18H4a1 1 0 0 1-1-1v-6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v6a1 1 0 0 1-1 1h-2M7 14h10v7H7z" fill="none" stroke="#3e6e54" stroke-width="2" stroke-linejoin="round"/></svg>Print album</div>`);
+  box(S.print, 275, 117, 122, 32);
+  const J = [['catbells', '14 Mar', 'p8465231', 0, ''], ['helvellyn', '4 Apr', null, 0, ''], ['scafell-pike', '23 May', 'p16520669', 3, 'Up from Wasdale Head.'],
+    ['tarn-crag-easedale', '12 Jun', 'p18774238', 0, ''], ['skiddaw', '18 Jul', null, 0, ''], ['great-gable', '26 Sep', 'p35734483', 4, 'Via Green Gable. Clear on top.']];
+  S.tiles = J.map(([id, d, ph, n, note], i) => {
+    const f = F.find(x => x.id === id), t = el('div', 'jt', jS); box(t, 33 + (i % 2) * 188, 186 + Math.floor(i / 2) * 250, 176, 240);
+    const img = el('div', 'img', t);
+    if (ph) img.style.backgroundImage = `url(assets/${ph}.jpg)`;
+    else { img.style.background = 'linear-gradient(135deg,#3e6e54,#1f4232)'; img.innerHTML = contourSVG(176, 176, 123, 70, 9, 11, '#fafae8') +
+      `<div style="position:absolute;left:10px;bottom:10px"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M1 20 L8 8 L12 14 L15 9.5 L23 20 Z" fill="#e3a23b"/></svg><div class="serif" style="color:#fafae8;font-weight:600;font-size:15px">${Math.round(f.m)} m</div></div>`; }
+    if (n) el('div', 'badge', img, `<svg width="12" height="10" viewBox="0 0 24 20" style="vertical-align:-1px;margin-right:3px"><rect x="5" y="1" width="18" height="14" rx="3" fill="none" stroke="#fff" stroke-width="2.2"/><path d="M1 5v11a3 3 0 0 0 3 3h14" fill="none" stroke="#fff" stroke-width="2.2"/></svg>${n}`);
+    el('div', 'nm', t, f.name.replace(/ \(.*\)/, '')); el('div', 'dt', t, d); if (note) el('div', 'nt', t, note);
+    return t;
+  });
+  S.ggImg = S.tiles[5].querySelector('.img');
+
+  // --- finger (world space)
+  S.finger = el('div', 'finger', cam);
+
+  // --- payoff flood (screen space) carrying the result
+  const fl = el('div', 'abs', fx); S.flood = fl; box(fl, 0, 0, W, H); fl.style.background = '#e3a23b'; fl.style.zIndex = 5;
+  const R = S.res = el('div', 'abs', fl); box(R, 0, 0, W, H); R.style.transformOrigin = '0 0';
+  S.badge = el('div', 'abs', R, `<svg width="240" height="240" viewBox="0 0 240 240"><circle cx="120" cy="120" r="116" fill="#1f4232"/><circle cx="120" cy="120" r="98" fill="#fafae8"/><circle cx="120" cy="120" r="84" fill="#e3a23b"/>
+    <path d="M82 124 L108 150 L160 94" fill="none" stroke="#1f4232" stroke-width="17" stroke-linecap="round" stroke-linejoin="round"/></svg>`); box(S.badge, 420, 250, 240, 240);
+  S.rName = riser(R, 0, 520, W, 150, `<div class="serif" style="width:${W}px;text-align:center;font-size:124px;font-weight:700;line-height:150px;color:#112318;letter-spacing:-0.02em">Great Gable</div>`);
+  S.rDate = riser(R, 0, 672, W, 60, `<div style="width:${W}px;text-align:center;font-size:40px;font-weight:600;line-height:60px;color:#1f4232">Bagged · 26 Sep 2026</div>`);
+  S.rNumA = riser(R, 200, 770, 380, 230, `<div class="serif" style="width:380px;text-align:right;font-size:210px;font-weight:600;line-height:230px;color:#112318">47</div>`);
+  S.rNumB = el('div', 'abs', S.rNumA.c, `<div class="serif" style="width:380px;text-align:right;font-size:210px;font-weight:600;line-height:230px;color:#112318">48</div>`); box(S.rNumB, 0, 230, 380, 230);
+  S.rOf = riser(R, 600, 900, 320, 80, `<div style="font-size:60px;font-weight:600;line-height:80px;color:#1f4232">of 214</div>`);
+  S.rows = AREAS.map((a, i) => {
+    const r = riser(R, 110, 1080 + i * 94, 860, 88, '');
+    r.c.innerHTML = `<div class="abs" style="left:0;top:4px;font-size:36px;font-weight:600;color:#112318">${a}</div>`;
+    const cnt = el('div', 'mask', r.c); box(cnt, 560, 2, 300, 50);
+    const n0 = el('div', '', cnt, `<div style="width:300px;text-align:right;font-size:36px;font-weight:600;line-height:50px;color:#1f4232">${DONE[i]} / ${TOTAL[i]}</div>`);
+    const n1 = el('div', '', cnt, `<div style="width:300px;text-align:right;font-size:36px;font-weight:700;line-height:50px;color:#112318">${DONE[i] + 1} / ${TOTAL[i]}</div>`); n1.style.top = '50px';
+    const track = el('div', 'abs', r.c); track.style.cssText += 'border-radius:7px;background:rgba(31,66,50,.18)'; box(track, 0, 60, 860, 14);
+    const fill = el('div', 'abs', track); fill.style.cssText += 'border-radius:7px;background:#1f4232'; box(fill, 0, 0, 0, 14);
+    return { r, cnt: [n0, n1], fill };
+  });
+
+  // --- line: the Print album pill grows into the frame
+  const g = el('div', 'abs', fx); S.grow = g; g.style.cssText += 'background:#3e6e54;overflow:hidden;z-index:6';
+  S.rings = el('div', 'abs', g, contourSVG(W, H, 540, 900, 18, 58, '#fafae8', 1.6)); box(S.rings, 0, 0, W, H);
+  S.gLab = el('div', 'abs', fx, '<div style="white-space:nowrap;color:#3e6e54;font-weight:600">Print album</div>'); S.gLab.style.zIndex = 7; S.gLab.style.transformOrigin = '0 0';
+  const words = (s, y) => s.split(' ').map(w => { const r = riser(fx, 0, y, 10, 130, `<div class="serif" style="font-size:104px;font-weight:600;line-height:130px;color:#fafae8;letter-spacing:-0.01em">${w}</div>`); r.m.style.zIndex = 8; return r; });
+  S.l1 = words('Bag it on the hill.', 780); S.l2 = words('Write it up at home.', 930);
+
+  // --- mark
+  S.dots = [...Array(7)].map(() => { const d = el('div', 'abs', fx); d.style.cssText += 'border-radius:50%;background:#e3a23b;border:4px solid #1f4232;z-index:9'; d.innerHTML = TICK('#1f4232', 3.2); return d; });
+  S.logo = el('div', 'abs', fx); S.logo.style.cssText += 'overflow:hidden;background:url(assets/logo.png) center/cover;box-shadow:0 18px 50px rgba(17,35,24,.35);z-index:9';
+  S.word = riser(fx, 0, 1050, W, 120, `<div class="serif" style="width:${W}px;text-align:center;font-size:92px;font-weight:600;line-height:120px;color:#fafae8;letter-spacing:-0.015em">Wainwrights Baggers</div>`);
+  S.tag = riser(fx, 0, 1182, W, 56, `<div style="width:${W}px;text-align:center;font-size:36px;font-weight:500;line-height:56px;color:#fafae8;opacity:.9">A quiet tracker for the 214 Wainwrights.</div>`);
+  S.url = riser(fx, 0, 1262, W, 50, `<div style="width:${W}px;text-align:center;font-size:30px;font-weight:600;line-height:50px;color:#f3d49a">Coming soon to iPhone · wainwrightsbaggers.com</div>`);
+  for (const r of [S.word, S.tag, S.url]) r.m.style.zIndex = 9;
+  Object.assign(S, { mapS, map, pin, pinBag, ggBag, sb });
+}
+
+// map view: whole district → Great Gable, with Great Gable's screen point interpolated
+const ggOv = () => ({ x: SW / 2 + (GG.e - OVC.e) * S0, y: AY + (OVC.n - GG.n) * S0 });
+function mapAt(t) {
+  const u = pr(t, B(6.05), B(7.9), E.io5);
+  const s = Math.exp(lerp(Math.log(S0), Math.log(S1), u));
+  const p0 = ggOv(), px = lerp(p0.x, GGP1.x, u), py = lerp(p0.y, GGP1.y, u);
+  return { s, e: GG.e - (px - SW / 2) / s, n: GG.n + (py - AY) / s, u };
+}
+const mapPt = (m, f) => ({ x: SW / 2 + (f.e - m.e) * m.s, y: AY + (m.n - f.n) * m.s });
+
+// finger path in screen points: [beat, x, y]
+function fingerAt(t) {
+  const b = t / P, g = ggOv(), CT = 578;
+  const pts = [[4.9, 470, 880], [5.85, g.x, g.y], [6.35, g.x, g.y], [7.2, 470, 990],
+    [9.1, 470, 990], [9.85, 22 + 226 + 70, CT + 196 + 22], [10.4, 22 + 226 + 70, CT + 196 + 22], [11.75, 215, CT + 285], [12.4, 215, CT + 285],
+    [19.0, 470, 700], [19.85, 336, 133], [21, 336, 133]];
+  let q = pts[pts.length - 1];
+  for (let i = 0; i < pts.length - 1; i++) { const a = pts[i], c = pts[i + 1]; if (b >= a[0] && b <= c[0]) { const u = E.io((b - a[0]) / (c[0] - a[0])); q = [0, lerp(a[1], c[1], u), lerp(a[2], c[2], u)]; break; } }
+  if (b < pts[0][0]) q = pts[0];
+  return { x: SX + q[1], y: SY + q[2] };
+}
+
+// ---- sound (Mixkit ids, see BEATMAP.md)
+for (let a = 0; a < 7; a++) sfx('2358.mp3', a * 0.5, 0.35);
+sfx('1461.mp3', 3.5, 0.35, true);
+sfx('3005.mp3', 4, 0.4); sfx('3005.mp3', 4.5, 0.4);
+sfx('2585.mp3', 6, 0.85); sfx('1492.mp3', 7, 0.5, true);
+sfx('1461.mp3', 7, 0.4, true);
+for (const b of [8, 8.5, 9, 9.5]) sfx('2358.mp3', b, 0.5);
+sfx('2585.mp3', 10, 0.85); sfx('1109.mp3', 10.25, 0.6); sfx('166.mp3', 10.5, 0.35, true);
+sfx('2585.mp3', 12, 0.9); sfx('1143.mp3', 12, 0.6, true); sfx('166.mp3', 12.4, 0.35, true);
+sfx('2867.mp3', 13.5, 0.3);
+for (let i = 0; i < 7; i++) sfx('3005.mp3', 13.75 + i * 0.25, 0.3);
+sfx('2867.mp3', 15.5, 0.3);
+sfx('1471.mp3', 16.4, 0.5, true);
+for (let i = 0; i < 5; i++) sfx('2358.mp3', 17 + i * 0.5, 0.45);
+sfx('2585.mp3', 20, 0.85); sfx('1490.mp3', 21.5, 0.5, true);
+sfx('1461.mp3', 26.6, 0.35, true);
+for (let i = 0; i < 7; i++) sfx('3005.mp3', 27 + i * 0.25, 0.4);
+sfx('3083.mp3', 29.4, 0.45, true); sfx('1461.mp3', 30, 0.35, true);
+
+function seek(t) {
+  const b = t / P, c = camAt(t);
+  TF(cam, `translate(${W / 2 - c.x * c.z}px, ${H / 2 - c.y * c.z}px) scale(${c.z})`);
+
+  // ---------- map
+  const m = mapAt(t);
+  for (const [img, R] of mapImgs) {
+    const x = SW / 2 + (R.E0 - m.e) * m.s, y = AY + (m.n - R.N1) * m.s;
+    TF(img, `translate(${x}px, ${y}px) scale(${m.s * R.mpp})`);
+  }
+  mapImgs[1][0].style.opacity = clamp((m.s - 0.045) / 0.05);
+  const lod = clamp((m.s - 0.03) / 0.08);              // 0 district → 1 close-up
+  const ms = lerp(10, 17, lod);
+  F.forEach((f, i) => {
+    const e = marks[i], p = mapPt(m, f);
+    const t0 = B(f.ai * 0.5) + rnd(i) * B(0.3);
+    let k = sp(t, t0, 3, 0.55);
+    if (f === GG) k *= 1 - pr(t, B(6), B(6) + 0.12);
+    const on = k > 0.01 && p.x > -20 && p.x < SW + 20 && p.y > -20 && p.y < SH + 20;
+    vis(e, on); if (!on) return;
+    box(e, p.x - ms / 2, p.y - ms / 2, ms, ms); e.style.borderWidth = lerp(1.6, 2.2, lod) + 'px';
+    TF(e, `scale(${k})`);
+    if (f.bag) e.firstChild.style.opacity = lod;
+  });
+  // selected pin: grows out of the marker on the tap, turns bracken on the drop
+  const gp = mapPt(m, GG), pk = sp(t, B(6.02), 2.6, 0.6);
+  box(S.pin, gp.x - 27, gp.y - 62, 54, 64); vis(S.pin, b >= 6);
+  S.pin.style.transformOrigin = '27px 62px'; TF(S.pin, `scale(${lerp(0.25, 1, pk)})`);
+  const pb = sp(t, B(12.05), 3, 0.5); vis(S.pinBag, b >= 12); S.pinBag.style.transformOrigin = '27px 27px'; TF(S.pinBag, `scale(${pb})`);
+  vis(S.ggBag, false);
+  for (const L of labels) {
+    const p = mapPt(m, L.f), sel = L.f === GG && b >= 6;
+    const y = p.y + (sel ? 6 : ms / 2 + 2);
+    box(L.r.m, p.x - 60, y, 120, 26);
+    if (L.bt >= 0) { rise(L.r, t, B(L.bt)); vis(L.r.m, true); }
+    else { TF(L.r.c, `translateY(${(1 - clamp((m.s - 0.07) / 0.04)) * 105}%)`); vis(L.r.m, m.s > 0.07); }
+  }
+
+  // ---------- sheet: rises at 3.5, grows into the fell card at 7
+  const CT = 578, sh = S.sheet, up = sp(t, B(3.5), 2.2, 0.7), gr = sp(t, B(6.55), 2.0, 0.72);
+  const top = lerp(772, CT, gr), hh = lerp(150, 344, gr);
+  box(sh, 10, top + (1 - up) * 180, 410, hh); sh.style.borderRadius = '38px';
+  TF(S.prog, `translateY(${hh - 150 + pr(t, B(7.0), B(7.4), E.in) * 200}px)`); vis(S.prog, b < 7.4);
+  const C = S.card;
+  rise(C.title, t, B(6.8)); rise(C.sub, t, B(7.3));
+  vis(C.close, b >= 6.8); TF(C.close, `scale(${sp(t, B(6.8), 3, 0.6)})`);
+  C.tiles.forEach((d, i) => { const k = sp(t, B(8 + i * 0.5), 2.6, 0.6); vis(d, b >= 8 + i * 0.5); TF(d, `translateY(${(1 - k) * 40}px) scale(${lerp(0.7, 1, k)})`); });
+  rise(C.dateRow, t, B(9.5));
+  const dr = pr(t, B(10.25), B(10.25) + 0.3, E.out5);
+  TF(C.d1, `translateY(${-dr * 38}px)`); TF(C.d2, `translateY(${(1 - dr) * 38}px)`);
+  TF(C.pill, `scale(${1 - 0.07 * press(t, 10)})`);
+  const bk = sp(t, B(10.5), 2.4, 0.65); vis(C.btn, b >= 10.5);
+  TF(C.btn, `translateY(${(1 - bk) * 90}px) scale(${1 - 0.05 * press(t, 12)})`);
+
+  // ---------- screens
+  vis(S.mapS, b < 12.6); vis(S.journal, b >= 12.6);
+
+  // ---------- finger
+  const fp = fingerAt(t);
+  box(S.finger, fp.x, fp.y); vis(S.finger, (b >= 4.9 && b < 7.2) || (b >= 9.1 && b < 12.4) || (b >= 19 && b < 20.9));
+  const pp = Math.max(press(t, 6), press(t, 10), press(t, 12), press(t, 20));
+  TF(S.finger, `scale(${(1 / Math.max(1, c.z / 1.3)) * (1 - 0.18 * pp)})`);
+
+  // ---------- payoff flood from the Bag it button
+  const o = toScreen(camAt(B(12)), SX + 215, SY + CT + 285);
+  const Rr = Math.hypot(Math.max(o.x, W - o.x), Math.max(o.y, H - o.y)) * 1.12;
+  const fl = S.flood;
+  vis(fl, b >= 12 && b < 17.3);
+  // back: the flood contracts into the Great Gable tile (tile rect in screen space at the journal camera)
+  const cj = camAt(B(16)), tl = toScreen(cj, SX + 33 + 188, SY + 186 + 500), ts = 176 * cj.z;
+  const back = pr(t, B(16), B(16.8), E.io5), sweep = pr(t, B(16.8), B(17.25), E.io);
+  if (b < 16) fl.style.clipPath = `circle(${pr(t, B(12), B(12) + 0.35, E.out) * Rr}px at ${o.x}px ${o.y}px)`;
+  else {
+    const L = lerp(0, tl.x, back), T = lerp(0, tl.y, back) + sweep * ts, Rt = lerp(0, W - tl.x - ts, back), Bt = lerp(0, H - tl.y - ts, back);
+    fl.style.clipPath = `inset(${T}px ${Rt}px ${Bt}px ${L}px round ${lerp(0, 18 * cj.z, back)}px)`;
+  }
+  const k = lerp(1, ts / W, back);                         // carry the result into the tile
+  TF(S.res, `translate(${lerp(0, tl.x + ts / 2 - W / 2 * k, back)}px, ${lerp(0, tl.y + ts / 2 - 720 * k, back)}px) scale(${k})`);
+  const bs = sp(t, B(12) + 0.06, 2.2, 0.5); TF(S.badge, `scale(${bs})`); S.badge.style.transformOrigin = '120px 120px';
+  rise(S.rName, t, B(12.25)); rise(S.rDate, t, B(12.5));
+  rise(S.rNumA, t, B(13)); rise(S.rOf, t, B(13.1));
+  const nr = pr(t, B(13.5), B(13.5) + 0.3, E.out5); S.rNumA.c.firstChild.style.transform = `translateY(${-nr * 230}px)`; TF(S.rNumB, `translateY(${-nr * 230}px)`);
+  S.rows.forEach((r, i) => {
+    const s0 = 13.75 + i * 0.25; rise(r.r, t, B(s0));
+    const tick = i === 6 ? pr(t, B(15.5), B(15.5) + 0.35, E.out5) : 0;
+    r.fill.style.width = 860 * (DONE[i] + tick) / TOTAL[i] * pr(t, B(s0) + 0.05, B(s0) + 0.45, E.out) + 'px';
+    TF(r.cnt[0], `translateY(${-tick * 50}px)`); TF(r.cnt[1], `translateY(${-tick * 50}px)`);
+  });
+
+  // ---------- journal fills
+  S.tiles.forEach((d, i) => {
+    if (i === 5) { vis(d, b >= 16.8); return; }
+    const s0 = 17 + i * 0.5, k = sp(t, B(s0), 2.6, 0.6); vis(d, b >= s0);
+    d.style.transformOrigin = '88px 88px'; TF(d, `scale(${k})`);
+  });
+  rise(S.year, t, B(16.5)); rise(S.ycount, t, B(16.75));
+  TF(S.print, `scale(${(b >= 16.75 ? sp(t, B(16.75), 3, 0.6) : 0) * (1 - 0.08 * press(t, 20))})`); S.print.style.transformOrigin = '61px 16px';
+
+  // ---------- line: Print album grows into the frame
+  const pc = camAt(B(21)), pa = toScreen(pc, SX + 275, SY + 117), pw = 122 * pc.z, ph = 32 * pc.z;
+  const gu = pr(t, B(21), B(22.1), E.io5);
+  const gx = lerp(pa.x, -260, gu), gy = lerp(pa.y, -260, gu), gw = lerp(pw, W + 520, gu), ghh = lerp(ph, H + 520, gu);
+  box(S.grow, gx, gy, gw, ghh); S.grow.style.borderRadius = Math.min(ghh / 2, lerp(ph / 2, 260, gu)) + 'px';
+  vis(S.grow, b >= 21);
+  S.grow.style.background = `rgb(${[lerp(222, 62, pr(t, B(21), B(21.4))), lerp(231, 110, pr(t, B(21), B(21.4))), lerp(224, 84, pr(t, B(21), B(21.4)))].map(Math.round)})`;
+  box(S.rings, -gx, -gy); S.rings.style.opacity = pr(t, B(21.6), B(22.4));
+  // label: grows to headline size at the frame centre, then slides out up
+  const fs = lerp(14 * pc.z, 120, gu), lw = 0.62 * fs * 11 / 1.0;
+  const lx = lerp(pa.x + (pw - lw * 0.93) / 2 + 13 * pc.z, W / 2 - lw * 0.93 / 2, gu), ly = lerp(pa.y + ph / 2 - fs * 0.62, H / 2 - fs * 0.62, gu);
+  S.gLab.firstChild.style.fontSize = fs + 'px'; S.gLab.firstChild.style.color = pr(t, B(21), B(21.4)) > 0.5 ? '#fafae8' : '#3e6e54';
+  box(S.gLab, lx, ly - pr(t, B(22.05), B(22.05) + 0.24, E.in) * 1100); vis(S.gLab, b >= 21 && b < 22.6);
+  placeWords(S.l1, 22.5, t); placeWords(S.l2, 24.25, t);
+
+  // ---------- mark
+  const mg = sp(t, B(29), 2.4, 0.8);
+  S.dots.forEach((d, i) => {
+    const k2 = sp(t, B(27 + i * 0.25), 3, 0.55), x0 = W / 2 + (i - 3) * 118, sz = 72 * (1 - 0.45 * mg);
+    const x = lerp(x0, W / 2, mg), y = 960;
+    box(d, x - sz / 2, y - sz / 2, sz, sz); TF(d, `scale(${k2})`); vis(d, b >= 27 && b < 29.45);
+  });
+  const lg = sp(t, B(29.35), 2.2, 0.62), lsz = lerp(40, 300, lg), ly2 = lerp(960, 800, pr(t, B(30), B(30.6), E.io));
+  box(S.logo, W / 2 - lsz / 2, ly2 - lsz / 2, lsz, lsz); S.logo.style.borderRadius = lerp(lsz / 2, lsz * 0.225, clamp(lg)) + 'px'; vis(S.logo, b >= 29.35);
+  const wp = pr(t, B(30.1), B(30.1) + 0.45, E.out5);
+  S.word.m.style.clipPath = `inset(0 ${(1 - wp) * 50}% 0 ${(1 - wp) * 50}%)`; TF(S.word.c, 'none'); vis(S.word.m, b >= 30.1);
+  rise(S.tag, t, B(30.6)); rise(S.url, t, B(31.1));
+}
+// tagline words on fixed lines, centred; widths measured once at build (fixed content)
+function placeWords(ws, s0, t) {
+  const gap = 26, tot = ws.reduce((a, r) => a + r.wd, 0) + gap * (ws.length - 1);
+  let x = W / 2 - tot / 2;
+  ws.forEach((r, i) => { box(r.m, x, parseFloat(r.m.style.top), r.wd + 8, 130); x += r.wd + gap;
+    riseOut(r, t, B(s0 + i * 0.375), B(26.5 + i * 0.05)); vis(r.m, t >= B(s0) - 0.01 && t < B(27.2)); });
+}
+
+// ======================= BOOT =======================
+const PRELOAD = ['assets/map_overview.jpg', 'assets/map_detail.jpg', 'assets/logo.png', 'assets/p35734483.jpg', 'assets/p16520669.jpg', 'assets/p18774238.jpg', 'assets/p8465231.jpg'];
+window.ready = Promise.all([fetch('assets/fells.json').then(r => r.json()),
+  document.fonts.load('600 20px Brand').catch(() => console.warn('assets/font.woff2 missing: system font')),
+  document.fonts.load('600 20px Serif').catch(() => console.warn('assets/serif.woff2 missing')),
+  ...PRELOAD.map(s => new Promise(r => { const i = new Image(); i.onload = i.onerror = r; i.src = s; }))])
+  .then(([data]) => document.fonts.ready.then(() => data))
+  .then(data => {
+    build(data);
+    for (const r of [...S.l1, ...S.l2]) { r.c.style.width = 'auto'; r.wd = r.c.firstChild.offsetWidth; }
+    seek(0); return true;
+  });
+Object.assign(window, { seek, SFX, MUSIC, DURATION, P, W, H });
+</script>
+</body>
+</html>

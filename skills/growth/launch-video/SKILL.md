@@ -1,7 +1,7 @@
 ---
 name: launch-video
 description: "Make a code-rendered launch video: one HTML film driven by seek(t), cut to a royalty-free song's beat grid, rendered to a 60 fps MP4 with motion blur and real sound effects. Use when asked for a launch video, a feature promo or demo clip, or motion design for a product."
-version: 1.0.0
+version: 1.1.0
 license: MIT
 mutating: true
 writes_to: ["a new film folder (index.html, audio/, out/)"]
@@ -11,8 +11,9 @@ writes_to: ["a new film folder (index.html, audio/, out/)"]
 
 A 15–20 s keynote-style film for one product feature. Every frame is code: one HTML file whose `seek(t)`
 draws any moment, Playwright screenshots each frame, ffmpeg blends subframes and muxes a beat-cut mix.
-Method from zero (@twoclipping)'s article "How I Make $10K Launch Videos for $0". Worked example:
-[references/example-andy-publicaciones.md](references/example-andy-publicaciones.md).
+Method from zero (@twoclipping)'s article "How I Make $10K Launch Videos for $0". Worked examples:
+[references/example-andy-publicaciones.md](references/example-andy-publicaciones.md) (a web app, 1920x1080) and
+`examples/wainwrights-baggers/` (a phone app with a map, 1080x1920).
 
 ## Contract
 
@@ -42,17 +43,19 @@ Any `no`: install it first (`CHROME: no` → `npx playwright install chromium` a
    (types a request, taps a place, drags a slider), what the viewer must learn in order, the language, the
    frame (1920x1080, 1080x1920 vertical, 1440x1440 square) and length (~32 beats ≈ 16 s). Collect the brand's
    font, logo, colours and any real screen recordings. Done when these head `BEATMAP.md` in the film folder.
-2. **Scaffold.** Copy `templates/` to a new folder outside any product repo (`gitignore` → `.gitignore`),
+2. **Scaffold.** Copy `templates/` to a new folder in the host's git-ignored output or scratch area, outside any
+   product repo (`gitignore` → `.gitignore`),
    `npm install`, put the font at `assets/font.woff2` and the logo in `assets/`, set `W`/`H` in `index.html`.
    Done when `node render.mjs beats` renders the demo.
 3. **Music.** Read [references/audio.md](references/audio.md) in full. Pick a track with a breakdown and a drop,
    run `audio/beats.py`, set `BPM` and `MUSIC` in `index.html`. Done when the drop sits on the payoff beat.
 4. **Beat map and stills.** Read [references/film.md](references/film.md) in full. Write `BEATMAP.md` (one row
-   per beat: what happens, which effect), build the scene, render 4 stills of the key moments.
+   per beat: what happens, which effect), build only the 4 key moments (ask, payoff, result, end card) and
+   render a still of each.
    **STOP**: show the beat map and stills to the human, or when running unattended, check them against the
    film.md checklist and write the verdict in `BEATMAP.md`. Building 30 beats on a story nobody checked is
    the waste this gate prevents.
-5. **Build.** Replace the demo scene with the film. Loop `node render.mjs beats` and read `out/beats.jpg`
+5. **Build.** Fill in every beat between the key moments. Loop `node render.mjs beats` and read `out/beats.jpg`
    until every beat shows a change, no text is clipped, and the smallest text is legible at phone size.
 6. **Sound.** Fetch one Mixkit effect per event, declare each with `sfx()`, run `audio/mix.py`.
    Done when it prints no `MISSING` line.

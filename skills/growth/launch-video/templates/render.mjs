@@ -36,9 +36,14 @@ await page.setViewportSize(size);
 const meta = await page.evaluate(() => ({ SFX: window.SFX, MUSIC: window.MUSIC, DURATION: window.DURATION, P: window.P, W: window.W, H: window.H }));
 fs.writeFileSync(path.join(OUT, 'timeline.json'), JSON.stringify(meta, null, 1));
 
-async function still(beat, file) {
+async function still(beat, file, label = false) {
   await page.evaluate(t => window.seek(t), beat * meta.P);
+  // beats mode stamps the beat number on each cell (a DOM overlay: many ffmpeg builds lack drawtext)
+  if (label) await page.evaluate(b => { const d = document.createElement('div'); d.id = '__beat'; d.textContent = 'b' + b;
+    d.style.cssText = 'position:fixed;left:16px;top:16px;z-index:99999;font:700 64px sans-serif;color:#fff;background:#e0245e;padding:4px 18px;border-radius:12px';
+    document.body.appendChild(d); }, beat);
   await page.screenshot({ path: file, type: 'jpeg', quality: 85 });
+  if (label) await page.evaluate(() => document.getElementById('__beat').remove());
 }
 
 if (mode === 'stills' || mode === 'beats') {
@@ -46,7 +51,7 @@ if (mode === 'stills' || mode === 'beats') {
   fs.rmSync(dir, { recursive: true, force: true }); fs.mkdirSync(dir, { recursive: true });
   const n = Math.floor(meta.DURATION / meta.P);
   const beats = mode === 'beats' ? [...Array(n + 1).keys()] : (arg || '0').split(',').map(Number);
-  for (const [i, b] of beats.entries()) await still(b, path.join(dir, `${String(i).padStart(3, '0')}_b${b}.jpg`));
+  for (const [i, b] of beats.entries()) await still(b, path.join(dir, `${String(i).padStart(3, '0')}_b${b}.jpg`), mode === 'beats');
   if (mode === 'beats') {
     const cols = 6, rows = Math.ceil(beats.length / cols);
     const r = spawnSync('ffmpeg', ['-v', 'error', '-y', '-pattern_type', 'glob', '-i', path.join(dir, '*.jpg'), '-vf', `scale=480:-1,tile=${cols}x${rows}:padding=4`, '-frames:v', '1', path.join(OUT, 'beats.jpg')], { stdio: 'inherit' });
