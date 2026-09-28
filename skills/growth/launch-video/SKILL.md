@@ -66,7 +66,7 @@ Any `no`: install it first (`CHROME: no` → `npx playwright install chromium` a
 ## Anti-patterns
 
 - **The slideshow**: things fade in, hold and fade out. Make every scene come out of the previous one.
-- **Template sheen**: glows, particles, lens flares and 3D flips added for polish. Keep the canon's plain surfaces.
+- **Template sheen**: glows, particles, lens flares and 3D flips added for polish. Let the canon's own surfaces carry it.
 - **Camera ping-pong**: zooming in and straight back out. One move per scene, eased, zoom interpolated in log space.
 - **Synthesised sounds**: they sound cheap. Download real ones.
 - **A guessed beat grid**: autocorrelation alone lands the drop on the wrong beat. Use `beats.py`.

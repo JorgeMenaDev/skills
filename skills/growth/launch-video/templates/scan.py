@@ -5,7 +5,7 @@ if len(sys.argv) < 2: print(__doc__); sys.exit(1)
 fr = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=r_frame_rate",
                      "-of", "csv=p=0", sys.argv[1]], capture_output=True, text=True).stdout.strip() or "60/1"
 fps = float(Fraction(fr))
-w, h = 320, 180
+w, h = 320, 320  # square thumbnails: fine for difference detection at any aspect
 raw = subprocess.run(["ffmpeg", "-v", "quiet", "-i", sys.argv[1], "-vf", f"scale={w}:{h},format=gray", "-f", "rawvideo", "-"], capture_output=True).stdout
 f = np.frombuffer(raw, np.uint8).reshape(-1, h, w).astype(np.float32)
 d = np.abs(np.diff(f, axis=0)).mean((1, 2))

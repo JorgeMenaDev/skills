@@ -3,7 +3,7 @@
 Prints the exact BPM and first-beat offset, per-beat energy, the breakdown/drop candidates, and for each drop
 the MUSIC.offset that starts the song --build beats before it, so the drop lands on film beat --build.
 """
-import subprocess, sys, numpy as np
+import argparse, subprocess, sys, numpy as np
 from scipy.signal import butter, sosfilt
 
 SR = 22050
@@ -75,6 +75,8 @@ def main(path, build=12):
     if not drops: print("DROP none found: pick a track with a breakdown, or place the payoff on a bar downbeat")
 
 if __name__ == "__main__":
-    a = sys.argv[1:]
-    if not a: print(__doc__); sys.exit(1)
-    main(a[0], int(a[a.index("--build") + 1]) if "--build" in a else 12)
+    ap = argparse.ArgumentParser(description="Beat grid fitted to the kick drums, and drop candidates.")
+    ap.add_argument("song")
+    ap.add_argument("--build", type=int, default=12, help="beats of build before the drop (the payoff beat)")
+    a = ap.parse_args()
+    main(a.song, a.build)
