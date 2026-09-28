@@ -10,14 +10,14 @@ The monthly read that says whether SEO is working, per site and across a hub. Ru
    ```
 
 2. **Add outcomes.** Qualified outcomes from search (signups, demos, bookings, orders) for the same month, from the product's analytics. With PostHog, the Organic Outcome Bridge in [conversion.md](conversion.md) gives landing-page outcomes. When attribution is missing, write `unknown` and name the gap; a missing number is never zero.
-3. **Count the bets.** Opened, shipped, won, lost and killed this month, from `bets.md`.
-4. **Call the lanes.** For each lane: keep, cut or re-point, with the clicks-per-URL figure behind the call (see step 5 of [review.md](review.md)).
+3. **Separate delivery and outcomes.** Count opened, prepared, shipped, won, lost and killed bets from `bets.md`, and distinguish delivery-only wins from measured search/business wins. Report qualified outcomes separately; neither a completed fix nor a lead is automatically a customer. Add actual research/preparation cost and operator handoffs where recorded, with unknowns explicit.
+4. **Call the lanes.** For each lane: keep, cut or re-point, with clicks per URL, page age, mature observation windows, role and qualified outcomes behind the call (see [review.md](review.md)). The heuristic is not a deletion or publishing quota.
 5. **Write** `reports/scoreboard-YYYY-MM.md`:
 
    ```md
    # SEO scoreboard: <site>, YYYY-MM
-   | Clicks | Non-brand clicks (query rows, coverage) | Impressions | Search outcomes | Bets won / lost / killed |
-   - What worked: <one line>
+   | Clicks | Non-brand clicks (query rows, coverage) | Impressions | Search outcomes | Shipped / delivery wins / outcome wins / lost / killed |
+   - What worked: <prediction supported, evidence and limits>
    - What we stopped or changed: <one line>
    - Focus next month: <one line>
    ## Lanes

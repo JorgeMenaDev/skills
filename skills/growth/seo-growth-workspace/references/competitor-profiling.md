@@ -2,7 +2,7 @@
 
 Use when a bet or review candidate needs competitor evidence: demand gaps, backlink gaps, local packs, or positioning.
 
-Profiles are dated snapshots, not living documents. Every claim traces to a saved page or a named data pull; label inferences as inferences.
+Full profiles are dated snapshots, not living documents. Every claim traces to a saved page or a named data pull; label inferences as inferences.
 
 ## Selecting The Competitor Set
 
@@ -13,6 +13,10 @@ When the request names the category but not the competitors, build the set befor
 - Name the geo caveat: most search tools proxy from one country (often US), so local-market SERPs (es-CL, pt-BR, ...) are approximations. Record the limitation; a deep profile can verify with `scripts/serp.mjs` set to the local market (`references/data.md`).
 - Skip competitors the site already covers with live alternatives/vs content unless the bet asks to re-audit them — the marginal evidence is small; spend the scan budget on unprofiled players.
 - Cap the set at what the depth budget affords (3–5 for quick scans) and list who was deliberately left out.
+
+## Review-sized discovery
+
+For the review's outside-demand check, inspect only the relevant result/page types needed to distinguish candidates. Record query, market, date, source, format, buyer job and the target site's existing or queued destination in the review. This bounded check is not a full profile and does not require the snapshot/matrix outputs below. Use a profile only when the additional evidence can change a bet.
 
 ## Depth Contract
 

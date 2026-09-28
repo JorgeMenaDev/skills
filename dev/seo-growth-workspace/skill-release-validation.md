@@ -1,58 +1,29 @@
-# Skill Release Validation
+# Skill release validation
 
-Use for `release-dogfood`: testing this skill inside a real target repo before publishing it.
+Validate the portable skill before release. Structural checks cannot tell whether an agent discovers a useful opportunity or finishes the work.
 
-This mode validates the skill, not the target site's SEO backlog. It should expose friction in instructions, install flow, adapters, phase sequencing, and proof requirements.
+## Structural check
 
-## Ground Rules
-
-- Do not deploy, push, commit, mutate admin dashboards, mutate production data, request indexing, send external submissions, or edit app code unless the user explicitly changes scope.
-- Prefer repo, public URL, existing `.seo`, and UI-safe evidence.
-- Do not create or edit `.seo/backlog.md` unless the user explicitly asks for a real SEO operation pass.
-- Mark constrained phases as `partial` or `blocked`; do not force OAuth, dashboard export, or production mutation to make the report look complete.
-- Write one dated report in `.seo/reports/skill-dogfood-YYYY-MM-DD.md` and one short `.seo/log.md` handoff.
-
-## Phase Statuses
-
-Use these statuses for each phase:
-
-| Status | Meaning |
-| --- | --- |
-| `complete` | Phase was exercised with enough repo, public, or existing workspace evidence |
-| `partial` | Phase was exercised but constrained by no-auth, no-mutation, or missing data |
-| `blocked` | Phase could not be usefully exercised without user input or external access |
-| `not applicable` | Phase does not fit the target site type, with evidence |
-
-## Dogfood Flow
-
-1. Validate the installed skill copy:
+From the source repository, run:
 
 ```bash
-bun .agents/skills/seo-growth-workspace/scripts/validate-skill.mjs
+node dev/seo-growth-workspace/check-skill.mjs
 ```
 
-2. Run the installed release evaluator:
+This checks frontmatter/version, the file graph, script help, offline golden data renders and credential-free dry runs. Preserve existing script fixtures unless their behavior intentionally changes.
 
-```bash
-bun .agents/skills/seo-growth-workspace/scripts/evaluate-release.mjs --json --profile-root target=.
-```
+## Behavioral comparison
 
-3. Load `phase-architecture.md` and classify the target.
-4. Read existing `.seo` state without normalizing it unless writes are allowed.
-5. Exercise every phase: classification, technical, metadata, schema, measurement, conversion, content, pSEO, local, authority, reporting.
-6. Separate real target SEO observations from skill frictions.
-7. Map each skill friction to a source file or section that should change.
+For changes to the operating method, use saved real site inputs with enough evidence to choose and prepare work. Keep private customer data and credentials out of the public skill repository.
 
-## Report Shape
+1. Save the starting skill revision and the candidate revision, the exact request, the input manifest and evaluation constraints.
+2. Run fresh agents independently against each version with the same request and raw site evidence. Give them only the applicable skill and inputs. Do not give them the intended answer, suspected defect, proposed fix or the other run's output. Restrict evaluation writes to scratch output and prohibit external mutations.
+3. Include a growth site with live bets awaiting results, a business with a measurable qualified-outcome path, and an explicit maintenance/pause case. Add a held-out case when a finding changes the instructions.
+4. Judge actual outputs: respects the mandate and current decisions; uses performance and outside demand proportionately; chooses against alternatives; identifies original proof; avoids live/queued duplicates; produces substantiated useful work and an exact handoff; distinguishes delivery from outcomes; handles capacity/interference; keeps unknowns honest. Record failures and trade-offs, not just a pass count.
+5. Fix observed instruction failures and rerun the affected behavior. A small replay is evidence about those cases, not proof of general model reliability or future rankings.
 
-Use `templates/skill-dogfood-report.md`.
+## Live use and release record
 
-Every report should include:
+After checks and the normal repository review/release flow, install through the consumer's normal installer. Verify the installed revision and runtime copies. Exercise the changed method on one named live site under its existing authorization; dry-run evaluations do not establish live execution. Record the useful work advanced, actual requests/cost where available, preparation effort, handoffs, unresolved constraints and next outcome check. Do not claim a route was exercised merely because its instructions exist.
 
-- target root and installed skill path,
-- constraints honored,
-- commands run,
-- phase coverage table,
-- skill frictions with source file pointers,
-- real SEO observations separated from skill issues,
-- incomplete work and limitations.
+Record the source revision, commands/results, behavioral evidence and named-site limitations in a dated file under `dev/seo-growth-workspace/`. The site's own report and bet remain its operational record. No second site ledger or universal release dashboard is needed.

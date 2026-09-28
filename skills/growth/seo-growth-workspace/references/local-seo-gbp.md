@@ -12,7 +12,7 @@ Use the evidence rules in SKILL.md. The local visibility states and measurement 
 2. Use Google Maps/GBP/public listings or authenticated GBP where available.
 3. Record observations before comparing the business against 3-5 competitors.
 4. Output a matrix, then prioritized hypotheses and actions with an owner and recheck window.
-5. Write descriptions, review responses, post calendars, or citation fixes only when requested and send every public or authenticated mutation through the approval gate.
+5. When the review selects a local bet, prepare the exact description, review response, post or citation fix it needs within the existing mandate. Apply the factual, eligibility and publication gates below before execution.
 
 ## Profile Count And Eligibility
 
@@ -42,6 +42,10 @@ Never treat profile count as a local-ranking or growth lever. Default to one Bus
 | Local intent | Keyword stages from problem to ready-to-hire | Keyword-to-page/GBP strategy |
 
 These eight rewritten GBP outputs—categories, attributes, reviews, review responses, posts, services, description, and photos—organize observations and proposals. Competitor recurrence can motivate a hypothesis, but it does not establish a ranking requirement or cause.
+
+## From opportunity to work
+
+Connect the local candidate to a real customer job and the site's focus using [review.md](review.md). Prepare the exact eligible profile edit, service/location page, useful asset or booking-path correction, with factual proof and the conversion destination. Collect missing business facts with a specific question and owner. Carry the completed package through [ship.md](ship.md), applying the mutation gate below and the site's existing authorization. A competitor observation or generic recommendation alone is not completion.
 
 ## GBP observation and mutation ledgers
 

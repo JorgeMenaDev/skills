@@ -1,42 +1,45 @@
-# Content plan setup - YYYY-MM-DD
+# Content work package: <customer job>, YYYY-MM-DD
 
-## Scope
+Use only sections relevant to the selected work. If the engine already holds these fields, link its research, plan and exact revision instead of duplicating them.
 
-Project:
-Locale/lane:
-Market:
-Publishing destination:
+## Choice
 
-## Preflight
+- Bet / current focus:
+- Audience, buyer job, market and language:
+- Demand and live result evidence, with dates and limits:
+- Existing and queued destinations inspected:
+- Keep / refresh / create / merge decision and reason:
+- Why this beats the strongest alternative:
 
-| Gate                                        | Status  | Evidence | Blocker |
-| ------------------------------------------- | ------- | -------- | ------- |
-| Business context exists                     | Unknown |          |         |
-| Content engine project exists               | Unknown |          |         |
-| Blog renderer/publishing destination exists | Unknown |          |         |
-| Sitemap includes blog routes                | Unknown |          |         |
-| Backend and UI agree                        | Unknown |          |         |
+## Evidence and plan
 
-## Keyword universe
+- Distinctive contribution:
+- Page evidence / fetched sources / first-hand proof:
+- Missing evidence: completed collection, exact remaining question or test, owner:
 
-| Tier | Count | Notes |
-| ---- | ----: | ----- |
-| P1   |     0 |       |
-| P2   |     0 |       |
-| P3   |     0 |       |
+| Section | Reader question / useful answer | Source / proof | Example or asset | Intended link |
+| --- | --- | --- | --- | --- |
 
-## Scheduled topics
+## Finished work
 
-| Date | Keyword | Cluster | Content type | Intent | Status |
-| ---- | ------- | ------- | ------------ | ------ | ------ |
+- Complete draft/build or exact engine revision/PR:
+- Editorial/factual checks and revisions made:
+- Relevant incoming/outgoing link changes: source URL + passage, exact replacement, target and reader purpose:
+- CTA, destination and observed event or measurement gap:
+- Additional distribution, if justified:
 
-## Verification commands or sources
+## Execution and proof
 
-```bash
+- Existing approval basis; exact revision review if required:
+- Execution owner and route:
+- Checks completed / remaining gate:
+- Preview/live URL and rendered verification:
+- Baseline, success/kill rule and outcome check date:
+- Precise next action and dependency:
 
-```
+## Calendar work, when applicable
 
-## Blockers and next actions
+| Date | Keyword / customer job | Locale | Content type | Existing article / revision | Status |
+| --- | --- | --- | --- | --- | --- |
 
-| Priority | Issue | Next action |
-| -------- | ----- | ----------- |
+Record project, destination, backend/UI readback and next queued item. Keep keyword tiers only when the engine requires them.

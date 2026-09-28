@@ -31,10 +31,26 @@ Credentials are locations (a directory or environment variable name), never valu
    ## Review budget: live checks and demand requests per review (default 10 and 1)
    ```
 
-2. Create `strategy.md` (owner decisions, newest first, each dated), `bets.md` (`## Open` and `## Closed`), `research.md`, `log.md` and `reports/data/`.
+2. Create `strategy.md` with the current focus below and dated owner decisions, newest first, `bets.md` (`## Open` and `## Closed`), `research.md`, `log.md` and `reports/data/`.
 3. Prove Search Console access with a small pull (`gsc-fetch.mjs --dimensions none` over the last 28 days). First-time OAuth: `scripts/gsc-oauth.mjs --help`. No access means the first bet is getting it, and the review runs on live checks and demand data alone.
 4. Run a technical crawl once (command in [data.md](data.md)) and keep its findings in the first review's candidate list.
 5. Run `review`.
+
+## Current focus
+
+Keep this short section at the top of `strategy.md`, with links to the owner decisions and evidence behind it:
+
+```md
+## Current focus, updated YYYY-MM-DD
+- Customer and market: <who, country/language, relevant buyer job>
+- Business outcome: <desired action; agreed target if one exists; baseline/date or Unknown>
+- Constraint: <what limits progress, evidence and uncertainty>
+- Chosen opportunity: <coherent customer opportunity and hypothesis; bet IDs>
+- Capacity and authority: <growth/maintenance/paused, effort/cadence, execution boundary>
+- Next decision: <what evidence or due date changes the choice>
+```
+
+Derive this from current owner decisions; do not invent a target, new market or commitment. Later explicit decisions supersede old summaries. Reconcile touched context/registry summaries with them rather than keeping competing truths. On an existing v8 workspace, add this section at the next review; retain existing bets, dates and evidence. No new ledger or cadence is needed.
 
 ## Migrating a v7 workspace
 
