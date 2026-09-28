@@ -1,5 +1,21 @@
 # Changelog
 
+## 9.0.0
+
+Reviews now carry a focused business opportunity from performance and outside-demand evidence into useful work, distribution, conversion and the next learning decision. Existing v8 workspace records, tools and specialist capabilities remain.
+
+- Add a concise current focus to `strategy.md`, derived from dated owner decisions, with capacity and the next decision.
+- Require bounded discovery beyond own GSC in active growth reviews, active collection of original proof, one prioritization method and the strongest rejected alternative.
+- Finish authorized work or a complete reviewable package and explicit handoff. Scheduled runs inherit existing site/run authority instead of universally stopping at proposals; a schedule grants no new public-action or outreach permission.
+- Connect intent and live/queued inventory to destination choice, sources, section plan, draft/build, editing, exact contextual link changes, conversion and rendered proof. Reuse engine-native records.
+- Continue independent useful work while live bets mature; preserve owner freezes and the three-unshipped-bet limit. Separate delivery wins from search/business outcomes and record the prediction that changes the next choice.
+- Keep lane decisions sensitive to age, observation windows, role and qualified outcomes. Move community-source publication and image-rights procedures to conditional references.
+- Replace the retired release-validation instructions with current structural and behavioral checks.
+
+## 8.1.1
+
+Preserves the credential-request hardening in `gsc-fetch.mjs` shipped in PR #195. The patch version was already in SKILL.md; this entry restores the missing changelog record.
+
 ## 8.1.0
 
 `references/data.md` and `references/ai-search-visibility.md` add Bing Webmaster Tools' AI Performance report as an observed AI-citation source: citations, cited pages and grounding queries for Copilot and Bing AI summaries, exported as CSV (no API). Grounding queries become an accepted panel source, with their limit (engine search phrases, not user prompts), and a source of `gap` candidates when the cited page only loosely answers them. The export observes citations only, so the panel still covers mentions, recommendations and other engines. Found in the 2026-09-26 source review of a Refix SEO article (matias `vault/AGENT-DESK/reports/2026-09-26-refix-seo-loop-source-review.md`); until now, the skill's only AI-answer evidence was prompt panels it built itself.

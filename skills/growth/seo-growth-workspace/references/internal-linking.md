@@ -23,6 +23,12 @@ Check:
 
 Run the crawl in [data.md](data.md) (`seo report --url <origin>`). Its `broken_internal_link`, `orphan_page` and `weak_internal_links_to_valuable_page` findings seed the matrix above; each is a review item, not a verdict. The crawl samples about 100 pages by default, so a page missing from it is not proof of an orphan: confirm with the sitemap and the rendered HTML of the likely source pages before adding a row.
 
+## Deliverable link edits
+
+For a selected page, inspect both relevant pages that could link **in** and the selected page's useful links **out**. For every proposed edit provide source URL and current passage/section, exact replacement containing the natural anchor, target URL, and the reader reason for the link. With no suitable existing passage, supply the complete new passage and its insertion point. Link only to available destinations; queued drafts do not become broken public links. Choose links by usefulness, without a fixed link-count quota.
+
+Put these changes in the page's existing package or PR. At delivery, verify the rendered anchor, destination and surrounding meaning, not only a source-code occurrence.
+
 ## Done Criteria
 
 - Link exists in rendered HTML or verified route output.

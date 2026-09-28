@@ -1,15 +1,16 @@
 # Ship
 
-Turns an approved bet into a live change with a baseline, so the review can judge it later.
+Carry a chosen bet through preparation, authorized execution and live proof. A review invokes this method in the same run; it does not need a second request to prepare useful work.
 
-1. **Confirm approval.** The bet is `approved` in `bets.md`, by the owner or by a standing boundary written in `context.md`. Anything that publishes, deploys, sends outreach or changes a content-engine schedule needs that approval; a scheduled run never ships.
-2. **Route the work.**
-   - Page or code change: the product repository's normal branch, review and deploy flow.
-   - Engine content (SuperaSEO or another webhook publisher): [content-engine-webhooks.md](content-engine-webhooks.md).
-   - Listings, links and outreach: [backlinks-entity.md](backlinks-entity.md).
-   - Search Console, Bing, Google Business Profile or other admin surfaces: the owning reference; screenshot or read back the setting after the change.
-3. **Pass the launch gates.** Every new or materially revised public page passes [pages.md](pages.md): substantiated claims, information gain, approved revision, and live checks for status 200, self-canonical, indexable, in the sitemap, linked from at least one relevant page, and rendered on a mobile viewport. Comparisons, pricing and affiliate content also pass [commercial-integrity.md](commercial-integrity.md).
-4. **Record the bet as live.** Add the live date, the evidence (URL, commit or admin readback) and the baseline: the bet's metric over the 28 days before the live date, final data. When the page is new, the baseline is zero impressions unless Search Console already shows the URL. Set the check date: live date + 28 days for changes to existing pages, + 42 days for new pages.
-5. **Log it** in two or three sentences.
+1. **Establish authority and destination.** Read the bet, current focus, site boundary and existing owner decisions. Reuse granted authorization. A new public action needs the applicable approval; a scheduled run has no extra authority. Prepare reversible work while a publication decision is pending. Preserve exact-revision review, product PR/merge ownership and engine restrictions where the site requires them. Outreach needs explicit authorization.
+2. **Prepare the complete work.**
+   - Page/code: [content-ops.md](content-ops.md) connects intent and existing/queued inventory to evidence, section plan, draft/build, edit, contextual links and CTA. Use the product repository's normal branch/review/deploy process.
+   - Engine content: use its native research, plan, draft and revision evidence through [content-engine-webhooks.md](content-engine-webhooks.md); no second generator or approval ledger.
+   - Authority/local: qualify audience fit and eligibility, then prepare the exact profile change, useful asset or individual outreach draft through [backlinks-entity.md](backlinks-entity.md) or [local-seo-gbp.md](local-seo-gbp.md). Include a useful destination and follow-up; a prospect list alone is not a finished selected bet.
+   - Other admin work: prepare the exact setting/change and expected effect using its owning reference.
+3. **Connect distribution and conversion.** Name how the intended customer reaches the work and the useful next action. For pages, inspect relevant incoming and outgoing links using [internal-linking.md](internal-linking.md). For conversion questions use [conversion.md](conversion.md). Choose proportionate distribution; outreach is not required for every page.
+4. **Execute through the owner and pass the gates.** Every new or materially revised public page passes [pages.md](pages.md); commercial pages also pass [commercial-integrity.md](commercial-integrity.md). Run applicable checks and inspect the rendered result. For admin changes, read back or capture the setting. When execution needs a decision or another actor, hand off finished copy/code, evidence, exact revision, verification steps, remaining gate, owner and next action. Keep it proposed/approved as appropriate and link the handoff in the bet. Do not label preparation as publication.
+5. **Record delivery and measurement separately.** Only verified delivery makes the bet `live`. Add live date, URL/commit/admin readback, and its metric over the preceding 28 days of final data. A genuinely new URL has no prior URL performance; verify available history and keep unavailable metrics unknown. Check existing-page outcomes at live date + 28 days, new-page outcomes + 42 days, unless a justified bet-specific window was recorded. Delivery defects can be checked immediately. Record overlapping changes and attribution limits.
+6. **Log the result and next owner.** Two or three sentences: what advanced, proof, remaining dependency and next decision. Follow up on pending handoffs in the next review. Search measurement for this bet does not block independent useful work.
 
-Done when the bet reads `live` with evidence, baseline and check date, and the change is verified on the live site.
+Done when the bet is live and verified with baseline/check date, or the complete reviewable package has reached its execution owner with the precise dependency. If necessary evidence is unavailable, record the completed collection attempt and the smallest remaining evidence action; do not substitute a generic recommendation.

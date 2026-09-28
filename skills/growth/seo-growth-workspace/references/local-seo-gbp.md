@@ -43,6 +43,10 @@ Never treat profile count as a local-ranking or growth lever. Default to one Bus
 
 These eight rewritten GBP outputs—categories, attributes, reviews, review responses, posts, services, description, and photos—organize observations and proposals. Competitor recurrence can motivate a hypothesis, but it does not establish a ranking requirement or cause.
 
+## From opportunity to work
+
+Connect the local candidate to a real customer job and the site's focus using [review.md](review.md). Prepare the exact eligible profile edit, service/location page, useful asset or booking-path correction, with factual proof and the conversion destination. Collect missing business facts with a specific question and owner. Carry the completed package through [ship.md](ship.md), applying the mutation gate below and the site's existing authorization. A competitor observation or generic recommendation alone is not completion.
+
 ## GBP observation and mutation ledgers
 
 Save both ledgers using `templates/local-seo-gbp.md`. Keep observations, proposed actions, completed actions, and later outcomes as separate records.

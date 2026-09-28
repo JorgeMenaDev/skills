@@ -1,7 +1,7 @@
 ---
 name: seo-growth-workspace
-description: "Use when growing organic search traffic for a product or local-business website: weekly SEO review, deciding what to build or fix next for search, sizing search opportunities, shipping SEO bets, traffic drops, AI-search visibility, and the monthly SEO scoreboard. Triggers: \"SEO review\", \"what should we do for SEO\", \"why am I not ranking\", \"my traffic dropped\", \"set up SEO\", \"monthly SEO report\", \"how do we show up in ChatGPT\". Keeps a .seo workspace per site (one repo, or a hub of many sites), picks one to three evidence-backed bets a week, ships them, and stops lanes that do not earn clicks."
-version: 8.1.1
+description: "Use when growing organic search traffic for a product or local-business website: weekly SEO review, deciding what to build or fix next for search, sizing search opportunities, shipping SEO bets, traffic drops, AI-search visibility, and the monthly SEO scoreboard. Triggers: \"SEO review\", \"what should we do for SEO\", \"why am I not ranking\", \"my traffic dropped\", \"set up SEO\", \"monthly SEO report\", \"how do we show up in ChatGPT\". Keeps a .seo workspace per site (one repo, or a hub of many sites), connects business goals and demand discovery to finished work, distribution, conversion and measured learning."
+version: 9.0.0
 license: MIT
 mutating: true
 writes_to: [".seo/"]
@@ -9,22 +9,23 @@ writes_to: [".seo/"]
 
 # SEO Growth Workspace
 
-The job is more qualified visitors from search. Every run does one of three things: finds the next bets, ships one, or keeps score. Work that does none of those is out of scope, however tidy it looks.
+The job is to attract people the business can serve and help them take a useful next step. Work through one cycle: business constraint → customer evidence and demand → focused opportunity → finished work → distribution and conversion → learning. A review advances that cycle, including execution within existing authorization.
 
 ## Contract
 
-1. **Bets, not tickets.** Work lives in `bets.md` as a few open bets, each with a hypothesis, a size, a check date and a kill rule. At most three unshipped bets per site.
-2. **Demand before effort.** A bet that creates or rewrites a page names the demand it serves: Search Console rows for demand the site already touches, a volume estimate or live result check for demand it does not.
-3. **Score lanes, not URLs.** A bet is checked once, at its check date. Pages without a bet are judged as a lane (a URL group such as `/blog`) in the review and the scoreboard, never one by one.
-4. **Stop what does not earn.** Every review names the lanes to keep, cut or re-point, using the lane table in the data pack.
-5. **Honest evidence.** Follow the evidence rules below in every report, bet and log line.
+1. **Keep a current focus.** `strategy.md` names the customer, business outcome, constraint, chosen opportunity and capacity, grounded in owner decisions. Unknown outcomes stay unknown.
+2. **Discover beyond current rankings.** Active growth reviews combine site performance with bounded outside demand and buyer evidence. Maintenance and owner pauses still govern effort.
+3. **Finish useful work.** Advance an authorized change or prepare the complete work and an explicit handoff. Missing proof becomes a specific collection action. A generic recommendation is not completion.
+4. **Keep few bets moving.** At most three unshipped bets per site. Live bets awaiting results do not use those slots. Defer independent work only for a stated capacity, owner or interference reason.
+5. **Learn before expanding.** Check outcomes when due, distinguish delivery from business results, and judge URL groups by maturity, purpose and qualified outcomes as well as clicks. Record the next decision that changes.
+6. **Use honest evidence.** Follow the rules below in every report, bet and log line.
 
 ## Workspace
 
 ```text
 .seo/                        standalone: one site; hub: HUB_ROOT with registry.md and sites/<slug>/
   context.md    business, market, conversions, brand terms, approval boundary, data access
-  strategy.md   dated owner decisions that constrain bets
+  strategy.md   current focus and dated owner decisions that constrain bets
   bets.md       open and closed bets
   research.md   log of paid lookups, reused for 30 days
   log.md        one short prose entry per run
@@ -37,8 +38,8 @@ SITE_WORKSPACE is the one site folder a run works in, and `.seo/<file>` in any r
 
 | Mode | Use when | Read first | Done when |
 | --- | --- | --- | --- |
-| `review` | Weekly, or "what should we do for SEO", or traffic dropped | [references/review.md](references/review.md) | Review report written, `bets.md` updated, log entry added |
-| `ship` | A bet is approved | [references/ship.md](references/ship.md) | Bet live and verified, baseline and check date recorded |
+| `review` | Weekly, or "what should we do for SEO", or traffic dropped | [references/review.md](references/review.md) | Useful work advanced or complete handoff prepared; evidence, bets and log agree |
+| `ship` | A chosen bet needs preparation or authorized execution | [references/ship.md](references/ship.md) | Live and verified, or finished package with exact dependency and owner |
 | `scoreboard` | First days of a month | [references/scoreboard.md](references/scoreboard.md) | Scoreboard report written with lane calls |
 | `setup` | No `.seo/`, a new hub site, or a v7 workspace | [references/setup.md](references/setup.md) | Workspace files exist and Search Console access is proven |
 
@@ -55,7 +56,7 @@ Read the mode's reference in full before its first step. Data sources, commands 
 
 ## Unattended runs
 
-A scheduled or delegated run reads anything, writes only SITE_WORKSPACE, and ends with its report. It proposes bets and never publishes, deploys, requests indexing, changes content-engine schedules or sends outreach; that work becomes a bet with status `proposed`. In a hub the prompt names the site; a missing workspace or unnamed site ends the run as blocked. The last line of the run is one JSON object:
+Scheduled and delegated runs follow the same method and existing authority as interactive runs. Read the site boundary and the run's explicit restrictions before acting. Prepare work in SITE_WORKSPACE or the authorized repository; execute through the existing owner and ship process when authorized. A schedule alone grants no publication, deployment, indexing, engine-setting or outreach permission. Outreach needs explicit authorization. If execution is restricted, finish the reviewable package and name its handoff, dependency and owner. In a hub the prompt names the site; a missing workspace or unnamed site ends the run as blocked. The last line of the run is one JSON object:
 
 ```json
 {"status":"ok|alerted|blocked","site":"…","mode":"review","next_move":"one line","bets_opened":[],"bets_resolved":[],"needs_owner":[]}

@@ -15,12 +15,12 @@ If any gate fails, record a `defect` candidate before importing or scheduling co
 
 ## Keyword Research
 
-Seed sources, strongest evidence first:
+Seed from both current performance and outside demand, within the review budget:
 
 1. First-party Search Console data: the "Non-brand queries with demand" table in the latest data pack (`scripts/review-data.mjs`), which lists queries already earning impressions.
 2. Competitor demand gaps (matrix below).
 3. Utility/tool opportunities: calculators, generators, checkers, formatters, templates, and public datasets where the SERP intent is task completion; load `utility-tool-pages.md` before planning these.
-4. Community demand research: manually inspect relevant forums and Q&A sources for questions and frustrations. This is research input only; publishing an owned synthesis of community material is a separate specialist surface governed by [Community-source Pages](content-ops.md).
+4. Community demand research: manually inspect relevant forums and Q&A sources for questions and frustrations. This is research input only; publishing an owned synthesis of community material is a separate specialist surface governed by [Community-source pages](community-source-pages.md).
 5. Support tickets and sales-call questions/objections.
 
 Validate each candidate against the live SERP: what ranks, in what format (guide, listicle, tool, comparison), which SERP features. Write only where the format matches intent and you can add information gain.
@@ -34,34 +34,26 @@ Buyer-stage modifiers:
 | Decision       | pricing, reviews, demo, trial     |
 | Implementation | template, tutorial, setup, how to use |
 
-Score each candidate 1-10 per factor:
+Choose with the common decision method in [review.md](review.md): business fit, demand, distinctive value, plausible gain, confidence and effort/capacity, compared with the strongest alternative. Engine keyword tiers may be routing metadata; they are not a second priority score.
 
-| Factor             | Weight | Ask                                                              |
-| ------------------ | -----: | ---------------------------------------------------------------- |
-| Customer impact    |    40% | How often/intensely this pain appears in tickets, calls, research |
-| Content-market fit |    30% | Maps to what the product solves; unique insight available         |
-| Search potential   |    20% | Volume, competitiveness, long-tail room                           |
-| Resources          |    10% | Expertise and assets already on hand                              |
+## From intent to finished page
 
-`priorityScore = 0.4*impact + 0.3*fit + 0.2*search + 0.1*resources`
+1. **Resolve the destination.** Inspect the live URL inventory, planned work, queued drafts and relevant query-to-page evidence. Choose keep, refresh, create or merge, with the buyer job and reason. Keyword/title similarity is a prompt to inspect, not proof of cannibalization. A queue item already serving the job is work to improve, not a reason to create its duplicate.
+2. **Gather proof.** Fetch the sources supporting material claims and inspect available first-hand product/customer evidence. State the distinctive contribution. Collect missing proof with a bounded demonstration, documented test or exact expert question. Draft only what the evidence supports; [pages.md](pages.md) owns the evidence gates.
+3. **Plan before drafting.** Specify sections, the question each answers, sources/proof, real examples, intended links and the next useful customer action. Use an engine's native research and plan when available. Otherwise use [templates/content-plan.md](../templates/content-plan.md), linking the existing page evidence instead of copying it.
+4. **Produce and edit.** Build the tool/page or write the complete draft, then review factual support, intent coverage, useful differences, voice and readability. Revise the specific failures. A section outline or instruction to write an article is not a finished draft. Record an unresolved evidence/implementation dependency rather than fabricating a result.
+5. **Connect and deliver.** Prepare contextual incoming and outgoing link edits with [internal-linking.md](internal-linking.md), and the CTA/destination with [conversion.md](conversion.md). Continue through [ship.md](ship.md) for the existing publish process, rendered proof and measurement. If another actor must approve or execute, provide the exact revision and completed package.
 
-
-## Keyword Batch Shape
-
-Recommended columns/fields:
-
-`id`, `keyword`, `cluster`, `difficulty`, `difficultyTier`, `volumeBucket`, `contentType`, `intent`, `buyerStage`, `relevance`, `priorityScore`, `priorityTier`, `status`.
-
-Prioritize P1 keywords that combine commercial relevance, product fit, and realistic difficulty. Keep P2/P3 for expansion.
+The work package can be an engine revision, product PR or dated report. Reuse those records. A separate document is unnecessary when they already contain the plan, evidence, copy/code, link edits and handoff.
 
 ## Competitor Demand Gaps
 
 Use this when competitors rank for useful demand that the target does not yet capture. Use GSC, a paid keyword/content-gap tool, manual SERP review, or competitor pages; record the source and limitation.
 
-| Keyword | Competitor URL | Buyer stage | Volume/difficulty if known | Existing page | Action | Priority |
+| Keyword | Competitor URL | Buyer stage | Volume/difficulty if known | Existing / queued destination | Missing value | Action |
 | --- | --- | --- | --- | --- | --- | --- |
 
-Actions: optimize an existing page, create a page/article, import to the content engine, add internal links, defer. Do not import every gap; keep only topics with product fit, buyer intent, and a plausible route to ranking or conversion.
+Actions: keep, refresh, create, merge, improve queued content, add internal links or defer. Do not import every gap; keep only topics with product fit, buyer intent, and a plausible route to ranking or conversion.
 
 ## Utility / Free Tool Pages
 
@@ -107,16 +99,9 @@ Naturalness self-check before publish:
 - Avoid template constructions: "whether you're X, Y, or Z", "it's not just X, it's Y".
 - Read a sample aloud; revise anything you would not say to a colleague.
 
-## Report Output
+## Report output
 
-Use `templates/content-plan.md`. Include:
-
-- Data source and script/command used.
-- Keyword tier counts.
-- Scheduled P1 topics.
-- Publish destination and route pattern.
-- UI/backend mismatches.
-- Next article or review action.
+Link the completed engine revision or [templates/content-plan.md](../templates/content-plan.md), with destination decision, proof, section plan, draft/build, exact link edits, CTA and execution handoff. Include source/command and limits. For calendar work, also record actual scheduled rows, next item, destination and UI/backend mismatches. Counts or a calendar alone do not complete a page bet.
 
 ## Content Engine Bridge
 
@@ -129,68 +114,6 @@ When the target uses a content engine:
 - Use the repo's CLI/status commands to verify tiers/calendar/status.
 - Do not print API keys, admin keys, or provider secrets.
 
-## Community-source pages
+## Community-source publication
 
-> **Dogfood status:** fixture-validated only — not yet exercised against a live operation. Keep this path out of any dogfooded-completion claim until its manual gates pass on a named live target.
-
-Use this contract only for an owned page that synthesizes manually accessed, **publicly accessible** community sources: forums, Reddit-like communities, and Q&A sites readable without membership, login, or invitation. Access-controlled conversations (private Discord/Slack workspaces, members-only forums, closed groups) are NOT publishable sources by default — being a member does not grant republication rights. Access-controlled content may be used only with explicit, recorded authorization from both the author of each used message and the community's owner/administrator, and it still follows every attribution, redaction, and removal rule below. Community language used only for demand research remains governed by [Content Operations](content-ops.md).
-
-Use the evidence rules in SKILL.md. Use [Page Evidence](pages.md) for substantiation, information gain, revision approval, and the publish gate. When a page has commercial elements, use [Commercial Integrity](commercial-integrity.md) for selection methodology, disclosure, and the anti-authority-rental boundary. Those shared contracts own their rules; this reference adds only community-specific requirements.
-
-## Community-source publishing contract
-
-Before drafting, record a dated demand signal beyond a community brand appended to a keyword: relevant Search Console queries, recurring customer language, multiple relevant discussions, a live-SERP observation, or customer research showing a synthesis need. Record the query and intent, locale, source/date, product relevance, overlapping owned URLs, and cannibalization risk.
-
-Select a diverse, non-cherry-picked source set. A page must synthesize multiple relevant threads or discussions and, where available, multiple authors, dates, viewpoints, disagreements, negative evidence, and meaningful alternatives. Record communities and sources considered, date range, inclusion and exclusion criteria, and why the selected set is representative enough for the page's stated purpose. Never condition selection on praise for the publisher. A page depending on a single thread or discussion fails.
-
-For every used source, record these attribution fields in the existing page revision evidence or a dated report:
-
-- Platform or community
-- Thread title and direct thread/permalink
-- Public author handle, or `redacted — sensitive context`
-- Source publication date when visible
-- Date accessed
-- Use type: `quote`, `paraphrase`, or `analysis input`
-- Section or claim supported
-- Verification/removal status and last checked date
-
-Structure the page so **Quote**, **Paraphrase**, and **Publisher analysis** are explicitly labelled or otherwise unambiguous and editorially separate. Quotes must be minimal, necessary, directly attributed, and linked to their source. Paraphrases must not mimic source wording or imply endorsement. Publisher analysis must be the page's own page-specific synthesis, categorization, comparison, testing, decision criteria, or other information gain; it must not be presented as community consensus. Do not imply platform affiliation or endorsement.
-
-Every community-source page also carries two explicit, visible disclosures regardless of whether it is classified as commercial: a statement that the source community/platform does not endorse the publisher or its product, and a statement of the publisher's relationship to the product, service, or topic discussed. These are affirmative page requirements — a page without both fails the publish gate. Commercial elements additionally trigger the full [Commercial Integrity](commercial-integrity.md) contract.
-
-### Privacy, deletion, and maintenance
-
-Use no personal information beyond a public handle needed for attribution. Redact the handle when the author is identifiable in a sensitive context, and omit incidental names, locations, contact details, health, financial, employment, or other identifying details that are unnecessary to the synthesis.
-
-Honor source deletion and author removal requests. Publish a monitored contact route and use this source-removal workflow:
-
-1. Record the request or detected deletion, received/detected date, requester or detection method, affected permalink, page/section, owner, and status in the existing dated report or `bets.md`; store no unnecessary requester PII.
-2. Acknowledge a direct request and assess dependency within **2 business days**.
-3. Remove the quote, attribution, and identifying detail promptly; rework or remove every dependent page section within **5 business days**. If safe rework cannot finish in that window, unpublish or noindex the affected page until it can.
-4. Re-run the page-evidence publish gate for the revised page and verify rendered links and citations.
-5. Record the completed action, outcome, completion date, verifier, and any remaining follow-up in the same existing record.
-
-Periodically verify source availability and material edits on the topic-appropriate refresh cadence. A deleted, materially changed, or unmaintainable source cannot remain as support. This is an operational publication policy, not jurisdictional legal advice; escalate disputes that need legal judgment.
-
-### Bounded pilot and pre-registration
-
-The pilot is capped at **1–3 pages maximum**. Before any pilot page is published, pre-register one immutable plan covering the exact page set. Pre-registration means the review dates, metrics, go/no-go criteria, and rollback rules cannot be redefined after results are seen. Corrections may be appended with author, date, and reason, but the original remains visible and governs the pilot decision.
-
-Record before publication: exact query/intent; locale/device/date; dated Google/Bing and relevant community-result baselines; existing URLs/cannibalization risk; user-value hypothesis; business relevance; source-selection method; applicable conflict/disclosure review; and the fixed query set for any assistant observations. Pre-register reviews at **week 2**, **week 4**, **week 8**, and **week 12**, with an owner and calendar date for each.
-
-At every gate, record per page: indexed/canonical state; impressions, clicks, CTR, average position, and query diversity; cannibalization; scroll/engagement, source-link clicks, and exits; CTA and direct/assisted conversions where observable; assistant citations only against the fixed dated query set; relevant referral traffic; complaints and source-removal requests; brand/community harm; and editorial maintenance cost. Keep missing data `Unknown`.
-
-The pre-registered go/no-go criteria must require durable visibility across multiple reviews, useful engagement relative to comparable content, no material cannibalization, no material privacy/integrity complaint, plausible conversion contribution where relevant, and sustainable maintenance cost. Indexation or impressions alone never pass a gate. At each review choose and evidence `continue unchanged`, `rework`, `consolidate`, `noindex`, or `remove`.
-
-The week-12 gate passes expansion only when all pre-registered criteria pass. No expansion past three pages is permitted before that pass **and explicit operator approval**. Otherwise stop expansion and apply the pre-registered rollback action. No useful signal by week 12, intent failure, cannibalization, stale/unmaintainable sources, misleading positioning, or material privacy/integrity complaints require rework, consolidation, noindex, or removal as registered.
-
-### Prohibitions and assertable failure rules
-
-- **No scraping:** gather sources only through manual, lawful access; do not bulk copy comments or use opaque indexers.
-- **No covert participation:** no astroturfing, undisclosed publisher participation, posting to farm quotes, manufactured questions, or engagement designed to create source material.
-- **No parasite publishing:** do not rent third-party authority or use artificial discovery/link networks; apply the [Commercial Integrity anti-authority-rental boundary](commercial-integrity.md#anti-authority-rental-boundary).
-- Every page must pass the [Pages publish and delivery gate](pages.md), and every page with commercial elements must also pass [Commercial Integrity](commercial-integrity.md).
-- No ranking-time, traffic, conversion, revenue, or AI-citation guarantee; no broad rollout based only on anecdote, indexation, or impressions.
-- **Anti-token-swap assertion:** reject two or more pages that share a template or substantially identical section logic while swapping the keyword, community name, threads, or quotes. Each page must have a page-specific source set, page-specific analysis, and page-specific information gain. If any of those three is interchangeable between proposed pages, every affected page fails publication.
-
-Use existing homes only: revision evidence or dated reports for sources, reviews, and removal outcomes; `bets.md` for follow-up. For mechanics already owned elsewhere, use [Search Console](search-console.md), [AI Search Visibility](ai-search-visibility.md), [Internal Linking](internal-linking.md), [Content Refresh](content-refresh.md), [Technical SEO](technical-seo.md), [Backlinks and Entity Authority](backlinks-entity.md), and [pSEO Gates](pseo-gates.md) rather than duplicating their workflows.
+When the deliverable publishes a synthesis of community material, load [community-source-pages.md](community-source-pages.md). Ordinary demand research does not load that publication procedure.
