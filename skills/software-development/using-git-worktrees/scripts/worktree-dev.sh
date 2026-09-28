@@ -18,6 +18,8 @@
 set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+# shellcheck source=worktree-ports.sh
+source "$script_dir/worktree-ports.sh"
 
 usage() { sed -n '3,16p' "${BASH_SOURCE[0]}"; exit 2; }
 
@@ -71,14 +73,9 @@ has_script() { # has_script <dir> <name>
   node -e 'const s=require(process.argv[1]+"/package.json").scripts||{};process.exit(s[process.argv[2]]?0:1)' "$1" "$2"
 }
 
-derive_ports() { # stable per worktree path, aligned with the fleet port contract
-  local hash offset
-  hash="$(printf '%s' "$worktree" | cksum | awk '{ print $1 }')"
-  offset=$((hash % 1400))
-  export WORKTREE_ID="$slug"
-  export WORKTREE_APP_PORT=$((4100 + offset))
-  export WORKTREE_CONVEX_CLOUD_PORT=$((6200 + offset * 2))
-  export WORKTREE_CONVEX_SITE_PORT=$((WORKTREE_CONVEX_CLOUD_PORT + 1))
+derive_ports() {
+  derive_worktree_ports "$worktree"
+  export WORKTREE_ID WORKTREE_APP_PORT WORKTREE_CONVEX_CLOUD_PORT WORKTREE_CONVEX_SITE_PORT
 }
 
 reap_worktree_processes() {
