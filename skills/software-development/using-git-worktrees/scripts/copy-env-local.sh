@@ -2,6 +2,9 @@
 
 set -euo pipefail
 
+# shellcheck source=worktree-ports.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)/worktree-ports.sh"
+
 source_root="${1:?usage: copy-env-local.sh <primary-checkout> <worktree>}"
 target_root="${2:?usage: copy-env-local.sh <primary-checkout> <worktree>}"
 
@@ -20,6 +23,11 @@ if [[ "$source_common" != "$target_common" ]]; then
   echo "Source and target are not worktrees of the same repository." >&2
   exit 1
 fi
+
+# The source's WORKTREE_* identity names the source's runtime. Copied verbatim,
+# every worktree would bind the same ports (seen 2026-09-28: two andyChat
+# worktrees both on 4611/7222), so each copied assignment gets the target's own.
+derive_worktree_ports "$target_root"
 
 copied=0
 protected=0
@@ -97,6 +105,15 @@ while IFS= read -r source_file; do
   active_temp="$temp_file"
   pending_target="$target_file"
   if ! awk '
+    /^[[:space:]]*(export[[:space:]]+)?WORKTREE_(ID|APP_PORT|CONVEX_CLOUD_PORT|CONVEX_SITE_PORT)[[:space:]]*=/ {
+      prefix = $0
+      sub(/=.*/, "", prefix)
+      sub(/[[:space:]]+$/, "", prefix)
+      name = prefix
+      sub(/^.*[[:space:]]/, "", name)
+      print prefix "=" ENVIRON[name]
+      next
+    }
     /^[[:space:]]*(export[[:space:]]+)?(CONVEX_[A-Za-z0-9_]*|NEXT_PUBLIC_CONVEX_URL|NEXT_PUBLIC_CONVEX_SITE_URL|QA_CONVEX_ADMIN_KEY)[[:space:]]*=/ {
       value = $0
       sub(/^[^=]*=/, "", value)
@@ -115,7 +132,7 @@ while IFS= read -r source_file; do
   active_temp=""
   pending_target=""
   copied=$((copied + 1))
-  printf 'Copied %s (Convex targets and keys stripped)\n' "$relative_path"
+  printf 'Copied %s (Convex targets and keys stripped, worktree ports derived)\n' "$relative_path"
 done < <(
   find "$source_root" \
     \( -type d \( -name .git -o -name .worktrees -o -name .env.profiles -o -name .vercel -o -name .convex -o -name node_modules -o -name .next -o -name dist -o -name build -o -name coverage \) -prune \) \
