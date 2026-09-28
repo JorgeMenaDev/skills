@@ -12,7 +12,7 @@ Use the evidence rules in SKILL.md. The local visibility states and measurement 
 2. Use Google Maps/GBP/public listings or authenticated GBP where available.
 3. Record observations before comparing the business against 3-5 competitors.
 4. Output a matrix, then prioritized hypotheses and actions with an owner and recheck window.
-5. Write descriptions, review responses, post calendars, or citation fixes only when requested and send every public or authenticated mutation through the approval gate.
+5. When the review selects a local bet, prepare the exact description, review response, post or citation fix it needs within the existing mandate. Apply the factual, eligibility and publication gates below before execution.
 
 ## Profile Count And Eligibility
 
