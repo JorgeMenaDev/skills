@@ -1,9 +1,9 @@
 ---
 name: storage-audit
 description: Reclaim disk on any Mac running Jorge's workspace (the Mac mini or the MacBook Pro) with scripts/storage-hygiene.sh, covering leaked processes and swap, worktrees, dependency and build caches, agent histories, Xcode and simulators. Use when free space is low, Jorge asks to free space, or the storage-hygiene cron alerts or fails.
-version: 7.1.0
+version: 7.2.0
 mutating: true
-writes_to: ["orphaned dev processes (killed)", "registered git worktrees (clean, backed, idle)", "node_modules/.next/.turbo build state", "T3, OpenCode and Cursor agent history", "Xcode DerivedData and simulator device data", "tool and package caches", "logs and temp bundles", "~/.hermes/state/storage-hygiene/"]
+writes_to: ["orphaned dev processes (killed)", "registered git worktrees (clean, backed, idle)", "node_modules/.next/.turbo build state", "T3, OpenCode and Cursor agent history", "Xcode DerivedData and simulator device data", "tool and package caches", "logs and temp bundles", "~/.local/state/matias/storage-hygiene/"]
 ---
 
 # Reclaim disk on a workspace Mac
@@ -27,7 +27,7 @@ simulator runtime is a view of its image, so `du` counts shared blocks once per 
 ## 1. Read the state
 
 ```bash
-cd ~/.hermes/profiles/matias; S=~/.hermes/state/storage-hygiene
+cd ~/matias; S=~/.local/state/matias/storage-hygiene
 df -h /System/Volumes/Data; sysctl vm.swapusage; uptime
 tail -3 $S/history.log; tail -4 $S/meter.log
 grep -E 'JORGE-ACTION|REAPED|FAILED ' $S/storage-hygiene.log | tail -8
@@ -42,7 +42,7 @@ Done when you can state free space and swap, and name the `meter.log` field that
 ./scripts/storage-hygiene.sh             # guarded cleanup
 ```
 
-On the Mac mini, Hermes cron `storage-hygiene-every-3-hours` (`30 */3 * * *`, no-agent) runs the
+On the Mac mini, the scheduled job `storage-hygiene-every-3-hours` (`30 */3 * * *`, t3-cron) runs the
 cleanup; Telegram hears only failures and free space under 10 GiB. On the laptop, the LaunchAgent
 `com.matias.storage-hygiene` runs it at :30 every 3 hours with no alerts
 (`scripts/install-storage-hygiene-agent.sh`; its output is in `launchd.log` in the state dir). Exit 0 = at target, 3 = below target, 2 = failed,

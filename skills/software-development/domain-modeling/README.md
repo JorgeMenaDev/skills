@@ -4,7 +4,7 @@ Vendored from [mattpocock/skills → skills/engineering/domain-modeling](https:/
 
 ## Why it forked
 
-- **Our addition**: the `<target-repo>` gate — a grill/triage/wayfinder session may run from an orchestration profile (e.g. the matias Hermes profile) while the plan belongs to a product repo; the gate resolves that target on explicit signals only and routes ALL exploration and doc writes (`CONTEXT.md`, `docs/adr/`) to the target clone. This machinery is specific to Jorge's fleet and will never exist upstream.
+- **Our addition**: the `<target-repo>` gate — a grill/triage/wayfinder session may run from an orchestration profile (e.g. the matias repo) while the plan belongs to a product repo; the gate resolves that target on explicit signals only and routes ALL exploration and doc writes (`CONTEXT.md`, `docs/adr/`) to the target clone. This machinery is specific to Jorge's fleet and will never exist upstream.
 - Routing lives HERE (not in a grill-with-docs wrapper) because every composition point — upstream's one-line `grill-with-docs`, `triage` step 4, `wayfinder` charting and ticket resolution — invokes `/domain-modeling` directly, and doc writes happen only in this skill. Decided by two-vendor counsel, 2026-07-08 (3 rounds, converged).
 
 ## Who consumes it
