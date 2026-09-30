@@ -2,7 +2,7 @@
 name: session-wrap-up
 description: "End a work session with no loose ends: Second Brain, GitHub and Linear trackers, matter records, pushed repos, removed worktrees, stopped processes, one report."
 disable-model-invocation: true
-version: 1.1.0
+version: 1.1.1
 mutating: true
 writes_to: ["Second Brain vault", "GitHub issues touched this session", "Linear issues touched this session", "matter records under organization/admin-matters/", "git worktrees and local branches this session created"]
 ---
@@ -31,7 +31,7 @@ done
 
 1. **Second Brain.** Append a dated, attributed entry to `vault/daily/YYYY-MM-DD.md`, update each domain note the work touched, and add new durable facts to [[INDEX]]. Same pass, additive, `author: matias` on new notes.
 2. **GitHub trackers.** Reconcile every GitHub issue touched. Update bodies where state changed and close what is done. Post a `## Triage Notes` comment with `### Established`, plus exactly one `### Needs from Jorge` item when the work is blocked.
-3. **Linear trackers.** Reconcile every Linear issue touched through the Linear MCP. Confirm the workspace with `get_workspace` before writing; access and account per workspace are in `docs/agents/linear.md`. Set each issue's status to match reality and comment with what changed plus the PR or commit URL.
+3. **Linear trackers.** Invoke the workspace's `linear` skill for connection, clarification and audience rules. Reconcile each touched ticket to its actual product state through MCP. Post only useful business decisions, review/test artifacts or verified user outcomes. Keep engineering reports, GitHub links and PR/commit references in internal records; routine research or engineering checkpoints need no Linear comment.
 4. **Matter records.** Update `organization/admin-matters/*/README.md` evidence trails and next-action checkboxes for any matter the session advanced.
 5. **Commit and push.** In every touched repo, run `git pull --rebase origin main`, then commit and push. Prefix vault commits with `vault:` and admin-matter commits with `matter:`. Worktree branches get pushed to origin too, with their PRs opened or updated.
 6. **Clean up.** Remove what the session created:
