@@ -1,7 +1,7 @@
 ---
 name: storage-audit
 description: Reclaim disk on any Mac running Jorge's workspace (the Mac mini or the MacBook Pro) with scripts/storage-hygiene.sh, covering leaked processes and swap, worktrees, dependency and build caches, agent histories, Xcode and simulators. Use when free space is low, Jorge asks to free space, or the storage-hygiene cron alerts or fails.
-version: 7.2.0
+version: 7.3.0
 mutating: true
 writes_to: ["orphaned dev processes (killed)", "registered git worktrees (clean, backed, idle)", "node_modules/.next/.turbo build state", "T3, OpenCode and Cursor agent history", "Xcode DerivedData and simulator device data", "tool and package caches", "logs and temp bundles", "~/.local/state/matias/storage-hygiene/"]
 ---
@@ -69,6 +69,10 @@ Disk goes three ways. Check them in order; the first that explains the loss is t
    Convex node executors whose backend exited (each pins a ~40 MiB bundle in `$TMPDIR`),
    `opencode serve` left by a T3 restart, `convex dev` for a deleted checkout. On 2026-09-22,
    115 held 9.8 GiB. Swap still high after a reap means a live workload or a reboot.
+   It only reports (`RUNTIME-LEFTOVER`, meter `runtime_leftovers=`) a worktree runtime whose
+   launcher is gone: `convex dev`, its local backend or a Next server for a linked worktree that
+   still exists. Its owner may still be working there, so check the worktree's recent commits or
+   open PR before acting; the stop is `worktree-dev.sh down <slug>` from the primary checkout.
 2. **A metered consumer grew.** Diff `meter.log` across the drop. Known growers: `opencode.db`
    (every `message.updated` event stores the session's diffs again, ~2.6 GiB a day), new worktrees,
    `$TMPDIR`, simulators.
@@ -105,6 +109,7 @@ class, waiting on a gate, or listed for Jorge.
 
 ```
 FREE: <GiB> (target 40)  FREED: <GiB>  SWAP: <GiB> (uptime …)  ORPHANS: <n> / <GiB>
+LEFTOVERS: <RUNTIME-LEFTOVER worktrees, each with its owner's state | none>
 DRAIN: <the consumer that explains the loss, with meter numbers>
 RETIRED: <counts by class>
 PROTECTED: <worktree paths with the literal reason>
