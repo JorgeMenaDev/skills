@@ -1,7 +1,7 @@
 ---
 name: using-git-worktrees
 description: Use when creating an isolated Git workspace, running the default branch locally, or closing development work that used a worktree.
-version: 2.1.4
+version: 2.1.5
 mutating: true
 writes_to: ["<repo-name>-worktrees/", "**/.env.local", "**/.convex/state-kind", "regenerable worktree artifacts"]
 ---
@@ -32,7 +32,9 @@ floor 10 GiB, freeze no; override with `WORKTREE_FREE_FLOOR_GIB` / `WORKTREE_HYD
 ignored-env copy, `bun install --frozen-lockfile`, `setup:worktree`, then a detached `qa:local`
 (fallback: `dev:<surface>` / `dev`) — and prints the `QA_LOCAL_READY` / URL lines. Ports are derived
 deterministically from the worktree path, so parallel worktrees never collide. Close with
-`worktree-dev.sh down <slug> [--remove]`: it reaps every process whose cwd is the worktree, refuses
+`worktree-dev.sh down <slug> [--remove]`: it stops the server's whole process tree plus orphans of
+earlier runs (Convex local backend and action runners included) and exits non-zero naming any
+survivor (`RUNTIME_LEFTOVER`); it refuses
 removal over uncommitted or unpushed work, and dehydrates before retiring. Manual sections 1–5
 remain for repos without the contract and for non-standard bases or blocked states.
 

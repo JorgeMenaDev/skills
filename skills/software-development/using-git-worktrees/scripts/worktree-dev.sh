@@ -73,24 +73,79 @@ has_script() { # has_script <dir> <name>
   node -e 'const s=require(process.argv[1]+"/package.json").scripts||{};process.exit(s[process.argv[2]]?0:1)' "$1" "$2"
 }
 
+# Every process this worktree's runtime started: the recorded server's
+# descendants (collected before stopping it, because its children outlive it),
+# plus orphans of earlier runs: processes executing this worktree's
+# node_modules binaries or its local Convex backend, and node/bun processes
+# working inside it (Convex's local action runners start from a temp dir).
+# Paths travel through the environment so awk's own arguments never match.
+runtime_pids() { # runtime_pids [root-pid]
+  local cwd_pids
+  cwd_pids="$(lsof -a -d cwd -u "$(id -un)" -Fpn 2>/dev/null | WT="$worktree/" awk '
+    /^p/ { p = substr($0, 2) }
+    /^n/ { if (index(substr($0, 2) "/", ENVIRON["WT"]) == 1) printf " %s ", p }')"
+  ps -Ao pid=,ppid=,args= | WT="$worktree/" ROOT="${1:-}" SELF="$$" \
+    CWD_PIDS="$cwd_pids" awk '
+    {
+      pid = $1; parent[pid] = $2
+      $1 = ""; $2 = ""; args[pid] = $0
+    }
+    END {
+      for (p in args) {
+        keep = (index(args[p], ENVIRON["WT"]) &&
+            args[p] ~ /node_modules\/|\.convex\/local\//) ||
+          (index(ENVIRON["CWD_PIDS"], " " p " ") &&
+            args[p] ~ /^ *[^ ]*(node|bun) /)
+        q = p
+        for (hops = 0; !keep && ENVIRON["ROOT"] != "" && q > 1 && hops < 64; hops++) {
+          if (q == ENVIRON["ROOT"]) keep = 1
+          q = parent[q]
+        }
+        if (keep && p != ENVIRON["SELF"]) print p
+      }
+    }'
+}
+
+alive_pids() { # alive_pids <pid>...
+  local p
+  for p in "$@"; do kill -0 "$p" 2>/dev/null && echo "$p"; done
+  return 0
+}
+
+# Stop the whole runtime and fail loudly if any of it survives.
 reap_worktree_processes() {
-  [[ -f "$pid_file" && ! -L "$pid_file" ]] || return 0
-  local pid cwd
-  pid="$(cat "$pid_file")"
-  [[ "$pid" =~ ^[1-9][0-9]*$ && "$pid" -gt 1 ]] || {
-    echo "Refusing invalid recorded server PID." >&2; return 1
-  }
-  kill -0 "$pid" 2>/dev/null || return 0
-  cwd="$(lsof -a -p "$pid" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p')"
-  case "$cwd" in
-    "$worktree"|"$worktree"/*) ;;
-    *) echo "Recorded PID no longer belongs to this worktree; refusing to stop it." >&2; return 1 ;;
-  esac
-  kill -TERM "$pid" 2>/dev/null || return 0
-  sleep 3
-  if kill -0 "$pid" 2>/dev/null; then
-    cwd="$(lsof -a -p "$pid" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p')"
-    case "$cwd" in "$worktree"|"$worktree"/*) kill -KILL "$pid" 2>/dev/null || true ;; esac
+  local pid="" cwd pids survivors
+  if [[ -f "$pid_file" && ! -L "$pid_file" ]]; then
+    pid="$(cat "$pid_file")"
+    [[ "$pid" =~ ^[1-9][0-9]*$ && "$pid" -gt 1 ]] || {
+      echo "Refusing invalid recorded server PID." >&2; return 1
+    }
+    if kill -0 "$pid" 2>/dev/null; then
+      cwd="$(lsof -a -p "$pid" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p')"
+      case "$cwd" in
+        "$worktree"|"$worktree"/*) ;;
+        *) echo "Recorded PID no longer belongs to this worktree; refusing to stop it." >&2; return 1 ;;
+      esac
+    else
+      pid=""
+    fi
+  fi
+
+  pids=($(runtime_pids "$pid"))
+  (( ${#pids[@]} )) || return 0
+  kill -TERM "${pids[@]}" 2>/dev/null || true
+  for _ in 1 2 3 4 5; do
+    sleep 1
+    survivors=($(alive_pids "${pids[@]}"))
+    (( ${#survivors[@]} )) || break
+  done
+  survivors=($(alive_pids "${pids[@]}"))
+  (( ${#survivors[@]} )) && kill -KILL "${survivors[@]}" 2>/dev/null || true
+  sleep 1
+  survivors=($(alive_pids "${pids[@]}") $(runtime_pids))
+  if (( ${#survivors[@]} )); then
+    echo "RUNTIME_LEFTOVER: still running: ${survivors[*]}" >&2
+    return 1
   fi
 }
 
