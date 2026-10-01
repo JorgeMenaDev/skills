@@ -4,7 +4,7 @@ Run this whenever a task no longer needs its live runtime, including before hand
 
 ## 1. Stop the owned stack
 
-Use the repository's stop command or terminate only processes proven to have this worktree as their working directory. Verify its app and Convex ports have no listeners. If ownership is uncertain, stop with `RUNTIME_OWNERSHIP_UNKNOWN`; terminating a shared process is the failure this gate prevents.
+Use the repository's stop command (`worktree-dev.sh down` where available) or terminate only processes proven to be this worktree's runtime: its server's process tree, or processes working in or executing from the worktree that match a runtime signature (Convex backend or action runner, Next server, its `node_modules` binaries). A shell, editor or agent working in the worktree is never proof. Verify its app and Convex ports have no listeners. If ownership is uncertain, stop with `RUNTIME_OWNERSHIP_UNKNOWN`; terminating a shared process is the failure this gate prevents.
 
 ## 2. Classify local state
 

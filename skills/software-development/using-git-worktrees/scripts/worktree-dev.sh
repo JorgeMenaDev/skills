@@ -10,8 +10,10 @@
 #
 # `up` creates (or reuses) the sibling worktree, copies ignored env files,
 # installs, runs `setup:worktree`, starts `qa:local` detached, and prints the
-# QA_LOCAL_READY lines. `down` stops the recorded server process after ownership checks and
-# optionally retires it. Repos without `qa:local` fall back to
+# QA_LOCAL_READY lines, stopping a previous runtime of a reused worktree first.
+# `down` stops the server's process tree and this worktree's orphaned runtime
+# processes, fails with RUNTIME_LEFTOVER if any survive, and optionally retires
+# the worktree. Repos without `qa:local` fall back to
 # `dev:<surface>` / `dev`. `--mode` is forwarded to `qa:local` only when
 # given (see SKILL.md).
 
@@ -75,10 +77,13 @@ has_script() { # has_script <dir> <name>
 
 # Every process this worktree's runtime started: the recorded server's
 # descendants (collected before stopping it, because its children outlive it),
-# plus orphans of earlier runs: processes executing this worktree's
-# node_modules binaries or its local Convex backend, and node/bun processes
-# working inside it (Convex's local action runners start from a temp dir).
-# Paths travel through the environment so awk's own arguments never match.
+# plus orphans of earlier runs recognised by signature, never by working
+# directory alone (agents, editors and shells work in worktrees too):
+#   - arguments naming this worktree's node_modules or .convex/local backend;
+#   - working inside it as a Convex action runner (temp-dir `local.cjs
+#     --ipc-path`) or a Next server (renamed `next-server`).
+# This script and its ancestors are never included. Paths travel through the
+# environment so awk's own arguments never match.
 runtime_pids() { # runtime_pids [root-pid]
   local cwd_pids
   cwd_pids="$(lsof -a -d cwd -u "$(id -un)" -Fpn 2>/dev/null | WT="$worktree/" awk '
@@ -91,17 +96,19 @@ runtime_pids() { # runtime_pids [root-pid]
       $1 = ""; $2 = ""; args[pid] = $0
     }
     END {
+      for (q = ENVIRON["SELF"]; q > 1 && !(q in spared); q = parent[q]) spared[q] = 1
       for (p in args) {
+        if (p in spared) continue
         keep = (index(args[p], ENVIRON["WT"]) &&
             args[p] ~ /node_modules\/|\.convex\/local\//) ||
           (index(ENVIRON["CWD_PIDS"], " " p " ") &&
-            args[p] ~ /^ *[^ ]*(node|bun) /)
+            args[p] ~ /local\.cjs --ipc-path|^ *next-server/)
         q = p
         for (hops = 0; !keep && ENVIRON["ROOT"] != "" && q > 1 && hops < 64; hops++) {
           if (q == ENVIRON["ROOT"]) keep = 1
           q = parent[q]
         }
-        if (keep && p != ENVIRON["SELF"]) print p
+        if (keep) print p
       }
     }'
 }
@@ -124,7 +131,7 @@ reap_worktree_processes() {
       cwd="$(lsof -a -p "$pid" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p')"
       case "$cwd" in
         "$worktree"|"$worktree"/*) ;;
-        *) echo "Recorded PID no longer belongs to this worktree; refusing to stop it." >&2; return 1 ;;
+        *) echo "Recorded PID $pid no longer belongs to this worktree; leaving it alone." >&2; pid="" ;;
       esac
     else
       pid=""
@@ -187,6 +194,8 @@ case "$command" in
     "$script_dir/copy-env-local.sh" "$repo_root" "$worktree"
     derive_worktree_ports "$worktree"
     mkdir -p "$run_dir"
+    # A reused worktree keeps its ports: stop the previous runtime first.
+    reap_worktree_processes
 
     (cd "$worktree" && bun install --frozen-lockfile)
     if has_script "$worktree" "setup:worktree"; then

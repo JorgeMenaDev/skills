@@ -32,9 +32,10 @@ floor 10 GiB, freeze no; override with `WORKTREE_FREE_FLOOR_GIB` / `WORKTREE_HYD
 ignored-env copy, `bun install --frozen-lockfile`, `setup:worktree`, then a detached `qa:local`
 (fallback: `dev:<surface>` / `dev`) — and prints the `QA_LOCAL_READY` / URL lines. Ports are derived
 deterministically from the worktree path, so parallel worktrees never collide. Close with
-`worktree-dev.sh down <slug> [--remove]`: it stops the server's whole process tree plus orphans of
-earlier runs (Convex local backend and action runners included) and exits non-zero naming any
-survivor (`RUNTIME_LEFTOVER`); it refuses
+`worktree-dev.sh down <slug> [--remove]`: it stops the server's process tree plus orphans of earlier
+runs it recognises by signature (Convex local backend and action runners, Next servers, the
+worktree's `node_modules` binaries; never shells or agents), exits non-zero with `RUNTIME_LEFTOVER`
+if any of those survive (`up` runs the same reap before reusing a worktree), refuses
 removal over uncommitted or unpushed work, and dehydrates before retiring. Manual sections 1–5
 remain for repos without the contract and for non-standard bases or blocked states.
 
