@@ -10,8 +10,10 @@
 #
 # `up` creates (or reuses) the sibling worktree, copies ignored env files,
 # installs, runs `setup:worktree`, starts `qa:local` detached, and prints the
-# QA_LOCAL_READY lines. `down` stops the recorded server process after ownership checks and
-# optionally retires it. Repos without `qa:local` fall back to
+# QA_LOCAL_READY lines, stopping a previous runtime of a reused worktree first.
+# `down` stops the server's process tree and this worktree's orphaned runtime
+# processes, fails with RUNTIME_LEFTOVER if any survive, and optionally retires
+# the worktree. Repos without `qa:local` fall back to
 # `dev:<surface>` / `dev`. `--mode` is forwarded to `qa:local` only when
 # given (see SKILL.md).
 
@@ -73,24 +75,84 @@ has_script() { # has_script <dir> <name>
   node -e 'const s=require(process.argv[1]+"/package.json").scripts||{};process.exit(s[process.argv[2]]?0:1)' "$1" "$2"
 }
 
+# Every process this worktree's runtime started: the recorded server's
+# descendants (collected before stopping it, because its children outlive it),
+# plus orphans of earlier runs recognised by signature, never by working
+# directory alone (agents, editors and shells work in worktrees too):
+#   - arguments naming this worktree's node_modules or .convex/local backend;
+#   - working inside it as a Convex action runner (temp-dir `local.cjs
+#     --ipc-path`) or a Next server (renamed `next-server`).
+# This script and its ancestors are never included. Paths travel through the
+# environment so awk's own arguments never match.
+runtime_pids() { # runtime_pids [root-pid]
+  local cwd_pids
+  cwd_pids="$(lsof -a -d cwd -u "$(id -un)" -Fpn 2>/dev/null | WT="$worktree/" awk '
+    /^p/ { p = substr($0, 2) }
+    /^n/ { if (index(substr($0, 2) "/", ENVIRON["WT"]) == 1) printf " %s ", p }')"
+  ps -Ao pid=,ppid=,args= | WT="$worktree/" ROOT="${1:-}" SELF="$$" \
+    CWD_PIDS="$cwd_pids" awk '
+    {
+      pid = $1; parent[pid] = $2
+      $1 = ""; $2 = ""; args[pid] = $0
+    }
+    END {
+      for (q = ENVIRON["SELF"]; q > 1 && !(q in spared); q = parent[q]) spared[q] = 1
+      for (p in args) {
+        if (p in spared) continue
+        keep = (index(args[p], ENVIRON["WT"]) &&
+            args[p] ~ /node_modules\/|\.convex\/local\//) ||
+          (index(ENVIRON["CWD_PIDS"], " " p " ") &&
+            args[p] ~ /local\.cjs --ipc-path|^ *next-server/)
+        q = p
+        for (hops = 0; !keep && ENVIRON["ROOT"] != "" && q > 1 && hops < 64; hops++) {
+          if (q == ENVIRON["ROOT"]) keep = 1
+          q = parent[q]
+        }
+        if (keep) print p
+      }
+    }'
+}
+
+alive_pids() { # alive_pids <pid>...
+  local p
+  for p in "$@"; do kill -0 "$p" 2>/dev/null && echo "$p"; done
+  return 0
+}
+
+# Stop the whole runtime and fail loudly if any of it survives.
 reap_worktree_processes() {
-  [[ -f "$pid_file" && ! -L "$pid_file" ]] || return 0
-  local pid cwd
-  pid="$(cat "$pid_file")"
-  [[ "$pid" =~ ^[1-9][0-9]*$ && "$pid" -gt 1 ]] || {
-    echo "Refusing invalid recorded server PID." >&2; return 1
-  }
-  kill -0 "$pid" 2>/dev/null || return 0
-  cwd="$(lsof -a -p "$pid" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p')"
-  case "$cwd" in
-    "$worktree"|"$worktree"/*) ;;
-    *) echo "Recorded PID no longer belongs to this worktree; refusing to stop it." >&2; return 1 ;;
-  esac
-  kill -TERM "$pid" 2>/dev/null || return 0
-  sleep 3
-  if kill -0 "$pid" 2>/dev/null; then
-    cwd="$(lsof -a -p "$pid" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p')"
-    case "$cwd" in "$worktree"|"$worktree"/*) kill -KILL "$pid" 2>/dev/null || true ;; esac
+  local pid="" cwd pids survivors
+  if [[ -f "$pid_file" && ! -L "$pid_file" ]]; then
+    pid="$(cat "$pid_file")"
+    [[ "$pid" =~ ^[1-9][0-9]*$ && "$pid" -gt 1 ]] || {
+      echo "Refusing invalid recorded server PID." >&2; return 1
+    }
+    if kill -0 "$pid" 2>/dev/null; then
+      cwd="$(lsof -a -p "$pid" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p')"
+      case "$cwd" in
+        "$worktree"|"$worktree"/*) ;;
+        *) echo "Recorded PID $pid no longer belongs to this worktree; leaving it alone." >&2; pid="" ;;
+      esac
+    else
+      pid=""
+    fi
+  fi
+
+  pids=($(runtime_pids "$pid"))
+  (( ${#pids[@]} )) || return 0
+  kill -TERM "${pids[@]}" 2>/dev/null || true
+  for _ in 1 2 3 4 5; do
+    sleep 1
+    survivors=($(alive_pids "${pids[@]}"))
+    (( ${#survivors[@]} )) || break
+  done
+  survivors=($(alive_pids "${pids[@]}"))
+  (( ${#survivors[@]} )) && kill -KILL "${survivors[@]}" 2>/dev/null || true
+  sleep 1
+  survivors=($(alive_pids "${pids[@]}") $(runtime_pids))
+  if (( ${#survivors[@]} )); then
+    echo "RUNTIME_LEFTOVER: still running: ${survivors[*]}" >&2
+    return 1
   fi
 }
 
@@ -132,6 +194,8 @@ case "$command" in
     "$script_dir/copy-env-local.sh" "$repo_root" "$worktree"
     derive_worktree_ports "$worktree"
     mkdir -p "$run_dir"
+    # A reused worktree keeps its ports: stop the previous runtime first.
+    reap_worktree_processes
 
     (cd "$worktree" && bun install --frozen-lockfile)
     if has_script "$worktree" "setup:worktree"; then
