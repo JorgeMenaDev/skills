@@ -1,16 +1,19 @@
 ---
 name: storage-audit
 description: Reclaim disk on any Mac running Jorge's workspace (the Mac mini or the MacBook Pro) with scripts/storage-hygiene.sh, covering leaked processes and swap, worktrees, dependency and build caches, agent histories, Xcode and simulators. Use when free space is low, Jorge asks to free space, or the storage-hygiene cron alerts or fails.
-version: 7.3.1
+version: 7.4.0
 mutating: true
-writes_to: ["orphaned dev processes (killed)", "registered git worktrees (clean, backed, idle)", "node_modules/.next/.turbo build state", "T3, OpenCode and Cursor agent history", "Xcode DerivedData and simulator device data", "tool and package caches", "logs and temp bundles", "~/.local/state/matias/storage-hygiene/"]
+writes_to: ["orphaned dev processes (killed)", "registered git worktrees (clean, backed, idle)", "node_modules/.next/.turbo build state", "T3, OpenCode and Cursor agent history", "settled or legacy crew dirs and the crew sweep log", "superseded T3 runtimes", "Xcode DerivedData and simulator device data", "tool and package caches", "logs and temp bundles", "~/.local/state/matias/storage-hygiene/"]
 ---
 
 # Reclaim disk on a workspace Mac
 
 T3 Code threads run on both Macs; Jorge picks the host from his phone. `<clone>/.host` says which
 one you are on (`mini` or `laptop`). The script is the same on both, and paths are derived, never
-machine-specific. Target: 40 GiB free on the internal `/System/Volumes/Data` on each Mac.
+machine-specific. Three numbers for the internal `/System/Volumes/Data`, each overridable by env:
+target 90 GiB (`STORAGE_HYGIENE_TARGET_GIB`, only labels the run), Telegram warning 75
+(`STORAGE_HYGIENE_ALERT_GIB`, scheduled job only) and pressure 40 (`STORAGE_HYGIENE_PRESSURE_GIB`,
+the only number that shortens gates).
 
 | Mac | Internal | `~/dev/code` |
 |---|---|---|
@@ -43,22 +46,27 @@ Done when you can state free space and swap, and name the `meter.log` field that
 ```
 
 On the Mac mini, the t3-cron job `storage-hygiene-every-3-hours` runs the cleanup on the schedule in
-`scripts/scheduled-jobs.json` (read it there; the name predates a daily interim schedule); Telegram hears only failures and free space under 10 GiB. On the laptop, the LaunchAgent
+`scripts/scheduled-jobs.json` (read it there; the name predates a daily interim schedule); Telegram hears failures and free space under 40 GiB on every run, a warning under 75 at most once a day, `GROWTH` and `code-disk-not-mounted` lines whenever a run logs them, and otherwise one green receipt a day. On the laptop, the LaunchAgent
 `com.matias.storage-hygiene` runs it at :30 every 3 hours with no alerts
 (`scripts/install-storage-hygiene-agent.sh`; its output is in `launchd.log` in the state dir). Exit 0 = at target, 3 = below target, 2 = failed,
-4 = another run holds the lock (never delete `run.lock`). Below target it shortens its own gates.
+4 = another run holds the lock (never delete `run.lock`). Below the pressure line it shortens its worktree and `node_modules` gates to 3h; below target alone it changes nothing.
 
 The last log line is the verdict (`freed= free= swap= failures= status=`); `METER` above it is
-the per-consumer snapshot, also appended to `meter.log`. `RETIRED`, `PRUNED`, `CAPPED` and `REAPED`
+the per-consumer snapshot, also appended to `meter.log`. `RETIRED`, `PRUNED`, `CAPPED` (a log cut to its last 20 MB) and `REAPED`
 are done, `PROTECT <reason>` kept something, `JORGE-ACTION` needs a human, `FAILED` is a failure.
 `BUDGET` ranks candidates of 50 MiB or more by logical size.
 
 - **Vetoes** hold forever: `uncommitted-or-inspection-failed`, `unbacked`, `durable-or-unknown-convex-state`,
-  `process-active`, `open`, `shared-clone-source`. `roomy-volume` holds while that disk keeps 100 GiB free
+  `process-active`, `open`, `shared-clone-source`, and any crew dir whose current round is not settled
+  and acked (unreadable round state counts as unsettled). `roomy-volume` holds while that disk keeps 100 GiB free
   (`STORAGE_HYGIENE_ROOMY_GIB`). Failed inspection is no proof of clean or idle.
 - **Gates** expire: `age-gate(Nh)` carries `gate_until`. Check it before calling a guard broken.
 
 The classes are the script's functions (`grep -n '() {' scripts/storage-hygiene.sh`); read one before explaining or changing it.
+
+`GROWTH new|grew` names a home folder on Data (depth 1–2) that is new or 1 GiB over its high-water
+mark in `growth.tsv` in the state dir; it reports once per extra GiB, and audits never update the
+snapshot. `JORGE-ACTION code-disk-not-mounted`: `/etc/fstab` names `~/dev/code` but it sits on Data.
 
 ## 3. Below target: find the drain
 
@@ -108,7 +116,7 @@ class, waiting on a gate, or listed for Jorge.
 ## Report
 
 ```
-FREE: <GiB> (target 40)  FREED: <GiB>  SWAP: <GiB> (uptime …)  ORPHANS: <n> / <GiB>
+FREE: <GiB> (target 90, pressure 40)  FREED: <GiB>  SWAP: <GiB> (uptime …)  ORPHANS: <n> / <GiB>
 LEFTOVERS: <RUNTIME-LEFTOVER worktrees, each with its owner's state | none>
 DRAIN: <the consumer that explains the loss, with meter numbers>
 RETIRED: <counts by class>
