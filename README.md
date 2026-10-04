@@ -149,7 +149,6 @@ Invocation is declared in each skill. Crew is user-invoked: run `/crew` explicit
 
 ### Agent Operations
 
-- **[orchestrate](./skills/agent-operations/orchestrate/SKILL.md)** — Conduct multi-agent work from a human-readable plan or a GitHub-autopilot spec: capability-aware frontier dispatch, isolated ticket PRs, conductor review gates, and verified integration.
 - **[crew](./skills/agent-operations/crew/SKILL.md)** — Dispatch visible T3 Code workers across your configured providers, with verified model options, local reports and recoverable hand-backs. Includes the complete dispatcher.
 - **[source-to-system](./skills/agent-operations/source-to-system/SKILL.md)** — Turn external material into one evidence-backed, owned system improvement or an explicit no-change decision.
 - **[grok-deep-research](./skills/agent-operations/grok-deep-research/SKILL.md)** — Run isolated, bounded Grok research with native or Firecrawl search and produce a stable cited report plus an iteration ledger.
