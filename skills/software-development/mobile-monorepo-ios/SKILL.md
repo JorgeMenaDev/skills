@@ -1,7 +1,7 @@
 ---
 name: mobile-monorepo-ios
 description: Build, debug, and release mobile apps across Expo/React Native, native iOS, native Android, or bounded hybrid architectures. Use for development builds, device proof, native-runtime changes, release workflows, EAS, TestFlight, App Store Connect, Google Play, or cross-platform mobile delivery.
-version: 1.1.0
+version: 1.2.0
 license: MIT
 mutating: true
 writes_to: ["target repository paths authorized by the active task"]
@@ -51,8 +51,9 @@ Read [references/architecture-choice.md](references/architecture-choice.md) when
 3. Make the smallest authorized change. In Expo, determine CNG/native-directory ownership before prebuild; let supported Expo versions configure Metro until a reproduced resolution failure proves otherwise.
 4. Read [references/local-runtime.md](references/local-runtime.md) for implementation, debugging, Simulator, development-build, or physical-device work. Completion: the acceptance scenario passes again from its defined start state with semantic, visual, and timestamp-correlated log evidence.
 5. Read [references/release-system.md](references/release-system.md) when designing or changing variants, previews, versioning, native-fingerprint policy, CI builds, submission, retries, OTA, or public release. Completion: each release transition has one owner, trigger, idempotency rule, authority boundary, and proof method.
-6. Read [references/distribution-proof.md](references/distribution-proof.md) when the request includes archive/cloud build, upload, TestFlight, Play testing tracks, device installation, review, or release. Completion: report only independently proven artifact states.
-7. Read [references/tooling.md](references/tooling.md) before enabling or using an agent/MCP/device automation surface. Completion: version, permissions, data path, telemetry, mutation scope, and semantic-target support are known.
+6. Read [references/local-build.md](references/local-build.md) before a store build on this machine: build quota spent or scarce (EAS Free: 15 per platform per month), or an app with no build service. Completion: the quota, the lane (`eas build --local` or prebuild plus `xcodebuild` archive and export) and the build number are named before the build starts.
+7. Read [references/distribution-proof.md](references/distribution-proof.md) when the request includes archive/cloud build, upload, TestFlight, Play testing tracks, device installation, review, or release. Completion: report only independently proven artifact states.
+8. Read [references/tooling.md](references/tooling.md) before enabling or using an agent/MCP/device automation surface. Completion: version, permissions, data path, telemetry, mutation scope, and semantic-target support are known.
 
 ## STOP Gates
 
