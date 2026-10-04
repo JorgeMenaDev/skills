@@ -23,14 +23,15 @@
     },
     {
       "title": "Software Development",
-      "description": "Skills for sidecar delegation, planning, tracking, fork maintenance, design-system enforcement, mobile iOS delivery, and shipping multi-step work across repos.",
+      "description": "Skills for sidecar delegation, planning, tracking, fork maintenance, design-system enforcement, mobile iOS delivery, pull requests that ship safely, and shipping multi-step work across repos.",
       "skills": [
         "cursor-subagent",
         "work-tracking",
         "sync-github-fork",
         "design-system-keeper",
         "using-git-worktrees",
-        "mobile-monorepo-ios"
+        "mobile-monorepo-ios",
+        "file-pr"
       ]
     },
     {
