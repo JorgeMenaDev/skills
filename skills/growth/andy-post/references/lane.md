@@ -15,6 +15,7 @@ Install: [docs.andypartner.com](https://docs.andypartner.com) / [app.andypartner
 - An API key is pinned to one Workspace. `get_context` shows the selection.
 - Content posts need `content:read` and `content:write`. Older `marketing:*` keys return 403 on `list_posts` and `manage_post`.
 - Conditional scopes ride on top of that base: `content:schedule` to schedule, `content:publish` to publish now, `content:approve` plus `content:schedule` to approve. Without the matching scope the call is refused — mint or pick a key that carries it.
+- A drafting key often lacks `content:approve`/`content:schedule`. Hosts then run a second MCP server on a key that has them; the host's channel map names it.
 - `list_connections` needs `content:connections`. If that call is 403, recover `connectionId` from a `list_posts` row that already used the destination.
 - Pick the destination by human label (`@handle`, page name), never by inventing an id.
 
@@ -32,6 +33,8 @@ Approving a draft (`manage_post` action `approve`) always needs an explicit futu
 ## Tools
 
 `manage_post` actions: `create`, `edit`, `approve`, `reject`, `reschedule`, `cancel`.
+
+Two states are frozen. A `failed` Post cannot be rescheduled: create a copy (same text, `mediaAssetId`, `firstComment`), `approve` it with `scheduledAt`, then `dismiss` the original. An `approved` Post cannot be text-edited: create and approve a fixed copy, then `cancel` the old one (`cancel` takes no `note`).
 
 Create input: `channel` (`x` | `linkedin` | `instagram`), `text`, optional `connectionId`, optional `intent` (`request_approval` | `schedule` | `publish_now`), optional `scheduledAt` (epoch ms), optional `mediaAssetId`.
 

@@ -1,7 +1,7 @@
 ---
 name: andy-post
 description: "Draft and publish social posts through Andy MCP. Use when the user wants to post, tweet, schedule, or create an X, LinkedIn, or Instagram post; when they give a raw idea for a social post; or when they run /andy-post."
-version: 0.2.0
+version: 0.2.1
 license: MIT
 mutating: true
 writes_to: ["Andy Workspace posts"]
