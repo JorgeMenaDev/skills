@@ -1,7 +1,7 @@
 ---
 name: mobile-monorepo-ios
 description: Build, debug, and release mobile apps across Expo/React Native, native iOS, native Android, or bounded hybrid architectures. Use for development builds, device proof, native-runtime changes, release workflows, EAS, TestFlight, App Store Connect, Google Play, or cross-platform mobile delivery.
-version: 1.3.0
+version: 1.4.0
 license: MIT
 mutating: true
 writes_to: ["target repository paths authorized by the active task"]
@@ -21,11 +21,15 @@ git status --short
 if [ -f bun.lock ] || [ -f bun.lockb ]; then echo "PACKAGE_MANAGER: bun"; elif [ -f pnpm-lock.yaml ]; then echo "PACKAGE_MANAGER: pnpm"; elif [ -f yarn.lock ]; then echo "PACKAGE_MANAGER: yarn"; elif [ -f package-lock.json ]; then echo "PACKAGE_MANAGER: npm"; else echo "PACKAGE_MANAGER: unknown"; fi
 if rg -q '"expo"[[:space:]]*:' -g package.json .; then echo "EXPO: yes"; else echo "EXPO: no"; fi
 if find . -path '*/node_modules' -prune -o -type d \( -name '*.xcodeproj' -o -name '*.xcworkspace' -o -name ios \) -print -quit | rg -q .; then echo "NATIVE_PROJECT: yes"; else echo "NATIVE_PROJECT: no"; fi
-if command -v xcodebuild >/dev/null && xcodebuild -version >/dev/null 2>&1; then echo "XCODE: ready"; else echo "XCODE: unavailable"; fi
-if xcrun --find simctl >/dev/null 2>&1; then echo "SIMCTL: ready"; else echo "SIMCTL: unavailable"; fi
+if ! xcodebuild -version >/dev/null 2>&1; then echo "XCODE: unavailable"; elif ! xcodebuild -license check >/dev/null 2>&1; then echo "XCODE: needs-sudo"; else echo "XCODE: ready"; fi
+if perl -e 'alarm 20; exec @ARGV' xcrun simctl list runtimes >/dev/null 2>&1; then echo "SIMCTL: ready"; elif ! xcodebuild -checkFirstLaunchStatus >/dev/null 2>&1; then echo "SIMCTL: needs-sudo"; else echo "SIMCTL: unavailable"; fi
 if command -v adb >/dev/null 2>&1; then echo "ADB: ready"; else echo "ADB: unavailable"; fi
-if [ -n "${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}" ]; then echo "ANDROID_SDK: configured"; else echo "ANDROID_SDK: unavailable"; fi
+if [ -x "${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$HOME/Library/Android/sdk}}/platform-tools/adb" ]; then echo "ANDROID_SDK: configured"; else echo "ANDROID_SDK: unavailable"; fi
+java_major=$(java -version 2>&1 | sed -n 's/.*version "\([0-9]*\).*/\1/p' | head -1)
+if [ "${java_major:-0}" -ge 17 ]; then echo "JAVA: ready"; else echo "JAVA: unavailable"; fi
 ```
+
+`XCODE: needs-sudo` (license) or `SIMCTL: needs-sudo` (first-launch setup; `simctl` hangs until it runs) needs the Mac owner's password. Ask them to run `sudo xcodebuild -license accept && sudo xcodebuild -runFirstLaunch` in one message. `JAVA: unavailable` blocks Android builds: Gradle needs JDK 17+ on `JAVA_HOME`.
 
 ## Classify
 
