@@ -1,7 +1,7 @@
 ---
 name: mobile-monorepo-ios
 description: Build, debug, and release mobile apps across Expo/React Native, native iOS, native Android, or bounded hybrid architectures. Use for development builds, device proof, native-runtime changes, release workflows, EAS, TestFlight, App Store Connect, Google Play, or cross-platform mobile delivery.
-version: 1.2.0
+version: 1.3.0
 license: MIT
 mutating: true
 writes_to: ["target repository paths authorized by the active task"]
@@ -67,5 +67,6 @@ Read [references/architecture-choice.md](references/architecture-choice.md) when
 - Existing repository checks pass in proportion to the touched boundary; create or modify test files only when explicitly requested.
 - Native UI inspection uses semantic accessibility targets before coordinates, plus screenshots and logs. Never use Playwright for native UI inspection.
 - Simulator and physical-device claims remain separate; device-specific or release risk has device evidence or an explicit gap.
+- Shut down any Simulator this task booted (`xcrun simctl shutdown <udid>`) unless the user or another running task is still using it. A booted Simulator holds several GB of memory; left running it pushes the Mac into swap.
 - Report statements are labelled `fact`, `inference`, `anecdote`, or `unverified gap`; exact providers/flows are never generalized.
 - End with `DONE | DONE_WITH_CONCERNS | BLOCKED` and one evidence line naming source state, runtime/artifact, scenario, and residual gaps.

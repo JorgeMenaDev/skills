@@ -1,7 +1,7 @@
 ---
 name: storage-audit
 description: Reclaim disk on any Mac running Jorge's workspace (the Mac mini or the MacBook Pro) with scripts/storage-hygiene.sh, covering leaked processes and swap, worktrees, dependency and build caches, agent histories, Xcode and simulators. Use when free space is low, Jorge asks to free space, or the storage-hygiene cron alerts or fails.
-version: 7.4.0
+version: 7.5.0
 mutating: true
 writes_to: ["orphaned dev processes (killed)", "registered git worktrees (clean, backed, idle)", "node_modules/.next/.turbo build state", "T3, OpenCode and Cursor agent history", "settled or legacy crew dirs and the crew sweep log", "superseded T3 runtimes", "Xcode DerivedData and simulator device data", "tool and package caches", "logs and temp bundles", "~/.local/state/matias/storage-hygiene/"]
 ---
@@ -33,7 +33,7 @@ simulator runtime is a view of its image, so `du` counts shared blocks once per 
 cd ~/matias; S=~/.local/state/matias/storage-hygiene
 df -h /System/Volumes/Data; sysctl vm.swapusage; uptime
 tail -3 $S/history.log; tail -4 $S/meter.log
-grep -E 'JORGE-ACTION|REAPED|FAILED ' $S/storage-hygiene.log | tail -8
+grep -E 'JORGE-ACTION|REAPED|MEMORY|FAILED ' $S/storage-hygiene.log | tail -8
 ```
 
 Done when you can state free space and swap, and name the `meter.log` field that grew since free space last looked healthy.
@@ -46,7 +46,7 @@ Done when you can state free space and swap, and name the `meter.log` field that
 ```
 
 On the Mac mini, the t3-cron job `storage-hygiene-every-3-hours` runs the cleanup on the schedule in
-`scripts/scheduled-jobs.json` (read it there; the name predates a daily interim schedule); Telegram hears failures and free space under 40 GiB on every run, a warning under 75 at most once a day, `GROWTH` and `code-disk-not-mounted` lines whenever a run logs them, and otherwise one green receipt a day. On the laptop, the LaunchAgent
+`scripts/scheduled-jobs.json` (read it there; the name predates a daily interim schedule); Telegram hears failures and free space under 40 GiB on every run, a warning under 75 at most once a day, `GROWTH`, `code-disk-not-mounted` and `MEMORY` lines whenever a run logs them, and otherwise one green receipt a day. On the laptop, the LaunchAgent
 `com.matias.storage-hygiene` runs it at :30 every 3 hours with no alerts
 (`scripts/install-storage-hygiene-agent.sh`; its output is in `launchd.log` in the state dir). Exit 0 = at target, 3 = below target, 2 = failed,
 4 = another run holds the lock (never delete `run.lock`). Below the pressure line it shortens its worktree and `node_modules` gates to 3h; below target alone it changes nothing.
@@ -67,6 +67,15 @@ The classes are the script's functions (`grep -n '() {' scripts/storage-hygiene.
 `GROWTH new|grew` names a home folder on Data (depth 1–2) that is new or 1 GiB over its high-water
 mark in `growth.tsv` in the state dir; it reports once per extra GiB, and audits never update the
 snapshot. `JORGE-ACTION code-disk-not-mounted`: `/etc/fstab` names `~/dev/code` but it sits on Data.
+
+`MEMORY` lines report only. `low-swap-kills` names a new `JetsamEvent-*.ips` in
+`/Library/Logs/DiagnosticReports` where macOS killed processes because swap ran out; it does this while
+`memory_pressure` still shows free memory, so that figure is no all-clear. `swap-high` fires once a day at
+12 GiB used (`STORAGE_HYGIENE_SWAP_GIB`). Either one adds `MEMORY top:` (three largest footprints) and
+`mcp-leak` for any parent holding over 50 `npm exec *mcp*` children. 2026-10-05: one Codex app-server
+held 83 Resend + 83 Convex MCP servers, one pair per thread; that leak and a booted simulator drove two
+low-swap sweeps that killed the T3 desktop window. The parent is alive, so no reap: restarting its app
+(T3 Code for a Codex app-server) frees the tree. A simulator nobody is using: `xcrun simctl shutdown all`.
 
 ## 3. Below target: find the drain
 
