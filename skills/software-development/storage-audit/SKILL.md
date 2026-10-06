@@ -1,7 +1,7 @@
 ---
 name: storage-audit
 description: Reclaim disk on any Mac running Jorge's workspace (the Mac mini or the MacBook Pro) with scripts/storage-hygiene.sh, covering leaked processes and swap, worktrees, dependency and build caches, agent histories, Xcode and simulators. Use when free space is low, Jorge asks to free space, or the storage-hygiene cron alerts or fails.
-version: 7.5.1
+version: 7.6.0
 mutating: true
 writes_to: ["orphaned dev processes (killed)", "registered git worktrees (clean, backed, idle)", "node_modules/.next/.turbo build state", "T3, OpenCode and Cursor agent history", "settled or legacy crew dirs and the crew sweep log", "superseded T3 runtimes", "Xcode DerivedData and simulator device data", "tool and package caches", "logs and temp bundles", "~/.local/state/matias/storage-hygiene/"]
 ---
@@ -41,9 +41,11 @@ Done when you can state free space and swap, and name the `meter.log` field that
 ## 2. Run the script
 
 ```bash
-./scripts/storage-hygiene.sh --dry-run   # WOULD-* lines, nothing changes
+./scripts/storage-hygiene.sh --dry-run   # audit only: WOULD-* lines, nothing changes
 ./scripts/storage-hygiene.sh             # guarded cleanup
 ```
+
+Run one of them: a cleanup logs everything an audit would, so ordering a cleanup skips the dry run.
 
 On the Mac mini, the t3-cron job `storage-hygiene-every-3-hours` runs the cleanup on the schedule in
 `scripts/scheduled-jobs.json` (read it there; the name predates a daily interim schedule); Telegram hears failures and free space under 40 GiB on every run, a warning under 75 at most once a day, `GROWTH`, `code-disk-not-mounted` and `MEMORY` lines whenever a run logs them, and otherwise one green receipt a day. On the laptop, the LaunchAgent
@@ -113,6 +115,9 @@ class, waiting on a gate, or listed for Jorge.
   are the Andy iOS loop.
 - For a permanent-loss call, quote the diffstat (`N insertions across M files`), not the guard flag.
   Backup proof is `git ls-remote` plus `merge-base --is-ancestor`; `git branch -r --contains` reads stale refs.
+- On the mini, Xcode, simulators and the Android SDK, AVD and Gradle home are shared with Paperclip
+  engineers, whose `TRIAL.md` rule files build phone apps there. Read those rules before calling any of it unused.
+- `df` lags a large APFS delete by minutes. Re-read it before reporting what a deletion freed.
 - pnpm keeps one store per major version. Prune each with the executable whose `store path` matches.
 
 ## Levers outside the cron
@@ -120,6 +125,11 @@ class, waiting on a gate, or listed for Jorge.
 - **Reboot** returns all swap. Stop live dev loops first. On the mini, confirm `mount | grep dev/code`
   afterwards; the code disk must stay plugged in, or `~/dev/code` is an empty folder.
 - **Protected worktrees.** List each with size, reason and `ahead=/uncommitted=`; `ahead=unknown` is not zero.
+- **Move to the code disk** (mini). Data a tool can find at a new path moves to `~/dev/code`, which is
+  roomy. Precedents: the Bun cache (`~/.bunfig.toml`), Xcode `DerivedData`, and `~/dev/code/.android`
+  (matias#825, layout in `docs/agents/machines.md`). Running processes keep old paths in their env,
+  so leave a symlink at the old path or restart them. Move under `scripts/native-lock.py` when a
+  phone-app build could touch the data.
 - **`JORGE-ACTION pending-macos-update`.** Install and reboot. Only OS updates grow Preboot.
 
 ## Report
