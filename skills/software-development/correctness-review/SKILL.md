@@ -1,7 +1,7 @@
 ---
 name: correctness-review
 description: Hunt behaviour bugs in a diff with one reviewer on a different model from the builder. Use when a pull request changes logic, error handling, stored data, retries, caches, workflows or schema, or the user says "correctness review".
-version: 1.0.0
+version: 1.0.1
 metadata:
   credits:
     - idea: "Rubric lenses, severity scale and lead judgment; the signal comes from model diversity"
@@ -24,10 +24,10 @@ metadata:
 
 ## Severity
 
-The definition decides, never the reviewer's mood or how rare the case is. A tool with its own scale maps onto these by definition.
+The definition decides, never the reviewer's mood or how rare the case is. A review tool with its own labels (critical, high, medium, low) maps by the definition too: its critical and high findings are must fix, and so is a medium one that meets the must-fix definition.
 
-- **Must fix (critical)**: the code can give a wrong result, lose or corrupt data, open a security hole, or break work that is already running.
-- **Fix or answer (warning)**: nothing is wrong today, and the change will cause pain: a missing test for a real path, a fragile assumption, cleanup that never runs.
+- **Must fix**: the code can give a wrong result, lose or corrupt data, open a security hole, or break work that is already running.
+- **Fix or answer**: nothing is wrong today, and the change will cause pain: a missing test for a real path, a fragile assumption, cleanup that never runs.
 - **Nit**: style and naming. Leave these to `code-review`.
 
 A real pair from one review:

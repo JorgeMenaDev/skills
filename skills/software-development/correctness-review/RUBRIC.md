@@ -20,7 +20,7 @@ Start from the failure-path list you were given, then read past the diff: caller
 
 Under 400 words. For each finding:
 
-1. **Severity**: must fix (wrong result, lost or corrupt data, security hole, or broken running work, however rare), fix or answer (will cause pain, nothing wrong today), or nit.
+1. **Severity**: must fix (wrong result, lost or corrupt data, security hole, or broken running work, however rare), fix or answer (will cause pain, nothing wrong today), or nit. When your output format has its own severity field, fill that field as it requires and start the finding's text with one of these three.
 2. **Location**: `file:line`.
 3. **What goes wrong**, with the path that leads there or the reproduction you ran.
 4. **Fix** in one sentence.
