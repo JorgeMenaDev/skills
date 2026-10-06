@@ -1,7 +1,7 @@
 ---
 name: storage-audit
 description: Reclaim disk on any Mac running Jorge's workspace (the Mac mini or the MacBook Pro) with scripts/storage-hygiene.sh, covering leaked processes and swap, worktrees, dependency and build caches, agent histories, Xcode and simulators. Use when free space is low, Jorge asks to free space, or the storage-hygiene cron alerts or fails.
-version: 7.5.0
+version: 7.5.1
 mutating: true
 writes_to: ["orphaned dev processes (killed)", "registered git worktrees (clean, backed, idle)", "node_modules/.next/.turbo build state", "T3, OpenCode and Cursor agent history", "settled or legacy crew dirs and the crew sweep log", "superseded T3 runtimes", "Xcode DerivedData and simulator device data", "tool and package caches", "logs and temp bundles", "~/.local/state/matias/storage-hygiene/"]
 ---
@@ -75,7 +75,7 @@ snapshot. `JORGE-ACTION code-disk-not-mounted`: `/etc/fstab` names `~/dev/code` 
 `mcp-leak` for any parent holding over 50 `npm exec *mcp*` children. 2026-10-05: one Codex app-server
 held 83 Resend + 83 Convex MCP servers, one pair per thread; that leak and a booted simulator drove two
 low-swap sweeps that killed the T3 desktop window. The parent is alive, so no reap: restarting its app
-(T3 Code for a Codex app-server) frees the tree. A simulator nobody is using: `xcrun simctl shutdown all`.
+(T3 Code for a Codex app-server) frees the tree. A simulator is idle when `scripts/native-lock.py status` prints `free` and nothing listens on 8081, 3214 or 3215; then `xcrun simctl shutdown all`.
 
 ## 3. Below target: find the drain
 
