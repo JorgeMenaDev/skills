@@ -1,7 +1,7 @@
 ---
 name: storage-audit
 description: Reclaim disk on any Mac running Jorge's workspace (the Mac mini or the MacBook Pro) with scripts/storage-hygiene.sh, covering leaked processes and swap, worktrees, dependency and build caches, agent histories, Xcode and simulators. Use when free space is low, Jorge asks to free space, or the storage-hygiene cron alerts or fails.
-version: 7.6.0
+version: 7.7.0
 mutating: true
 writes_to: ["orphaned dev processes (killed)", "registered git worktrees (clean, backed, idle)", "node_modules/.next/.turbo build state", "T3, OpenCode and Cursor agent history", "settled or legacy crew dirs and the crew sweep log", "superseded T3 runtimes", "Xcode DerivedData and simulator device data", "tool and package caches", "logs and temp bundles", "~/.local/state/matias/storage-hygiene/"]
 ---
@@ -86,7 +86,8 @@ Disk goes three ways. Check them in order; the first that explains the loss is t
 1. **Leaks.** Memory spills into swap files on the same APFS container, so leaked processes eat
    disk. The script reaps processes adopted by launchd whose owner is gone (`ORPHAN`, `REAPED`):
    Convex node executors whose backend exited (each pins a ~40 MiB bundle in `$TMPDIR`),
-   `opencode serve` left by a T3 restart, `convex dev` for a deleted checkout. On 2026-09-22,
+   `opencode serve` left by a T3 restart, `convex dev` for a deleted checkout, and `agent-browser`
+   daemons older than 2 hours (they always detach, so age is the idle signal). On 2026-09-22,
    115 held 9.8 GiB. Swap still high after a reap means a live workload or a reboot.
    It only reports (`RUNTIME-LEFTOVER`, meter `runtime_leftovers=`) a worktree runtime whose
    launcher is gone: `convex dev`, its local backend or a Next server for a linked worktree that
