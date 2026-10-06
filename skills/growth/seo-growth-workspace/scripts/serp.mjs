@@ -23,6 +23,8 @@ domain ranks among organic results, the top organic results, and which result fe
 --domain         Domain to locate (subdomains count as the same site).
 --num            Organic results requested per query (default 10). Serper free accounts reject
                  quoted and site: queries above 10 ("Query pattern not allowed for free accounts").
+--pages          Result pages to fetch per query (default 1). Each page is 10 results and one
+                 paid query; use --pages 3 to see positions 11 to 30 when --num is capped at 10.
 --out            Path prefix: writes <prefix>.json (responses) and <prefix>.md.
 --from-response  Re-render a saved <prefix>.json without network access.
 --dry-run        Print the request bodies and exit without calling the API.
@@ -105,9 +107,12 @@ async function main() {
   const hl = argValue("--hl") ?? "en";
   const domain = argValue("--domain") ?? "";
   const num = Number(argValue("--num") ?? 10);
+  const pages = Math.max(1, Number(argValue("--pages") ?? 1));
   if (queries.length === 0) throw new Error(`At least one --q is required.\n\n${usage()}`);
 
-  const bodies = queries.map((q) => ({ q, gl, hl, num }));
+  const bodies = queries.flatMap((q) =>
+    Array.from({ length: pages }, (_, index) => (index === 0 ? { q, gl, hl, num } : { q, gl, hl, num, page: index + 1 })),
+  );
   if (process.argv.includes("--dry-run")) {
     console.log(JSON.stringify({ endpoint: ENDPOINT, bodies }, null, 2));
     return;
@@ -123,10 +128,25 @@ async function main() {
       body: JSON.stringify(body),
     });
     const payload = await response.json().catch(() => ({}));
-    results.push({ q: body.q, response: response.ok ? payload : { error: `HTTP ${response.status}${payload.message ? `: ${payload.message}` : ""}` } });
+    const page = body.page ?? 1;
+    if (page === 1) {
+      results.push({ q: body.q, response: response.ok ? payload : { error: `HTTP ${response.status}${payload.message ? `: ${payload.message}` : ""}` } });
+      continue;
+    }
+    // Later pages extend page 1's organic list; Serper restarts positions at 1 on each page.
+    const first = results.at(-1)?.response;
+    if (!response.ok || !first || first.error || !Array.isArray(payload.organic)) continue;
+    const offset = (page - 1) * 10;
+    first.organic = [
+      ...(first.organic ?? []),
+      ...payload.organic.map((result, index) => {
+        const position = Number(result.position) || index + 1;
+        return { ...result, position: position <= 10 ? offset + position : position };
+      }),
+    ];
   }
 
-  const saved = { fetchedAt: new Date().toISOString(), domain, gl, hl, num, results };
+  const saved = { fetchedAt: new Date().toISOString(), domain, gl, hl, num, pages, results };
   const text = render(saved);
   const out = argValue("--out");
   if (out) {

@@ -1,5 +1,9 @@
 # Changelog
 
+## 9.3.0
+
+`serp.mjs --pages N` fetches N result pages per query and numbers them continuously, so a site at positions 11 to 30 is located in one call. `data.md` adds Vercel Web Analytics through its REST query API as a visits source for sites without Search Console.
+
 ## 9.2.0
 
 Adds a demand-first calendar gate for content engines. Every keyword is sized with `demand.mjs` and checked with `serp.mjs` before scheduling, and each article names the service page and call to action it feeds. Engine volume tiers no longer count as demand evidence.

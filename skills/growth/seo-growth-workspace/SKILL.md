@@ -1,7 +1,7 @@
 ---
 name: seo-growth-workspace
 description: "Use when growing organic search traffic for a product or local-business website: weekly SEO review, deciding what to build or fix next for search, sizing search opportunities, shipping SEO bets, traffic drops, AI-search visibility, and the monthly SEO scoreboard. Triggers: \"SEO review\", \"what should we do for SEO\", \"why am I not ranking\", \"my traffic dropped\", \"set up SEO\", \"monthly SEO report\", \"how do we show up in ChatGPT\". Keeps a .seo workspace per site (one repo, or a hub of many sites), connects business goals and demand discovery to finished work, distribution, conversion and measured learning."
-version: 9.2.0
+version: 9.3.0
 license: MIT
 mutating: true
 writes_to: [".seo/"]
