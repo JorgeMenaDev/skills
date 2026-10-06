@@ -17,6 +17,7 @@ Practical rules for writing skills, `AGENTS.md` / `CLAUDE.md` files and the prom
 - Mine the history: have agents audit past threads and rank failure modes by frequency per model and harness (wrong process killed, draft PRs, repo-wide checks, overbuild, stopping early, no verification, unasked edits). Fix the most frequent first.
 - When a thread goes wrong, ask the agent why it chose that path and what pointed it there; the answer is often a stale steering line. When a simple task ran long, have it sort its tool calls into helpful and wasted.
 - When the agent keeps reaching for the wrong tool, name the right one in the skill ("fetch it with curl").
+- Prove an instruction change on a real case before you rely on it: run it on a case whose answer you already know, and grade it from what the agent opened and did (the transcript, the diff), not from its own report. A retro written from memory said four reviews had passed; the transcripts showed one never ran.
 
 ## Show GOOD and BAD
 
