@@ -85,11 +85,16 @@ You win twice: fewer tokens, and a sharper hook for the agent to hang its thinki
 
 Before drafting any skill with state, roles, multi-step workflows, or bulk processing, read [PATTERNS.md](PATTERNS.md) — 11 patterns distilled from gstack `office-hours` and gbrain `ingest`. Headlines: bash preamble computes state and the model only branches on echoed tokens; STOP gates that name the failure mode they prevent; Contract + Anti-Patterns + Output Format sections; test-before-bulk. Pattern 1 fixed a real role-routing bug in this repo's `operator` skill.
 
+## Field Lessons
+
+Before writing a description, an `AGENTS.md` section, or a rule added after an agent failed, read [FIELD-LESSONS.md](FIELD-LESSONS.md): trigger-only descriptions, failure-traced lines, GOOD/BAD pairs, glossary and never-compromise lists, hit-every-surface and reverse-state checklists, stop points.
+
 ## Review Checklist
 
 After drafting, verify:
 
-- [ ] Description includes triggers ("Use when...")
+- [ ] Description is triggers: one identity clause, then "Use when …", no contents list (FIELD-LESSONS.md)
+- [ ] Each new rule traces to an observed failure; taste rules carry a GOOD/BAD pair
 - [ ] SKILL.md under 100 lines
 - [ ] No time-sensitive info
 - [ ] Consistent terminology
