@@ -31,7 +31,8 @@
         "design-system-keeper",
         "using-git-worktrees",
         "mobile-monorepo-ios",
-        "file-pr"
+        "file-pr",
+        "correctness-review"
       ]
     },
     {
