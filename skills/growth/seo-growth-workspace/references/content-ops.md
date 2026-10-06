@@ -23,7 +23,7 @@ Buyer-stage modifiers:
 | Decision       | pricing, reviews, demo, trial     |
 | Implementation | template, tutorial, setup, how to use |
 
-Choose with the judgment method in [review.md](review.md). Engine keyword tiers are routing metadata only.
+Choose with the judgment method in [review.md](review.md). Engine keyword tiers are routing metadata only, not demand: size candidates with `scripts/demand.mjs` before scheduling (see the demand-first calendar in [content-engine-webhooks.md](content-engine-webhooks.md)).
 
 ## From intent to finished page
 

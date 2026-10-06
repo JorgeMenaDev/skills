@@ -1,5 +1,9 @@
 # Changelog
 
+## 9.2.0
+
+Adds a demand-first calendar gate for content engines. Every keyword is sized with `demand.mjs` and checked with `serp.mjs` before scheduling, and each article names the service page and call to action it feeds. Engine volume tiers no longer count as demand evidence.
+
 ## 9.1.0
 
 Tightens v9 without changing its method. Every chosen bet now ends a run in one defined state, and the page workflow has one owner for each field.

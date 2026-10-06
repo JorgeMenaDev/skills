@@ -12,6 +12,12 @@ Before creating, importing or scheduling content:
 2. Confirm `context.md` covers audience, market, language, conversion path and competitors.
 3. Confirm the target project exists in the engine or is created intentionally, a blog renderer or publishing destination exists, the sitemap includes the blog hub and generated posts, and the production backend or CLI agrees with the authenticated UI on project and calendar state. A failed check in steps 2 or 3 is a `defect` candidate.
 4. Store durable project config and keyword batches in the target repository's established content-engine paths; a small import script keeps them repeatable.
+5. **Demand-first calendar.** Size every keyword with `scripts/demand.mjs` before it enters the engine's calendar, and check its live results with `scripts/serp.mjs`. Schedule a keyword only when all three hold:
+   - It has reported volume for the site's market and language.
+   - Its intent fits a buyer the business serves: a problem, comparison, cost-factor or how-to question that leads to one of its services.
+   - An article can win its results. Shopping, government, product-seller and marketplace results are a no.
+
+   A keyword below the reporting threshold needs a written reason, such as a support article a service page needs. Record volume, source and date beside the keyword batch, and log the paid call in `research.md`. The engine's own volume tiers are guesses, not demand evidence. Every scheduled article names the service page it feeds and that page's call to action. When the blog template has no in-article conversion block, open a `conversion` candidate. Why: on one client calendar, 11 of 23 engine-chosen topics had no reported search volume, and two faced product-seller results.
 
 After seeding a lane, verify with the engine's CLI or status commands and record in the review: keyword tier counts, scheduled rows (date, locale or lane, status, content type, keyword), visibility in the production UI, the next planned item or queue status, blog route and sitemap behavior, and any UI/backend mismatch. Keep API keys, admin keys and provider secrets out of all output.
 
