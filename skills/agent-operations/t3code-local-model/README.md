@@ -17,6 +17,8 @@ T3 Code  ->  Pi (agent)  ->  Ollama (model server)  ->  local model
 - At least 16 GB of memory for a 7B model. [references/choosing-a-model.md](references/choosing-a-model.md) covers other sizes.
 - About 5 GB of free disk for a 7B model.
 
+Not sure your machine can take it? Run `bash scripts/doctor.sh <model-id>`. It reads your memory now (total, free, swap, pressure), looks up the model's size, and prints `FIT: ok`, `tight` or `no`. You can also ask your agent "can this machine run qwen2.5-coder:7b?" and it answers from the same check without installing anything.
+
 Small local models are much weaker agents than hosted frontier models. Read "Quality" in [references/choosing-a-model.md](references/choosing-a-model.md) before you start.
 
 ## Use it
@@ -34,7 +36,7 @@ npx skills@latest add JorgeMenaDev/skills --skill t3code-local-model
 | File | Read it when |
 | --- | --- |
 | [SKILL.md](SKILL.md) | You set it up. Six steps, each with a check. |
-| [scripts/doctor.sh](scripts/doctor.sh) | You want to know which link is missing. Read-only. |
+| [scripts/doctor.sh](scripts/doctor.sh) | You want to know if a model fits your machine now, or which link is missing. Read-only. |
 | [references/how-it-works.md](references/how-it-works.md) | You want the design, the source references, or a route other than Pi (llama.cpp, a local ACP command). |
 | [references/choosing-a-model.md](references/choosing-a-model.md) | You pick a model or wonder what it can do. |
 | [references/troubleshooting.md](references/troubleshooting.md) | Something does not work. |

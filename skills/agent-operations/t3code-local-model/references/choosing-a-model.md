@@ -2,7 +2,15 @@
 
 ## Does it fit?
 
-The model must fit in memory together with its context and the rest of the machine. On Apple Silicon, memory is shared with the GPU. On a PC, the model should fit in GPU memory (VRAM) to run at a usable speed.
+The model must fit in memory together with its context and the rest of the machine. On Apple Silicon, memory is shared with the GPU. On a PC, the model should fit in GPU memory (VRAM) to run at a usable speed: compare `MODEL_NEEDS_GB` with the doctor's `GPU_VRAM_GB` line.
+
+`scripts/doctor.sh <model-id>` answers this for the machine it runs on. It reads the model's download size from the Ollama registry and estimates the memory the model needs while loaded. Then it compares that estimate with total memory, free memory and memory pressure now:
+
+- `ok`: fits in the memory free now, and memory pressure is normal.
+- `tight`: fits the machine, but not comfortably right now. Either free memory is too low, or the machine is already under pressure. Loading it pushes open apps into swap.
+- `no`: needs more than the machine can give after 4 GB for the system and everyday apps.
+
+Free memory changes minute to minute. Close heavy apps (browsers, simulators, Docker) and run the doctor again before calling a `tight` model safe.
 
 Rough sizes for 4-bit models, the Ollama default:
 

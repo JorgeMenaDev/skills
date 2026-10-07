@@ -1,7 +1,7 @@
 ---
 name: t3code-local-model
 description: Run a local open-weight model (Qwen, Llama, DeepSeek and others) as a T3 Code provider through Pi and Ollama. Use when someone wants a local, offline or free model inside T3 Code, asks whether their machine can run one, or a local model in T3 Code stops answering.
-version: 1.0.1
+version: 1.1.0
 mutating: true
 writes_to: [system packages (Ollama), model files under ~/.ollama, <pi-agent-dir>/models.json, T3 Code provider settings]
 ---
@@ -12,13 +12,22 @@ T3 Code runs **agents**, not models. A local model reaches T3 Code through a cha
 
 ## Preamble
 
-Run `bash scripts/doctor.sh qwen2.5-coder:7b` from this skill's folder. It prints one line per link: `MEMORY_GB`, `PI`, `OLLAMA`, `OLLAMA_SERVER`, `MODEL`, `PI_CONFIG`. Start at the first step whose line is not `ok`. Run the doctor again after each step. A step is done when its line reads `ok`.
+Run `bash scripts/doctor.sh <model-id>` from this skill's folder. It reads this machine's memory now (`MEMORY_TOTAL_GB`, `MEMORY_AVAILABLE_GB`, `SWAP_USED_GB`, `MEMORY_PRESSURE`), the model's size, and a `FIT` verdict. Then it prints one line per link: `PI`, `OLLAMA`, `OLLAMA_SERVER`, `MODEL`, `PI_CONFIG`. Start at the first step whose line is not `ok`. Run the doctor again after each step. A step is done when its line reads `ok`.
+
+**Question only?** When the human asks whether a model can run, or how the machine is doing, answer from the doctor's memory and `FIT` lines plus "Quality" in [references/choosing-a-model.md](references/choosing-a-model.md). Give the numbers and a verdict. Install nothing.
 
 ## Steps
 
-### 1. Pick a model that fits (`MEMORY_GB`)
+### 1. Challenge the model choice (`FIT`)
 
-Read [references/choosing-a-model.md](references/choosing-a-model.md) and pick a model for the memory the doctor reports. Done when you have one Ollama model ID and its download size.
+Run the doctor with the model the human wants. Act on `FIT`:
+
+- `ok`: go on.
+- `tight`: **STOP.** Give the human the numbers: what the model needs, what is free now, and the swap already in use. Offer a smaller model, or closing apps first. Go on only on an explicit yes. This prevents a frozen machine.
+- `no`: **STOP.** The model cannot run here. Propose the largest model that gets `ok` or `tight`, using [references/choosing-a-model.md](references/choosing-a-model.md).
+- `unknown`: find the size on the model's Ollama library page, then apply the rules above by hand.
+
+Also challenge a model that fits but is too small for the job. Models under 7B cannot use tools. Done when the human has agreed to one model ID and you know its size.
 
 ### 2. Install Pi (`PI`)
 
@@ -38,21 +47,17 @@ Pi needs Node.js 22.19 or newer. T3 Code supports Pi 0.80.5 and later. Install P
 Start the server with a larger context. Agents send long prompts, and Ollama's default context is too small for them: the model drops instructions and makes bad tool calls.
 
 ```bash
-OLLAMA_CONTEXT_LENGTH=32768 ollama serve
+OLLAMA_CONTEXT_LENGTH=32768 ollama serve   # permanent: "Context" in references/troubleshooting.md
 ```
-
-To make this setting permanent, see "Context" in [references/troubleshooting.md](references/troubleshooting.md).
 
 ### 4. Download the model (`MODEL`)
 
-**STOP before downloading.** Tell the human the download size and get a yes. This prevents filling a small disk.
+**STOP before downloading.** Tell the human the download size and get a yes. This prevents filling a small disk. Done when `ollama run` replies.
 
 ```bash
 ollama pull qwen2.5-coder:7b
 ollama run qwen2.5-coder:7b "Reply with OK"
 ```
-
-Done when the model replies.
 
 ### 5. Register the model with Pi (`PI_CONFIG`)
 
@@ -71,14 +76,11 @@ Add the model to `<pi-agent-dir>/models.json`. The default `<pi-agent-dir>` is `
 }
 ```
 
-Ollama ignores the `apiKey`, but Pi shows a model only when it has a key. Keep `contextWindow` equal to `OLLAMA_CONTEXT_LENGTH`. Then check that Pi can use the model:
+Ollama ignores the `apiKey`, but Pi shows a model only when it has a key. Keep `contextWindow` equal to `OLLAMA_CONTEXT_LENGTH`. Done when Pi prints a reply below. T3 Code shows only what Pi can run, so fix Pi first.
 
 ```bash
-pi --list-models qwen
 pi -p --provider ollama --model qwen2.5-coder:7b "Reply with OK"
 ```
-
-Done when Pi prints a reply. When it does not, fix it before you go on: T3 Code shows only what Pi can run.
 
 ### 6. Turn on Pi in T3 Code
 
