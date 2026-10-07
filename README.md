@@ -152,6 +152,7 @@ Invocation is declared in each skill. Crew is user-invoked: run `/crew` explicit
 - **[crew](./skills/agent-operations/crew/SKILL.md)** — Dispatch visible T3 Code workers across your configured providers, with verified model options, local reports and recoverable hand-backs. Includes the complete dispatcher.
 - **[source-to-system](./skills/agent-operations/source-to-system/SKILL.md)** — Turn external material into one evidence-backed, owned system improvement or an explicit no-change decision.
 - **[grok-deep-research](./skills/agent-operations/grok-deep-research/SKILL.md)** — Run isolated, bounded Grok research with native or Firecrawl search and produce a stable cited report plus an iteration ledger.
+- **[t3code-local-model](./skills/agent-operations/t3code-local-model/SKILL.md)** — Run a local open-weight model (for example Qwen2.5-Coder 7B) as a T3 Code provider through Pi and Ollama: a doctor script that checks each link, six checked steps, model sizing and troubleshooting.
 
 ### Software Development
 
