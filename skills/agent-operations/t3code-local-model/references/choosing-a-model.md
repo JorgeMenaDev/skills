@@ -21,6 +21,7 @@ A bigger context needs more memory. When the model is slow or the machine swaps,
 
 A coding agent needs **tool calling**: the model must emit correct calls to read, edit and bash, many times in a row. Small models are much weaker at this than at writing code in a chat.
 
+- **1.5B–3B models:** prove the setup works and answer short chat questions. They cannot drive tools. Field test with `qwen2.5-coder:1.5b` in T3 Code: arithmetic and a one-line function were correct. Asked to create and run a file, it printed an invented tool call as text and created nothing. Asked to find a bug, it missed the real one.
 - **7B–8B models:** good for questions about the code, small edits and offline use. Expect broken tool calls and lost track after a few steps.
 - **14B–32B models:** usable for single-file tasks with supervision.
 - **Hosted frontier models:** still needed for multi-step tickets and delegated work.

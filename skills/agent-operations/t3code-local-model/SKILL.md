@@ -1,7 +1,7 @@
 ---
 name: t3code-local-model
 description: Run a local open-weight model (Qwen, Llama, DeepSeek and others) as a T3 Code provider through Pi and Ollama. Use when someone wants a local, offline or free model inside T3 Code, asks whether their machine can run one, or a local model in T3 Code stops answering.
-version: 1.0.0
+version: 1.0.1
 mutating: true
 writes_to: [system packages (Ollama), model files under ~/.ollama, <pi-agent-dir>/models.json, T3 Code provider settings]
 ---
@@ -89,7 +89,7 @@ The human does this in the app:
 3. Start a new thread. Choose **Pi** and the model `qwen2.5-coder:7b` in the model picker.
 4. Send "List the files in this project".
 
-Done when the model replies in the thread and its tool calls show in the work log. When the model is not in the picker, set **Launch arguments** to `--provider ollama --model qwen2.5-coder:7b`. T3 Code needs both flags together.
+Done when the model replies in the thread and its tool calls show in the work log. T3 Code's model ID is `ollama/qwen2.5-coder:7b`: Pi's provider name, a slash, then the Ollama ID. When the model is not in the picker, set **Launch arguments** to `--provider ollama --model qwen2.5-coder:7b`. T3 Code needs both flags together.
 
 ## After setup
 
