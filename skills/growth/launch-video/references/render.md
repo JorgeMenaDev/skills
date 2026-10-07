@@ -24,8 +24,9 @@ ffmpeg -y -i out/silent.mp4 -vf "select='not(mod(n\,30))',scale=480:-1,tile=6x6:
 - **Embed width:** read the contact sheet scaled to the width the film will really play at (a landing hero is
   ~1000 px wide, a phone feed ~400 px), not at full size.
 - **Loudness:** `audio/loud.py` measures the final MP4, not `mix.wav`: the AAC encode adds up to 2 dB of true
-  peak, which is why `mix.py` normalises to -2.5 dBTP. On `FAIL`, lower `TP` in `mix.py` and re-mux; a limiter
-  on the mux did not hold the peak.
+  peak (up to 7 dB on a film dense with keystrokes), which is why `mix.py` low-passes at 15 kHz and normalises to
+  -3.5 dBTP. On `FAIL`, lower `TP` in `mix.py` or the keystroke volumes and re-mux; a limiter on the mux did not
+  hold the peak.
 
 ## Delivering
 

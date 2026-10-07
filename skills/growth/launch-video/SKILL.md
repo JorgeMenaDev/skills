@@ -1,7 +1,7 @@
 ---
 name: launch-video
 description: "Make a code-rendered product film: one HTML film driven by seek(t), cut to a royalty-free song's beat grid, rendered to a 60 fps MP4 with motion blur and real sound effects. Use when asked for a launch video, a feature promo or demo clip, a product intro video for customers, or motion design for a product."
-version: 1.3.0
+version: 1.3.1
 license: MIT
 mutating: true
 writes_to: ["a new film folder (index.html, audio/, out/)"]
