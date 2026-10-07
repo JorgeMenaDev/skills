@@ -1,5 +1,9 @@
 # Changelog
 
+## 9.3.1
+
+`setup.md`: a newly added Search Console property returns no rows for about a day, so the baseline waits a day. URL Inspection works at once.
+
 ## 9.3.0
 
 `serp.mjs --pages N` fetches N result pages per query and numbers them continuously, so a site at positions 11 to 30 is located in one call. `data.md` adds Vercel Web Analytics through its REST query API as a visits source for sites without Search Console.

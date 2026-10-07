@@ -32,7 +32,7 @@ Credentials are locations (a directory or environment variable name), never valu
    ```
 
 2. Create `strategy.md` with the current focus below and dated owner decisions, newest first, `bets.md` (`## Open` and `## Closed`), `research.md`, `log.md` and `reports/data/`.
-3. Prove Search Console access with a small pull (`gsc-fetch.mjs --dimensions none` over the last 28 days). First-time OAuth: `scripts/gsc-oauth.mjs --help`. No access means the first bet is getting it, and the review runs on live checks and demand data alone.
+3. Prove Search Console access with a small pull (`gsc-fetch.mjs --dimensions none` over the last 28 days). First-time OAuth: `scripts/gsc-oauth.mjs --help`. No access means the first bet is getting it, and the review runs on live checks and demand data alone. A newly added property shows "Processing data" and returns 0 rows for about a day, even when the site has years of history. Schedule the baseline pull for the next day, and don't record those rows as zero. URL Inspection works at once.
 4. Run a technical crawl once (command in [data.md](data.md)) and keep its findings in the first review's candidate list.
 5. Run `review`.
 
