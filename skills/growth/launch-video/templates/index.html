@@ -74,6 +74,10 @@ function riser(parent, x, y, w, h, html) {
   return { m, c };
 }
 const rise = (r, t, s, dur = 0.35) => TF(r.c, `translateY(${(1 - pr(t, s, s + dur, E.out5)) * 105}%)`);
+// text width from the font, for carets after typed text and pills that hug a label. Canvas measureText is
+// cached and layout-free; offsetWidth forces a layout every frame. Call it only after window.ready (fonts loaded).
+const _tw = document.createElement('canvas').getContext('2d'), _twc = {};
+const tw = (font, s) => _twc[font + '|' + s] ??= (_tw.font = font, _tw.measureText(s).width);  // tw('600 22px Brand', 'Launch')
 
 // ======================= CAMERA =======================
 // [beat, zoom, cx, cy, easing]: (cx,cy) is the world point at screen centre. One move per scene.

@@ -13,7 +13,8 @@ with no drop can still work if you put the payoff on a bar downbeat, but it lose
 ## Lock the grid
 
 `beats.py` fits the grid to the kick drums (a fine tempo/phase search, then a least-squares refit to per-beat
-kick onsets; autocorrelation alone lands the phase ~0.15 s late) and prints:
+kick onsets; autocorrelation alone lands the phase ~0.15 s late) and prints the whole song's energy, four beats
+per line (a run of empty lines is a breakdown, the empty tail is the outro pad), and:
 
 - `BPM`: put it in `index.html`. (The `offset` on that line is the song's first beat, for reference only.)
 - `DROP beat N ... MUSIC.offset X`: put `X` in `MUSIC.offset`. It starts the song 12 beats before its drop, so
@@ -46,3 +47,11 @@ cards, an impact on the drop, a success tone per status flip, a whoosh as the pa
 `MUSIC.offset` with a 0.9 s tail fade plus every SFX, then loudnorms (single pass) to -14 LUFS / -1.5 dBTP into `out/mix.wav`; the final-MP4
 measurement in `render.md` is the check that counts.
 It prints `MISSING` for any file it could not find.
+
+## A product intro uses the whole song
+
+A 60–90 s intro takes the song from its first beat (`MUSIC.offset` = the BPM line's offset), so film beat =
+song beat, and maps its structure onto the film: the opening runs up to the first drop (the features grid), the
+walkthrough fills the middle with its calmest step (the AI reading, the review) in the quiet section, the second
+drop carries the payoff, and the outro pad carries the ending. Rising Forest (471) fits: drops on beats 32 and
+96, quiet 64–95, outro from 160.

@@ -64,9 +64,17 @@ def main(path, build=12):
         if clusters and b - clusters[-1][-1][1] <= 2: clusters[-1].append((score, b))
         else: clusters.append([(score, b)])
     drops = [max(c) for c in clusters]
-    print("song beat : time  : low-band energy")
-    for b in range(min(n, 64)): print(f"  {b:3d} {O + b * P:7.3f}  {'#' * int(energy[b] * 30)}")
-    for score, b in drops[:4]:
+    # a quiet pickup hit (x5 on silence) scores like a drop: move each drop to its first full-energy beat
+    def landing(b):
+        for k in range(max(b - 1, 1), min(b + 3, n - 4)):
+            if energy[k] >= 0.6 * energy[k:k + 4].mean() and energy[k] >= 2 * energy[k - 1]: return k
+        return b
+    drops = [(score, landing(b)) for score, b in drops]
+    # the whole song, one line per 4 beats, so later breakdowns and the outro are visible too
+    print("song beat : time  : low-band energy, 4 beats per line")
+    for b in range(0, n, 4):
+        print(f"  {b:3d} {O + b * P:7.2f}s  " + "  ".join(f"{'#' * int(energy[k] * 12):<12}" for k in range(b, min(b + 4, n))))
+    for score, b in drops[:6]:
         start = b - build
         if start < 0:
             print(f"DROP beat {b} at {O + b * P:.3f}s (jump x{score:.1f}): too early for {build} beats of build, use a later drop")

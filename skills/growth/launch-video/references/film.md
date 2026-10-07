@@ -33,6 +33,26 @@ visible work, the machinery (Work + Payoff + Result) stays under about 5 s, brea
 and the last frame is the brand. A **looping** film (square, UI morphs) instead ends on a frame
 identical to its first, cursor position and speed included.
 
+## The product intro cut
+
+For new customers who have not seen the product. The feature-launch arc becomes its middle; it gains an
+opening and an ending. One idea per scene, and every scene holds long enough to read.
+
+| Beats (Rising Forest) | Scene | What happens |
+|---|---|---|
+| 0–5 | **Logo** | The mark springs in, the wordmark wipes out, then it flies into a nav bar: the landing page begins. |
+| 5–12 | **Hero** | The product's own landing-page headline, subtitle and audience chips, word for word. |
+| 12–19 | **Problem** | A question the customer asks today, and the mess behind it (emails, spreadsheets, an expired item) as cards that fly into the logo. |
+| 19–28 | **Who it's for** | One card per side of the market, three benefits each. |
+| 28–32 | **Everything included** | Six feature cards burst on the first drop. |
+| 37–40 | **Bridge** | «Así funciona» (or the language's equivalent), then into the product. |
+| 40–160 | **Walkthrough** | The feature-launch arc, step by step, under a numbered **step label** (bottom-left pill). The second drop carries the payoff. |
+| 160–174 | **Ending** | Next steps the viewer actually takes (where the invitation arrives, who to write to), then the mark with tagline, URL and owner. Hold ~3 s. |
+
+The step label and the opening's headlines are the landing page's own chrome, so the one-caption rule below
+applies to the walkthrough only. Show any human approval the product requires: a recommendation that turns
+straight into the result claims more than the product does.
+
 ## Words on screen
 
 Every string on screen is **product chrome**: a typed request, a chat bubble, a row, a toast, a button
@@ -125,4 +145,5 @@ comfortably).
 - Anything that appears springs from scale 0 or rises from a mask; switching on at partial scale is a one-frame
   pop that `scan.py` catches only after a full render.
 - Declare every variable before the first `seek()`; preload every image in `PRELOAD`.
-- Measure widths only from elements whose content is fixed at build time: `offsetWidth` forces a layout each frame.
+- Measure text with `tw(font, text)` (canvas, cached) for carets after typed text and pills that hug a label;
+  `offsetWidth` forces a layout each frame, and a guessed `length × px` puts the caret in the wrong place.

@@ -1,4 +1,7 @@
-"""Mix MUSIC + SFX from out/timeline.json into out/mix.wav at -14 LUFS, -1.5 dBTP (AAC adds ~0.6 dB).  python3 audio/mix.py
+"""Mix MUSIC + SFX from out/timeline.json into out/mix.wav at -14 LUFS, -2.5 dBTP.  python3 audio/mix.py
+
+The 1 dB of headroom below the -1 dBTP target is for the AAC encode, which added up to 2 dB of true peak on a
+-1.5 dBTP mix (2026-10-07); a limiter after the mix did not hold it. audio/loud.py checks the MP4.
 
 Reads what the film declares (render.mjs writes timeline.json): MUSIC {file, offset, gain}, SFX [{f, t, v, peak}].
 peak:true aligns the file's loudest point to t; otherwise the file starts at t.
@@ -30,6 +33,6 @@ for ev in m["SFX"]:
     e = min(N, st + len(y)); out[st:e] += y[:e - st] * ev["v"]
 out /= max(1.0, np.abs(out).max() / 0.95)
 subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "f64le", "-ar", str(SR), "-ac", "2", "-i", "-",
-                "-af", "loudnorm=I=-14:TP=-1.5:LRA=11", "-ar", str(SR), "out/mix.wav"], input=out.tobytes(), check=True)
+                "-af", "loudnorm=I=-14:TP=-2.5:LRA=11", "-ar", str(SR), "out/mix.wav"], input=out.tobytes(), check=True)
 print(f"out/mix.wav  {N / SR:.2f}s  {len(m['SFX'])} events")
 for p in sorted(set(missing)): print("MISSING", p)

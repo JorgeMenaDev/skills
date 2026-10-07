@@ -1,7 +1,7 @@
 ---
 name: launch-video
-description: "Make a code-rendered launch video: one HTML film driven by seek(t), cut to a royalty-free song's beat grid, rendered to a 60 fps MP4 with motion blur and real sound effects. Use when asked for a launch video, a feature promo or demo clip, or motion design for a product."
-version: 1.2.0
+description: "Make a code-rendered product film: one HTML film driven by seek(t), cut to a royalty-free song's beat grid, rendered to a 60 fps MP4 with motion blur and real sound effects. Use when asked for a launch video, a feature promo or demo clip, a product intro video for customers, or motion design for a product."
+version: 1.3.0
 license: MIT
 mutating: true
 writes_to: ["a new film folder (index.html, audio/, out/)"]
@@ -9,11 +9,11 @@ writes_to: ["a new film folder (index.html, audio/, out/)"]
 
 # Launch video
 
-A 15–20 s keynote-style film for one product feature. Every frame is code: one HTML file whose `seek(t)`
+A keynote-style film in one of two **cuts** (Step 1). Every frame is code: one HTML file whose `seek(t)`
 draws any moment, Playwright screenshots each frame, ffmpeg blends subframes and muxes a beat-cut mix.
 Method from zero (@twoclipping)'s article "How I Make $10K Launch Videos for $0". Worked examples:
-[references/example-andy-publicaciones.md](references/example-andy-publicaciones.md) (a web app, 1920x1080) and
-`examples/wainwrights-baggers/` (a phone app with a map, 1080x1920).
+[references/example-andy-publicaciones.md](references/example-andy-publicaciones.md) (feature launch), `examples/wainwrights-baggers/`
+(phone app with a map, 1080x1920), [references/example-product-intro.md](references/example-product-intro.md) (product intro, 87 s).
 
 ## Contract
 
@@ -41,10 +41,17 @@ Any `no`: install it first (`CHROME: no` → `npx playwright install chromium` a
 
 ## Steps
 
-1. **Brief.** From the human or the context, settle: the product and feature, the one action a user takes
-   (types a request, taps a place, drags a slider), what the viewer must learn in order, the language, the
-   frame (1920x1080, 1080x1920 vertical, 1440x1440 square) and length (~32 beats ≈ 16 s). Collect the brand's
-   font, logo, colours and any real screen recordings. Done when these head `BEATMAP.md` in the film folder.
+1. **Brief.** Settle the **cut** first, from who watches it:
+
+   | Cut | Audience | Length | Shape |
+   |---|---|---|---|
+   | **Feature launch** | people who know the product (social, a landing hero) | ~32 beats ≈ 16 s | one action, one payoff on the drop |
+   | **Product intro** | new customers, by email or onboarding | 60–90 s, the whole song | landing-style opening, numbered walkthrough, next steps (film.md) |
+
+   Then settle: the product and feature, the one action a user takes (types a request, taps a place, drags a
+   slider), what the viewer must learn in order, the language, the frame (1920x1080, 1080x1920 vertical,
+   1440x1440 square). Collect the brand's font, logo, colours, its landing-page copy and any real screen
+   recordings. Done when these head `BEATMAP.md` in the film folder.
 2. **Scaffold.** Copy `templates/` to a new folder outside any product repo, in a git-ignored output area
    (`gitignore` → `.gitignore`),
    `npm install`, put the fonts in `assets/` (one `@font-face` and `FONTS` entry each) and the logo, set `W`/`H`.
@@ -54,17 +61,20 @@ Any `no`: install it first (`CHROME: no` → `npx playwright install chromium` a
 4. **Beat map and stills.** Read [references/film.md](references/film.md) in full. Write `BEATMAP.md` (one row
    per beat: what happens, which effect), build only the 4 key moments (ask, payoff, result, end card) and
    render a still of each.
-   **STOP**: show the beat map and stills to the human, or when running unattended, check them against the
-   film.md checklist and write the verdict in `BEATMAP.md`. Building 30 beats on a story nobody checked is
-   the waste this gate prevents.
+   **STOP**: with a human in the conversation, show them the cut, the beat map and the stills, and wait for their
+   answer, deadline or not. Only a scheduled or background run checks them itself against the film.md checklist
+   and writes the verdict in `BEATMAP.md`. This gate prevents building every beat on a cut nobody agreed: a
+   self-checked 41 s launch cut went to a customer audience and was rebuilt as a 90 s intro (2026-10-07).
 5. **Build.** Fill in every beat between the key moments. Loop `node render.mjs beats` and read `out/beats.jpg`
    until every beat shows a change, no text is clipped, and the smallest text is legible at phone size.
 6. **Sound.** Fetch one Mixkit effect per event, declare each with `sfx()`, run `audio/mix.py`.
    Done when it prints no `MISSING` line.
 7. **Render and verify.** Read [references/render.md](references/render.md). Render with 8 subframes, scan,
    mux, and step through every fast moment frame by frame. Done when `scan.py` prints `POPS: none` and an
-   end hold of at least 1.5 s, and the contact sheet reads as the beat map.
-8. **Deliver.** Hand over the MP4, the beat map and the known weaknesses, and keep the folder: director notes
+   end hold of at least 1.5 s, `audio/loud.py out/film.mp4` prints `LOUDNESS: OK`, and the contact sheet reads
+   as the beat map.
+8. **Deliver.** Hand over the MP4 (plus the email copy when it goes by email, render.md), the beat map and the
+   known weaknesses, and keep the folder: director notes
    ("too slow here", "hit the drop harder") usually take 2–3 rounds of minutes each. Done when the Output
    block below is filled.
 
