@@ -175,6 +175,10 @@ Invocation is declared in each skill. Crew is user-invoked: run `/crew` explicit
 - **[shiploop](./skills/devops/shiploop/SKILL.md)** — Turn a plan, fix, or feature into an unattended shipping run: GitHub issue ledger, dependency-gated phases, gated PRs, review evidence, optional worker adapters.
 - ~~**fixloop**~~ — deprecated 2026-07-05 ([history](./deprecated/fixloop/SKILL.md)): incident debugging now = Sentry evidence + `STACK.md` handles (Matias profile) + the `diagnosing-bugs` skill (github.com/mattpocock/skills) + per-repo `AGENTS.md` debugging notes.
 
+## Documentation and templates
+
+See [docs](./docs/README.md) for reusable engineering guidance, including an [AGENTS.md template](./docs/AGENTS.md) you can adapt for your repository.
+
 ## Maintainer Notes
 
 `cursor-subagent` source lives in `skills/software-development/cursor-subagent/`. Update it there first, bump `version:` in `SKILL.md`, commit and push `JorgeMenaDev/skills`, then update consumers such as Matias with:
