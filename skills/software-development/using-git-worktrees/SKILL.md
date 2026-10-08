@@ -1,7 +1,7 @@
 ---
 name: using-git-worktrees
 description: Use when creating an isolated Git workspace, running the default branch locally, or closing development work that used a worktree.
-version: 2.1.5
+version: 2.2.0
 mutating: true
 writes_to: ["<repo-name>-worktrees/", "**/.env.local", "**/.convex/state-kind", "regenerable worktree artifacts"]
 ---
@@ -26,6 +26,8 @@ contract), do not walk sections 1–5 by hand. Run one command and stop:
 `--mode` is passed to `qa:local` only when you give it. Pass it only if that repo's `qa:local`
 documents it: a launcher without it rejects the flag and exits. Omitted, the launcher uses its own
 default, which may be a slow strict login check (smoke); pass `--mode human` there for a play session.
+
+To edit code before you need a running app, add `--no-run`: it stops after setup with `WORKTREE_READY`, and a later `up <slug>` starts the runtime. Create the worktree this way, never with a bare `git worktree add`: `qa:local` refuses a worktree whose branch name differs from its directory name.
 
 It performs the whole contract — sibling worktree off `origin/main`, storage preflight (defaults:
 floor 10 GiB, freeze no; override with `WORKTREE_FREE_FLOOR_GIB` / `WORKTREE_HYDRATION_FREEZE`),

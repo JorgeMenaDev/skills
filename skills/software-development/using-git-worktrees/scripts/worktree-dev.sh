@@ -4,13 +4,15 @@
 # the Andes repository contract (`setup:worktree` + `qa:local`).
 #
 #   worktree-dev.sh up <slug> [--surface <s>]... [--repo <path>] [--base <ref>]
-#                             [--mode <m>] [--budget 2|3|4]
+#                             [--mode <m>] [--budget 2|3|4] [--no-run]
 #   worktree-dev.sh down <slug> [--repo <path>] [--remove]
 #   worktree-dev.sh list [--repo <path>]
 #
 # `up` creates (or reuses) the sibling worktree, copies ignored env files,
 # installs, runs `setup:worktree`, starts `qa:local` detached, and prints the
 # QA_LOCAL_READY lines, stopping a previous runtime of a reused worktree first.
+# `--no-run` stops after setup and prints WORKTREE_READY: for editing code
+# before a runtime is needed; a later `up` on the same slug starts it.
 # `down` stops the server's process tree and this worktree's orphaned runtime
 # processes, fails with RUNTIME_LEFTOVER if any survive, and optionally retires
 # the worktree. Repos without `qa:local` fall back to
@@ -32,6 +34,7 @@ base_ref=""
 mode=""
 budget="4"
 remove="no"
+run="yes"
 surfaces=()
 
 if [[ "$command" != "list" ]]; then
@@ -45,6 +48,7 @@ while [[ $# -gt 0 ]]; do
     --mode) mode="${2:?--mode needs a value}"; shift 2 ;;
     --budget) budget="${2:?--budget needs a value}"; shift 2 ;;
     --remove) remove="yes"; shift ;;
+    --no-run) run="no"; shift ;;
     *) echo "Unknown option: $1" >&2; usage ;;
   esac
 done
@@ -200,6 +204,11 @@ case "$command" in
     (cd "$worktree" && bun install --frozen-lockfile)
     if has_script "$worktree" "setup:worktree"; then
       (cd "$worktree" && bun run setup:worktree) 2>&1 | tail -5
+    fi
+
+    if [[ "$run" == "no" ]]; then
+      echo "WORKTREE_READY: $worktree (no runtime started)"
+      exit 0
     fi
 
     start_cmd=(bun run qa:local --)
