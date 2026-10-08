@@ -12,12 +12,19 @@ Before creating, importing or scheduling content:
 2. Confirm `context.md` covers audience, market, language, conversion path and competitors.
 3. Confirm the target project exists in the engine or is created intentionally, a blog renderer or publishing destination exists, the sitemap includes the blog hub and generated posts, and the production backend or CLI agrees with the authenticated UI on project and calendar state. A failed check in steps 2 or 3 is a `defect` candidate.
 4. Store durable project config and keyword batches in the target repository's established content-engine paths; a small import script keeps them repeatable.
-5. **Demand-first calendar.** Size every keyword with `scripts/demand.mjs` before it enters the engine's calendar, and check its live results with `scripts/serp.mjs`. Schedule a keyword only when all three hold:
-   - It has reported volume for the site's market and language.
-   - Its intent fits a buyer the business serves: a problem, comparison, cost-factor or how-to question that leads to one of its services.
-   - An article can win its results. Shopping, government, product-seller and marketplace results are a no.
+5. **Demand-first calendar.** The calendar holds only keywords that DataForSEO data backs, each aimed at a page the business needs. Build it in this order:
+   1. **Audit the pool.** Export every queued and scheduled keyword with the engine's CLI and size them all in one request (`demand.mjs --keywords-file`). Rows without reported volume leave the calendar. Why: on one engine calendar (Chile, 2026-10-08), only 15 of 323 engine-chosen keywords had any measurable volume.
+   2. **Find candidates in the buyer's own words.** Name what the buyer handles: the portals, forms, regulations and problems of their job. Run `demand.mjs --suggest <seed>` for each one, plus `--seeds` for related ideas. Category-based idea endpoints drift into generic national searches in a niche B2B market.
+   3. **Check live results** with `scripts/serp.mjs` for every survivor.
+   4. Schedule a keyword only when all of these hold:
+      - It has reported volume for the site's market and language.
+      - Its intent fits a buyer the business serves: a problem, comparison, cost-factor or how-to question that leads to one of its services.
+      - An article can win its results. Shopping, government, product-seller, marketplace and login results are a no, and so are certificate look-ups where searchers fetch their own document from an official account. Results led by document-sharing sites (Studocu, Scribd) or thin blogs are weak competition, so they count as winnable.
+      - It names the page it feeds and that page's call to action. It leaves a landing page's head query and every existing post's topic alone.
 
-   A keyword below the reporting threshold needs a written reason, such as a support article a service page needs. Record volume, source and date beside the keyword batch, and log the paid call in `research.md`. The engine's own volume tiers are guesses, not demand evidence. Every scheduled article names the service page it feeds and that page's call to action. When the blog template has no in-article conversion block, open a `conversion` candidate. Why: on one client calendar, 11 of 23 engine-chosen topics had no reported search volume, and two faced product-seller results.
+   A keyword below the reporting threshold needs a written reason, such as a support article a service page needs. Record volume, source and date beside the keyword batch, and log the paid calls in `research.md`. The engine's own volume tiers are guesses, not demand evidence. When the blog template has no in-article conversion block, open a `conversion` candidate. Why: on another client calendar, 11 of 23 engine-chosen topics had no reported search volume, and two faced product-seller results.
+
+6. **Operate the engine through its CLI.** Keyword imports, calendar rows, schedule and generation config all go through the engine's own CLI or API. When the engine is yours and an operation is missing, add it to the CLI, release it, then continue. A CLI gap is a defect to fix, and backend functions, deploy keys and direct database writes stay out of the workflow.
 
 After seeding a lane, verify with the engine's CLI or status commands and record in the review: keyword tier counts, scheduled rows (date, locale or lane, status, content type, keyword), visibility in the production UI, the next planned item or queue status, blog route and sitemap behavior, and any UI/backend mismatch. Keep API keys, admin keys and provider secrets out of all output.
 
@@ -74,7 +81,7 @@ A keyword-research and article-scheduling engine with a webhook-first publishing
 
 ### CLI configuration (preferred, agent-side)
 
-Requires `@jorgemenadev/superaseo` >= 0.1.0 (>= 0.2.0 for the content-plan commands below). The CLI has full dashboard parity — everything the SuperaSEO UI shows (schedule, planner/calendar, keywords, articles, integrations) is readable and drivable headlessly, workspace-scoped by an API key — no human in the dashboard except the one-time key issue. It supersedes/complements the existing MCP tools for agents without MCP.
+Requires `@jorgemenadev/superaseo` >= 0.3.0. The CLI is the operating interface for SuperaSEO: integrations, articles, keywords, calendar, scheduler and generation config, workspace-scoped by an API key, with no human in the dashboard after the one-time key issue. SuperaSEO is maintained alongside this skill. When an operation is missing, extend the CLI in the `superaseo` repository (`apps/cli` and its `/cli/*` routes), release a new version and record it here.
 
 Auth setup (one human step, then headless):
 
@@ -103,15 +110,20 @@ superaseo articles mark-published --project <slug> --article-id <id> \
   --published-url <url> [--commit-sha <sha>] [--dry-run]
 ```
 
-Content-plan operations (CLI >= 0.2.0) — the scheduler/planner surface, previously dashboard-only:
+Content-plan operations — keywords, calendar, scheduler and generation config:
 
 ```bash
 superaseo scheduler get --project <slug>                 # scheduleConfig (enabled, daysOfWeek, hourLocal, autoPublish) + timezone
 superaseo scheduler set --project <slug> --enabled true --days mon,thu --hour 9 --auto-publish false   # MUTATING — owner approval
 superaseo scheduler history --project <slug> [--limit n] # past runs; empty = the cron has never acted on this project
+superaseo keywords list --project <slug> [--tier p1|p2|p3] [--status <s>]   # export for the pool audit
+superaseo keywords add --project <slug> --file batch.json   # MUTATING — upsert sized keywords (or --keyword "<text>" …)
+superaseo keywords skip|requeue --project <slug> --keyword-id <id>
 superaseo calendar list --project <slug> [--status planned|completed] [--lane es|en]   # planner rows
-superaseo calendar reschedule|remove --project <slug> …  # MUTATING — compress or prune a backlog
-superaseo keywords list --project <slug> [--tier p1|p2|p3] [--status <s>]
+superaseo calendar add --project <slug> --keyword-id <id> --date YYYY-MM-DD [--lane es]   # MUTATING — schedule a sized keyword
+superaseo calendar reschedule|remove|retry --project <slug> --plan-id <id> …   # MUTATING — compress or prune a backlog
+superaseo projects config get --project <slug> > config.json   # generation config (positioning, required links, cluster overrides)
+superaseo projects config set --project <slug> --file config.json   # MUTATING — full replace; edit the file from `get`
 superaseo generate start|status --project <slug>
 ```
 

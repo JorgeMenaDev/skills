@@ -1,5 +1,14 @@
 # Changelog
 
+## 9.4.0
+
+Content-engine calendars are built from DataForSEO data and operated only through the engine's CLI.
+
+- `content-engine-webhooks.md` step 5 sets the calendar order: audit the engine's whole keyword pool for reported volume, find candidates in the buyer's own words (portals, forms, regulations), check live results, then schedule only keywords that name the page they feed and avoid landing-page head queries and existing posts. Login results and own-certificate look-ups join the no-go list; results led by document-sharing sites count as winnable. Why: on one engine calendar, 15 of 323 engine-chosen keywords had any measurable volume.
+- New step 6: keywords, calendar, schedule and generation config go through the engine's CLI. A missing operation in an engine you own is a CLI gap to fix and release, with backend functions, deploy keys and database writes kept out of the workflow.
+- SuperaSEO section: requires CLI 0.3.0 and lists `keywords add`, `calendar add` and `projects config get|set`.
+- `demand.mjs --suggest <seed>` returns up to 200 phrases containing a seed, with volumes (DataForSEO Labs keyword suggestions). In a niche B2B market it finds the long tail that category-based idea endpoints miss.
+
 ## 9.3.1
 
 `setup.md`: a newly added Search Console property returns no rows for about a day, so the baseline waits a day. URL Inspection works at once.

@@ -102,6 +102,9 @@ check(serpDry.status === 0 && JSON.parse(serpDry.stdout).bodies[0].gl === "gb", 
 const demandDry = run("demand.mjs", ["--keywords", "a,b", "--location", "2152", "--language", "es", "--dry-run"]);
 check(demandDry.status === 0 && JSON.parse(demandDry.stdout).body[0].location_code === 2152, "demand --dry-run prints the request without credentials");
 check(run("demand.mjs", ["--keywords", "a", "--seeds", "b", "--dry-run"]).status !== 0, "demand: --keywords and --seeds are exclusive");
+const suggestDry = run("demand.mjs", ["--suggest", "f30", "--location", "2152", "--language", "es", "--dry-run"]);
+check(suggestDry.status === 0 && JSON.parse(suggestDry.stdout).body[0].keyword === "f30" && JSON.parse(suggestDry.stdout).endpoint.includes("keyword_suggestions"), "demand --suggest --dry-run builds a Labs suggestions request");
+check(run("demand.mjs", ["--suggest", "a,b", "--dry-run"]).status !== 0, "demand --suggest takes one seed");
 check(run("gsc-fetch.mjs", ["--site", "sc-domain:example.com", "--start", "2026-01-01", "--end", "2026-01-02", "--dimensions", "bogus"]).status !== 0, "gsc-fetch: unknown dimensions are rejected");
 
 // --- 6. retired v7 machinery ---

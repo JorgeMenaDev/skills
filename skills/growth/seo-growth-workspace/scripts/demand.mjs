@@ -8,6 +8,7 @@ const API = "https://api.dataforseo.com/v3/keywords_data/google_ads";
 const MODES = {
   volume: { endpoint: `${API}/search_volume/live`, limit: 1000, flag: "--keywords" },
   ideas: { endpoint: `${API}/keywords_for_keywords/live`, limit: 20, flag: "--seeds" },
+  suggest: { endpoint: "https://api.dataforseo.com/v3/dataforseo_labs/google/keyword_suggestions/live", limit: 1, flag: "--suggest" },
 };
 
 function usage() {
@@ -15,12 +16,16 @@ function usage() {
   DATAFORSEO_LOGIN=... DATAFORSEO_PASSWORD=... node demand.mjs --keywords "a,b,c" \\
       --location 2152 --language es [--out reports/data/demand-YYYY-MM-DD]
   node demand.mjs --seeds "chatbot whatsapp" --location 2152 --language es [--min-volume 10]
+  node demand.mjs --suggest "f30" --location 2152 --language es [--min-volume 20]
   node demand.mjs --from-response reports/data/demand-YYYY-MM-DD.json
 
 Search demand estimates from DataForSEO (Google Ads data, pay per request).
 
 --keywords       Exact phrases to size (up to 1000 per request). --keywords-file reads one per line.
---seeds          Up to 20 seed phrases; returns related keyword ideas with volumes.
+--seeds          Up to 20 seed phrases; returns related keyword ideas with volumes (Google Ads).
+--suggest        One seed; returns up to 200 phrases that contain it, with volumes
+                 (DataForSEO Labs). Finds the long tail of a niche the buyer names:
+                 a portal, a form, a regulation.
 --location       DataForSEO location code: 2152 Chile, 2826 United Kingdom, 2840 United States,
                  2484 Mexico, 2724 Spain. Other countries: 2000 + ISO 3166 numeric code.
 --language       Language code, for example es or en.
@@ -52,14 +57,27 @@ function trend(monthly) {
   return `${Math.min(...values)} to ${Math.max(...values)}`;
 }
 
+// Labs suggestions nest rows under result[0].items; flatten them to the Google Ads row shape.
+function rowsOf(saved, task) {
+  if (saved.mode !== "suggest") return Array.isArray(task?.result) ? task.result : [];
+  return (task?.result?.[0]?.items ?? []).map((item) => ({
+    keyword: item.keyword,
+    search_volume: item.keyword_info?.search_volume,
+    cpc: item.keyword_info?.cpc,
+    competition: item.keyword_info?.competition_level,
+    monthly_searches: item.keyword_info?.monthly_searches,
+  }));
+}
+
 export function render(saved) {
   const task = saved.response?.tasks?.[0];
-  const rows = Array.isArray(task?.result) ? task.result : [];
+  const rows = rowsOf(saved, task);
+  const source = saved.mode === "suggest" ? "DataForSEO Labs (Google), phrases containing the seed" : "DataForSEO Google Ads";
   const minVolume = saved.minVolume ?? 0;
   const out = [
     `# Search demand (${saved.mode}): location ${saved.location}, language ${saved.language}`,
     "",
-    `Fetched: ${saved.fetchedAt}. Source: DataForSEO Google Ads, monthly average of the last 12 months. Estimates.`,
+    `Fetched: ${saved.fetchedAt}. Source: ${source}, monthly average of the last 12 months. Estimates.`,
     `Cost reported: ${saved.response?.cost ?? task?.cost ?? "unknown"} USD. Task status: ${task?.status_code ?? "n/a"} ${task?.status_message ?? ""}`.trim(),
     "",
   ];
@@ -99,14 +117,18 @@ async function main() {
   const fileKeywords = keywordsFile ? (await readFile(keywordsFile, "utf-8")).split("\n").map((line) => line.trim()).filter(Boolean) : [];
   const keywords = [...splitList(argValue("--keywords")), ...fileKeywords];
   const seeds = splitList(argValue("--seeds"));
-  if ((keywords.length > 0) === (seeds.length > 0)) throw new Error(`Pass exactly one of --keywords or --seeds.\n\n${usage()}`);
-  const mode = keywords.length > 0 ? "volume" : "ideas";
-  const list = mode === "volume" ? keywords : seeds;
+  const suggest = splitList(argValue("--suggest"));
+  const given = [["volume", keywords], ["ideas", seeds], ["suggest", suggest]].filter(([, items]) => items.length > 0);
+  if (given.length !== 1) throw new Error(`Pass exactly one of --keywords, --seeds or --suggest.\n\n${usage()}`);
+  const [[mode, list]] = given;
   if (list.length > MODES[mode].limit) throw new Error(`${MODES[mode].flag} accepts at most ${MODES[mode].limit} phrases per request.`);
 
   const location = Number(argValue("--location") ?? 2840);
   const language = argValue("--language") ?? "en";
-  const task = { keywords: list, location_code: location, language_code: language };
+  const task =
+    mode === "suggest"
+      ? { keyword: list[0], location_code: location, language_code: language, limit: 200, include_seed_keyword: true, order_by: ["keyword_info.search_volume,desc"] }
+      : { keywords: list, location_code: location, language_code: language };
   if (mode === "ideas") task.sort_by = "search_volume";
   const request = { endpoint: MODES[mode].endpoint, body: [task] };
   if (process.argv.includes("--dry-run")) {
