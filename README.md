@@ -177,7 +177,7 @@ Invocation is declared in each skill. Crew is user-invoked: run `/crew` explicit
 
 ## Documentation and templates
 
-See [docs](./docs/README.md) for reusable engineering guidance, including an [AGENTS.md template](./docs/AGENTS.md) you can adapt for your repository.
+See [docs](./docs/README.md) for reusable engineering guidance, including an [AGENTS.md template](./docs/AGENTS.md) you can adapt for your repository, and [prompts](./docs/prompts/) you can reuse.
 
 ## Maintainer Notes
 
