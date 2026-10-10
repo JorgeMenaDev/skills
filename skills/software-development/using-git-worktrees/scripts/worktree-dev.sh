@@ -270,6 +270,16 @@ case "$command" in
         fi
       fi
       "$script_dir/dehydrate-worktree.sh" "$worktree" --apply
+      # Dehydrate deletes only synthetic Convex state, so any .convex/local still here is durable.
+      durable="$(find "$worktree" -type d \( -name node_modules -o -name .next -o -name .turbo \) -prune -o \
+        -type d -path '*/.convex/local' -prune -print)"
+      if [[ -n "$durable" ]]; then
+        while IFS= read -r path; do
+          echo "REMOVE_REFUSED: durable Convex state at $path" >&2
+        done <<< "$durable"
+        echo "The worktree stays. If the data is disposable, write 'synthetic' to the .convex/state-kind next to it; otherwise move the .convex/local folder out first. Then rerun down --remove." >&2
+        exit 1
+      fi
       git -C "$repo_root" worktree remove --force "$worktree"
       git -C "$repo_root" branch -D "$slug" 2>/dev/null || true
       echo "WORKTREE_REMOVED: $worktree"

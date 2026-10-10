@@ -1,7 +1,7 @@
 ---
 name: using-git-worktrees
 description: Use when creating an isolated Git workspace, running the default branch locally, or closing development work that used a worktree.
-version: 2.2.0
+version: 2.3.0
 mutating: true
 writes_to: ["<repo-name>-worktrees/", "**/.env.local", "**/.convex/state-kind", "regenerable worktree artifacts"]
 ---
@@ -38,7 +38,8 @@ deterministically from the worktree path, so parallel worktrees never collide. C
 runs it recognises by signature (Convex local backend and action runners, Next servers, the
 worktree's `node_modules` binaries; never shells or agents), exits non-zero with `RUNTIME_LEFTOVER`
 if any of those survive (`up` runs the same reap before reusing a worktree), refuses
-removal over uncommitted or unpushed work, and dehydrates before retiring. Manual sections 1–5
+removal over uncommitted or unpushed work, dehydrates before retiring, and then refuses removal with
+`REMOVE_REFUSED` while any durable (not `synthetic`) `.convex/local` state remains. Manual sections 1–5
 remain for repos without the contract and for non-standard bases or blocked states.
 
 ## 1. Inspect
