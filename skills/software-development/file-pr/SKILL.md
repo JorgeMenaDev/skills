@@ -1,7 +1,7 @@
 ---
 name: file-pr
 description: Use when opening a pull request, writing or rewriting a PR title or description, or marking a draft PR ready for review.
-version: 2.1.0
+version: 2.2.0
 mutating: true
 writes_to: [pull-requests]
 metadata:
@@ -32,7 +32,12 @@ Titles usually become commit messages, so follow the repo's conventions: read re
    - GOOD: "My 'new worktree' default was ignored when starting a thread on an existing worktree. Now your preferences always apply."
 2. **Summary**, only when the change has a shape worth seeing: the smallest visual that makes it clear (pseudocode, a call tree, a shallow file tree, a `diff` sketch of that tree, or Mermaid). One visual usually suffices.
 3. **Evidence**: before and after. A screenshot for a visual change; otherwise the exact command, test or output that failed before and passes now.
-4. **Ship checklist** (below).
+4. **Decisions**, only when the work settled a real choice: a product rule, a trade-off the requester approved, or something ruled out. One bullet each, with who decided and when. Leave the section out when nothing was decided. A tracker may copy these bullets into a knowledge base, so each must read on its own.
+   ```markdown
+   ## Decisions
+   - Uploaded documents stay out of the paid playground until #1338 ships (Jorge, 10 Oct).
+   ```
+5. **Ship checklist** (below).
 
 **Deleting rules from docs or agent instructions?** For each deleted rule, grep the repo for its key term and say where it now lives, or that it was dropped on purpose. A rule with no other home is a lost guardrail, and "now lives in X" is a claim the reviewer will trust without checking.
 
