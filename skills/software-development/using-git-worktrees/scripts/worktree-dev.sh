@@ -74,6 +74,10 @@ run_dir="$worktree/.worktree-dev"
 log_file="$run_dir/server.log"
 pid_file="$run_dir/server.pid"
 
+list_convex_local() { # list_convex_local <dir>: every project-local .convex/local, one per line
+  find "$1" -path '*/node_modules' -prune -o -type d -path '*/.convex/local' -print -prune 2>/dev/null
+}
+
 has_script() { # has_script <dir> <name>
   [[ -f "$1/package.json" ]] || return 1
   node -e 'const s=require(process.argv[1]+"/package.json").scripts||{};process.exit(s[process.argv[2]]?0:1)' "$1" "$2"
@@ -203,7 +207,17 @@ case "$command" in
 
     (cd "$worktree" && bun install --frozen-lockfile)
     if has_script "$worktree" "setup:worktree"; then
+      convex_before="$(list_convex_local "$worktree")"
       (cd "$worktree" && bun run setup:worktree) 2>&1 | tail -5
+      # setup:worktree applies only documented synthetic seeds, so a local Convex
+      # database it just created is disposable: mark it `synthetic` (LIFECYCLE.md).
+      # Databases that existed before this run, or already carry a mark, keep theirs.
+      while IFS= read -r convex_local; do
+        [[ -n "$convex_local" ]] || continue
+        grep -qxF "$convex_local" <<<"$convex_before" && continue
+        marker="$(dirname "$convex_local")/state-kind"
+        [[ -e "$marker" ]] || printf 'synthetic\n' >"$marker"
+      done <<<"$(list_convex_local "$worktree")"
     fi
 
     if [[ "$run" == "no" ]]; then
