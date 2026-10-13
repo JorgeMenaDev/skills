@@ -1,5 +1,9 @@
 # Changelog
 
+## 9.6.1
+
+- `data.md` lists Firecrawl search and page reading for competitor pages and topic research, with costs, and says it is not a ranking check. Agents already used it, but the skill never named it.
+
 ## 9.6.0
 
 Firecrawl Alexandria joins the data sources for demand direction and competitor size.
