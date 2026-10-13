@@ -1,5 +1,13 @@
 # Changelog
 
+## 9.5.0
+
+Published pages are checked in a real browser before anyone reports them fine.
+
+- New `scripts/render-check.mjs`: opens each URL at 1440x900 and 390x844 with agent-browser, scrolls so lazy images load, and fails on broken images, failed same-origin requests (from the browser's resource timing), sideways page overflow, tables or code blocks wider than their box, and not exactly one H1. It saves full-page screenshots and tells the agent to look at them. `--allow-sideways-scroll` accepts a swipe after a person has looked.
+- `pages.md` live verification and `ship.md` step 4 require the script and a look at its screenshots. `data.md` lists it.
+- Why: a new blog post passed status, H1, canonical, robots and internal-link checks on fetched HTML, and was reported fine, while its hero image was broken (the site's no-image fallback returned 404) and its tables hid a column on phones. The owner found it from a screenshot.
+
 ## 9.4.0
 
 Content-engine calendars are built from DataForSEO data and operated only through the engine's CLI.

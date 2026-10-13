@@ -1,12 +1,13 @@
 # Data
 
-Where evidence comes from, what each source can and cannot say, and what it costs. Scripts live in `$SKILL_DIR/scripts/`, need only Node 18+, and document themselves with `--help`.
+Where evidence comes from, what each source can and cannot say, and what it costs. Scripts live in `$SKILL_DIR/scripts/`, need Node 18+ (`render-check.mjs` also needs the `agent-browser` CLI), and document themselves with `--help`.
 
 | Need | Command | Source and limits | Cost |
 | --- | --- | --- | --- |
 | Weekly or monthly data pack | `review-data.mjs` | Search Console, final data. Withholds anonymized queries: the pack prints query-row coverage | Free |
 | Any other Search Console cut | `gsc-fetch.mjs` (any dimensions, filters) | Same | Free |
 | First-time Search Console auth | `gsc-oauth.mjs` | Google OAuth, `webmasters.readonly` | Free |
+| What a reader sees on a published page | `render-check.mjs` (needs the `agent-browser` CLI) | A real browser at desktop and 390 px phone: broken images, missing same-origin files, overflow, tables wider than their box, H1 count; full-page screenshots to look at. Cannot judge copy or design: someone must look | Free |
 | Where a site ranks right now | `serp.mjs` (`SERPER_API_KEY`) | Serper Google results for one query, country and language at one moment. Results arrive 10 per page; `--pages 3` reaches position 30. Free accounts allow quoted and `site:` queries only at 10 results | Pay per query, per page |
 | How many people search a phrase | `demand.mjs` (`DATAFORSEO_LOGIN`, `DATAFORSEO_PASSWORD`): `--keywords` sizes phrases, `--seeds` finds related ideas, `--suggest` finds phrases containing a seed | DataForSEO Google Ads volumes and Labs suggestions: 12-month averages, estimates, empty for much of the long tail | Pay per request; the response states the cost |
 | Technical crawl | `DO_NOT_TRACK=1 npx -y seo@0.2.40 report --url <origin> --actions-only --json` | [iannuttall/seo](https://github.com/iannuttall/seo) crawler, about 100 pages by default: broken and orphan links, metadata, indexability, structured data. No login needed | Free |
