@@ -277,7 +277,9 @@ case "$command" in
         echo "REMOVE_REFUSED: worktree has uncommitted changes" >&2; exit 1
       fi
       if [[ "$slug" != "local-main" ]]; then
-        unpushed="$(git -C "$worktree" log --oneline "@{upstream}..HEAD" 2>/dev/null || git -C "$worktree" log --oneline "$(git -C "$repo_root" symbolic-ref --quiet --short refs/remotes/origin/HEAD || echo origin/main)..HEAD")"
+        # Commits that no remote branch contains. Not "@{upstream}..HEAD": creation leaves the branch
+        # without an upstream, so a branch pushed without -u looked entirely unpushed (2026-10-13).
+        unpushed="$(git -C "$worktree" log --oneline HEAD --not --remotes)"
         if [[ -n "$unpushed" ]]; then
           echo "REMOVE_REFUSED: unpushed commits on $slug:" >&2
           echo "$unpushed" >&2; exit 1
