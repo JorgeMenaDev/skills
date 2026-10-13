@@ -1,5 +1,12 @@
 # Changelog
 
+## 9.6.0
+
+Firecrawl Alexandria joins the data sources for demand direction and competitor size.
+
+- `data.md` lists Alexandria Trends (5 credits a call: interest over time, by region, related queries) and Similarweb visits (110 credits a metric), with the CLI commands and their limits.
+- Why: a trial on a small B2B site found Trends useful for multi-year direction and regional demand, but mostly empty for niche weekly lines. Similarweb read about 4 times the site's observed sessions and counts every channel and subdomain, so it sizes competitors only and never stands in for organic traffic.
+
 ## 9.5.0
 
 Published pages are checked in a real browser before anyone reports them fine.
