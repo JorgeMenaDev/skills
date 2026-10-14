@@ -1,5 +1,9 @@
 # Changelog
 
+## 9.6.2
+
+- `scripts/render-check.mjs` resolves `--out` to an absolute path and fails when a screenshot file is missing. Why: agent-browser runs as a daemon in its own folder, so a relative `--out` saved the screenshots there and the run reported PASS with no PNG in the out folder (14 Oct).
+
 ## 9.6.1
 
 - `data.md` lists Firecrawl search and page reading for competitor pages and topic research, with costs, and says it is not a ranking check. Agents already used it, but the skill never named it.

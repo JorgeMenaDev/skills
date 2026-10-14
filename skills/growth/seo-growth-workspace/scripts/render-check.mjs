@@ -25,7 +25,8 @@ if (outIdx < 0 || !args[outIdx + 1] || args.length < 3) {
   console.error(USAGE);
   process.exit(2);
 }
-const out = args[outIdx + 1];
+// Absolute: agent-browser runs as a daemon in its own folder, so a relative path saves the screenshot there (14 Oct).
+const out = path.resolve(args[outIdx + 1]);
 const allowScroll = args.includes("--allow-sideways-scroll");
 const urls = args.filter((a, i) => i !== outIdx && i !== outIdx + 1 && a !== "--allow-sideways-scroll");
 fs.mkdirSync(out, { recursive: true });
@@ -80,6 +81,7 @@ try {
       const failedReqs = probe.failedRequests;
       const shot = path.join(out, `${slug}-${name}.png`);
       ab("screenshot", "--full", shot);
+      if (!fs.existsSync(shot)) failures.push(`${url} [${name}]: no screenshot at ${shot}. Check the agent-browser output, then rerun.`);
       const broken = probe.images.filter(i => i.broken);
       const entry = { url, viewport: name, title: probe.title, h1: probe.h1, images: probe.images.length,
         brokenImages: broken, failedRequests: failedReqs, overflowPx: probe.overflowPx, wide: probe.wide, screenshot: shot };
