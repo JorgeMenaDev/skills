@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { sign } from "node:crypto";
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -30,8 +31,10 @@ anonymized queries. Pages through results (25,000 rows per request) until comple
 
 Auth (first match wins):
   - GSC_ACCESS_TOKEN.
-  - --credentials-dir / GSC_CREDENTIALS_DIR: a directory holding client_secret.json
-    (Google OAuth client, "installed" or "web" shape) and token.json (with refresh_token).
+  - GSC_SERVICE_ACCOUNT_JSON: full service-account JSON.
+  - --credentials-dir / GSC_CREDENTIALS_DIR: service-account.json, otherwise
+    client_secret.json (Google OAuth client, "installed" or "web" shape) and
+    token.json (with refresh_token).
   - GSC_CLIENT_ID + GSC_CLIENT_SECRET + GSC_REFRESH_TOKEN.
   Secrets are read from env vars or credential files, never from CLI flags, and are never
   printed. Required OAuth scope: webmasters.readonly. First-time setup: gsc-oauth.mjs.`;
@@ -79,15 +82,62 @@ async function credentialsFromDir(dir) {
   return { clientId, clientSecret, refreshToken };
 }
 
+async function serviceAccountToken(account) {
+  if (!account.client_email || !account.private_key) {
+    throw new Error("Service-account JSON must contain client_email and private_key");
+  }
+  const issuedAt = Math.floor(Date.now() / 1000);
+  const encode = (value) => Buffer.from(JSON.stringify(value)).toString("base64url");
+  const unsigned = `${encode({ alg: "RS256", typ: "JWT" })}.${encode({
+    iss: account.client_email,
+    scope: "https://www.googleapis.com/auth/webmasters.readonly",
+    aud: "https://oauth2.googleapis.com/token",
+    iat: issuedAt,
+    exp: issuedAt + 3600,
+  })}`;
+  const signature = sign("RSA-SHA256", Buffer.from(unsigned), account.private_key).toString("base64url");
+  const response = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+      assertion: `${unsigned}.${signature}`,
+    }),
+  });
+  if (!response.ok) throw new Error(`GSC service-account exchange failed with status ${response.status}`);
+  const payload = await response.json();
+  if (!payload.access_token) throw new Error("GSC service-account exchange did not return an access token");
+  return payload.access_token;
+}
+
 export async function getAccessToken(credentialsDir = process.env.GSC_CREDENTIALS_DIR) {
   if (process.env.GSC_ACCESS_TOKEN) return process.env.GSC_ACCESS_TOKEN;
+
+  if (process.env.GSC_SERVICE_ACCOUNT_JSON) {
+    let account;
+    try {
+      account = JSON.parse(process.env.GSC_SERVICE_ACCOUNT_JSON);
+    } catch {
+      throw new Error("Invalid JSON in GSC_SERVICE_ACCOUNT_JSON");
+    }
+    return serviceAccountToken(account);
+  }
+  if (credentialsDir) {
+    let account;
+    try {
+      account = await readJsonFile(path.join(credentialsDir, "service-account.json"));
+    } catch (error) {
+      if (error.code !== "ENOENT") throw error;
+    }
+    if (account) return serviceAccountToken(account);
+  }
 
   let clientId = process.env.GSC_CLIENT_ID;
   let clientSecret = process.env.GSC_CLIENT_SECRET;
   let refreshToken = process.env.GSC_REFRESH_TOKEN;
   if (credentialsDir) ({ clientId, clientSecret, refreshToken } = await credentialsFromDir(credentialsDir));
   if (!clientId || !clientSecret || !refreshToken) {
-    throw new Error("No Search Console credentials: set GSC_CREDENTIALS_DIR (or GSC_ACCESS_TOKEN / GSC_CLIENT_* env vars).");
+    throw new Error("No Search Console credentials: set GSC_SERVICE_ACCOUNT_JSON or GSC_CREDENTIALS_DIR (or GSC_ACCESS_TOKEN / GSC_CLIENT_* env vars).");
   }
 
   const response = await fetch("https://oauth2.googleapis.com/token", {

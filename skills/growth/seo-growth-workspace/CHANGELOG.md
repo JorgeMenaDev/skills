@@ -1,5 +1,9 @@
 # Changelog
 
+## 9.7.0
+
+- Search Console scripts accept `GSC_SERVICE_ACCOUNT_JSON` or `service-account.json` in the credentials directory, using an RS256 JWT and the read-only scope. Existing access-token and OAuth refresh flows remain available.
+
 ## 9.6.2
 
 - `scripts/render-check.mjs` resolves `--out` to an absolute path and fails when a screenshot file is missing. Why: agent-browser runs as a daemon in its own folder, so a relative `--out` saved the screenshots there and the run reported PASS with no PNG in the out folder (14 Oct).

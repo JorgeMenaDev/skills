@@ -21,6 +21,8 @@ Where evidence comes from, what each source can and cannot say, and what it cost
 
 The `seo` CLI can also run its Search Console reports (quick wins, page-two pages, before and after measurement) once it has its own Google login (`seo start`). Pin the version when you use it, and keep `DO_NOT_TRACK=1` so it sends no telemetry.
 
+Search Console auth also accepts full JSON in `GSC_SERVICE_ACCOUNT_JSON` or `service-account.json` in `GSC_CREDENTIALS_DIR`; grant that service account access to the property.
+
 ## Without paid keys
 
 No `SERPER_API_KEY`: check rankings in a clean browser session for the target market and record query, country, language and time. No DataForSEO: demand for phrases the site does not rank for stays directional (Google autocomplete, People Also Ask, competitor pages). Label it directional; it still counts as outside discovery and lowers the candidate's confidence rather than excluding it.
