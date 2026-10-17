@@ -54,6 +54,12 @@ A recommendation is not a click; a referral is not a lead; and a conversion even
 
 Visibility observations alone cannot establish causal AI selection, Map Pack, citation, lead, call, customer, or revenue effects. Report observed source, citation, referral, and outcome changes with concurrent changes and uncertainty; never promise, project, or calculate AI-visibility lift from an action. Use `references/search-console.md` for visibly available Search Console generative-AI reporting and keep it separate from sampled answers.
 
+Three patterns shape how to read and act on these observations. They come from observational, partly vendor-run studies (2026, collected in the marketingskills `ai-seo` references); treat them as hypotheses, never as forecasts.
+
+- **Recommendations follow other sites.** Being cited means the engine consulted a page; being recommended mostly reflects what independent sources (reviews, directories, press, forums, associations) say about the business. Heavy citation of an owned page, often for a category or portal-name query, does not show the brand is on the shortlist. Route recommendation gaps to independent sources (`backlink work-log` or `commercial disclosure review` below), not to more owned pages. A self-ranked "best X" page from a small brand can supply the material an engine uses to recommend its competitors.
+- **Assistant referrals undercount.** Most visits that follow an assistant answer arrive as direct or branded search, with no AI referrer. A low assistant-referral count is a measurement limit, not proof of no exposure. When a known exposure change has a date, also read branded search and direct visits to the exposed pages over the following days.
+- **Ask people.** Where the site has a lead or booking form, an optional "How did you hear about us?" field with an AI-assistant option, plus an optional "What did you ask?", is the cheapest record of journeys analytics cannot see. Answers are self-reported anecdotes, not causal proof, and must not add required friction.
+
 ## 3. Source-page gap and portrayal
 
 Normalize repeated domains/pages only inside the declared observation sample. A source-page gap is an interpretation linked to observation rows, not an assistant ranking or a claim about exact query fan-out.

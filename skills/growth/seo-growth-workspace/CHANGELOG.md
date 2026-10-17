@@ -1,5 +1,9 @@
 # Changelog
 
+## 9.8.0
+
+- `ai-search-visibility.md` adds three reading rules: recommendations follow independent sources, so a recommendation gap routes to third-party work rather than more owned pages; assistant referrals undercount, so a low count is a measurement limit; and an optional "How did you hear about us?" answer with an AI option records journeys analytics miss. Why: acredix.cl drew about 11,000 Copilot citations in six months, mostly for a portal-name query, yet no sampled answer named Acredix and analytics showed 2 assistant visits in 90 days. Ideas adapted from coreyhaines31/marketingskills `ai-seo` (MIT).
+
 ## 9.7.0
 
 - Search Console scripts accept `GSC_SERVICE_ACCOUNT_JSON` or `service-account.json` in the credentials directory, using an RS256 JWT and the read-only scope. Existing access-token and OAuth refresh flows remain available.
