@@ -62,6 +62,14 @@ A 15–20 s keynote-style launch film for one product feature, rendered entirely
 npx skills@latest add JorgeMenaDev/skills --skill launch-video
 ```
 
+### `scroll-film-landing`
+
+A landing page whose hero is a film the visitor scrubs with the scroll: AI stills of one continuous place, joined by MiniMax H3 first/last-frame clips through the Higgsfield API, with real HTML captions and cards at each stop so text stays sharp. Ships the scrub engine (Astro + Lenis), the Higgsfield scripts (hidden key setup, free estimate before every paid call, spend log), an encoder that keeps poster and video colours identical, and a Playwright QA gate that measures the seams. Method after midudev's Arko landing.
+
+```bash
+npx skills@latest add JorgeMenaDev/skills --skill scroll-film-landing
+```
+
 ### `youtube-thumbnails`
 
 YouTube thumbnails and channel banners painted by an image model (Codex image generation on a ChatGPT plan) and grounded in the real brand: the model paints one moment, the real logo is composited on top, and every candidate is judged at the 168×94 size phone viewers see. Ships the evidence behind each rule, prompt skeletons, a finish-and-export script and a review-sheet script.
