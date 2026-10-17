@@ -17,11 +17,13 @@ and the CLI cannot spend it. This skill uses the API. When the human quotes a do
 
 ## Estimate, then generate
 
-- `POST /estimate/<endpoint>` with the same body returns `{"credits","usd"}` and creates no job.
+- `POST /estimate/<endpoint>` with the same body returns `{"credits","usd","discount"}` and creates no
+  job. `usd` is already after any discount.
   `scripts/hf-gen.sh` estimates, prints the dollar figure, then submits with an `Idempotency-Key`, polls
   `/requests/<id>/status` every 5 s and downloads the outputs. `HF_DRY=1` stops after the estimate.
-- Every job appends `{t, id, endpoint, out, est_usd}` to `media/jobs.jsonl`; sum it for the spend report.
-- Failed, moderated and cancelled requests are refunded. Outputs are kept at least 7 days: download them.
+- Every job appends `{t, id, endpoint, out, est_usd}` at submit and `{id, status}` when it ends.
+  `scripts/spend.sh` sums only completed jobs: failed, moderated and cancelled requests are refunded.
+  Outputs are kept at least 7 days: download them.
 
 ## Endpoints that work for this skill
 
@@ -30,12 +32,16 @@ Prices observed October 2026; re-estimate, never quote these as current.
 | Use | Endpoint | Body | Observed |
 | --- | --- | --- | --- |
 | Stills | `higgsfield-ai/soul/cinema` | `prompt`, `aspect_ratio: "16:9"`, `resolution: "1080p"`, `batch_size: 4` | $0.022 per batch of 4, 2048x1152 PNG, about 1 min |
-| Clips | `minimax/h3/image-to-video` | `prompt`, `image_url`, `end_image_url`, `duration: 8`, `resolution: "2K"`, `aspect_ratio: "16:9"` | $0.88 per clip, 2560x1440 at 24 fps, about 10 min |
+| Clips | `minimax/h3/image-to-video` | `prompt`, `image_url`, `end_image_url`, `duration: 6` or `8`, `resolution: "2K"` (the only value accepted), `aspect_ratio: "16:9"` | $0.66 at 6 s, $0.88 at 8 s; 2560x1440 at 24 fps, about 10 min |
+| Outpaint (real photos) | `xai/grok-imagine-image-2.0` | `prompt`, `image_urls: [canvas]`, `aspect_ratio: "16:9"`, `resolution: "2k"`, `quality: "medium"` | $0.09, 2816x1584; see real-photos.md |
 
 - MiniMax H3 follows the start frame's aspect ratio and has no negative prompt field: put the exclusions in
   the prompt.
-- Model pages live at `docs.higgsfield.ai/docs/models/<family>/<endpoint>.md`; the shared index is
-  `docs.higgsfield.ai/docs/llms.txt`. Read the model page before using a new endpoint.
+- Find models from `https://docs.higgsfield.ai/docs/models/video-generation.md` and
+  `.../image-generation.md`. Each lists model pages (`/docs/models/<model-slug>.md`) that link workflow pages
+  (`/docs/models/<model-slug>/<workflow>.md`, e.g. `minimax-h3/image-to-video.md`), and each workflow page
+  states the **Endpoint ID** to pass to `hf-gen.sh`. The slug and the endpoint ID differ
+  (`grok-image-2` → `xai/grok-imagine-image-2.0`). `llms.txt` and `openapi.json` don't list the models.
 
 ## Uploads
 

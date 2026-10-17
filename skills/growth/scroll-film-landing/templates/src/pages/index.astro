@@ -1,0 +1,51 @@
+---
+// Example page: a fixed header, the film (one <Stop> per entry in data/stops.ts), then ordinary sections.
+// Copy it, then restyle in the product's design canon. Keep one <h1> (in stop 0) and the script import.
+import Film from '../components/Film.astro';
+import Stop from '../components/Stop.astro';
+import { stops } from '../data/stops';
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Product name</title>
+  </head>
+  <body>
+    <header class="site-header">
+      <a href="#top">Product</a>
+      <a href="#contact">Contact</a>
+    </header>
+
+    <Film label="A walk through the product">
+      {stops.map((stop, i) => (
+        <Stop index={i}>
+          {i === 0 ? <h1>The one-line promise</h1> : <h2>{stop.place}</h2>}
+          <p>One sentence. Then one HTML card that proves it.</p>
+          {i === 0 && <p class="disclosure">If the film is AI-made or AI-extended, say so here and in the footer.</p>}
+        </Stop>
+      ))}
+    </Film>
+
+    <main>
+      <section id="contact">
+        <h2>Contact</h2>
+        <p>Sections below the film are ordinary page content.</p>
+      </section>
+    </main>
+    <footer>Footer</footer>
+
+    <script>
+      import '../scripts/main';
+    </script>
+  </body>
+</html>
+
+<style>
+  body { margin: 0; font-family: system-ui, sans-serif; }
+  /* The header sits over the sticky stage; keep it solid so captions and video never fight it. */
+  .site-header { position: fixed; inset: 0 0 auto; z-index: 10; display: flex; justify-content: space-between; padding: 16px 24px; background: #fff; }
+  main section { padding: 96px 24px; }
+</style>

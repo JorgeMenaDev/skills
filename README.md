@@ -64,7 +64,7 @@ npx skills@latest add JorgeMenaDev/skills --skill launch-video
 
 ### `scroll-film-landing`
 
-A landing page whose hero is a film the visitor scrubs with the scroll: AI stills of one continuous place, joined by MiniMax H3 first/last-frame clips through the Higgsfield API, with real HTML captions and cards at each stop so text stays sharp. Ships the scrub engine (Astro + Lenis), the Higgsfield scripts (hidden key setup, free estimate before every paid call, spend log), an encoder that keeps poster and video colours identical, and a Playwright QA gate that measures the seams. Method after midudev's Arko landing.
+A landing page whose hero is a film the visitor scrubs with the scroll: AI stills of one continuous place, or the owner's real photos reframed to 16:9, joined by MiniMax H3 first/last-frame clips through the Higgsfield API, with real HTML captions and cards at each stop so text stays sharp. Ships the scrub engine (Astro + Lenis), the Higgsfield scripts (hidden key setup, free estimate before every paid call, spend log), an encoder that keeps poster and video colours identical, and a Playwright QA gate that measures the seams. Method after midudev's Arko landing.
 
 ```bash
 npx skills@latest add JorgeMenaDev/skills --skill scroll-film-landing

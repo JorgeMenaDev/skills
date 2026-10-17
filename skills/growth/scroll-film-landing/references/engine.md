@@ -21,8 +21,10 @@ and `/film/poster-i-960.webp`, with k from 1 and i from 0.
 - Poster i is the exact frame shown at stop i: the first frame of clip i+1, and the last frame of the final
   clip for the last stop. Posters fade in over the second half of the segment before them, so while a clip
   is still loading, scrolling still shows the right place.
-- A clip becomes visible only after its `seeked` event lands on the wanted time, and neighbouring clips
-  share a frame at the stop, so switching clips is invisible.
+- A clip becomes visible only after its `seeked` event lands on the wanted time. At a stop the film
+  switches from clip k's last frame to clip k+1's first frame. Generated clips each settle on the still
+  separately, so these frames are close but never identical: `encode.sh` prints each seam's PSNR, and
+  30 dB or more reads as continuous.
 - Each clip is fetched whole as a blob before use, so scrubbing never waits on range requests.
 - iOS Safari paints sought frames only after one `play()`: the loader calls `play()` then `pause()` once.
 - `prefers-reduced-motion` or Save-Data: no clip is fetched; the posters carry the film.
