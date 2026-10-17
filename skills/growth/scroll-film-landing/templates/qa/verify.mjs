@@ -6,7 +6,11 @@ import { chromium } from 'playwright';
 import { spawnSync } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 
-const base = process.argv[2] ?? 'http://localhost:4321/';
+const base = process.argv[2];
+if (!base) {
+  console.log('usage: node qa/verify.mjs <url printed by pnpm preview>');
+  process.exit(2);
+}
 const out = 'qa/shots';
 const MIN_PSNR = 35;
 mkdirSync(out, { recursive: true });
@@ -18,6 +22,20 @@ const psnr = (a, b) => {
   const log = spawnSync('ffmpeg', ['-hide_banner', '-i', a, '-i', b, '-lavfi', 'psnr', '-f', 'null', '-'], { encoding: 'utf8' }).stderr;
   return Number(log.match(/average:([\d.]+|inf)/)?.[1].replace('inf', '99') ?? 0);
 };
+// Fail fast on the wrong server (another app on the port) or a build without the encoded clips.
+{
+  const html = await fetch(base).then((r) => r.text()).catch(() => '');
+  if (!html.includes('data-film')) {
+    console.log(`FAIL\n- ${base} has no [data-film]: wrong server or port?`);
+    process.exit(1);
+  }
+  const clip = await fetch(new URL('film/clip-1.mp4', base), { method: 'HEAD' }).catch(() => null);
+  if (!clip?.ok) {
+    console.log('FAIL\n- /film/clip-1.mp4 is not served: run encode.sh, then rm -rf dist && pnpm build');
+    process.exit(1);
+  }
+}
+
 const allReady = (page) =>
   page.waitForFunction(() => [...document.querySelectorAll('[data-film-clip]')].every((v) => v.readyState >= 2), null, { timeout: 180000 });
 
