@@ -1,9 +1,9 @@
 ---
 name: storage-audit
-description: Free disk and memory on Jorge's Macs with scripts/storage-hygiene.sh. Use when a Mac is slow or swapping, disk space is low, Jorge asks to free space, or the storage-hygiene cron alerts or fails.
-version: 7.8.0
+description: Free disk and memory on Jorge's Macs with scripts/storage-hygiene.sh. Use when a Mac is slow or swapping, disk space is low, Jorge asks to free space or for a storage audit or disk report, or the storage-hygiene cron alerts or fails.
+version: 7.9.0
 mutating: true
-writes_to: ["orphaned dev processes (killed)", "registered git worktrees (clean, backed, idle)", "node_modules/.next/.turbo build state", "T3, OpenCode and Cursor agent history", "settled or legacy crew dirs and the crew sweep log", "superseded T3 runtimes", "Xcode DerivedData and simulator device data", "tool and package caches", "logs and temp bundles", "~/.local/state/matias/storage-hygiene/"]
+writes_to: ["orphaned dev processes (killed)", "registered git worktrees (clean, backed, idle)", "node_modules/.next/.turbo build state", "T3, OpenCode and Cursor agent history", "settled or legacy crew dirs and the crew sweep log", "superseded T3 runtimes", "Xcode DerivedData and simulator device data", "tool and package caches", "logs and temp bundles", "~/.local/state/matias/storage-hygiene/", "~/disk-report/ (sizes.csv, index.html)"]
 ---
 
 # Reclaim disk on a workspace Mac
@@ -132,6 +132,16 @@ class, waiting on a gate, or listed for Jorge.
   so leave a symlink at the old path or restart them. Move under `scripts/native-lock.py` when a
   phone-app build could touch the data.
 - **`JORGE-ACTION pending-macos-update`.** Install and reboot. Only OS updates grow Preboot.
+
+## Home disk report for Jorge
+
+`python3 scripts/disk-report.py` reads `~/disk-report/sizes.csv` first, measures the dev leftovers
+in the home folder, appends each item's size there and writes `~/disk-report/index.html`: a treemap
+split into "safe to remove" and "let me review first". Ticking items builds a cleanup script from
+each tool's own clean command (`trash` when a tool has none); Jorge runs it, the report deletes
+nothing. Sessions, models and Docker always sit under review. Sizes only, internal disk only, and no
+iCloud, Photos or folder that macOS guards with a permission prompt. Items that grew or appeared
+since that host's last run are flagged at the top. A new leftover class is one `Rule` in the script.
 
 ## Report
 
