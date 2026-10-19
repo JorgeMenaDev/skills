@@ -1,7 +1,7 @@
 ---
 name: storage-audit
 description: Free disk and memory on Jorge's Macs with scripts/storage-hygiene.sh. Use when a Mac is slow or swapping, disk space is low, Jorge asks to free space or for a storage audit or disk report, or the storage-hygiene cron alerts or fails.
-version: 7.9.0
+version: 7.10.0
 mutating: true
 writes_to: ["orphaned dev processes (killed)", "registered git worktrees (clean, backed, idle)", "node_modules/.next/.turbo build state", "T3, OpenCode and Cursor agent history", "settled or legacy crew dirs and the crew sweep log", "superseded T3 runtimes", "Xcode DerivedData and simulator device data", "tool and package caches", "logs and temp bundles", "~/.local/state/matias/storage-hygiene/", "~/disk-report/ (sizes.csv, index.html)"]
 ---
@@ -65,6 +65,17 @@ are done, `PROTECT <reason>` kept something, `JORGE-ACTION` needs a human, `FAIL
 - **Gates** expire: `age-gate(Nh)` carries `gate_until`. Check it before calling a guard broken.
 
 The classes are the script's functions (`grep -n '() {' scripts/storage-hygiene.sh`); read one before explaining or changing it.
+
+**Agent history keeps 7 days** (`HISTORY_DAYS`, Jorge, 19 Oct): T3 attachments and browser
+screenshots, Claude Code CLI logs, Cursor agent projects and Maestro test output older than that go.
+Codex sessions and T3 logs go after 3 days, OpenCode sessions after 1. Claude Code prunes its own
+transcripts through `cleanupPeriodDays: 7` in `~/.claude/settings.json`.
+
+**T3 database** (`~/.t3/userdata/statev2.sqlite`, 11.9 GB on the mini on 19 Oct, 7.4 GB of it the
+`orchestration_events` log). T3 compacts superseded events every 6 hours and returns free pages every
+minute. It has no thread retention: `thread.delete` only marks a thread deleted. `t3 doctor` compacts
+and VACUUMs offline and removes the legacy `state.sqlite`; it refuses while T3 runs. Never delete the
+file: it also holds projects, scheduled tasks and mesh pairings.
 
 `GROWTH new|grew` names a home folder on Data (depth 1–2) that is new or 1 GiB over its high-water
 mark in `growth.tsv` in the state dir; it reports once per extra GiB, and audits never update the
