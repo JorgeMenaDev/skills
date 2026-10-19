@@ -1,7 +1,7 @@
 ---
 name: storage-audit
 description: Free disk and memory on Jorge's Macs with scripts/storage-hygiene.sh. Use when a Mac is slow or swapping, disk space is low, Jorge asks to free space or for a storage audit or disk report, or the storage-hygiene cron alerts or fails.
-version: 7.10.0
+version: 7.11.0
 mutating: true
 writes_to: ["orphaned dev processes (killed)", "registered git worktrees (clean, backed, idle)", "node_modules/.next/.turbo build state", "T3, OpenCode and Cursor agent history", "settled or legacy crew dirs and the crew sweep log", "superseded T3 runtimes", "Xcode DerivedData and simulator device data", "tool and package caches", "logs and temp bundles", "~/.local/state/matias/storage-hygiene/", "~/disk-report/ (sizes.csv, index.html)"]
 ---
@@ -75,7 +75,12 @@ transcripts through `cleanupPeriodDays: 7` in `~/.claude/settings.json`.
 `orchestration_events` log). T3 compacts superseded events every 6 hours and returns free pages every
 minute. It has no thread retention: `thread.delete` only marks a thread deleted. `t3 doctor` compacts
 and VACUUMs offline and removes the legacy `state.sqlite`; it refuses while T3 runs. Never delete the
-file: it also holds projects, scheduled tasks and mesh pairings.
+file: it also holds projects, scheduled tasks and mesh pairings. Retention is the mini's t3-cron job
+`t3-thread-retention` (Sundays 03:00, `scripts/t3-thread-retention.py`, matias#944): it quits T3,
+backs up the database to `~/dev/code/.backups/t3-thread-retention` (14 days), deletes thread groups
+(lineage, subagents, context transfers) idle over 7 days, runs `t3 doctor --fix` and reopens T3,
+restoring the backup on any failure. `--dry-run` prints the plan. Copy the live file with
+`VACUUM INTO`, never `.backup`: T3's constant writes restart a backup forever.
 
 `GROWTH new|grew` names a home folder on Data (depth 1–2) that is new or 1 GiB over its high-water
 mark in `growth.tsv` in the state dir; it reports once per extra GiB, and audits never update the
