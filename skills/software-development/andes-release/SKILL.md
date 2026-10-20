@@ -1,7 +1,7 @@
 ---
 name: andes-release
-description: Tag and publish GitHub Releases for Andes products so the repo's release history matches the stores and production. Separate iOS and Android version lines plus web. Use when a production build finishes, Apple or Play confirms a version live, a batch of web PRs is worth naming, a repo has no release workflow yet, or someone asks which version is live.
-version: 1.0.3
+description: "Tag and publish GitHub Releases for Andes products so release history matches the stores and production. Use when a production build finishes, Apple or Play confirms a version live, a batch of web PRs is worth naming, a repo has no release workflow, or someone asks which version is live."
+version: 1.0.4
 license: MIT
 mutating: true
 writes_to: ["git tags", "GitHub Releases", ".github/workflows/release.yml in the target repo", "docs/releases.md in the target repo"]

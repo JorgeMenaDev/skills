@@ -1,7 +1,7 @@
 ---
 name: agentmail
-description: Operate the agent's own AgentMail email inboxes via the `agentmail` CLI — send, receive, and poll for verification links/codes and invitations. Use when a task needs an agent-owned email address (service signup, auth-email verification, invite-flow testing, agent↔human mail), or when another skill's flow must receive or assert on an email.
-version: 1.0.0
+description: "Agent-owned email inboxes through the `agentmail` CLI. Use when a task needs an address the agent owns (signup, verification code or link, invite-flow test), or another skill must receive or check an email."
+version: 1.0.1
 prerequisites:
   commands: [agentmail, jq]
 ---

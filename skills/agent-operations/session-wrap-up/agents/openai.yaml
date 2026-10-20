@@ -1,0 +1,5 @@
+interface:
+  display_name: "Session Wrap-up"
+  short_description: "End a work session with no loose ends"
+policy:
+  allow_implicit_invocation: false

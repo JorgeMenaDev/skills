@@ -1,7 +1,7 @@
 ---
 name: grok-cli-runtime
-description: xAI Grok auth and quota doctrine for any harness that runs the `grok` binary — T3 Code's `grok` provider instance, a headless `grok -p` sidecar, or a cloud runner seeded from GROK_AUTH_B64. Use when a Grok run fails with 401, 402, or 403, when Grok output is empty or DOA, or before any `grok login`.
-version: 2.1.3
+description: "xAI Grok auth and quota rules for anything that runs the `grok` binary. Use when a Grok run fails with 401, 402 or 403 or returns empty output, or before any `grok login`."
+version: 2.1.4
 mutating: true
 writes_to: ["~/.grok/auth.json during explicit auth recovery", "configured encrypted credential store during explicit deposition", "GROK_AUTH_B64 during explicit cloud seeding"]
 ---

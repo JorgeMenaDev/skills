@@ -1,0 +1,5 @@
+interface:
+  display_name: "PostHog Growth Workspace"
+  short_description: "Growth reviews and experiments from PostHog data"
+policy:
+  allow_implicit_invocation: false

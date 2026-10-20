@@ -1,0 +1,5 @@
+interface:
+  display_name: "Painted Music Video"
+  short_description: "A music video painted in code"
+policy:
+  allow_implicit_invocation: false

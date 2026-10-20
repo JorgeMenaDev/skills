@@ -2,7 +2,7 @@
 name: painted-music-video
 description: "Make a music video painted entirely in code: an original sung song, watercolour animation, word-by-word karaoke, rendered to MP4."
 disable-model-invocation: true
-version: 1.0.2
+version: 1.0.3
 license: MIT
 mutating: true
 writes_to: ["a new video repo (engine, song, chapters)", "Google Cloud Vertex AI usage (Lyria)", "YouTube (Unlisted upload)"]

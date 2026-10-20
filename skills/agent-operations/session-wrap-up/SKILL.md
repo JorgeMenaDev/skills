@@ -2,7 +2,7 @@
 name: session-wrap-up
 description: "End a work session with no loose ends: Second Brain, GitHub and Linear trackers, matter records, pushed repos, removed worktrees, stopped processes, one report."
 disable-model-invocation: true
-version: 1.1.1
+version: 1.1.2
 mutating: true
 writes_to: ["Second Brain vault", "GitHub issues touched this session", "Linear issues touched this session", "matter records under organization/admin-matters/", "git worktrees and local branches this session created"]
 ---

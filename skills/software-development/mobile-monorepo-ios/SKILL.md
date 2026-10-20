@@ -1,7 +1,7 @@
 ---
 name: mobile-monorepo-ios
-description: Build, debug, and release mobile apps across Expo/React Native, native iOS, native Android, or bounded hybrid architectures. Use for development builds, device proof, native-runtime changes, release workflows, EAS, TestFlight, App Store Connect, Google Play, or cross-platform mobile delivery.
-version: 1.4.0
+description: "Build, debug and release Expo/React Native, native iOS or Android apps. Use for development builds, device proof, native-runtime changes, EAS release workflows, Google Play, or cross-platform mobile delivery."
+version: 1.4.1
 license: MIT
 mutating: true
 writes_to: ["target repository paths authorized by the active task"]

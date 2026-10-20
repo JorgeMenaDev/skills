@@ -1,5 +1,9 @@
 # Changelog
 
+## 9.8.1
+
+- Shorter trigger-only description (about 180 to 80 tokens). It loads in every session, so the contents list moved out; the triggers stay.
+
 ## 9.8.0
 
 - `ai-search-visibility.md` adds three reading rules: recommendations follow independent sources, so a recommendation gap routes to third-party work rather than more owned pages; assistant referrals undercount, so a low count is a measurement limit; and an optional "How did you hear about us?" answer with an AI option records journeys analytics miss. Why: acredix.cl drew about 11,000 Copilot citations in six months, mostly for a portal-name query, yet no sampled answer named Acredix and analytics showed 2 assistant visits in 90 days. Ideas adapted from coreyhaines31/marketingskills `ai-seo` (MIT).
