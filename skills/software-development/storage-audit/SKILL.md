@@ -1,7 +1,7 @@
 ---
 name: storage-audit
 description: Free disk and memory on Jorge's Macs with scripts/storage-hygiene.sh. Use when a Mac is slow or swapping, disk space is low, Jorge asks to free space or for a storage audit or disk report, or the storage-hygiene cron alerts or fails.
-version: 7.12.0
+version: 7.13.0
 mutating: true
 writes_to: ["orphaned dev processes (killed)", "registered git worktrees (clean, backed, idle)", "node_modules/.next/.turbo build state", "T3, OpenCode and Cursor agent history", "settled or legacy crew dirs and the crew sweep log", "superseded T3 runtimes", "Xcode DerivedData and simulator device data", "tool and package caches", "Colima VM disk (fstrim)", "logs and temp bundles", "~/.local/state/matias/storage-hygiene/", "~/disk-report/ (sizes.csv, index.html)"]
 ---
@@ -49,7 +49,7 @@ Run one of them: a cleanup logs everything an audit would, so ordering a cleanup
 
 On the Mac mini, the t3-cron job `storage-hygiene-every-3-hours` runs the cleanup on the schedule in
 `scripts/scheduled-jobs.json` (read it there; the name predates a daily interim schedule); Telegram hears failures and free space under 40 GiB on every run, a warning under 75 at most once a day, `GROWTH`, `code-disk-not-mounted` and `MEMORY` lines whenever a run logs them, and otherwise one green receipt a day. On the laptop, the LaunchAgent
-`com.matias.storage-hygiene` runs it at :30 every 3 hours with no alerts
+`com.matias.storage-hygiene` runs it daily at 04:30 (on the next wake if asleep) with no alerts
 (`scripts/install-storage-hygiene-agent.sh`; its output is in `launchd.log` in the state dir). Exit 0 = at target, 3 = below target, 2 = failed,
 4 = another run holds the lock (never delete `run.lock`). Below the pressure line it shortens its worktree and `node_modules` gates to 3h; below target alone it changes nothing.
 
