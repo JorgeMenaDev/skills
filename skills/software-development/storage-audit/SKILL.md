@@ -1,9 +1,9 @@
 ---
 name: storage-audit
 description: Free disk and memory on Jorge's Macs with scripts/storage-hygiene.sh. Use when a Mac is slow or swapping, disk space is low, Jorge asks to free space or for a storage audit or disk report, or the storage-hygiene cron alerts or fails.
-version: 7.11.0
+version: 7.12.0
 mutating: true
-writes_to: ["orphaned dev processes (killed)", "registered git worktrees (clean, backed, idle)", "node_modules/.next/.turbo build state", "T3, OpenCode and Cursor agent history", "settled or legacy crew dirs and the crew sweep log", "superseded T3 runtimes", "Xcode DerivedData and simulator device data", "tool and package caches", "logs and temp bundles", "~/.local/state/matias/storage-hygiene/", "~/disk-report/ (sizes.csv, index.html)"]
+writes_to: ["orphaned dev processes (killed)", "registered git worktrees (clean, backed, idle)", "node_modules/.next/.turbo build state", "T3, OpenCode and Cursor agent history", "settled or legacy crew dirs and the crew sweep log", "superseded T3 runtimes", "Xcode DerivedData and simulator device data", "tool and package caches", "Colima VM disk (fstrim)", "logs and temp bundles", "~/.local/state/matias/storage-hygiene/", "~/disk-report/ (sizes.csv, index.html)"]
 ---
 
 # Reclaim disk on a workspace Mac
@@ -54,7 +54,7 @@ On the Mac mini, the t3-cron job `storage-hygiene-every-3-hours` runs the cleanu
 4 = another run holds the lock (never delete `run.lock`). Below the pressure line it shortens its worktree and `node_modules` gates to 3h; below target alone it changes nothing.
 
 The last log line is the verdict (`freed= free= swap= failures= status=`); `METER` above it is
-the per-consumer snapshot, also appended to `meter.log`. `RETIRED`, `PRUNED`, `CAPPED` (a log cut to its last 20 MB) and `REAPED`
+the per-consumer snapshot, also appended to `meter.log`. `RETIRED`, `PRUNED`, `CAPPED` (a log cut to its last 20 MB), `TRIMMED` (unused blocks of the Colima VM disk handed back) and `REAPED`
 are done, `PROTECT <reason>` kept something, `JORGE-ACTION` needs a human, `FAILED` is a failure.
 `BUDGET` ranks candidates of 50 MiB or more by logical size.
 
@@ -111,7 +111,8 @@ Disk goes three ways. Check them in order; the first that explains the loss is t
    open PR before acting; the stop is `worktree-dev.sh down <slug>` from the primary checkout.
 2. **A metered consumer grew.** Diff `meter.log` across the drop. Known growers: `opencode.db`
    (every `message.updated` event stores the session's diffs again, ~2.6 GiB a day), new worktrees,
-   `$TMPDIR`, simulators.
+   `$TMPDIR`, simulators, and Docker inside Colima: `~/.colima` is a sparse disk that only shrinks
+   through `TRIMMED`, so pruning images or build cache (`docker system df`) frees Data only after a trim.
 3. **Nothing covers it.** Measure: `du -xk -d 3 ~ | sort -rn | head -40` (`-x` stays on Data, so the
    mini's code disk is skipped), then
    `python3 scripts/storage-hygiene-support.py private <path>` for its physical KiB. A new
