@@ -205,10 +205,20 @@ case "$command" in
     # A reused worktree keeps its ports: stop the previous runtime first.
     reap_worktree_processes
 
-    (cd "$worktree" && bun install --frozen-lockfile)
+    # Use the repo's pinned Bun (package.json "packageManager": "bun@x.y.z") when the local one differs:
+    # an older local Bun cannot read a newer bun.lock (Bun 1.2.21 vs bun@1.4.2 in Arketix/control, 24 Oct 2026).
+    pinned_bun="$(sed -n 's/.*"packageManager": *"bun@\([^"]*\)".*/\1/p' "$worktree/package.json" | head -1)"
+    local_bun="$(bun --version 2>/dev/null || true)"
+    bun_cmd=(bun)
+    if [[ -n "$pinned_bun" && "$local_bun" != "$pinned_bun" ]]; then
+      bun_cmd=(npx -y "bun@$pinned_bun")
+      echo "BUN_PINNED: local bun ${local_bun:-missing}, repo pins $pinned_bun; using ${bun_cmd[*]}"
+    fi
+
+    (cd "$worktree" && "${bun_cmd[@]}" install --frozen-lockfile)
     if has_script "$worktree" "setup:worktree"; then
       convex_before="$(list_convex_local "$worktree")"
-      (cd "$worktree" && bun run setup:worktree) 2>&1 | tail -5
+      (cd "$worktree" && "${bun_cmd[@]}" run setup:worktree) 2>&1 | tail -5
       # setup:worktree applies only documented synthetic seeds, so a local Convex
       # database it just created is disposable: mark it `synthetic` (LIFECYCLE.md).
       # Databases that existed before this run, or already carry a mark, keep theirs.
@@ -225,15 +235,15 @@ case "$command" in
       exit 0
     fi
 
-    start_cmd=(bun run qa:local --)
+    start_cmd=("${bun_cmd[@]}" run qa:local --)
     for s in "${surfaces[@]+"${surfaces[@]}"}"; do start_cmd+=(--surface "$s"); done
     if [[ -n "$mode" ]]; then start_cmd+=(--mode "$mode"); fi
     ready_pattern='QA_LOCAL_READY'
     if ! has_script "$worktree" "qa:local"; then
       if [[ ${#surfaces[@]} -gt 0 ]] && has_script "$worktree" "dev:${surfaces[0]}"; then
-        start_cmd=(bun run "dev:${surfaces[0]}")
+        start_cmd=("${bun_cmd[@]}" run "dev:${surfaces[0]}")
       else
-        start_cmd=(bun run dev)
+        start_cmd=("${bun_cmd[@]}" run dev)
       fi
       ready_pattern='(Ready in|Local:|localhost:|\.localhost)'
     fi
