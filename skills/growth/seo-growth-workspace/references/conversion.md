@@ -60,6 +60,7 @@ Keep one documented list of event names and UTMs; inconsistent casing splits rep
 - Desktop and mobile CTA paths verified.
 - Important forms/actions tested where safe.
 - Analytics/conversion tracking exists or an analytics bet is proposed.
+- Each tracked action is proven: a test event arrived where it should. A tag in the code proves nothing.
 
 ## PostHog Outcome Bridge
 

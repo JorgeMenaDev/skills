@@ -16,6 +16,8 @@ node "$SKILL_DIR/scripts/review-data.mjs" --site <property> --brand "<brand term
   --out "$SITE_WORKSPACE/reports/data/review-YYYY-MM-DD"
 ```
 
+Next to the pack, build the clicks-to-outcome table: for each landing page, Search Console clicks beside the qualified outcomes from sessions that entered there. A page with clicks and no outcomes is a candidate. A traffic total is not.
+
 Credentials and property come from `context.md` or the hub registry. Give each live check a verdict. A failed check on a page that should be up, lost canonical or unexpected `noindex` becomes the first candidate and sets run status `alerted`. So does a lane with at least 10 previous-window clicks that loses more than half. For a traffic-drop request, diagnose it with [search-console.md](search-console.md) first.
 
 For due bets, compare their metric over equal before/after windows using final data only. For query-to-page evidence:
@@ -37,6 +39,10 @@ In the dated report, maintain a small demand-to-destination table. Reuse recent 
 
 | Customer job / intent | Market / language | Source and date | Observed or estimated demand | Result format | Existing or queued destination | Missing value / proof | Qualified next step |
 | --- | --- | --- | --- | --- | --- | --- | --- |
+
+Two cheap outside checks each cycle: compare the main rivals' sitemaps with the last saved copy to see what they just built, and compare product commits since the last review with the site's public claims to find shipped work the pages never mention.
+
+A claim from a post, thread or repository enters `research.md` with its author, incentive, what was tested and the decision. An anecdote can suggest a test. It cannot size a bet.
 
 Acquire the evidence that gives the chosen work its value: existing product behavior, demonstrations, customer questions, sales and support objections, documented tests or expert answers. Private customer material stays private. Voluntarily supplied AI-discovery prompts can inform topics or a new observation-panel version; keep self-report separate from referral analytics. Collect missing proof now where authorized, through existing channels; what remains becomes an `evidence request` ([ship.md](ship.md)). Drafts carry only supported claims.
 

@@ -49,6 +49,7 @@ Do not publish pages that are only keyword-swapped wrappers around the same empt
 
 ## Batch Strategy
 
+- On a commercial site, start with one tool, and expand only after sessions entering there produce a qualified action. Traffic and tool use prove reach, not value. Without that proof, more tools buy more of the same reach.
 - Start with 5-25 pages only when they are genuinely distinct jobs or datasets.
 - Manually QA every page in the first batch.
 - Request indexing only after crawlability, sitemap, canonical, and internal links are verified.

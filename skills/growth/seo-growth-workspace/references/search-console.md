@@ -51,6 +51,9 @@ Scope: property, date range, data source, branded terms excluded (`--brand`)
 - Impressions up + clicks down is a symptom, not a cause. Possible explanations include query mix, rank/CTR change, and SERP composition (including AI features). Standard Performance data includes AI-surface activity but cannot attribute the divergence; require query/page/SERP evidence before rewriting titles or claiming AI causality.
 - Annotate known Google core-update dates when interpreting deltas.
 - For programmatic single-URL checks, the URL Inspection API exists; keep its use bounded (see Bounded Indexing Requests).
+- Read a page through the queries that bring its clicks. A page's average position can look like page 1 while its real target sits on page 5.
+- The pack's flags pick rows to inspect: non-brand queries at position 3 to 20, high impressions with low CTR, pages down 30%, new queries, 7+ word queries. Two more need judgment: a query the page does not target, and a query whose intent the page does not serve.
+- Before rewriting a flagged page, skip it if it changed in the last 90 days or is under two months old. It has not settled yet.
 
 ## Diagnosis: Traffic Or Ranking Drops
 

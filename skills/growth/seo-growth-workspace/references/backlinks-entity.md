@@ -12,6 +12,8 @@ Choose a real audience/distribution need, then verify source relevance, editoria
 
 Depth tiers: quick scan (default) covers competitors' top linked pages and obvious gaps via public SERP/operator research; deep gap analysis builds the full 3-5 competitor matrix and needs a bet that justifies the effort. Without backlink tools, document the limitation.
 
+**Count real domains.** Raw referring-domain counts in small markets are mostly link farms. One competitor's 54 domains held 5 real ones (DataForSEO, 2026-10-30). Read `backlinks/backlinks/live` with `mode: one_per_domain`, drop spam TLDs, link-selling anchors, shorteners and auto-generated report pages, and report real beside raw. Work per rival and country TLD first: intersection endpoints rank the same farms highest. Open every page before it becomes a target.
+
 Columns:
 
 `domain`, `URL`, `links to competitor count`, `competitors linked`, `DR/authority if known`, `traffic if known`, `site type`, `link type`, `how competitor earned it`, `realistic chance`, `effort`, `outreach/contact method`, `next action`.
@@ -45,7 +47,7 @@ Paid-placement requests do not become undisclosed editorial wins: apply the disc
 
 Destination pages exist before directory submissions: directories pass link equity into pages that convert (alternative, use-case, comparison pages) — build those first.
 
-Readiness gate. Hard blocks (any "no" stops submissions): product publicly accessible; pricing page; privacy + terms live; logo assets; real screenshots and demo; structurally clean landing pages (single H1, valid schema); 3+ alternative and use-case pages live and indexed. Soft blocks (proceed, note the gap): template gallery or lead-magnet asset; enough real users to review on B2B review sites.
+Readiness gate. Hard blocks (any "no" stops submissions): product publicly accessible; pricing page; privacy + terms live; logo assets; real screenshots and demo; structurally clean landing pages (single H1, valid schema); for global SaaS directories, 3+ alternative and use-case pages live and indexed (a country or industry listing needs one relevant destination page). Soft blocks (proceed, note the gap): template gallery or lead-magnet asset; enough real users to review on B2B review sites.
 
 Sequencing — submit only where the product genuinely fits; vary descriptions per directory:
 
@@ -57,6 +59,18 @@ Sequencing — submit only where the product genuinely fits; vary descriptions p
 | "Best of" listicle outreach                                | Rolling                     |
 | Integration marketplaces                                   | When integrations ship      |
 | Local/regional directories                                 | Rolling; local businesses only |
+
+## Routes in small national markets
+
+Competitors' real links in a market like Chile come from a few repeatable routes. Check each before inventing outreach:
+
+- Supplier directories run by public programmes or trade bodies.
+- Software comparison category pages for the market.
+- Vendor features and op-eds in trade press.
+- Coverage of workshops, talks and events the business really took part in. This route usually needs a real event first.
+- Yearly service pieces in national media, when the site holds the best current data (holiday calendars, deadlines, rates).
+- Government and professional lists. Confirm eligibility first, because most are closed to vendors.
+- Agent and MCP directories, when the product has a live server. Link value is untested.
 
 ## Digital PR And Linkable Assets
 

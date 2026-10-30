@@ -184,6 +184,11 @@ function aggregateQueries(rows, isBrand) {
   return queries;
 }
 
+// Long queries show the exact job someone is trying to do, so they make the best next pages.
+function isLongQuery(query) {
+  return query.trim().split(/\s+/).length >= 7;
+}
+
 function queryFlags(entry, previous) {
   const flags = [];
   const floor = CTR_FLOORS.find((band) => entry.position <= band.max)?.floor;
@@ -192,6 +197,7 @@ function queryFlags(entry, previous) {
   const shares = [...entry.pages.values()].filter((impressions) => impressions / entry.impressions >= 0.2);
   if (shares.length >= 2) flags.push(`split across ${shares.length} pages`);
   if (!previous.has(entry.query)) flags.push("new");
+  if (isLongQuery(entry.query)) flags.push("7+ words");
   return flags.join(", ");
 }
 
@@ -298,7 +304,10 @@ export function buildPack(raw, { brandTerms, minImpressions, generatedAt, liveCh
     table(
       ["Page", "Clicks", "Previous", "Impressions", "Previous impressions"],
       previous.pages.rows
-        .filter((row) => row.clicks >= 3 && (currentPages.get(row.keys[0])?.clicks ?? 0) <= row.clicks / 2)
+        .filter((row) => {
+          const clicksNow = currentPages.get(row.keys[0])?.clicks ?? 0;
+          return (row.clicks >= 3 && clicksNow <= row.clicks / 2) || (row.clicks >= 5 && clicksNow <= row.clicks * 0.7);
+        })
         .sort((a, b) => b.clicks - a.clicks)
         .slice(0, 10)
         .map((row) => {
@@ -330,6 +339,19 @@ export function buildPack(raw, { brandTerms, minImpressions, generatedAt, liveCh
           pathOf(entry.topPage, host),
           queryFlags(entry, queriesBefore),
         ]),
+    ),
+  );
+
+  out.push("## Long queries");
+  out.push("");
+  out.push(
+    table(
+      ["Query", "Impressions", "Clicks", "Position", "Top page"],
+      [...queriesNow.values()]
+        .filter((entry) => isLongQuery(entry.query))
+        .sort((a, b) => b.impressions - a.impressions || a.query.localeCompare(b.query))
+        .slice(0, 10)
+        .map((entry) => [entry.query.replaceAll("|", "/"), num(entry.impressions), num(entry.clicks), pos(entry.position), pathOf(entry.topPage, host)]),
     ),
   );
 
