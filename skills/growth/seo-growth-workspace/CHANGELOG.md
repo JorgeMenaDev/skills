@@ -1,5 +1,9 @@
 # Changelog
 
+## 9.8.2
+
+- `serp.mjs` reads the site from `displayedLink` when Serper wraps a result in a `google.com/goto` link. Why: since about October 2026 Serper wraps everything below position 3, so `--domain` reported "not in first 9" for a site at #7 and #9 in the same response (acredix.cl, 2026-10-30), and the Top 3 and result lists showed `google.com`.
+
 ## 9.8.1
 
 - Shorter trigger-only description (about 180 to 80 tokens). It loads in every session, so the contents list moved out; the triggers stay.

@@ -58,8 +58,17 @@ function hostOf(url) {
   }
 }
 
-function matchesDomain(url, domain) {
-  const host = hostOf(url);
+// Serper wraps results below the first few in opaque google.com/goto links, so the
+// site's host survives only in displayedLink ("https://acredix.cl › Acreditación").
+function resultHost(result) {
+  const host = hostOf(result.link);
+  if (host !== "google.com" || !result.displayedLink) return host;
+  const shown = result.displayedLink.split(" ")[0];
+  return hostOf(shown.includes("://") ? shown : `https://${shown}`) || host;
+}
+
+function matchesDomain(result, domain) {
+  const host = resultHost(result);
   const target = domain.replace(/^www\./, "");
   return host === target || host.endsWith(`.${target}`);
 }
@@ -70,18 +79,18 @@ export function render(saved) {
   out.push("| --- | --- | --- | --- | --- |");
   for (const { q, response } of saved.results) {
     const organic = Array.isArray(response?.organic) ? [...response.organic].sort((a, b) => a.position - b.position) : [];
-    const hit = saved.domain ? organic.find((result) => matchesDomain(result.link, saved.domain)) : undefined;
+    const hit = saved.domain ? organic.find((result) => matchesDomain(result, saved.domain)) : undefined;
     const position = hit ? `#${hit.position} (page ${Math.ceil(hit.position / 10)})` : `not in first ${organic.length}`;
     const features = FEATURES.filter((feature) => response?.[feature]).join(", ");
-    const top = organic.slice(0, 3).map((result) => hostOf(result.link)).join(", ");
-    out.push(`| ${q.replaceAll("|", "/")} | ${response?.error ? "lookup failed" : position} | ${hit?.link ?? ""} | ${features} | ${top} |`);
+    const top = organic.slice(0, 3).map(resultHost).join(", ");
+    out.push(`| ${q.replaceAll("|", "/")} | ${response?.error ? "lookup failed" : position} | ${hit && hostOf(hit.link) === "google.com" ? (hit.displayedLink ?? "") : (hit?.link ?? "")} | ${features} | ${top} |`);
   }
   out.push("");
   for (const { q, response } of saved.results) {
     const organic = Array.isArray(response?.organic) ? [...response.organic].sort((a, b) => a.position - b.position) : [];
     out.push(`## ${q}`, "");
     if (response?.error) out.push(`Lookup failed: ${response.error}`);
-    for (const result of organic.slice(0, 10)) out.push(`${result.position}. ${hostOf(result.link)} ${result.title ?? ""}`.trim());
+    for (const result of organic.slice(0, 10)) out.push(`${result.position}. ${resultHost(result)} ${result.title ?? ""}`.trim());
     const questions = (response?.peopleAlsoAsk ?? []).map((item) => item.question).filter(Boolean);
     if (questions.length > 0) out.push("", `People also ask: ${questions.join(" · ")}`);
     out.push("");
