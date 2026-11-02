@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Andy Ideas: screencast edit</title>
+<!-- Screencast edit: real footage + eased camera + burned-in captions, every frame a pure function of t.
+     ?fmt=x → 1920x1080, ?fmt=sq → 1080x1080. render.mjs drives seek(t). -->
+<style>
+@font-face { font-family: Geist; src: url(assets/GeistSans-Medium.woff2) format('woff2'); font-weight: 500; }
+@font-face { font-family: Geist; src: url(assets/GeistSans-SemiBold.woff2) format('woff2'); font-weight: 600; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { overflow: hidden; background: #000; font-family: Geist, sans-serif; -webkit-font-smoothing: antialiased; }
+#stage { position: absolute; inset: 0; overflow: hidden; background: #000; }
+#vid { display: none; }
+#cv { position: absolute; left: 0; top: 0; }
+.cap { position: absolute; left: 50%; display: flex; justify-content: center; white-space: nowrap; }
+.cap span { display: inline-block; color: #fafafa; font-weight: 600; letter-spacing: -0.01em;
+  background: rgba(18,18,20,.92); border: 1px solid rgba(255,255,255,.14); border-radius: 18px; box-shadow: 0 10px 40px rgba(0,0,0,.55); }
+#end { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #000; }
+#end img { }
+#end .t { color: #fafafa; font-weight: 600; letter-spacing: -0.03em; }
+#end .s { color: #a1a1aa; font-weight: 500; }
+</style>
+</head>
+<body>
+<div id="stage"><video id="vid" muted playsinline preload="auto"></video><canvas id="cv"></canvas></div>
+<script>
+const FMT = new URLSearchParams(location.search).get('fmt') || 'x';
+const W = FMT === 'sq' ? 1080 : 1920, H = 1080;
+const SW = 1402, SH = 876;                       // source footage size
+const BASE = Math.max(W / SW, H / SH);           // z = 1 covers the frame
+
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, t) => a + (b - a) * t;
+const io = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+const out5 = t => 1 - Math.pow(1 - t, 5);
+const pr = (t, a, b, e = io) => e(clamp((t - a) / (b - a)));
+
+// Segments of the raw take (seconds), each with one eased camera move [z, cx, cy] → [z, cx, cy] in source px,
+// and one caption. sq overrides the move where the square crop needs a different centre.
+const SEG = [
+  { a: 0.3,  b: 4.6,  sp: 1,   c0: [1.0, 701, 438], c1: [1.18, 560, 330], sq0: [1.0, 640, 438], sq1: [1.12, 560, 360],
+    cap: 'Andy now has an Ideas board' },
+  { a: 6.2,  b: 10.0,  sp: 1,   c0: [1.35, 600, 260], c1: [1.6, 600, 225], sq0: [1.0, 645, 270], sq1: [1.06, 645, 250],
+    cap: 'Open an idea. Your notes stay as you wrote them' },
+  { a: 13.0, b: 17.7, sp: 1.3, c0: [1.3, 700, 430], c1: [1.55, 700, 410], sq0: [1.2, 700, 430], sq1: [1.4, 700, 410],
+    cap: 'New idea: title, notes, channels, tags' },
+  { a: 18.7, b: 23.0, sp: 1,   c0: [1.2, 560, 330], c1: [1.5, 470, 300], sq0: [1.1, 560, 360], sq1: [1.35, 480, 320],
+    cap: 'It lands in New. Nothing publishes on its own' },
+  { a: 25.6, b: 29.6, sp: 1,   c0: [1.15, 700, 300], c1: [1.3, 640, 260], sq0: [1.1, 650, 330], sq1: [1.25, 600, 290],
+    cap: 'Search titles, notes and tags' },
+];
+let T = 0; for (const s of SEG) { s.t0 = T; s.d = (s.b - s.a) / s.sp; T += s.d; }
+const END = 3.0, DURATION = T + END;
+
+const stage = document.getElementById('stage'), vid = document.getElementById('vid');
+for (const e of [document.documentElement, document.body, stage]) { e.style.width = W + 'px'; e.style.height = H + 'px'; }
+const cv = document.getElementById('cv'); cv.width = W; cv.height = H; const g = cv.getContext('2d'); g.imageSmoothingQuality = 'high';
+const FS = FMT === 'sq' ? 40 : 44;
+const caps = SEG.map(s => {
+  const d = document.createElement('div'); d.className = 'cap';
+  d.innerHTML = `<span style="font-size:${FS}px;padding:${FS * 0.36}px ${FS * 0.7}px">${s.cap}</span>`;
+  d.style.top = (H - (FMT === 'sq' ? 150 : 140)) + 'px'; stage.appendChild(d); return d;
+});
+const end = document.createElement('div'); end.id = 'end';
+end.innerHTML = `<img src="assets/andy_logo.svg" style="width:${FMT === 'sq' ? 120 : 130}px;margin-bottom:34px">
+  <div class="t" style="font-size:${FMT === 'sq' ? 76 : 88}px">Ideas, in Andy</div>
+  <div class="s" style="font-size:${FMT === 'sq' ? 36 : 40}px;margin-top:18px">Park the idea. Draft it when you're ready.</div>`;
+stage.appendChild(end);
+
+function cam(s, u) {
+  const k0 = FMT === 'sq' ? s.sq0 : s.c0, k1 = FMT === 'sq' ? s.sq1 : s.c1, e = io(u);
+  const z = Math.exp(lerp(Math.log(k0[0]), Math.log(k1[0]), e));
+  const sc = BASE * z, vw = W / sc, vh = H / sc;
+  const cx = clamp(lerp(k0[1], k1[1], e), vw / 2, SW - vw / 2), cy = clamp(lerp(k0[2], k1[2], e), vh / 2, SH - vh / 2);
+  return { sc, x: W / 2 - cx * sc, y: H / 2 - cy * sc };
+}
+
+async function seek(t) {
+  const i = SEG.findIndex(s => t < s.t0 + s.d);
+  end.style.opacity = i < 0 ? pr(t, T, T + 0.35) : 0;
+  caps.forEach((c, j) => { c.style.visibility = j === i ? 'visible' : 'hidden'; });
+  if (i < 0) { // end card: words rise in
+    const kids = end.children; [...kids].forEach((k, j) => {
+      const p = pr(t, T + 0.15 + j * 0.18, T + 0.65 + j * 0.18, out5);
+      k.style.transform = `translateY(${(1 - p) * 30}px)`; k.style.opacity = p; });
+    return;
+  }
+  const s = SEG[i], lt = t - s.t0, c = cam(s, lt / s.d);
+  const p = pr(lt, 0.15, 0.6, out5), q = pr(lt, s.d - 0.25, s.d, io);   // caption rises in, eases out at the cut
+  caps[i].style.transform = `translate(-50%, ${(1 - p) * 26 + q * 10}px)`; caps[i].style.opacity = p * (1 - q);
+  const src = Math.min(s.b, s.a + lt * s.sp) + 1 / 60;
+  if (Math.abs(vid.currentTime - src) > 1e-3) await new Promise(r => { vid.onseeked = r; vid.currentTime = src; });
+  g.fillStyle = '#000'; g.fillRect(0, 0, W, H); g.drawImage(vid, c.x, c.y, SW * c.sc, SH * c.sc);
+}
+
+window.ready = fetch('footage.mp4').then(r => r.blob()).then(b => new Promise(r => { vid.oncanplaythrough = r; vid.src = URL.createObjectURL(b); }))
+  .then(() => Promise.all(['500 20px Geist', '600 20px Geist'].map(f => document.fonts.load(f))))
+  .then(() => new Promise(r => { const i = new Image(); i.onload = i.onerror = r; i.src = 'assets/andy_logo.svg'; }))
+  .then(() => seek(0)).then(() => true);
+Object.assign(window, { seek, DURATION, W, H, SEG });
+</script>
+</body>
+</html>

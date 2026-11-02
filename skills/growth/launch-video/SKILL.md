@@ -1,7 +1,7 @@
 ---
 name: launch-video
 description: "Make a code-rendered product film (HTML driven by seek(t), cut to a song's beat, rendered to 60 fps MP4). Use when asked for a launch video, a feature promo or demo clip, or product motion design."
-version: 1.3.2
+version: 1.4.0
 license: MIT
 mutating: true
 writes_to: ["a new film folder (index.html, audio/, out/)"]
@@ -9,7 +9,7 @@ writes_to: ["a new film folder (index.html, audio/, out/)"]
 
 # Launch video
 
-A keynote-style film in one of two **cuts** (Step 1). Every frame is code: one HTML file whose `seek(t)`
+A keynote-style film in one of two **cuts** (Step 1), or a captioned **screencast** of the live product. Every frame is code: one HTML file whose `seek(t)`
 draws any moment, Playwright screenshots each frame, ffmpeg blends subframes and muxes a beat-cut mix.
 Method from zero (@twoclipping)'s article "How I Make $10K Launch Videos for $0". Worked examples:
 [references/example-andy-publicaciones.md](references/example-andy-publicaciones.md) (feature launch), `examples/wainwrights-baggers/`
@@ -47,6 +47,7 @@ Any `no`: install it first (`CHROME: no` → `npx playwright install chromium` a
    |---|---|---|---|
    | **Feature launch** | people who know the product (social, a landing hero) | ~32 beats ≈ 16 s | one action, one payoff on the drop |
    | **Product intro** | new customers, by email or onboarding | 60–90 s, the whole song | landing-style opening, numbered walkthrough, next steps (film.md) |
+   | **Screencast** | followers, for a feature that just shipped (X 16:9, LinkedIn 1:1) | 20–40 s, silent | a real recording of the live product with zooms and captions; follow [references/screencast.md](references/screencast.md) instead of the steps below |
 
    Then settle: the product and feature, the one action a user takes (types a request, taps a place, drags a
    slider), what the viewer must learn in order, the language, the frame (1920x1080, 1080x1920 vertical,
