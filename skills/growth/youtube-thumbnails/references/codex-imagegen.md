@@ -20,12 +20,15 @@ codex features list | grep image_generation   # must be: stable  true
 
 ## From another agent (Claude, a script)
 
-Hand a brief to a Codex session and have it make the calls: your host's delegation lane if it has one, otherwise `codex exec` (documented, not yet proven for images here):
+Hand a brief to a Codex session and have it make the calls: your host's delegation lane if it has one, otherwise `codex exec` (proven for an image edit on codex-cli 0.167.0, 2026-11-06, about 7 minutes):
 
 ```sh
+# brief.txt starts with `$imagegen` and names the output path
 codex exec --skip-git-repo-check --sandbox workspace-write -C <workdir> \
-  -i <abs/path/logo.png> '$imagegen <brief>. Copy every output into raw/ and list the paths.'
+  --image=<abs/path/ref.png> < brief.txt
 ```
+
+Pass the brief on stdin and each image as `--image=<path>`. `-i` takes several paths, so `-i ref.png '<brief>'` reads the brief as a second image and then waits on stdin forever with no output.
 
 The brief carries the concepts, the prompt skeleton, the absolute reference paths and the destination. Ask for the prompts and paths back as `prompts.jsonl` lines.
 
