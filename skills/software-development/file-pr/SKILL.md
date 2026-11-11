@@ -1,7 +1,7 @@
 ---
 name: file-pr
 description: Use when opening a pull request, writing or rewriting a PR title or description, or marking a draft PR ready for review.
-version: 2.2.0
+version: 2.2.1
 mutating: true
 writes_to: [pull-requests]
 metadata:
@@ -35,7 +35,7 @@ Titles usually become commit messages, so follow the repo's conventions: read re
 4. **Decisions**, only when the work settled a real choice: a product rule, a trade-off the requester approved, or something ruled out. One bullet each, with who decided and when. Leave the section out when nothing was decided. A tracker may copy these bullets into a knowledge base, so each must read on its own.
    ```markdown
    ## Decisions
-   - Uploaded documents stay out of the paid playground until #1338 ships (Jorge, 10 Oct).
+   - Uploaded documents go to the AI as before 7 Oct, with no clinical barrier or masking (Jorge, 11 Oct).
    ```
 5. **Ship checklist** (below).
 
