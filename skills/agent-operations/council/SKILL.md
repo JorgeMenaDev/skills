@@ -66,11 +66,11 @@ keep scope limited.
 
 Unless the user names others, the council is these three, all at high effort (Jorge, 4 Nov 2026):
 
-- Claude Opus 5.5: `{providerInstanceId: "claudeAgent", model: "claude-opus-5-5", options: {effort: "high"}}`
+- Claude Opus 5.5: `{providerInstanceId: "claudePool", model: "claude-opus-5-5", options: {effort: "high"}}`
 - GPT-6.1 Sol: `{providerInstanceId: "codex", model: "gpt-6.1-sol", options: {reasoningEffort: "high"}}`. GPT is for review and research only.
 - Grok 4.7 through Cursor: `{providerInstanceId: "cursor", model: "grok-4.7", options: {reasoning_effort: "high"}}`. Cursor names this option `reasoning_effort`, not `effort`.
 
-If the Claude Code direct provider is rate-limited, use `claudePool` with the same model and say so.
+Claude members run on the Claude pool (`claudePool`), never Claude direct, so they share the pool's account routing (Jorge, 11 Nov 2026).
 
 ## Dispatch in T3 Code
 
