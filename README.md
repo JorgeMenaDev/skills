@@ -38,6 +38,14 @@ A two-vendor adversarial review protocol for hard-to-reverse architecture or des
 npx skills@latest add JorgeMenaDev/skills --skill counsel
 ```
 
+### `council`
+
+Three delegates from three providers (Claude Opus, GPT Sol, Grok) review or advise in parallel, score the work out of 10, and re-review after fixes until all are satisfied. The chair keeps scope tight. In T3 Code it dispatches with `delegate_task`.
+
+```bash
+npx skills@latest add JorgeMenaDev/skills --skill council
+```
+
 ### `source-to-system`
 
 A system-first review loop for external articles, videos, repositories, prompts, and tactics. It captures the material claims in temporary scratch space, compares them with the user's existing systems, selects one owned improvement or no change, and stops for approval before durable workspace or external-system mutation.
