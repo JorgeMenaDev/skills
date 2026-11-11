@@ -1,7 +1,7 @@
 ---
 name: file-pr
 description: Use when opening a pull request, writing or rewriting a PR title or description, or marking a draft PR ready for review.
-version: 3.0.0
+version: 3.0.1
 mutating: true
 writes_to: [pull-requests]
 metadata:
@@ -84,9 +84,9 @@ Open a real PR, not a draft, so review bots run. A draft is for a branch still t
 This skill writes and files the PR. The loop around it is tstack's `full-stop` (or `full-send`): finish, prove, `sol-loop`, file, babysit. Read those skills. These rules win where they differ:
 
 1. **Prove it locally.** Run the app from the branch and look at the change. Use the PR preview only when the change depends on how it is deployed (env vars, domains, auth realm, the backend deploy) or a person needs a URL.
-2. **The review is `sol-loop`, before filing.** Run no other review skill. Its `Reviewed with sol-loop` line goes in the body.
-3. **A fresh session verifies, after filing.** An agent that did not write the code (the same model is fine) checks the change with the repo's QA skill and posts one PR comment: `PASS`, `PASS+NOTES`, `FAIL` or `BLOCKED` for the head SHA, with screenshots. Match the check to the diff: a docs- or config-only PR gets a fresh read of the diff, not an app walk. A push that changes behaviour voids the verdict. Only `PASS` or `PASS+NOTES` on the current head makes the PR ready.
-4. **The thread that owns the PR runs the loop.** A delegated child (a T3 `delegate_task` child) builds, proves, runs `sol-loop`, files, and hands back the PR URL and head SHA. Its parent dispatches the verifier, babysits and merges. A child never watches a PR or merges.
+2. **The review is `sol-loop`, before filing.** Run no other review skill. Work started by `implement-spec` skips that skill's last `code-review` step. The `Reviewed with sol-loop` line goes in the body.
+3. **A fresh session verifies, after filing.** An agent that did not write the code (the same model is fine) checks the change with the repo's QA skill and posts one PR comment: `PASS`, `PASS+NOTES`, `FAIL` or `BLOCKED` for the head SHA, with screenshots. Match the check to the diff: a docs- or config-only PR gets a fresh read of the diff, not an app walk. A push that changes behaviour voids the verdict. A clean rebase keeps the verdict when `git patch-id` is unchanged. Only `PASS` or `PASS+NOTES` on the current head makes the PR ready, and this replaces the readiness and merge gate in `full-stop` and `full-send`.
+4. **The thread that owns the PR runs the loop.** A delegated child (a T3 `delegate_task` child) builds, proves, runs each `sol-loop` round with `delegate_task` `mode: wait`, files, hands back the PR URL and head SHA, and stops: it never babysits, watches a PR or merges. A native subagent has no `delegate_task`, so it cannot be the builder. The parent dispatches the verifier, babysits, and merges only under rule 5.
 5. **Full stop unless told otherwise.** Merge only when the owner of the work said `full send`, or the repo's `AGENTS.md` grants it. A clean loop never authorizes a deploy.
 6. **Questions** go where the repo's `AGENTS.md` says, not only into chat.
 
