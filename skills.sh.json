@@ -35,7 +35,7 @@
         "using-git-worktrees",
         "mobile-monorepo-ios",
         "file-pr",
-        "correctness-review"
+        "upload-file"
       ]
     },
     {

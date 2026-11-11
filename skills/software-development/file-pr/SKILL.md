@@ -1,7 +1,7 @@
 ---
 name: file-pr
 description: Use when opening a pull request, writing or rewriting a PR title or description, or marking a draft PR ready for review.
-version: 2.2.1
+version: 3.0.0
 mutating: true
 writes_to: [pull-requests]
 metadata:
@@ -10,13 +10,17 @@ metadata:
       skill: pr
       author: Matt Pocock
       url: "https://github.com/mattpocock/skills/tree/main/skills/engineering/pr"
+    - idea: "The loop this PR sits in: full-stop, full-send, sol-loop, babysit-pr"
+      skill: tstack
+      author: Theo Browne
+      url: "https://github.com/t3dotgg/tstack"
 ---
 
 # File PR
 
 A PR has three readers: the person who asked for the change, the reviewer, and whoever ships it to production days later. Write for all three.
 
-Before filing, check whether a PR for this branch already exists, and read the diff against the base branch to confirm it matches the goal you were given. The repo's `AGENTS.md` (or `CLAUDE.md`) names who owns which steps, where secrets live, and how reviews run; where it is silent, use roles ("whoever deploys").
+Before filing, check whether a PR for this branch already exists, and read the diff against the base branch to confirm it matches the goal you were given. The repo's `AGENTS.md` (or `CLAUDE.md`) names who owns which steps, where secrets live, and where questions go; where it is silent, use roles ("whoever deploys").
 
 ## Title
 
@@ -31,7 +35,7 @@ Titles usually become commit messages, so follow the repo's conventions: read re
    - BAD: "Removed implicit workspace carry-over from every new-thread entry point. Deleted `buildContextualThreadOptions`."
    - GOOD: "My 'new worktree' default was ignored when starting a thread on an existing worktree. Now your preferences always apply."
 2. **Summary**, only when the change has a shape worth seeing: the smallest visual that makes it clear (pseudocode, a call tree, a shallow file tree, a `diff` sketch of that tree, or Mermaid). One visual usually suffices.
-3. **Evidence**: before and after. A screenshot for a visual change; otherwise the exact command, test or output that failed before and passes now.
+3. **Evidence**: before and after. A visible change needs screenshots (a GIF for motion), uploaded with the `upload-file` skill: required, not "when they help". Otherwise the exact command, test or output that failed before and passes now. Never put secrets, login links or real people's data in a screenshot.
 4. **Decisions**, only when the work settled a real choice: a product rule, a trade-off the requester approved, or something ruled out. One bullet each, with who decided and when. Leave the section out when nothing was decided. A tracker may copy these bullets into a knowledge base, so each must read on its own.
    ```markdown
    ## Decisions
@@ -75,8 +79,15 @@ When the change genuinely ships on merge alone, say so and why. An empty section
 
 Open a real PR, not a draft, so review bots run. A draft is for a branch still taking commits; it becomes real the moment the work is done.
 
-## Validate, review, then clean up
+## The loop around this PR
 
-1. **Validate.** For a UI change, drive it in the running app before review and put what you saw in Evidence.
-2. **Review.** Run the repo's `code-review` skill (or its documented review step) with the base branch as the fixed point and the PR's issue or spec as the spec. Fix or answer every finding, then post the result as one PR comment naming the reviewed head SHA. When a round's findings share a root cause with the previous round's, stop patching: tell the requester the root cause, the options and your recommendation, then wait. Commits pushed after that are reviewed from that SHA before merge. Address real shortcomings; keep review feedback inside the PR's original goal.
-3. **Clean up.** Keep the worktree until the PR merges, pushing at every checkpoint. When it merges or closes, stop any runtime it started and remove the worktree.
+This skill writes and files the PR. The loop around it is tstack's `full-stop` (or `full-send`): finish, prove, `sol-loop`, file, babysit. Read those skills. These rules win where they differ:
+
+1. **Prove it locally.** Run the app from the branch and look at the change. Use the PR preview only when the change depends on how it is deployed (env vars, domains, auth realm, the backend deploy) or a person needs a URL.
+2. **The review is `sol-loop`, before filing.** Run no other review skill. Its `Reviewed with sol-loop` line goes in the body.
+3. **A fresh session verifies, after filing.** An agent that did not write the code (the same model is fine) checks the change with the repo's QA skill and posts one PR comment: `PASS`, `PASS+NOTES`, `FAIL` or `BLOCKED` for the head SHA, with screenshots. Match the check to the diff: a docs- or config-only PR gets a fresh read of the diff, not an app walk. A push that changes behaviour voids the verdict. Only `PASS` or `PASS+NOTES` on the current head makes the PR ready.
+4. **The thread that owns the PR runs the loop.** A delegated child (a T3 `delegate_task` child) builds, proves, runs `sol-loop`, files, and hands back the PR URL and head SHA. Its parent dispatches the verifier, babysits and merges. A child never watches a PR or merges.
+5. **Full stop unless told otherwise.** Merge only when the owner of the work said `full send`, or the repo's `AGENTS.md` grants it. A clean loop never authorizes a deploy.
+6. **Questions** go where the repo's `AGENTS.md` says, not only into chat.
+
+**Clean up.** Keep the worktree until the PR merges, pushing at every checkpoint. When it merges or closes, stop any runtime it started and remove the worktree.

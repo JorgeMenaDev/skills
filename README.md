@@ -178,8 +178,8 @@ Invocation is declared in each skill. Crew is user-invoked: run `/crew` explicit
 - **[using-git-worktrees](./skills/software-development/using-git-worktrees/SKILL.md)** — Storage-aware development lifecycle: source-only task workspaces, bounded hydration, reusable local-main runtimes, isolated local state, automatic dehydrate, and reviewed retirement.
 - **[work-tracking](./skills/software-development/work-tracking/SKILL.md)** — Decide where multi-step work should live: repo markdown, GitHub Issues, Linear, memory, or a mix. When to promote tasks to issues and how future agents find current state.
 - **[sync-github-fork](./skills/software-development/sync-github-fork/SKILL.md)** — Confirm a GitHub fork's parent, measure divergence, and integrate upstream changes into its published default branch without rewriting fork history.
-- **[file-pr](./skills/software-development/file-pr/SKILL.md)** — Open a pull request that ships safely: a title in the repo's convention, problem-first description with before/after evidence, a ship checklist driven by what the diff touches (env, migrations, flags, crons) with smoke and rollback, then review and worktree cleanup.
-- **[correctness-review](./skills/software-development/correctness-review/SKILL.md)** — Hunt behaviour bugs in a pull request with one reviewer on a different model from the builder: a failure-path list, a short rubric, and a severity scale where a wrong result is always must-fix.
+- **[file-pr](./skills/software-development/file-pr/SKILL.md)** — Open a pull request that ships safely: a title in the repo's convention, problem-first description with before/after evidence, a ship checklist driven by what the diff touches (env, migrations, flags, crons) with smoke and rollback, and the rules for the tstack loop around it (local proof, `sol-loop`, a fresh-session verdict).
+- **[upload-file](./skills/software-development/upload-file/SKILL.md)** — Upload screenshots, GIFs and short clips to a public R2 bucket (90-day expiry) and print Markdown for PR evidence.
 
 ### Productivity
 
