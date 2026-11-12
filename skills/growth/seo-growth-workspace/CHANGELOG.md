@@ -1,5 +1,9 @@
 # Changelog
 
+## 9.9.1
+
+- The Generative AI performance report is no longer called rollout-limited: Google opened it to every property on 31 Aug 2026. A 12 Nov 2026 API test returned no AI rows, so read it in the UI. Why: the stale note kept growth triage from reading it while an AI Overview citation loss on acredix.cl was being dated by hand (12 Nov 2026).
+
 ## 9.8.2
 
 - `serp.mjs` reads the site from `displayedLink` when Serper wraps a result in a `google.com/goto` link. Why: since about October 2026 Serper wraps everything below position 3, so `--domain` reported "not in first 9" for a site at #7 and #9 in the same response (acredix.cl, 2026-10-30), and the Top 3 and result lists showed `google.com`.

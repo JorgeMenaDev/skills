@@ -67,11 +67,11 @@ Route here when traffic or rankings dropped ("my traffic dropped", "why did we l
 
 Exit: the drop is characterized as branded/non-branded + SERP-feature/AI-Overviews vs core-update vs technical regression, with evidence, and the next action is a review candidate.
 
-## Google Generative AI Surfaces (rollout-limited, June 2026)
+## Google Generative AI Surfaces
 
-- **Generative AI Performance report**: Google is rolling this Search Console UI out to a subset of properties. When visible, it reports generative-AI impressions for AI Overviews/AI Mode by page, country, date, and device and offers chart/table export. Treat the downloaded export as dated UI evidence. Do not assume the property has access or that the data is exposed by the Search Console API. [Official report documentation](https://support.google.com/webmasters/answer/16984139)
-- **Search generative AI control**: also rollout-limited and owner-operated under Search Console Settings. Include/exclude can inherit from a parent property. It governs eligibility for specified Search generative features; it is not a ranking lever, does not control ordinary Search, and does not control model training (Google-Extended is separate). Any change is an authenticated human/admin mutation requiring explicit approval and before/after evidence. [Official control documentation](https://support.google.com/webmasters/answer/16908024)
-- Keep three evidence states distinct: standard Performance (combined totals), dedicated rollout-limited export (AI impressions when available), and unsupported inference (no causal claim).
+- **Generative AI Performance report**: in every property since 31 Aug 2026 (Google's help page, read 12 Nov 2026). A site with too few AI impressions sees no report. It counts impressions in AI Overviews and AI Mode by page, country, date and device, with chart and table export. Read it in the UI: a Search Console API test on 12 Nov 2026 returned no AI rows. Treat a downloaded export as dated UI evidence. Use it to date an AI Overview citation gain or loss before reading a position change: standard Performance gives a citation the Overview's position. [Official report documentation](https://support.google.com/webmasters/answer/16984139)
+- **Search generative AI control**: rollout-limited (June 2026) and owner-operated under Search Console Settings. Include/exclude can inherit from a parent property. It governs eligibility for specified Search generative features; it is not a ranking lever, does not control ordinary Search, and does not control model training (Google-Extended is separate). Any change is an authenticated human/admin mutation requiring explicit approval and before/after evidence. [Official control documentation](https://support.google.com/webmasters/answer/16908024)
+- Keep three evidence states distinct: standard Performance (combined totals), the Generative AI report export (AI impressions), and unsupported inference (no causal claim).
 
 ## Matrices To Produce
 

@@ -109,7 +109,7 @@ Login-gated, unavailable, rate-limited, or manually sampled sources are limited 
 
 ## 5. Monthly spot-check
 
-Re-run the maintained prompt set at most monthly, when a review needs it. Log each run to `.seo/reports/ai-visibility-YYYY-MM-DD.md` and compare like-for-like rows. Track assistant referrals in analytics where observable; citation captures remain dated samples. Standard GSC Performance can include AI-surface activity but cannot establish AI causality. Some properties may expose a separate rollout-limited UI/export; use it only when visibly available (`references/search-console.md`).
+Re-run the maintained prompt set at most monthly, when a review needs it. Log each run to `.seo/reports/ai-visibility-YYYY-MM-DD.md` and compare like-for-like rows. Track assistant referrals in analytics where observable; citation captures remain dated samples. Standard GSC Performance can include AI-surface activity but cannot establish AI causality. Search Console's Generative AI report gives AI Overview and AI Mode impressions by page and day in the UI (`references/search-console.md`).
 
 ## Exit criteria
 
