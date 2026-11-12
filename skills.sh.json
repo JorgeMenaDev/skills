@@ -39,6 +39,14 @@
       ]
     },
     {
+      "title": "Productivity",
+      "description": "Skills for plans, reports and feedback that a reader takes in at a glance.",
+      "skills": [
+        "visual-plan",
+        "product-feedback-report"
+      ]
+    },
+    {
       "title": "DevOps",
       "description": "Skills for durable agent operations, release trains, webhooks, and execution supervision.",
       "skills": [

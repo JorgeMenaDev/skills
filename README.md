@@ -184,7 +184,7 @@ Invocation is declared in each skill. Crew is user-invoked: run `/crew` explicit
 ### Productivity
 
 - **[product-feedback-report](./skills/productivity/product-feedback-report/SKILL.md)** — Create resumable founder-led feedback reports for web and mobile products, with conversational capture, screenshot/video evidence, automatic prioritization, and an always-current PDF.
-- **[visual-plan](./skills/productivity/visual-plan/SKILL.md)** — Turn ordinary text plans into rich interactive visual plans with diagrams, file maps, annotated code, open questions, and UI/prototype review when useful. Agent-Native visual planning, portable across hosted, self-hosted, and local-files modes.
+- **[visual-plan](./skills/productivity/visual-plan/SKILL.md)** — Turn a plan, report or comparison into one designed HTML page that opens from disk: warm dark, Inter and Excalifont, rows with emoji state tags, Excalidraw drawings, wireframes and whiteboards. Local only; a screenshot check at phone and desktop width before hand-over.
 
 ### DevOps
 

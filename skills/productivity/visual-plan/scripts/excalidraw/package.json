@@ -1,0 +1,13 @@
+{
+  "name": "visual-plan-excalidraw",
+  "private": true,
+  "description": "Renders .excalidraw scenes to static SVG for visual plans. Run through scripts/excalidraw.sh.",
+  "dependencies": {
+    "@excalidraw/excalidraw": "0.18.1",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  }
+}

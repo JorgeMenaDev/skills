@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#1f1e1d">
+<title>TITLE</title>
+<!--
+  Visual plan design system (dark only). Rules in the visual-plan SKILL.md ## Design system.
+  Look: warm dark, Inter for prose, Excalifont for sketches.
+  States: grey neutral, ✅ green done, ⏳ blue waits on us, 👉 amber someone else acts, 🚨 red gravest only.
+  Fonts load from this folder's fonts/ (new.sh copies them). Both are SIL Open Font License 1.1; licences sit beside them.
+  Keep the components the content needs and delete the rest, with their example text.
+-->
+<style>
+  @font-face { font-family: "Inter"; src: url("fonts/Inter.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
+  @font-face { font-family: "Excalifont"; src: url("fonts/Excalifont.woff2") format("woff2"); font-display: swap; }
+  :root {
+    color-scheme: dark;
+    --bg: #1f1e1d; --raised: #272625; --sunken: #1a1918;
+    --ink-strong: #f4f4f2; --ink: #e2e0dc; --mute: #aaa8a4; --faint: #75726d;
+    --line: rgba(244, 244, 242, .10); --line-strong: rgba(244, 244, 242, .20); --grid-dot: rgba(244, 244, 242, .09);
+    --accent: #78a7ff; --accent-bg: rgba(120, 167, 255, .15);
+    --ok: #9ee6a3; --ok-bg: rgba(158, 230, 163, .12);
+    --warn: #e3a541; --warn-bg: rgba(227, 165, 65, .13);
+    --alert: #f2675d; --alert-bg: rgba(242, 103, 93, .13);
+    --note-bg: #3a3216; --note-ink: #ede7c7;
+    --radius: 12px;
+    --sans: "Inter", ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --hand: "Excalifont", "Comic Sans MS", "Bradley Hand", "Marker Felt", cursive;
+    --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html { background: var(--bg); }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.6 var(--sans); -webkit-text-size-adjust: 100%; -webkit-font-smoothing: antialiased; }
+  main { max-width: 720px; margin: 0 auto; padding: 32px 20px 80px; }
+  ::selection { background: var(--accent-bg); }
+
+  /* Type. Mono carries dates, codes, counts and eyebrows; numbers are tabular everywhere. Hand is for sketches only. */
+  .eyebrow, .mono, .meta, .count, .who, th, .id { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  .eyebrow { font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--mute); }
+  h1 { color: var(--ink-strong); font-size: clamp(24px, 6.2vw, 30px); line-height: 1.22; font-weight: 650; letter-spacing: -.022em; margin: 10px 0 12px; text-wrap: balance; }
+  h2 { color: var(--ink-strong); font-size: 16px; line-height: 1.4; font-weight: 650; letter-spacing: -.01em; margin: 0; }
+  h3 { color: var(--ink-strong); font-size: 15px; line-height: 1.4; font-weight: 600; margin: 0; }
+  p, ul, ol { margin: 0 0 14px; }
+  li { margin-bottom: 6px; }
+  li::marker { color: var(--faint); }
+  strong { color: var(--ink-strong); font-weight: 600; }
+  a { color: var(--ink-strong); text-decoration: underline; text-decoration-color: var(--faint); text-underline-offset: 3px; }
+  a:hover { text-decoration-color: var(--accent); }
+  .lede { font-size: 16px; color: var(--mute); margin: 0; text-wrap: pretty; }
+  .meta { font-size: 12px; color: var(--faint); margin-top: 16px; }
+  .muted { color: var(--mute); }
+  .hand { font-family: var(--hand); }
+  code { font-family: var(--mono); font-size: .88em; background: var(--raised); border: 1px solid var(--line); padding: 1px 5px; border-radius: 5px; }
+  pre { font-family: var(--mono); font-size: 13px; line-height: 1.55; background: var(--sunken); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; overflow-x: auto; }
+  pre code { background: none; border: 0; padding: 0; }
+  img, video { max-width: 100%; height: auto; border-radius: 10px; display: block; border: 1px solid var(--line); }
+
+  /* Header: eyebrow, a fact sentence as the headline, one-line lede, mono meta. */
+  header { margin-bottom: 28px; }
+
+  /* Sketch: a box with a second, slightly offset hand-drawn edge. */
+  .sketch, .answer { position: relative; border: 1.5px solid var(--line-strong); border-radius: var(--radius); background: var(--raised); }
+  .sketch::after, .answer::after { content: ""; position: absolute; inset: -3px; border: 1.2px solid var(--line); border-radius: inherit; transform: translate(2px, -1px) rotate(.35deg); pointer-events: none; }
+  .sketch { padding: 14px 16px; margin: 16px 0; }
+  .sketch > :last-child { margin-bottom: 0; }
+
+  /* Answer: the bottom line, first on the page. Three bullets at most. */
+  .answer { padding: 16px 18px; }
+  .answer > :last-child { margin-bottom: 0; }
+  .answer ul { padding-left: 18px; }
+
+  /* Figures: headline numbers on hairlines, never boxed tiles. Each label says what the number counts. */
+  .figures { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(140px, 50%), 1fr)); margin: 22px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+  .figure { padding: 14px 16px 14px 0; }
+  .figure + .figure { padding-left: 16px; border-left: 1px solid var(--line); }
+  .figure .n { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 24px; line-height: 1.1; color: var(--ink-strong); letter-spacing: -.02em; }
+  .figure .l { font-size: 12.5px; color: var(--mute); margin-top: 6px; line-height: 1.4; }
+  @media (max-width: 480px) { .figure:nth-child(odd) { border-left: 0; padding-left: 0; } .figure:nth-child(n+3) { border-top: 1px solid var(--line); } }
+
+  /* Section: a hairline, the title (one emoji in front is welcome) and a mono count on the right. */
+  section { margin-top: 44px; }
+  .sec { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding-top: 16px; border-top: 1px solid var(--line-strong); margin-bottom: 12px; }
+  .count { font-size: 12px; color: var(--mute); white-space: nowrap; }
+  .group { font-family: var(--mono); font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--faint); margin: 22px 0 6px; }
+
+  /* Rows: the main way to list things. A row is a <details> when it has more to show; it expands in place. */
+  .rows { border-top: 1px solid var(--line); }
+  .row { border-bottom: 1px solid var(--line); }
+  .row > summary, .row > .line { list-style: none; display: grid; grid-template-columns: 52px 1fr auto; gap: 2px 12px; align-items: baseline; padding: 13px 0; cursor: pointer; }
+  .row > .line { cursor: default; }
+  .row > summary::-webkit-details-marker { display: none; }
+  .row .id { font-size: 12px; color: var(--faint); }
+  .row .title { color: var(--ink-strong); font-weight: 600; }
+  .row .desc { grid-column: 2 / -1; color: var(--mute); font-size: 14px; line-height: 1.5; }
+  .row .tags { display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap; }
+  .row > summary .title::after { content: "+"; font-family: var(--mono); font-weight: 400; color: var(--faint); margin-left: 8px; }
+  .row[open] > summary .title::after { content: "−"; }
+  .row > summary:hover .title { text-decoration: underline; text-decoration-color: var(--faint); text-underline-offset: 3px; }
+  .row .body { padding: 0 0 16px 64px; font-size: 14px; }
+  .row .body > :last-child { margin-bottom: 0; }
+  /* Phone: id and tags share the first line, so a long tag never squeezes the title. */
+  @media (max-width: 480px) {
+    .row > summary, .row > .line { grid-template-columns: 1fr auto; }
+    .row .id { grid-column: 1; grid-row: 1; }
+    .row .tags { grid-column: 2; grid-row: 1; }
+    .row .title { grid-column: 1 / -1; grid-row: 2; }
+    .row .desc { grid-column: 1 / -1; grid-row: 3; }
+    .row .body { padding-left: 0; }
+  }
+
+  /* Key-value pairs inside a row or a panel. */
+  .kv { display: grid; grid-template-columns: 112px 1fr; gap: 6px 14px; margin: 0; }
+  .kv dt { color: var(--faint); font-family: var(--mono); font-size: 11.5px; letter-spacing: .04em; text-transform: uppercase; padding-top: 2px; }
+  .kv dd { margin: 0; color: var(--ink); }
+  @media (max-width: 480px) { .kv { grid-template-columns: 1fr; gap: 2px; } .kv dd { margin-bottom: 8px; } }
+
+  /* Tags: a pill that starts with its emoji. Grey is neutral; colour only the state that matters. */
+  .tag { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; line-height: 1.6; padding: 1px 9px; border-radius: 999px; border: 1px solid var(--line-strong); color: var(--mute); white-space: nowrap; font-weight: 500; }
+  .tag.done { border-color: transparent; background: var(--ok-bg); color: var(--ok); }
+  .tag.wait { border-color: transparent; background: var(--accent-bg); color: var(--accent); }
+  .tag.warn { border-color: transparent; background: var(--warn-bg); color: var(--warn); }
+  .tag.alert { border-color: transparent; background: var(--alert-bg); color: var(--alert); }
+  /* Who acts, on every state that waits on someone. */
+  .who { font-size: 11.5px; color: var(--mute); }
+  .who::before { content: "→ "; color: var(--faint); }
+
+  /* Notes: a caveat or a change of plan. Amber only when someone else must act; red only for the gravest case. */
+  .note { border: 1px solid var(--line-strong); border-radius: var(--radius); padding: 12px 16px; margin: 16px 0; }
+  .note .eyebrow { display: block; margin-bottom: 4px; }
+  .note > :last-child { margin-bottom: 0; }
+  .note.warn { border-color: rgba(227, 165, 65, .35); } .note.warn .eyebrow { color: var(--warn); }
+  .note.alert { border-color: rgba(242, 103, 93, .4); } .note.alert .eyebrow { color: var(--alert); }
+
+  /* Timeline: dated steps with today marked. */
+  .timeline { list-style: none; padding: 0; margin: 0 0 14px; }
+  .timeline li { display: grid; grid-template-columns: 96px 14px 1fr; gap: 0 12px; margin: 0; }
+  .timeline .date { font-family: var(--mono); font-size: 12px; color: var(--mute); padding-top: 2px; }
+  .timeline .dot { position: relative; }
+  .timeline .dot::before { content: ""; position: absolute; left: 3px; top: 7px; width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid var(--faint); background: var(--bg); }
+  .timeline .dot::after { content: ""; position: absolute; left: 7px; top: 18px; bottom: -4px; width: 1px; background: var(--line-strong); }
+  .timeline li:last-child .dot::after { display: none; }
+  .timeline .what { padding-bottom: 16px; }
+  .timeline .today .dot::before { background: var(--accent); border-color: var(--accent); }
+  .timeline .today .date { color: var(--ink-strong); }
+
+  /* Numbered steps for plans and runbooks. */
+  ol.steps { list-style: none; counter-reset: step; padding: 0; border-top: 1px solid var(--line); }
+  ol.steps > li { counter-increment: step; display: grid; grid-template-columns: 36px 1fr; padding: 12px 0; margin: 0; border-bottom: 1px solid var(--line); }
+  ol.steps > li::before { content: counter(step, decimal-leading-zero); font-family: var(--mono); font-size: 12px; color: var(--faint); padding-top: 2px; }
+  ol.steps > li strong:first-child { display: block; }
+
+  /* Tables scroll sideways on a phone instead of squashing. */
+  .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); margin: 14px 0; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: .06em; color: var(--faint); white-space: nowrap; background: var(--raised); }
+  tr:last-child td { border-bottom: 0; }
+  .num { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+  /* Whiteboard: a dotted board holding sticky notes or wireframes. */
+  .board { background-color: var(--sunken); background-image: radial-gradient(var(--grid-dot) 1px, transparent 1.3px); background-size: 18px 18px; border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 16px; margin: 16px 0; }
+  .stickies { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px; }
+  .sticky { font-family: var(--hand); font-size: 17px; line-height: 1.3; background: var(--note-bg); color: var(--note-ink); padding: 14px 14px 16px; border-radius: 3px; box-shadow: 0 10px 22px rgba(0, 0, 0, .3); transform: rotate(-1.2deg); }
+  .sticky:nth-child(even) { transform: rotate(1.1deg); }
+  .sticky.green { background: #1f3326; color: #d4efd9; } .sticky.blue { background: #222a3d; color: #d9e2fb; }
+  .sticky small { display: block; font-family: var(--mono); font-size: 11px; opacity: .7; margin-top: 8px; }
+
+  /* Wireframes: hand-drawn phone screens for "what they saw" or "what it should look like". */
+  .wires { display: flex; gap: 18px; overflow-x: auto; padding: 4px 2px 6px; }
+  .wire { flex: 0 0 clamp(140px, 45%, 200px); font-family: var(--hand); }
+  .wire .screen { position: relative; display: flex; flex-direction: column; gap: 9px; min-height: 290px; padding: 26px 14px 16px; border: 1.6px solid rgba(244, 244, 242, .7); border-radius: 24px; background: var(--bg); color: var(--ink); }
+  .wire .screen::before { content: ""; position: absolute; top: 10px; left: 50%; width: 42px; height: 5px; border-radius: 3px; background: var(--line-strong); transform: translateX(-50%); }
+  .wire .screen::after { content: ""; position: absolute; inset: -3px; border: 1.2px solid var(--line-strong); border-radius: inherit; transform: translate(2px, -1px) rotate(.5deg); pointer-events: none; }
+  .wire .t { font-size: 18px; line-height: 1.2; color: var(--ink-strong); }
+  .wire .s { font-size: 14px; line-height: 1.3; color: var(--mute); }
+  .wire .ln { height: 7px; border-radius: 4px; background: var(--line-strong); }
+  .wire .field { border: 1.4px solid var(--line-strong); border-radius: 8px; padding: 4px 9px; font-size: 14px; color: var(--mute); }
+  .wire .btn { border: 1.4px solid var(--ink); border-radius: 8px; padding: 4px 9px; text-align: center; font-size: 15px; }
+  .wire .btn.primary { border-color: var(--accent); background: var(--accent-bg); color: var(--accent); }
+  .wire .hit { outline: 2px dashed var(--warn); outline-offset: 3px; }
+  .wire .err { font-size: 14px; color: var(--alert); }
+  .wire .cap { font-size: 15px; line-height: 1.3; color: var(--mute); text-align: center; margin-top: 10px; }
+
+  /* Drawing: an Excalidraw scene rendered to SVG by scripts/excalidraw.sh. */
+  figure.drawing { margin: 18px 0; }
+  /* Drawn at phone width (about 340 units), shown at its own size and shrunk only on a narrow screen. */
+  figure.drawing img { border: 0; border-radius: 0; width: auto; max-width: 100%; }
+
+  /* Collapsible evidence most readers can skip. */
+  details.more { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); margin: 16px 0; }
+  details.more > summary { list-style: none; cursor: pointer; padding: 12px 0; color: var(--mute); font-size: 14px; }
+  details.more > summary::-webkit-details-marker { display: none; }
+  details.more > summary::before { content: "+ "; font-family: var(--mono); color: var(--faint); }
+  details.more[open] > summary::before { content: "− "; }
+  details.more > :last-child { padding-bottom: 8px; }
+
+  figure { margin: 18px 0; } figcaption { font-size: 12.5px; color: var(--mute); margin-top: 8px; }
+  footer { margin-top: 56px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 12.5px; color: var(--faint); }
+  footer p { margin-bottom: 6px; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="eyebrow">Project · Topic</div>
+    <h1>A fact sentence with real counts: 6 of 9 steps are done, and the launch is in 7 days.</h1>
+    <p class="lede">One sentence that says what this page answers.</p>
+    <div class="meta">1 Mar 2026 · Author · Source: where the numbers come from</div>
+  </header>
+
+  <div class="answer">
+    <p><strong>👉 Bottom line:</strong> the answer first, in plain words.</p>
+    <ul>
+      <li>Most important finding.</li>
+      <li>Second finding.</li>
+    </ul>
+  </div>
+
+  <div class="figures">
+    <div class="figure"><div class="n">301</div><div class="l">Visits, last 30 days</div></div>
+    <div class="figure"><div class="n">27</div><div class="l">The 30 days before</div></div>
+    <div class="figure"><div class="n">4</div><div class="l">Signups</div></div>
+  </div>
+
+  <section>
+    <div class="sec"><h2>📋 Items</h2><span class="count">4 items</span></div>
+    <div class="group">Group label</div>
+    <div class="rows">
+      <details class="row">
+        <summary><span class="id">A-1</span><span class="title">An item with detail</span><span class="tags"><span class="tag">S</span></span><span class="desc">One line on what it is.</span></summary>
+        <div class="body">
+          <dl class="kv"><dt>Who uses it</dt><dd>What they see.</dd><dt>Needs</dt><dd>A-2</dd></dl>
+        </div>
+      </details>
+      <div class="row"><div class="line"><span class="id">A-2</span><span class="title">Shipped</span><span class="tags"><span class="tag done">✅ Done</span></span><span class="desc">Green: finished and checked.</span></div></div>
+      <div class="row"><div class="line"><span class="id">A-3</span><span class="title">Waits on us</span><span class="tags"><span class="tag wait">⏳ In progress</span></span><span class="desc">Blue: our move. A date reads "📅 4 Mar". <span class="who">Sam</span></span></div></div>
+      <div class="row"><div class="line"><span class="id">A-4</span><span class="title">Waits on someone else</span><span class="tags"><span class="tag warn">👉 Needs Alex</span></span><span class="desc">Amber: another person must act. <span class="who">Alex</span></span></div></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec"><h2>🗺️ How it flows</h2></div>
+    <!-- An Excalidraw drawing: write name.excalidraw in this folder, run scripts/excalidraw.sh on it, then:
+    <figure class="drawing">
+      <img src="name.svg" alt="What the drawing shows, in one sentence">
+      <figcaption>One line on how to read it · <a href="name.excalidraw" download>✏️ edit in Excalidraw</a></figcaption>
+    </figure> -->
+    <div class="board">
+      <div class="wires">
+        <div class="wire">
+          <div class="screen">
+            <div class="t">Sign up</div>
+            <div class="ln" style="width: 80%"></div>
+            <div class="field">email</div>
+            <div class="btn primary">Continue</div>
+          </div>
+          <div class="cap">1 · what they saw</div>
+        </div>
+        <div class="wire">
+          <div class="screen">
+            <div class="t">Company</div>
+            <div class="field hit">Tax ID</div>
+            <div class="err">Check the tax ID.</div>
+            <div class="btn">Save</div>
+          </div>
+          <div class="cap">2 · where they stopped</div>
+        </div>
+      </div>
+    </div>
+    <div class="board">
+      <div class="stickies">
+        <div class="sticky">💡 A hypothesis in a few words<small>H1 · not proven</small></div>
+        <div class="sticky green">✅ Something we know<small>source</small></div>
+        <div class="sticky blue">❓ An open question<small>who answers</small></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec"><h2>📅 Timeline</h2><span class="count">1 Mar – 18 Mar</span></div>
+    <ol class="timeline">
+      <li class="today"><span class="date">1 Mar · today</span><span class="dot"></span><span class="what">Today's step.</span></li>
+      <li><span class="date">5 Mar</span><span class="dot"></span><span class="what">Next step.</span></li>
+      <li><span class="date">18 Mar</span><span class="dot"></span><span class="what">Later step.</span></li>
+    </ol>
+  </section>
+
+  <section>
+    <div class="sec"><h2>🛠️ Plan</h2></div>
+    <ol class="steps">
+      <li><div><strong>First step</strong>What happens and how we know it worked.</div></li>
+      <li><div><strong>Second step</strong>What happens and how we know it worked.</div></li>
+    </ol>
+  </section>
+
+  <section>
+    <div class="sec"><h2>⚖️ Comparison</h2></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Option</th><th class="num">Cost</th><th>Verdict</th></tr></thead>
+        <tbody>
+          <tr><td>Option A</td><td class="num">$20</td><td>Recommended</td></tr>
+          <tr><td>Option B</td><td class="num">$45</td><td><span class="tag warn">💰 Needs a decision</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="note warn"><span class="eyebrow">⚠️ Watch out</span><p>A caveat the reader must not miss.</p></div>
+  </section>
+
+  <details class="more">
+    <summary>Evidence</summary>
+    <p>Detail most readers can skip.</p>
+  </details>
+
+  <footer>
+    <p>Source: where this came from.</p>
+    <p>Assumption: one line each.</p>
+  </footer>
+</main>
+</body>
+</html>
