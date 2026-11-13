@@ -218,9 +218,19 @@ case "$command" in
     (cd "$worktree" && "${bun_cmd[@]}" install --frozen-lockfile)
     if has_script "$worktree" "setup:worktree"; then
       convex_before="$(list_convex_local "$worktree")"
-      (cd "$worktree" && "${bun_cmd[@]}" run setup:worktree) 2>&1 | tail -5
+      # The first run against a fresh local Convex backend can lose a write race
+      # (OptimisticConcurrencyControlFailure while setting env vars, andyChat,
+      # 13 Nov 2026); a second run succeeds, so retry once before failing.
+      setup_status=0
+      for attempt in 1 2; do
+        setup_status=0
+        (cd "$worktree" && "${bun_cmd[@]}" run setup:worktree) 2>&1 | tail -5 || setup_status=$?
+        [[ "$setup_status" -eq 0 ]] && break
+        [[ "$attempt" -eq 1 ]] && echo "SETUP_RETRY: setup:worktree exited $setup_status; running it once more."
+      done
       # setup:worktree applies only documented synthetic seeds, so a local Convex
-      # database it just created is disposable: mark it `synthetic` (LIFECYCLE.md).
+      # database it just created is disposable: mark it `synthetic` (LIFECYCLE.md),
+      # even when setup failed, or `down --remove` would refuse it as durable.
       # Databases that existed before this run, or already carry a mark, keep theirs.
       while IFS= read -r convex_local; do
         [[ -n "$convex_local" ]] || continue
@@ -228,6 +238,10 @@ case "$command" in
         marker="$(dirname "$convex_local")/state-kind"
         [[ -e "$marker" ]] || printf 'synthetic\n' >"$marker"
       done <<<"$(list_convex_local "$worktree")"
+      if [[ "$setup_status" -ne 0 ]]; then
+        echo "SETUP_FAILED: setup:worktree exited $setup_status twice; see the output above." >&2
+        exit "$setup_status"
+      fi
     fi
 
     if [[ "$run" == "no" ]]; then
