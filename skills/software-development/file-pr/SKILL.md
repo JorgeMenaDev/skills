@@ -1,7 +1,7 @@
 ---
 name: file-pr
 description: Use when opening a pull request, writing or rewriting a PR title or description, or marking a draft PR ready for review.
-version: 3.0.4
+version: 3.0.5
 mutating: true
 writes_to: [pull-requests]
 metadata:
@@ -61,6 +61,7 @@ Read your own diff and check each trigger:
 | a cron or scheduled job | register it, naming the scheduler |
 | assumed infra: a queue, bucket, index or table | create it |
 | a changed cached or CDN-served asset | the invalidation |
+| client code that needs backend code from this same diff, where the two deploy separately | split the PR: backend additions first, the client second, removals last. The client can go live first |
 
 Two items are unconditional: one **smoke** step (what to do in production and the result to expect) and the **rollback**, which names the door: _two-way_ (a revert undoes it) or _one-way_ (data deleted, messages sent, a migration without a down-step), with what a one-way door costs. Every item names its owner and its order.
 
