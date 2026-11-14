@@ -1,7 +1,7 @@
 ---
 name: upload-file
 description: Upload screenshots, GIFs and short videos to public URLs for PR evidence and validation steps. Use when a PR, review or verdict needs an image or clip, or GitHub won't take a file from the CLI.
-version: 1.0.0
+version: 1.0.1
 mutating: true
 writes_to: ["the public `evidence` R2 bucket (files expire after 90 days)"]
 ---
@@ -18,7 +18,7 @@ R2_EVIDENCE_TOKEN=… python3 <this skill's folder>/upload.py before-open.png af
 - `--prefix` is the bucket folder: `<repo>/<pr>` for PR evidence, `<repo>/<topic>` otherwise. A file with the same name in the same folder is replaced.
 - Every file is deleted 90 days after upload. Don't use this for anything that must last.
 - The URLs are public and unguessable only by path. Never upload secrets, login links, tokens or real people's data. Crop or blur first.
-- `R2_EVIDENCE_TOKEN` missing: the script exits 2. Ask whoever runs the session; never look for another key.
+- `R2_EVIDENCE_TOKEN` missing: the script exits 2. On a Mac with the Matias repo, its store holds the token as `CLOUDFLARE_R2_TOKEN_EVIDENCE`: run `python3 ~/matias/scripts/with-secret.py CLOUDFLARE_R2_TOKEN_EVIDENCE R2_EVIDENCE_TOKEN -- python3 <this skill's folder>/upload.py …`. Anywhere else, ask whoever runs the session; never look for another key.
 
 ## Video
 
