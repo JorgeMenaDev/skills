@@ -1,7 +1,7 @@
 ---
 name: file-pr
 description: Use when opening a pull request, writing or rewriting a PR title or description, or marking a draft PR ready for review.
-version: 3.0.5
+version: 3.0.6
 mutating: true
 writes_to: [pull-requests]
 metadata:
@@ -88,7 +88,7 @@ This skill writes and files the PR. The loop around it is tstack's `full-stop` (
 2. **The review is `sol-loop`, before filing.** Run no other review skill. Work started by `implement-spec` skips that skill's last `code-review` step. The `Reviewed with sol-loop` line goes in the body.
 3. **A fresh session verifies, after filing.** An agent that did not write the code (the same model is fine) checks the change with the repo's QA skill and posts one PR comment: `PASS`, `PASS+NOTES`, `FAIL` or `BLOCKED` for the head SHA, with screenshots. Match the check to the diff: a docs- or config-only PR gets a fresh read of the diff, not an app walk. A push that changes behaviour voids the verdict. Only `PASS` or `PASS+NOTES` for the current head, or for an earlier head with the same `git patch-id` (a clean rebase), makes the PR ready. The verdict joins the merge gate in `full-send` (which `full-stop` uses for "Ready to merge"): green checks, finished review bots and a mergeable branch still apply.
 4. **The thread that owns the PR runs the loop.** A delegated child (a T3 `delegate_task` child) builds, proves, runs each `sol-loop` round with `delegate_task` `mode: wait`, files, hands back the PR URL and head SHA, and stops: it never babysits, watches a PR or merges. A native subagent has no `delegate_task`, so it cannot be the builder. The parent dispatches the verifier, babysits until both the merge gate and the verdict pass, and merges only under rule 5. Outside T3 Code, babysit with `pr-wait --until green` unless the repo runs Greptile or Macroscope: the default `ready` waits for one of those review bots and never ends without it.
-5. **Full stop unless told otherwise.** Merge only when the owner of the work said `full send`, or the repo's `AGENTS.md` grants it. A clean loop never authorizes a deploy.
+5. **Full stop unless told otherwise.** Merge only when the owner of the work said `full send`, or the repo's `AGENTS.md` grants it. A clean loop never authorizes a deploy. Right before merging, prove the branch holds the base's tip: `git fetch origin && git merge-base --is-ancestor origin/<base> <head SHA>`. If it does not, update the branch and wait for green checks again. Where branch protection is off (a private repo on GitHub's free plan), GitHub calls a branch that is behind `CLEAN`, so two PRs that are each green alone can break the base together.
 6. **Questions** go where the repo's `AGENTS.md` says, not only into chat.
 
 **Clean up.** Keep the worktree until the PR merges, pushing at every checkpoint. When it merges or closes, stop any runtime it started and remove the worktree.
