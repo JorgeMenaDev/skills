@@ -170,6 +170,17 @@ case "$command" in
     ;;
 
   up)
+    # --repo defaults to the current folder, so a run from the wrong folder
+    # would branch that repo (a builder once worktreed the matias repo, 13 Nov
+    # 2026). Refuse a repo with no script this command could run.
+    runnable="no"
+    for s in qa:local setup:worktree dev ${surfaces[@]+"${surfaces[@]/#/dev:}"}; do
+      has_script "$repo_root" "$s" && { runnable="yes"; break; }
+    done
+    if [[ "$runnable" == "no" ]]; then
+      echo "NOT_RUNNABLE: $repo_root has no qa:local, setup:worktree or dev script. Pass --repo <product checkout>; it defaults to the current folder." >&2
+      exit 2
+    fi
     git -C "$repo_root" fetch origin --quiet
     if [[ -z "$base_ref" ]]; then
       base_ref="$(git -C "$repo_root" symbolic-ref --quiet --short refs/remotes/origin/HEAD || echo origin/main)"
