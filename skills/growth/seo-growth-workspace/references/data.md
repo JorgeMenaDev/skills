@@ -5,7 +5,7 @@ Where evidence comes from, what each source can and cannot say, and what it cost
 | Need | Command | Source and limits | Cost |
 | --- | --- | --- | --- |
 | Weekly or monthly data pack | `review-data.mjs` | Search Console, final data. Withholds anonymized queries: the pack prints query-row coverage | Free |
-| Any other Search Console cut | `gsc-fetch.mjs` (any dimensions, filters) | Same | Free |
+| Any other Search Console cut | `gsc-fetch.mjs` (any dimensions, filters) | Same. Page with device or country drops rare rows: laborix.cl 19 Oct to 11 Nov held 13,006 impressions by page and 5,233 by page and device, and one page fell from 850 to 10. Size a page by page alone; compare devices only on pages with hundreds of impressions | Free |
 | First-time Search Console auth | `gsc-oauth.mjs` | Google OAuth, `webmasters.readonly` | Free |
 | What a reader sees on a published page | `render-check.mjs` (needs the `agent-browser` CLI) | A real browser at desktop and 390 px phone: broken images, missing same-origin files, overflow, tables wider than their box, H1 count; full-page screenshots to look at. Cannot judge copy or design: someone must look | Free |
 | Where a site ranks right now | `serp.mjs` (`SERPER_API_KEY`) | Serper Google results for one query, country and language at one moment. Results arrive 10 per page; `--pages 3` reaches position 30. Free accounts allow quoted and `site:` queries only at 10 results | Pay per query, per page |

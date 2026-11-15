@@ -1,5 +1,9 @@
 # Changelog
 
+## 9.9.2
+
+- `data.md`: a Search Console cut of page with device or country drops rare rows, so size a page by page alone. Why: on laborix.cl (19 Oct to 11 Nov) page by device held 5,233 of 13,006 page impressions, and /ley-karin read 10 instead of 850 (growth triage, 15 Nov 2026).
+
 ## 9.9.1
 
 - The Generative AI performance report is no longer called rollout-limited: Google opened it to every property on 31 Aug 2026. A 12 Nov 2026 API test returned no AI rows, so read it in the UI. Why: the stale note kept growth triage from reading it while an AI Overview citation loss on acredix.cl was being dated by hand (12 Nov 2026).
