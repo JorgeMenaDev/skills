@@ -5,7 +5,7 @@ Use this prompt to delete the tests that cannot go red for a real failure, make 
 - **T3 Code** ([pingdotgg/t3code#22557](https://github.com/pingdotgg/t3code/pull/22557), Theo, 20 Oct 2026): deleted about 11,000 of 25,928 tests (43%), and summed test-file time fell 59%. Later PRs restored tests the cut should have kept ([#23977](https://github.com/pingdotgg/t3code/pull/23977), [#23980](https://github.com/pingdotgg/t3code/pull/23980), [#23991](https://github.com/pingdotgg/t3code/pull/23991), [#24011](https://github.com/pingdotgg/t3code/pull/24011)). The suite then grew back at about 335 tests a day until [#26166](https://github.com/pingdotgg/t3code/pull/26166) added rules and a review check (`docs/internals/testing.md`).
 - **Andy** (Andesphere/andyChat#3210, 12 Nov 2026): cut test cases 40%, assertion calls 33% and test time 29%. 548 of 557 mutation checks on protected guards still go red.
 
-Replace the placeholders before sending:
+Send everything from `## Prompt` to the end of this file: the prompt uses the testing rules doc and the review check below it. Replace the placeholders first:
 
 - `<REPO>`: path to the repo.
 - `<TARGET>`: the cut you expect, for example "about 40% of test cases". It is an estimate. Never cut a test only to reach it.
@@ -68,17 +68,12 @@ Put the table in the PR: guard, mutation, red or green, and the kept case that w
 
 **6. Flakes.** No retries. A test that needs a retry has a bug in the test or in the product. Find it. If the bug is in the product, file it with a reproduction and keep the test failing loudly.
 
-**7. Stop the regrowth.** Put these rules in AGENTS.md and in the testing doc, worded the same in both places:
+**7. Stop the regrowth.** T3's suite grew back by about 335 tests a day after its cut, until it wrote the rules down and added a review check. Do both:
 
-- **Test what can break:** the kept list above, plus the logic a bug fix changed.
-- **Extend before you add:** add a row or an assert to the existing case or table first. A new case covers a distinct way to fail. Never open a new file per issue.
-- **One layer:** test a behaviour once, at the lowest public boundary that fails on main. Don't repeat it in wrappers, at each call site, or in web and mobile copies of the same logic.
-- **No mirrors:** nothing from the delete list, but keep structural scans.
-- **Failing test first:** for a logic, data, state or protocol bug, watch the test go red on the current code before you fix it. A purely visual bug gets before and after screenshots, not a test.
-- **Control time:** use a fake clock, an injected `now` or an explicit completion signal. Never sleep, and never assert how long something took.
-- **Clean up after every test:** files run in random order. A test builds its own state and puts back what it changes.
-
-Where the repo has a review bot, add a check that reviews only added or grown tests against these rules and never asks for more coverage. Where lint can enforce a rule (no per-test timeouts, no wall-clock reads, no polling loops in tests), add the lint rule.
+- Write the testing rules doc below into the repo's testing doc (for example `docs/testing.md`). Adapt the examples to this repo's stack, and keep every rule.
+- Put the "What to test" and "Waiting and time" rules in AGENTS.md too, worded the same, with a line saying to change both together.
+- If the repo has a review bot, add the review check below.
+- Where lint can enforce a rule (no per-test timeouts or retries, no wall-clock reads, no polling loops, no skip without an issue), add the lint rule and name it in the doc.
 
 **8. Report.** One PR, or one per package for a large repo. Include:
 
@@ -89,3 +84,59 @@ Where the repo has a review bot, add a check that reviews only added or grown te
 - anything already broken on main, listed separately.
 
 Do everything you can without me first. Ask me only before you cut a test in `<PROTECTED>` that the mutation check says nothing else covers.
+
+## Testing rules doc
+
+This merges T3 Code's `docs/internals/testing.md` (#26166) and Andy's "Test signal" block in AGENTS.md (#3210).
+
+```markdown
+# Testing
+
+Rules for writing tests, and for asking for them in review. AGENTS.md carries the same rules; change both together.
+
+Keep a test only when it is the cheapest one that goes red when something that can break does break.
+
+## What to test
+
+- **Test what can break:** auth and permission guards, roles, tenant isolation, billing and money, provider payloads and protocol translation, webhook signatures, external-format parsing, persistence and migrations, orchestration and event sourcing, retries and idempotency, race fixes, time zones, and the logic a bug fix changed.
+- **Leave out:** what types, the compiler or a validator already guarantee, trivial logic, copy and translation text, markup, CSS and constants, props rendered to static markup, smoke runs, callback wiring, mock-call mirrors (an assert that a mock got what the code passed it), snapshots of how source is spelled, and tombstones for deleted features.
+- **Keep structural scans:** a source or file-tree scan that keeps an inventory complete or a safety rule universal (every route has its guard, every error code has copy in every language) is not a mirror.
+- **Extend before you add:** when an existing case or table covers the behaviour, add a row or an assert there. Write a new case only for a distinct way to fail. Never open a new file per issue. A loop over rows passes each row's name to the assert (`expect(actual, row.name)`), so a failure names the row.
+- **One layer:** test a behaviour once, at the lowest public boundary that fails on main (a server function, a route, a CLI or MCP operation). Do not repeat it in a wrapper, at each call site, or in web and mobile copies of the same logic.
+- **Browser tests only for the browser:** layout and scrolling, focus and pointer input, real workers, or a component wired to its hooks. Logic a component calls gets a unit test beside it. A browser test file spends seconds loading before its first test runs; a unit test takes milliseconds.
+- **Bug fixes:** a logic, data, state or protocol bug gets a failing test first (the fewest that fail on main for that reason, in an existing case where one fits), then the fix. A purely visual bug (spacing, colour, alignment, layout shift) gets before and after screenshots and no test. A server-only fix with no visible surface ships the test plus a short runtime transcript.
+- Backend behaviour changes ship with focused tests for that behaviour.
+
+## Waiting and time
+
+A test that needs a timeout to pass is wrong.
+
+- Use a fake clock, an injected `now`, or an explicit completion signal: await the event, promise or queue item that marks the milestone, or drain the background worker. Never sleep, and never poll in a loop.
+- Never assert how long something took (`Date.now()` or `performance.now()` deltas). Assert on events and counts.
+- Prove concurrency by holding the first call open, not by timing.
+- No per-test timeout argument and no retry. The project timeout is the ceiling. A flaky test has a bug in the test or in the product: fix it, don't retry it.
+- A skipped test needs a tracking issue on the line above: `// quarantine: #1234 <why>`.
+
+## Independence
+
+Files run in random order, and nothing is retried. A test builds its own state (its own database or backend and seeds, never what an earlier test left), puts back what it changes (env, globals such as `fetch`, shared fixtures, the system time), and drains the background work it started. Shared mock state is reset at the top of each test, not in module-level variables.
+
+## Review
+
+- Ask for a missing test only when it would catch a real regression. Do not ask for one assert per constant, label or `switch` case.
+- Flag a new test that breaks these rules, and name the fix: fold it into the existing case or table, delete it, keep one layer, or move a browser test whose asserts would pass without rendering into a unit test.
+```
+
+## Review check
+
+T3 runs this as a Macroscope check on a cheap model (GPT-6.1 Terra, low reasoning) over test files only. Its eval found that a short prompt that points at the testing doc did as well as an inline checklist, and stronger models were not needed. Adapt the paths and the bot's config format.
+
+```markdown
+# Test signal review
+
+Review only the tests this pull request adds or grows. Tests it moves, renames, or deletes are not findings. The rules are in `docs/testing.md` under `## What to test`; read that section first and hold new tests to it.
+
+Post each finding as a brief inline comment on the new test with one fix. Ask only for fewer or smaller tests, never for more coverage.
+
+When there are no findings, make the entire final response exactly `All clear` on one line with nothing else.
+```
