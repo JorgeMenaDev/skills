@@ -4,36 +4,52 @@ import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const ENDPOINT = "https://google.serper.dev/search";
-// treg.to relays the same Serper search and returns Serper's body unchanged, paid per call from one token.
-const TREG_ENDPOINT = "https://treg.to/call/serper.web.search";
-const FEATURES = ["answerBox", "knowledgeGraph", "peopleAlsoAsk", "topStories", "videos", "images", "places", "shopping"];
+const ENDPOINT = "https://api.dataforseo.com/v3/serp/google/organic/live/advanced";
+const FEATURES = ["aiOverview", "answerBox", "knowledgeGraph", "peopleAlsoAsk", "topStories", "videos", "images", "places", "shopping"];
+// DataForSEO result types, mapped to the feature names saved files already use.
+const FEATURE_TYPES = {
+  ai_overview: "aiOverview",
+  answer_box: "answerBox",
+  featured_snippet: "answerBox",
+  knowledge_graph: "knowledgeGraph",
+  people_also_ask: "peopleAlsoAsk",
+  top_stories: "topStories",
+  video: "videos",
+  images: "images",
+  local_pack: "places",
+  map: "places",
+  shopping: "shopping",
+  popular_products: "shopping",
+};
+// --gl to DataForSEO location code. Other countries: pass --location (2000 + ISO 3166 numeric code).
+const LOCATIONS = { cl: 2152, gb: 2826, uk: 2826, us: 2840, mx: 2484, es: 2724, ar: 2032, co: 2170, pe: 2604, br: 2076 };
 
 function usage() {
   return `Usage:
-  TREG_TOKEN=... (or SERPER_API_KEY=...) node serp.mjs --q "acreditación pronexo" [--q "..."] [--queries-file queries.txt] \\
-      --gl cl --hl es --domain acredix.cl [--num 20] [--out reports/data/serp-YYYY-MM-DD]
+  DATAFORSEO_LOGIN=... DATAFORSEO_PASSWORD=... node serp.mjs --q "acreditación pronexo" [--q "..."] \\
+      [--queries-file queries.txt] --gl cl --hl es --domain acredix.cl [--num 10] [--out reports/data/serp-YYYY-MM-DD]
 
   node serp.mjs --from-response reports/data/serp-YYYY-MM-DD.json
 
-Live Google result check through Serper (serper.dev). For each query it prints where the
+Live Google result check through DataForSEO's SERP API. For each query it prints where the
 domain ranks among organic results, the top organic results, and which result features
-(answer box, People Also Ask, videos, local pack, ...) the page shows.
+(AI Overview, answer box, People Also Ask, videos, local pack, ...) the page shows.
 
 --q              A query; repeatable. --queries-file reads one query per line.
 --gl / --hl      Google country and interface language (for example cl / es, gb / en).
+--location       DataForSEO location code, when --gl is not in the built-in list.
+--device         desktop (default) or mobile.
 --domain         Domain to locate (subdomains count as the same site).
---num            Organic results requested per query (default 10). Serper free accounts reject
-                 quoted and site: queries above 10 ("Query pattern not allowed for free accounts").
---pages          Result pages to fetch per query (default 1). Each page is 10 results and one
-                 paid query; use --pages 3 to see positions 11 to 30 when --num is capped at 10.
+--num            Organic results per page (default 10).
+--pages          Result pages per query (default 1). Depth is --num x --pages. Keep it at 30 or
+                 less: a deeper sample writes an impression into Search Console at that depth.
 --out            Path prefix: writes <prefix>.json (responses) and <prefix>.md.
---from-response  Re-render a saved <prefix>.json without network access.
+--from-response  Re-render a saved <prefix>.json without network access (older Serper files too).
 --dry-run        Print the request bodies and exit without calling the API.
 
 A result is one sample for one query, market, device and moment. Positions 8 to 12 move
 between checks minutes apart; re-run the queries that decide a bet before relying on them.
-The key is read from TREG_TOKEN (treg.to's Serper relay), else SERPER_API_KEY, and never printed.`;
+Credentials come from DATAFORSEO_LOGIN and DATAFORSEO_PASSWORD (Basic auth) and are never printed.`;
 }
 
 function argValue(name) {
@@ -60,8 +76,8 @@ function hostOf(url) {
   }
 }
 
-// Serper wraps results below the first few in opaque google.com/goto links, so the
-// site's host survives only in displayedLink ("https://acredix.cl › Acreditación").
+// Google results can arrive as opaque google.com/goto links, so the site's host
+// survives only in displayedLink ("https://acredix.cl › Acreditación").
 function resultHost(result) {
   const host = hostOf(result.link);
   if (host !== "google.com" || !result.displayedLink) return host;
@@ -73,6 +89,22 @@ function matchesDomain(result, domain) {
   const host = resultHost(result);
   const target = domain.replace(/^www\./, "");
   return host === target || host.endsWith(`.${target}`);
+}
+
+// Reshapes DataForSEO items into the saved-file shape render() reads (organic, peopleAlsoAsk, one key per feature).
+// An organic `url` can be an opaque google.com/goto link; `breadcrumb` keeps the site, so it goes in displayedLink.
+function toResults(items) {
+  const out = { organic: [] };
+  for (const item of items) {
+    if (item.type === "organic") {
+      out.organic.push({ position: item.rank_group, link: item.url, title: item.title, displayedLink: item.breadcrumb });
+    } else if (item.type === "people_also_ask") {
+      out.peopleAlsoAsk = (item.items ?? []).map((entry) => ({ question: entry.title }));
+    } else if (FEATURE_TYPES[item.type]) {
+      out[FEATURE_TYPES[item.type]] = true;
+    }
+  }
+  return out;
 }
 
 export function render(saved) {
@@ -121,45 +153,33 @@ async function main() {
   const pages = Math.max(1, Number(argValue("--pages") ?? 1));
   if (queries.length === 0) throw new Error(`At least one --q is required.\n\n${usage()}`);
 
-  const bodies = queries.flatMap((q) =>
-    Array.from({ length: pages }, (_, index) => (index === 0 ? { q, gl, hl, num } : { q, gl, hl, num, page: index + 1 })),
-  );
+  const location = Number(argValue("--location") ?? LOCATIONS[gl.toLowerCase()]);
+  if (!location) throw new Error(`No location code for --gl ${gl}; pass --location.\n\n${usage()}`);
+  const device = argValue("--device") ?? "desktop";
+  const bodies = queries.map((q) => ({ keyword: q, location_code: location, language_code: hl, device, depth: num * pages }));
   if (process.argv.includes("--dry-run")) {
     console.log(JSON.stringify({ endpoint: ENDPOINT, bodies }, null, 2));
     return;
   }
-  const treg = process.env.TREG_TOKEN;
-  const key = treg ?? process.env.SERPER_API_KEY;
-  if (!key) throw new Error("Set TREG_TOKEN (treg.to) or SERPER_API_KEY.");
-  const [url, auth] = treg ? [TREG_ENDPOINT, "X-Treg-Token"] : [ENDPOINT, "X-API-KEY"];
+  const { DATAFORSEO_LOGIN: login, DATAFORSEO_PASSWORD: password } = process.env;
+  if (!login || !password) throw new Error("Set DATAFORSEO_LOGIN and DATAFORSEO_PASSWORD.");
+  const auth = `Basic ${Buffer.from(`${login}:${password}`).toString("base64")}`;
 
   const results = [];
   for (const body of bodies) {
-    const response = await fetch(url, {
+    const response = await fetch(ENDPOINT, {
       method: "POST",
-      headers: { [auth]: key, "content-type": "application/json" },
-      body: JSON.stringify(body),
+      headers: { authorization: auth, "content-type": "application/json" },
+      body: JSON.stringify([body]),
     });
     const payload = await response.json().catch(() => ({}));
-    const page = body.page ?? 1;
-    if (page === 1) {
-      results.push({ q: body.q, response: response.ok ? payload : { error: `HTTP ${response.status}${payload.message ? `: ${payload.message}` : ""}` } });
-      continue;
-    }
-    // Later pages extend page 1's organic list; Serper restarts positions at 1 on each page.
-    const first = results.at(-1)?.response;
-    if (!response.ok || !first || first.error || !Array.isArray(payload.organic)) continue;
-    const offset = (page - 1) * 10;
-    first.organic = [
-      ...(first.organic ?? []),
-      ...payload.organic.map((result, index) => {
-        const position = Number(result.position) || index + 1;
-        return { ...result, position: position <= 10 ? offset + position : position };
-      }),
-    ];
+    const task = payload.tasks?.[0];
+    const failed = !response.ok ? `HTTP ${response.status}${payload.status_message ? `: ${payload.status_message}` : ""}`
+      : task?.status_code !== 20000 ? `${task?.status_code}: ${task?.status_message}` : null;
+    results.push({ q: body.keyword, response: failed ? { error: failed } : toResults(task.result?.[0]?.items ?? []) });
   }
 
-  const saved = { fetchedAt: new Date().toISOString(), domain, gl, hl, num, pages, results };
+  const saved = { fetchedAt: new Date().toISOString(), source: "dataforseo", domain, gl, hl, device, num, pages, results };
   const text = render(saved);
   const out = argValue("--out");
   if (out) {

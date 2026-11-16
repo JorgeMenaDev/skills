@@ -1,5 +1,9 @@
 # Changelog
 
+## 9.10.0
+
+- `serp.mjs` checks live rankings through DataForSEO's SERP API with `DATAFORSEO_LOGIN` and `DATAFORSEO_PASSWORD`, the keys `demand.mjs` already uses. The Serper and treg.to paths are gone. Adds `--device` and `--location`, and reports AI Overviews. Older saved Serper files still render. Why: treg.to is retired, our Serper accounts are retired, and Paperclip Matias's rank checks were stopped (ARK-555, 16 Nov 2026).
+
 ## 9.9.3
 
 - `serp.mjs` calls treg.to's Serper relay when `TREG_TOKEN` is set, and Serper directly with `SERPER_API_KEY` otherwise. Why: our own Serper accounts are retired, and Paperclip Matias's Serper key returned 403 (ARK-555, 16 Nov 2026).
