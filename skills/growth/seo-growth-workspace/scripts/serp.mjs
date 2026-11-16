@@ -5,11 +5,13 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ENDPOINT = "https://google.serper.dev/search";
+// treg.to relays the same Serper search and returns Serper's body unchanged, paid per call from one token.
+const TREG_ENDPOINT = "https://treg.to/call/serper.web.search";
 const FEATURES = ["answerBox", "knowledgeGraph", "peopleAlsoAsk", "topStories", "videos", "images", "places", "shopping"];
 
 function usage() {
   return `Usage:
-  SERPER_API_KEY=... node serp.mjs --q "acreditación pronexo" [--q "..."] [--queries-file queries.txt] \\
+  TREG_TOKEN=... (or SERPER_API_KEY=...) node serp.mjs --q "acreditación pronexo" [--q "..."] [--queries-file queries.txt] \\
       --gl cl --hl es --domain acredix.cl [--num 20] [--out reports/data/serp-YYYY-MM-DD]
 
   node serp.mjs --from-response reports/data/serp-YYYY-MM-DD.json
@@ -31,7 +33,7 @@ domain ranks among organic results, the top organic results, and which result fe
 
 A result is one sample for one query, market, device and moment. Positions 8 to 12 move
 between checks minutes apart; re-run the queries that decide a bet before relying on them.
-The key is read from SERPER_API_KEY and never printed.`;
+The key is read from TREG_TOKEN (treg.to's Serper relay), else SERPER_API_KEY, and never printed.`;
 }
 
 function argValue(name) {
@@ -126,14 +128,16 @@ async function main() {
     console.log(JSON.stringify({ endpoint: ENDPOINT, bodies }, null, 2));
     return;
   }
-  const key = process.env.SERPER_API_KEY;
-  if (!key) throw new Error("SERPER_API_KEY is not set.");
+  const treg = process.env.TREG_TOKEN;
+  const key = treg ?? process.env.SERPER_API_KEY;
+  if (!key) throw new Error("Set TREG_TOKEN (treg.to) or SERPER_API_KEY.");
+  const [url, auth] = treg ? [TREG_ENDPOINT, "X-Treg-Token"] : [ENDPOINT, "X-API-KEY"];
 
   const results = [];
   for (const body of bodies) {
-    const response = await fetch(ENDPOINT, {
+    const response = await fetch(url, {
       method: "POST",
-      headers: { "X-API-KEY": key, "content-type": "application/json" },
+      headers: { [auth]: key, "content-type": "application/json" },
       body: JSON.stringify(body),
     });
     const payload = await response.json().catch(() => ({}));

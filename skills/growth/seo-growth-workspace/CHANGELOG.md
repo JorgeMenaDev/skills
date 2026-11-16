@@ -1,5 +1,9 @@
 # Changelog
 
+## 9.9.3
+
+- `serp.mjs` calls treg.to's Serper relay when `TREG_TOKEN` is set, and Serper directly with `SERPER_API_KEY` otherwise. Why: our own Serper accounts are retired, and Paperclip Matias's Serper key returned 403 (ARK-555, 16 Nov 2026).
+
 ## 9.9.2
 
 - `data.md`: a Search Console cut of page with device or country drops rare rows, so size a page by page alone. Why: on laborix.cl (19 Oct to 11 Nov) page by device held 5,233 of 13,006 page impressions, and /ley-karin read 10 instead of 850 (growth triage, 15 Nov 2026).
