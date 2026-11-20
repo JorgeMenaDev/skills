@@ -308,7 +308,7 @@ case "$command" in
     reap_worktree_processes
     echo "RUNTIME_STOPPED: $worktree"
     if [[ "$remove" == "yes" ]]; then
-      if [[ -n "$(git -C "$worktree" status --porcelain)" ]]; then
+      if [[ -n "$(git -C "$worktree" status --porcelain -- . ":(exclude).worktree-dev")" ]]; then  # the run dir is ours
         echo "REMOVE_REFUSED: worktree has uncommitted changes" >&2; exit 1
       fi
       if [[ "$slug" != "local-main" ]]; then
