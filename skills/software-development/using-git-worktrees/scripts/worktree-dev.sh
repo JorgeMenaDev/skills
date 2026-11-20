@@ -71,7 +71,11 @@ if [[ -L "$worktree_root" || -L "$worktree" ]]; then
   exit 2
 fi
 run_dir="$worktree/.worktree-dev"
-log_file="$run_dir/server.log"
+# The log lives outside the worktree: Next dev forwards browser console lines
+# into it, and a write inside the watched tree triggers a rebuild, a page
+# reload and another console line, so the page reloads forever (20 Nov).
+log_dir="$worktree_root/.worktree-dev-logs"
+log_file="$log_dir/$slug.log"
 pid_file="$run_dir/server.pid"
 
 list_convex_local() { # list_convex_local <dir>: every project-local .convex/local, one per line
@@ -212,7 +216,7 @@ case "$command" in
 
     "$script_dir/copy-env-local.sh" "$repo_root" "$worktree"
     derive_worktree_ports "$worktree"
-    mkdir -p "$run_dir"
+    mkdir -p "$run_dir" "$log_dir"
     # A reused worktree keeps its ports: stop the previous runtime first.
     reap_worktree_processes
 
