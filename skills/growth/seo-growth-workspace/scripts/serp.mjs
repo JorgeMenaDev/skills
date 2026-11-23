@@ -21,6 +21,9 @@ const FEATURE_TYPES = {
   shopping: "shopping",
   popular_products: "shopping",
 };
+// Over this share of goto-wrapped organic results, a query's positions are unreliable: on Loki's
+// queries (21 Nov 2026) wrapped results put Facebook and Instagram in the top 10.
+const WRAPPED_LIMIT = 0.3;
 // --gl to DataForSEO location code. Other countries: pass --location (2000 + ISO 3166 numeric code).
 const LOCATIONS = { cl: 2152, gb: 2826, uk: 2826, us: 2840, mx: 2484, es: 2724, ar: 2032, co: 2170, pe: 2604, br: 2076 };
 
@@ -120,6 +123,12 @@ export function render(saved) {
     out.push(`| ${q.replaceAll("|", "/")} | ${response?.error ? "lookup failed" : position} | ${hit && hostOf(hit.link) === "google.com" ? (hit.displayedLink ?? "") : (hit?.link ?? "")} | ${features} | ${top} |`);
   }
   out.push("");
+  const wrapped = saved.results.flatMap(({ q, response }) => {
+    const organic = Array.isArray(response?.organic) ? response.organic : [];
+    const count = organic.filter((result) => hostOf(result.link) === "google.com").length;
+    return organic.length > 0 && count / organic.length > WRAPPED_LIMIT ? [`- ${q}: ${count} of ${organic.length} organic results are google.com/goto links.`] : [];
+  });
+  if (wrapped.length > 0) out.push("Warning: unreliable positions. Confirm these queries in a clean browser session before they decide anything:", ...wrapped, "");
   for (const { q, response } of saved.results) {
     const organic = Array.isArray(response?.organic) ? [...response.organic].sort((a, b) => a.position - b.position) : [];
     out.push(`## ${q}`, "");

@@ -24,6 +24,8 @@ A package holds the work itself, ready to execute without further writing:
 
 Outlines, briefs, prospect lists, calendar rows and instructions to write something are inputs to a package.
 
+**Stop rule.** A package waiting on a third party (a listing verification, a directory edit, a login only the client holds) gets at most 3 client messages or 2 runs without progress. Then close it as `killed`, or put it to the owner as one decision with a recommendation. Why: Loki's Bing listing took about 25 of 85 client-thread comments and was still unverified (21 Nov 2026).
+
 ## Steps
 
 1. **Establish authority and destination.** Read the bet, current focus, the site's approval boundary and owner decisions. Reuse granted authorization; a scheduled run has no extra authority. A new public action needs the applicable approval, and outreach needs explicit authorization. Keep exact-revision review, product PR/merge ownership and engine restrictions where the site requires them.

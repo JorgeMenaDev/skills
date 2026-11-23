@@ -17,6 +17,7 @@ Before creating, importing or scheduling content:
    2. **Find candidates in the buyer's own words.** Name what the buyer handles: the portals, forms, regulations and problems of their job. Run `demand.mjs --suggest <seed>` for each one, plus `--seeds` for related ideas. Category-based idea endpoints drift into generic national searches in a niche B2B market.
    3. **Check live results** with `scripts/serp.mjs` for every survivor.
    4. Schedule a keyword only when all of these hold:
+      - Its lane passes the qualified-outcome gate in [content-ops.md](content-ops.md).
       - It has reported volume for the site's market and language.
       - Its intent fits a buyer the business serves: a problem, comparison, cost-factor or how-to question that leads to one of its services.
       - An article can win its results. Shopping, government, product-seller, marketplace and login results are a no, and so are certificate look-ups where searchers fetch their own document from an official account. Results led by document-sharing sites (Studocu, Scribd) or thin blogs are weak competition, so they count as winnable.

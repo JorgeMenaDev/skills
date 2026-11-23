@@ -9,9 +9,9 @@ The monthly read that says whether SEO is working, per site and across a hub. Ru
      --month YYYY-MM --out "$SITE_WORKSPACE/reports/data/scoreboard-YYYY-MM"
    ```
 
-2. **Add outcomes.** Qualified outcomes from search (signups, demos, bookings, orders) for the same month, from the product's analytics. With PostHog, the Organic Outcome Bridge in [conversion.md](conversion.md) gives landing-page outcomes. When attribution is missing, write `unknown` and name the gap; a missing number is never zero.
+2. **Add outcomes.** The business outcome for the month from its system of record, by the counting rule in `context.md`, against the goal and the same dates last year. Then qualified outcomes from search (signups, demos, bookings, orders) from the product's analytics. With PostHog, the Organic Outcome Bridge in [conversion.md](conversion.md) gives landing-page outcomes. When attribution is missing, write `unknown` and name the gap; a missing number is never zero.
 3. **Separate delivery and outcomes.** Count opened bets, their finished states (`live`, `package`, `evidence request`) and resolved results (won, lost, killed) from `bets.md`, and distinguish delivery-only wins from measured search/business wins. Report qualified outcomes separately; neither a completed fix nor a lead is automatically a customer. Add actual research/preparation cost and operator handoffs where recorded, with unknowns explicit.
-4. **Call the lanes.** For each lane: keep, cut or re-point, with clicks per URL, page age, mature observation windows, role and qualified outcomes behind the call (see [review.md](review.md)). The heuristic is not a deletion or publishing quota.
+4. **Call the lanes.** Apply the qualified-outcome gate in [content-ops.md](content-ops.md). For each lane: keep, pause, cut or re-point, with clicks per URL, page age, mature observation windows, role and qualified outcomes behind the call (see [review.md](review.md)). The heuristic is not a deletion or publishing quota.
 5. **Write** `reports/scoreboard-YYYY-MM.md`:
 
    ```md

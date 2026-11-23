@@ -1,5 +1,14 @@
 # Changelog
 
+## 9.11.0
+
+- Start from the business outcome. `context.md` gets an `## Outcome` block (outcome, system of record, counting rule, coverage, capacity, Business Profile) and the current focus a goal above the existing pace and a not-winnable list. New `scripts/check-focus.mjs` fails a review until they exist. Why: Loki's rentals sat in its own database unread while we asked the owner five times for counts.
+- `review.md`: a constraint ladder (capacity, enquiry to sale, local surfaces, then the site). A business with a Business Profile starts with `local-seo-gbp.md`. Why: Urban Cleaning's 16 to 20 articles earned about one Google click while Maps and reviews decided its market.
+- Cut dead weight: the five-to-ten candidate quota, the weekly rival-sitemap and commit scans, and the weekly demand table (now monthly). A weekly run that moves no bet writes one screen. Work that only produces records is not a bet. Freezes on a money-page conversion fix last at most 28 days.
+- `content-ops.md`: a qualified-outcome gate pauses a content lane with no outcomes in 8 weeks, or under 1 per 100 sessions over 200; it replaces the clicks-per-URL cut rule. Engines schedule only lanes that pass.
+- `ship.md`: a stop rule for packages stuck on a third party (3 client messages or 2 runs). Why: Loki's Bing listing took about 25 client comments.
+- `local-seo-gbp.md`: pin map checks to the target place; tag both the profile's website and booking links; listings beyond Google need evidence first. `serp.mjs` warns when over 30% of a query's organic results are `google.com/goto` links. `data.md` adds the Maps lookup and like-date comparisons. Lessons from the Urban Cleaning and Loki re-plans, 21 to 23 Nov 2026.
+
 ## 9.10.0
 
 - `serp.mjs` checks live rankings through DataForSEO's SERP API with `DATAFORSEO_LOGIN` and `DATAFORSEO_PASSWORD`, the keys `demand.mjs` already uses. The Serper and treg.to paths are gone. Adds `--device` and `--location`, and reports AI Overviews. Older saved Serper files still render. Why: treg.to is retired, our Serper accounts are retired, and Paperclip Matias's rank checks were stopped (ARK-555, 16 Nov 2026).

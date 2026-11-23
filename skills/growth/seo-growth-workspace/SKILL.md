@@ -1,7 +1,7 @@
 ---
 name: seo-growth-workspace
 description: "Grow organic search traffic for a product or local-business site from a .seo workspace. Use for an SEO review, deciding what to build or fix next for search, a traffic drop, AI-search visibility (\"how do we show up in ChatGPT\"), setting up SEO, or the monthly SEO scoreboard."
-version: 9.10.0
+version: 9.11.0
 license: MIT
 mutating: true
 writes_to: [".seo/"]
@@ -13,7 +13,7 @@ The job is to attract people the business can serve and help them take a useful 
 
 ## Contract
 
-1. **Keep a current focus.** `strategy.md` names the customer, business outcome, constraint, chosen opportunity and capacity, grounded in owner decisions. Unknown outcomes stay unknown.
+1. **Start from the business outcome.** `context.md` names the outcome (sales, rentals, signups), its system of record and coverage; `strategy.md` names one plain goal above the existing pace, the constraint and what is not winnable this season, grounded in owner decisions. `scripts/check-focus.mjs` fails until they exist. Unknown outcomes stay unknown.
 2. **Discover beyond current rankings.** Active growth reviews combine site performance with bounded outside demand and buyer evidence. Maintenance and owner pauses still govern effort.
 3. **Finish chosen bets.** Each chosen bet ends the run `live`, as a `package` at its execution owner, or as an `evidence request`. Definitions: [references/ship.md](references/ship.md).
 4. **Keep few bets moving.** At most three unshipped bets per site. Live bets awaiting results leave those slots free. Defer independent work only for a stated capacity, owner or interference reason.
@@ -24,7 +24,7 @@ The job is to attract people the business can serve and help them take a useful 
 
 ```text
 .seo/                        standalone: one site; hub: HUB_ROOT with registry.md and sites/<slug>/
-  context.md    business, market, conversions, brand terms, approval boundary, data access
+  context.md    business, market, outcome and its system of record, brand terms, approval boundary, data access
   strategy.md   current focus and dated owner decisions that constrain bets
   bets.md       open and closed bets
   research.md   log of paid lookups, reused for 30 days
@@ -38,7 +38,7 @@ SITE_WORKSPACE is the one site folder a run works in, and `.seo/<file>` in any r
 
 | Mode | Use when | Read first | Done when |
 | --- | --- | --- | --- |
-| `review` | Weekly, or "what should we do for SEO", or traffic dropped | [references/review.md](references/review.md) | Every chosen bet finished, or no-action recorded with its trigger; report, bets and log agree |
+| `review` | Weekly (one screen unless a bet moves), or "what should we do for SEO", or traffic dropped | [references/review.md](references/review.md) | Every chosen bet finished, or no-action recorded with its trigger; report, bets and log agree |
 | `ship` | A chosen bet needs preparation or authorized execution | [references/ship.md](references/ship.md) | The bet is finished |
 | `scoreboard` | First days of a month | [references/scoreboard.md](references/scoreboard.md) | Scoreboard report written with lane calls |
 | `setup` | No `.seo/`, a new hub site, or a v7 workspace | [references/setup.md](references/setup.md) | Workspace files exist and Search Console access is proven |

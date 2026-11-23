@@ -4,7 +4,16 @@ The weekly growth cycle: diagnose the business constraint, discover demand, choo
 
 ## 1. Establish the focus
 
-Read `context.md`, `strategy.md`, `bets.md`, the newest review and `research.md`. Reconcile the current focus in [setup.md](setup.md) with the latest owner decisions. Name the customer, desired business outcome, baseline or unknown, constraint, capacity and approval boundary. A candidate outside the mandate or contrary to an owner decision is rejected, citing that decision.
+Read `context.md`, `strategy.md`, `bets.md`, the newest review and `research.md`. Run `node "$SKILL_DIR/scripts/check-focus.mjs" "$SITE_WORKSPACE"` and fill what it names from owner decisions and the outcome's system of record before choosing anything. Reconcile the current focus in [setup.md](setup.md) with the latest owner decisions. A candidate outside the mandate, on the not-winnable list or contrary to an owner decision is rejected, citing that decision.
+
+**Constraint ladder.** Name the constraint as the first rung that limits outcomes, checked in this order:
+
+1. Capacity and utilisation: can the business serve more (free cars, crew days, seats)?
+2. Enquiry to sale: how many enquiries become sales, and why the rest are lost.
+3. Local surfaces: Maps, reviews and listings. A business with a Google Business Profile starts with [local-seo-gbp.md](local-seo-gbp.md).
+4. The site and organic search.
+
+Work on a lower rung needs a recorded reason the rungs above are not the limit. Rungs 1 and 2 are owner and [conversion.md](conversion.md) work: name them in the focus and prepare what the mandate allows. Why: Urban Cleaning's 16 to 20 articles earned about one Google click while Maps and reviews decided its market, and Loki's rentals sat unread in its own database while we asked the owner five times for counts (re-plans, 21 Nov 2026).
 
 Inspect pending work, queued content and every open `package` or `evidence request` before adding anything. Resolve stale status from delivery evidence. At most three **unshipped** bets may be open; live bets awaiting results leave those slots free. Advance an existing bet that serves the same customer job instead of opening another. If no v8 review has read `archive/v7/backlog.md`, read its open rows once as candidates.
 
@@ -16,7 +25,7 @@ node "$SKILL_DIR/scripts/review-data.mjs" --site <property> --brand "<brand term
   --out "$SITE_WORKSPACE/reports/data/review-YYYY-MM-DD"
 ```
 
-Next to the pack, build the clicks-to-outcome table: for each landing page, Search Console clicks beside the qualified outcomes from sessions that entered there. A page with clicks and no outcomes is a candidate. A traffic total is not.
+Next to the pack, build the clicks-to-outcome table: for each landing page, Search Console clicks beside the qualified outcomes from sessions that entered there. A business with a Business Profile adds the profile's tagged website and booking links as their own rows. A page with clicks and no outcomes is a candidate. A traffic total is not. Business outcomes come from the system of record by the counting rule in `context.md`, on like dates.
 
 Credentials and property come from `context.md` or the hub registry. Give each live check a verdict. A failed check on a page that should be up, lost canonical or unexpected `noindex` becomes the first candidate and sets run status `alerted`. So does a lane with at least 10 previous-window clicks that loses more than half. For a traffic-drop request, diagnose it with [search-console.md](search-console.md) first.
 
@@ -29,18 +38,16 @@ node "$SKILL_DIR/scripts/gsc-fetch.mjs" --site <property> --start <d> --end <d> 
 
 Choose `won`, `lost`, `killed` or `extended` against the recorded success/kill rule. Extension is allowed once for incomplete data, with a new date. Move resolved bets to Closed with evidence, the prediction that held or failed, and the next changed choice. Record delivery correctness and search or business outcomes as separate results; a working redirect proves delivery only.
 
-Before a check date, verify delivery or leading signals when they could change a decision. While a bet's search data matures, continue independent discovery, preparation and execution within capacity. To defer work for interference, name the overlapping page, query intent or outcome path, then sequence the changes or measure them together. Explicit owner freezes still govern.
+Before a check date, verify delivery or leading signals when they could change a decision. While a bet's search data matures, continue independent discovery, preparation and execution within capacity. To defer work for interference, name the overlapping page, query intent or outcome path, then sequence the changes or measure them together. A freeze holds a conversion fix on a money page for at most 28 days and is never extended; then the fix ships and both are measured together. Why: Loki's homepage redesign sat frozen for 46 days behind readouts. Explicit owner freezes still govern.
 
 ## 3. Discover outside the current footprint
 
-An active growth review combines site performance with a bounded outside-demand check: evidence from beyond the site's own Search Console. Reuse relevant research under 30 days old, naming the outside source and what it changes this cycle. Sources: real buyer questions and objections, live results, competitor page types, market or language demand, tools people use and earned distribution opportunities. [competitor-profiling.md](competitor-profiling.md) sizes this check; a full profile is for when its extra evidence can change a bet.
+Monthly, or when the focus changes or a bet needs it, an active growth review adds a bounded outside-demand check: evidence from beyond the site's own Search Console. Weekly runs reuse the last one. Reuse relevant research under 30 days old, naming the outside source and what it changes this cycle. Sources: real buyer questions and objections, live results, competitor page types, market or language demand, tools people use and earned distribution opportunities. [competitor-profiling.md](competitor-profiling.md) sizes this check; a full profile is for when its extra evidence can change a bet.
 
-In the dated report, maintain a small demand-to-destination table. Reuse recent rows when the focus is unchanged:
+In that run's report, keep a small demand-to-destination table. Reuse recent rows when the focus is unchanged:
 
 | Customer job / intent | Market / language | Source and date | Observed or estimated demand | Result format | Existing or queued destination | Missing value / proof | Qualified next step |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-
-Two cheap outside checks each cycle: compare the main rivals' sitemaps with the last saved copy to see what they just built, and compare product commits since the last review with the site's public claims to find shipped work the pages never mention.
 
 A claim from a post, thread or repository enters `research.md` with its author, incentive, what was tested and the decision. An anecdote can suggest a test. It cannot size a bet.
 
@@ -50,7 +57,7 @@ Notice time-sensitive buyer changes such as a product release, changed price or 
 
 ## 4. Compare opportunities and judge lanes
 
-Normally compare five to ten credible candidates across at least three applicable kinds. The mandate, evidence or capacity can justify fewer; every row needs its own evidence.
+Compare the credible candidates the evidence supports, with no quota; every row needs its own evidence.
 
 | Kind | Opportunity |
 | --- | --- |
@@ -66,11 +73,11 @@ Normally compare five to ten credible candidates across at least three applicabl
 
 Run only the lookup that can change the ranking: a live result check for a ranking claim; a volume estimate for an unmeasured keyword gap when it would change the choice. Reuse `research.md`; default budget is ten live checks and one demand request unless `context.md` sets another.
 
-Judge URL groups using URLs, clicks, clicks per URL per month, age, completed observation windows, purpose and qualified outcomes where observed. Ten or more URLs earning under one click per URL per month for two reviews become a `cut` candidate, judged like any other. Decide keep, cut or re-point with reasons; young pages and conversion-support pages need context.
+Judge URL groups using URLs, clicks, clicks per URL per month, age, completed observation windows, purpose and qualified outcomes. A content lane that fails the qualified-outcome gate in [content-ops.md](content-ops.md) pauses. Decide keep, cut or re-point with reasons; young pages and conversion-support pages need context.
 
 ## 5. Choose and finish
 
-Choose up to three unshipped bets within remaining capacity. Prefer a demonstrated problem for likely customers with a credible path to meaningful gain. Real access or indexing failures and measurable losses go first; ease alone earns a candidate no priority. Argue for the strongest rejected alternative and state why the leader wins. Give the remaining candidates a specific disposition.
+Choose up to three unshipped bets within remaining capacity. Prefer a demonstrated problem for likely customers with a credible path to more outcomes. Work that produces only records (readouts, freeze extensions, contamination notes, long reports, another chase of a stuck listing) is not a bet: kill it, or put it to the owner as one decision. Real access or indexing failures and measurable losses go first; ease alone earns a candidate no priority. Argue for the strongest rejected alternative and state why the leader wins. Give the remaining candidates a specific disposition.
 
 Record the opportunity and hypothesis in the current focus. Take each chosen bet to **finished** with [ship.md](ship.md) in this run; its package table routes page, engine, authority, local, technical and conversion work.
 
@@ -94,7 +101,7 @@ Keep bets short; detail belongs in the report or existing engine revision:
 
 Status moves `proposed → approved → live → won | lost | killed`. Approval comes from the owner or the site's approval boundary. Record that basis and reuse granted authority.
 
-Write `reports/review-YYYY-MM-DD.md` with these sections:
+A weekly run that opens and resolves no bet writes one screen in `reports/review-YYYY-MM-DD.md`: outcomes against the goal, any flag, and the next move. A run that chooses or resolves a bet, and at least one run a month, writes these sections:
 
 - **Your next SEO move:** at most three bullets: each chosen bet's finished state, and the next actor, action or owner decision, including any proposed boundary line.
 - **Focus and numbers:** current business constraint, 28 days vs previous 28, qualified outcomes or unknown, non-brand query-row coverage, lane calls.

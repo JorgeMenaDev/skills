@@ -2,6 +2,10 @@
 
 Use for content bets (`gap`, `underperformer`): keyword research, destination choice, drafting, editing and internal links. A site with a content engine also follows [content-engine-webhooks.md](content-engine-webhooks.md) for its adapter, calendar and publishing.
 
+## Qualified-outcome gate
+
+A content lane is a calendar, cluster or page type. It names the qualified outcome it leads to (a request, booking, lead or signup) and the page and call to action that carry it. At each monthly scoreboard, a lane whose pages are past their 42-day window pauses when it earned no qualified outcome in 8 weeks, or fewer than 1 per 100 sessions over 200 sessions. Paused means no new pages and engine slots off; existing pages stay. It restarts only on a dated owner decision in `strategy.md` that cites outcome evidence. Pausing a calendar promised to a client is the client's decision, asked in one message. Why: Urban Cleaning's 16 to 20 articles earned about one Google click, and Loki's nine travel articles drew 379 sessions and 2 requests (21 Nov 2026).
+
 ## Keyword Research
 
 Seed from both current performance and outside demand, within the review budget:

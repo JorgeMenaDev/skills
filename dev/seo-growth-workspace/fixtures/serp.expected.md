@@ -7,6 +7,10 @@ Fetched: 2026-09-22T10:00:00.000Z. One sample per query; not a baseline.
 | widget calculator | #2 (page 1) | https://example.com/tools/calculator | answerBox, peopleAlsoAsk | rival.io, example.com, wiki.org |
 | how to use widgets | #11 (page 2) | https://docs.example.com/start |  | other.net, docs.example.com |
 | widget / pipe | lookup failed |  |  |  |
+| wrapped results | #2 (page 1) | https://example.com › rent |  | rival.io, example.com, other.net |
+
+Warning: unreliable positions. Confirm these queries in a clean browser session before they decide anything:
+- wrapped results: 2 of 3 organic results are google.com/goto links.
 
 ## widget calculator
 
@@ -24,3 +28,9 @@ People also ask: How do widgets work?
 ## widget | pipe
 
 Lookup failed: HTTP 500
+
+## wrapped results
+
+1. rival.io Rival
+2. example.com Example
+3. other.net Other

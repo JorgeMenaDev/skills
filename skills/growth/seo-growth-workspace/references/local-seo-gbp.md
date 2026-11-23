@@ -1,6 +1,6 @@
 # Local SEO And Google Business Profile
 
-Use only when the business has local intent, service areas, a storefront, GBP, map-pack competitors, reviews, or citations.
+Use when the business has local intent, service areas, a storefront, GBP, map-pack competitors, reviews, or citations. A business with a Google Business Profile starts here: its profile, reviews and listing facts come before site or content bets (constraint ladder in [review.md](review.md)).
 
 If those signals are absent, exit the phase as `not applicable` and record the evidence. Do not create a local SEO action for SaaS, publisher, or product sites without local intent.
 
@@ -44,6 +44,8 @@ Never treat profile count as a local-ranking or growth lever. Default to one Bus
 These eight rewritten GBP outputs—categories, attributes, reviews, review responses, posts, services, description, and photos—organize observations and proposals. Competitor recurrence can motivate a hypothesis, but it does not establish a ranking requirement or cause.
 
 ## From opportunity to work
+
+Tag both profile links so their visits are not counted as organic: the website link with `utm_source=google&utm_medium=organic&utm_campaign=gbp`, the booking or appointment link with `utm_campaign=gbp-booking`. Why: Loki's untagged booking link sent its `rwg_token` visits into organic search. A listing beyond Google (Bing Places, Apple Business Connect, a directory) needs evidence that it sends customers in this market before any work, and then follows the stop rule in [ship.md](ship.md).
 
 Connect the local candidate to a real customer job and the site's focus using [review.md](review.md). Prepare the exact eligible profile edit, service/location page, useful asset or booking-path correction, with factual proof and the conversion destination. Collect missing business facts with a specific question and owner. Carry it to finished through [ship.md](ship.md), applying the mutation gate below and the site's existing authorization.
 
@@ -95,6 +97,8 @@ Choose and label one evidence class:
 
 - `geo-grid scan` — a true grid scan with documented per-point location control and stable geometry. It may emit top-3/top-10 coverage percentages, average or median position, non-ranking points, and weak geographic areas.
 - `manual location sample` — searches sampled from representative locations with the actual location and device/session limitations recorded. It may report the observed positions or visibility at the sampled locations, but it emits no grid coverage percentage.
+
+Pin every check to the place the target searcher is (the query's town, airport or grid point), never by default to the business's address, and record the coordinates, zoom and place ID. A check pinned elsewhere is not evidence for that place. Why: Loki's Puerto Varas and airport checks were pinned to Puerto Montt; from the real places Loki was outside the top 20 (21 Nov 2026).
 
 For either class record: business/GBP identity, target query, market/city/country, observation date/time, locale, device/search/account context, method, relevant competitors, and limitations. A `geo-grid scan` must also record grid centre, dimensions, point spacing or radius, coordinate set or stored scan evidence, and non-ranking handling. Prefer distribution and coverage from a true scan over one vanity rank.
 

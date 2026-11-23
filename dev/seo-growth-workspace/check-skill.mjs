@@ -94,11 +94,14 @@ golden(
 golden("serp", run("serp.mjs", ["--from-response", path.join(fixtures, "serp-saved.json")]), "serp.expected.md");
 golden("demand", run("demand.mjs", ["--from-response", path.join(fixtures, "demand-saved.json")]), "demand.expected.md");
 check(run("review-data.mjs", ["--from-raw", path.join(fixtures, "review-raw.json")]).status !== 0, "review-data: --brand is required");
+check(run("check-focus.mjs", [path.join(fixtures, "focus-ok")]).status === 0, "check-focus: a complete workspace passes");
+const focusGap = run("check-focus.mjs", [fixtures]);
+check(focusGap.status === 1 && focusGap.stderr.includes("context.md is missing"), "check-focus: a workspace without context.md fails and names the fix");
 
 // --- 5. dry runs ---
 
 const serpDry = run("serp.mjs", ["--q", "widget", "--gl", "gb", "--hl", "en", "--dry-run"]);
-check(serpDry.status === 0 && JSON.parse(serpDry.stdout).bodies[0].gl === "gb", "serp --dry-run prints the request without a key");
+check(serpDry.status === 0 && JSON.parse(serpDry.stdout).bodies[0].location_code === 2826, "serp --dry-run prints the request without a key");
 const demandDry = run("demand.mjs", ["--keywords", "a,b", "--location", "2152", "--language", "es", "--dry-run"]);
 check(demandDry.status === 0 && JSON.parse(demandDry.stdout).body[0].location_code === 2152, "demand --dry-run prints the request without credentials");
 check(run("demand.mjs", ["--keywords", "a", "--seeds", "b", "--dry-run"]).status !== 0, "demand: --keywords and --seeds are exclusive");

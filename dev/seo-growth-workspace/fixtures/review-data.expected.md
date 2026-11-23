@@ -65,6 +65,10 @@ Queries with at least 10 impressions, aggregated across pages. Flags are heurist
 | best widget tool | 25 | 1 | 4.0% | 5.5 | / |  |
 | widget / pipe | 12 | 0 | 0.0% | 30.0 | /pricing | new |
 
+## Long queries
+
+_None._
+
 ## Countries
 
 | Country | Clicks | Previous | Impressions | Previous impressions | Position |
