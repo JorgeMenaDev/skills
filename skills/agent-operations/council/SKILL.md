@@ -1,7 +1,7 @@
 ---
 name: council
 description: Trigger this if the user says 'council'.
-version: 1.0.1
+version: 1.0.2
 metadata:
   credits:
     - idea: "Three delegates from three providers review until all are satisfied"
@@ -64,11 +64,11 @@ keep scope limited.
 
 ## Members
 
-Unless the user names others, the council is these three, all at high effort (Jorge, 4 Nov 2026):
+Unless the user names others, the council is these three, all at high effort (Jorge, 4 Nov 2026; Gemini since 24 Nov 2026):
 
 - Claude Opus 5.5: `{providerInstanceId: "claudePool", model: "claude-opus-5-5", options: {effort: "high"}}`
 - GPT-6.2 Sol: `{providerInstanceId: "codex", model: "gpt-6.2-sol", options: {reasoningEffort: "high"}}`. GPT is for review and research only.
-- Grok 4.7 through Cursor: `{providerInstanceId: "cursor", model: "grok-4.7", options: {reasoning_effort: "high"}}`. Cursor names this option `reasoning_effort`, not `effort`.
+- Gemini 4 Neon through Antigravity: `{providerInstanceId: "antigravity", model: "gemini-4-neon", options: {thought_level: "high"}}`. Antigravity names this option `thought_level`. Gemini never runs through Cursor (Jorge, 24 Nov 2026: replaces Grok 4.7).
 
 Claude members run on the Claude pool (`claudePool`), never Claude direct, so they share the pool's account routing (Jorge, 11 Nov 2026).
 
